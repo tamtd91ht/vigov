@@ -1,5 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
-import { RequirePermission } from '@vigov/shared';
+import { Public, RequirePermission } from '@vigov/shared';
 import { CatalogsService } from './catalogs.service';
 
 /**
@@ -36,6 +36,18 @@ export class CatalogsController {
   }
 
   /** Chủ đề video tuyên truyền */
+  /**
+   * Danh bạ chính quyền cho app công dân và Zalo Mini App.
+   * @Public vì công dân tra danh bạ trước cả khi định danh; dữ liệu là số máy
+   * công vụ đã công bố, không phải thông tin cá nhân.
+   * Khai trước các route khác để 'public' không bị tham số đường dẫn bắt nhầm.
+   */
+  @Public()
+  @Get('public/directory')
+  publicDirectory() {
+    return this.catalogs.publicDirectory();
+  }
+
   @Get('document-types')
   documentTypes() {
     return this.catalogs.documentTypes();

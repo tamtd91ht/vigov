@@ -15,6 +15,7 @@ import {
   type StaffUserDocument,
 } from '@vigov/shared';
 import { OrgNode, type OrgNodeDocument } from '../settings/schemas/org-node.schema';
+import { GovContact, type GovContactDocument } from './schemas/gov-contact.schema';
 import {
   RadioBulletin,
   type RadioBulletinDocument,
@@ -38,6 +39,23 @@ export interface StaffOption {
  * phân biệt của chính các collection nghiệp vụ), không khai báo hằng số cứng —
  * nhờ đó thêm bản ghi mới là danh mục tự có thêm lựa chọn.
  */
+/**
+ * Danh bạ công bố mặc định — nạp khi collection còn rỗng.
+ * Số máy là số công vụ của UBND xã, do văn phòng cập nhật lại khi có thay đổi.
+ */
+const DEFAULT_CONTACTS = [
+  { name: 'Nguyễn Văn Bình', title: 'Chủ tịch UBND xã', department: 'UBND xã', phone: '024 3378 2001', group: 'leader', order: 1 },
+  { name: 'Trần Thị Hạnh', title: 'Phó Chủ tịch UBND xã', department: 'UBND xã', phone: '024 3378 2002', group: 'leader', order: 2 },
+  { name: 'Trần Thị Hạnh', title: 'Phó Chủ tịch UBND xã · phụ trách', department: 'Văn phòng UBND', phone: '024 3378 4001', group: 'department', order: 1 },
+  { name: 'Lê Minh Tuấn', title: 'Công chức Địa chính – Xây dựng', department: 'Địa chính – Xây dựng', phone: '024 3378 4002', group: 'department', order: 2 },
+  { name: 'Phạm Thị Ngọc', title: 'Công chức Tư pháp – Hộ tịch', department: 'Tư pháp – Hộ tịch', phone: '024 3378 4003', group: 'department', order: 3 },
+  { name: 'Vũ Đức Anh', title: 'Công chức Văn hoá – Xã hội', department: 'Văn hoá – Xã hội', phone: '024 3378 4004', group: 'department', order: 4 },
+  { name: 'Đỗ Thanh Hà', title: 'Công chức Tài chính – Kế toán', department: 'Tài chính – Kế toán', phone: '024 3378 4005', group: 'department', order: 5 },
+  { name: 'Ngô Thị Lan', title: 'Giám đốc Trung tâm', department: 'Trung tâm Phục vụ hành chính công', phone: '024 3378 4006', group: 'department', order: 6 },
+  { name: 'Hoàng Văn Sơn', title: 'Trưởng Công an xã', department: 'Công an xã', phone: '024 3378 4007', group: 'department', order: 7 },
+  { name: 'Bùi Quang Khải', title: 'Chỉ huy trưởng Quân sự xã', department: 'Quân sự xã', phone: '024 3378 4008', group: 'department', order: 8 },
+];
+
 /** Loại văn bản hành chính thông dụng — bộ khởi tạo khi database còn rỗng */
 const DEFAULT_DOCUMENT_TYPES = [
   'Công văn',
@@ -48,6 +66,25 @@ const DEFAULT_DOCUMENT_TYPES = [
   'Tờ trình',
   'Báo cáo',
 ];
+
+/** Chỉ trả các trường giao diện cần; giấu _id và mốc thời gian */
+function toContactView(doc: {
+  name: string;
+  title: string;
+  department: string;
+  phone: string;
+  group: string;
+  order: number;
+}) {
+  return {
+    name: doc.name,
+    title: doc.title,
+    department: doc.department,
+    phone: doc.phone,
+    group: doc.group,
+    order: doc.order,
+  };
+}
 
 @Injectable()
 export class CatalogsService {
@@ -61,7 +98,30 @@ export class CatalogsService {
     @InjectModel(BudgetItem.name) private readonly budgetModel: Model<BudgetItemDocument>,
     @InjectModel(IncomingDocument.name)
     private readonly documentModel: Model<IncomingDocumentDocument>,
+    @InjectModel(GovContact.name) private readonly contactModel: Model<GovContactDocument>,
   ) {}
+
+  /**
+   * Danh bạ chính quyền công khai cho app công dân và Zalo Mini App.
+   * Tự nạp bộ mặc định ở lần gọi đầu trên database trống — trả rỗng thì màn
+   * Danh bạ của công dân trắng trơn, không gọi được ai.
+   */
+  async publicDirectory(): Promise<{ items: Omit<GovContact, never>[] }> {
+    const existing = await this.contactModel
+      .find({}, 'name title department phone group order')
+      .sort({ group: 1, order: 1 })
+      .lean()
+      .exec();
+    if (existing.length > 0) return { items: existing.map(toContactView) };
+
+    await this.contactModel.insertMany(DEFAULT_CONTACTS);
+    const seeded = await this.contactModel
+      .find({}, 'name title department phone group order')
+      .sort({ group: 1, order: 1 })
+      .lean()
+      .exec();
+    return { items: seeded.map(toContactView) };
+  }
 
   /**
    * Bộ phận chuyên môn.

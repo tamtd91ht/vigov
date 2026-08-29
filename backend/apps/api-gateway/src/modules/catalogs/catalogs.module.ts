@@ -12,6 +12,7 @@ import {
   StaffUser,
   StaffUserSchema,
 } from '@vigov/shared';
+import { GovContact, GovContactSchema } from './schemas/gov-contact.schema';
 import { CatalogsController } from './catalogs.controller';
 import { CatalogsService } from './catalogs.service';
 import { OrgNode, OrgNodeSchema } from '../settings/schemas/org-node.schema';
@@ -28,6 +29,7 @@ import { RadioBulletin, RadioBulletinSchema, Video, VideoSchema } from '../conte
       { name: StaffUser.name, schema: StaffUserSchema },
       { name: CitizenUser.name, schema: CitizenUserSchema },
       { name: IncomingDocument.name, schema: IncomingDocumentSchema },
+      { name: GovContact.name, schema: GovContactSchema },
       { name: Article.name, schema: ArticleSchema },
       { name: Video.name, schema: VideoSchema },
       { name: RadioBulletin.name, schema: RadioBulletinSchema },

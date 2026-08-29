@@ -324,4 +324,17 @@ class GovContact {
   final String department;
   final String phone;
   final ContactGroup group;
+
+  /// Dựng từ JSON của GET /catalogs/public/directory.
+  /// Nhóm lạ (ví dụ 'emergency' backend thêm sau) xếp vào `department` để danh
+  /// bạ vẫn hiển thị đủ thay vì rơi mất bản ghi.
+  factory GovContact.fromJson(Map<String, dynamic> json) => GovContact(
+        name: json['name'] as String? ?? '',
+        title: json['title'] as String? ?? '',
+        department: json['department'] as String? ?? '',
+        phone: json['phone'] as String? ?? '',
+        group: json['group'] == 'leader'
+            ? ContactGroup.leader
+            : ContactGroup.department,
+      );
 }

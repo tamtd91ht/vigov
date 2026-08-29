@@ -2,7 +2,8 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { Icon } from "@/components/Icon";
 import { EmptyState, IconBubble, SectionHead, SubHeader, tint } from "@/components/common";
 import { appConfig } from "@/config/app.config";
-import { mockGovContacts } from "@/mocks/directory.mock";
+import { useApiResource } from "@/hooks/useApiResource";
+import { contentService } from "@/services/content.service";
 import { zaloService } from "@/services/zalo";
 import { useToast } from "@/state/ToastContext";
 import type { GovContact } from "@/types";
@@ -102,8 +103,11 @@ export function DirectoryPage() {
   const { showToast } = useToast();
   const [query, setQuery] = useState("");
 
+  const directory = useApiResource(() => contentService.listGovContacts(), []);
+  const contacts = directory.data ?? [];
+
   /** Giữ vị trí gốc để màu avatar không nhảy khi lọc */
-  const indexed = useMemo(() => mockGovContacts.map((contact, index) => ({ contact, index })), []);
+  const indexed = useMemo(() => contacts.map((contact, index) => ({ contact, index })), [contacts]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

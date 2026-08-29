@@ -19,7 +19,9 @@ export const appConfig = {
   api: {
     baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? "/api/v1",
     /** true = dùng dữ liệu mock trong src/mocks thay vì gọi backend */
-    useMocks: (process.env.NEXT_PUBLIC_USE_MOCKS ?? "true") === "true",
+    // Mặc định gọi API thật. Mock là lựa chọn CÓ CHỦ Ý để trình diễn giao diện
+    // khi chưa dựng backend, bật bằng NEXT_PUBLIC_USE_MOCKS=true.
+    useMocks: (process.env.NEXT_PUBLIC_USE_MOCKS ?? "false") === "true",
     /** Độ trễ giả lập khi dùng mock (ms) — để UI thể hiện trạng thái tải */
     mockDelayMs: 250,
   },

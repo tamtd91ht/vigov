@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../config/app_config.dart';
 import '../../config/theme.dart';
-import '../../mocks/directory_mock.dart';
 import '../../models/models.dart';
+import '../../services/content_service.dart';
 import '../../services/device/call_service.dart';
 import '../../widgets/common.dart';
 
@@ -37,8 +37,19 @@ class DirectoryScreen extends StatefulWidget {
 
 class _DirectoryScreenState extends State<DirectoryScreen> {
   final CallService _callService = CallService();
+  final ContentService _contentService = ContentService();
   final TextEditingController _searchController = TextEditingController();
   String _query = '';
+
+  /// Danh bạ tải từ API; giữ Future để FutureBuilder không gọi lại mỗi lần gõ
+  /// vào ô tìm kiếm — lọc là việc phía máy khách.
+  late Future<List<GovContact>> _contactsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _contactsFuture = _contentService.govContacts();
+  }
 
   @override
   void dispose() {
@@ -69,10 +80,44 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    return FutureBuilder<List<GovContact>>(
+      future: _contactsFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
+        if (snapshot.hasError) {
+          return Scaffold(
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Không tải được danh bạ', textAlign: TextAlign.center),
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      onPressed: () => setState(() {
+                        _contactsFuture = _contentService.govContacts(refresh: true);
+                      }),
+                      child: const Text('Thử lại'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+        return _buildContent(context, snapshot.data ?? const []);
+      },
+    );
+  }
+
+  Widget _buildContent(BuildContext context, List<GovContact> contacts) {
     final leaders =
-        mockGovContacts.where((c) => c.group == ContactGroup.leader && _matches(c)).toList();
+        contacts.where((c) => c.group == ContactGroup.leader && _matches(c)).toList();
     final departments =
-        mockGovContacts.where((c) => c.group == ContactGroup.department && _matches(c)).toList();
+        contacts.where((c) => c.group == ContactGroup.department && _matches(c)).toList();
     final noResult = leaders.isEmpty && departments.isEmpty;
 
     return Scaffold(

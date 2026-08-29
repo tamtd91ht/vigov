@@ -15,8 +15,10 @@ class AppConfig {
   static const String apiBaseUrl =
       String.fromEnvironment('API_BASE_URL', defaultValue: 'http://localhost:3001/api/v1');
 
-  /// true = dùng dữ liệu mock trong lib/mocks thay vì gọi backend (P3)
-  static const bool useMocks = bool.fromEnvironment('USE_MOCKS', defaultValue: true);
+  /// Mặc định gọi API thật, thống nhất với admin-web và zalo-miniapp.
+  /// Bật mock để trình diễn giao diện khi chưa có backend:
+  ///   flutter run --dart-define=USE_MOCKS=true
+  static const bool useMocks = bool.fromEnvironment('USE_MOCKS', defaultValue: false);
 
   /// Độ trễ giả lập khi dùng mock — để UI thể hiện trạng thái tải
   static const Duration mockDelay = Duration(milliseconds: 350);

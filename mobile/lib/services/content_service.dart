@@ -1,4 +1,5 @@
 import '../config/app_config.dart';
+import '../mocks/directory_mock.dart';
 import '../mocks/news_mock.dart';
 import '../mocks/radio_mock.dart';
 import '../mocks/video_mock.dart';
@@ -20,8 +21,29 @@ class ContentService {
   final ApiClient _api;
 
   final Map<ArticleType, List<Article>> _articles = {};
+  List<GovContact>? _contacts;
   List<VideoItem>? _videos;
   List<RadioBulletin>? _radio;
+
+  // ---------------------------------------------------------------- Danh bạ
+
+  /// Danh bạ chính quyền — GET /catalogs/public/directory, không cần token.
+  /// Backend đã sắp theo nhóm rồi tới thứ tự hiển thị; giữ nguyên thứ tự đó.
+  Future<List<GovContact>> govContacts({bool refresh = false}) async {
+    final cached = _contacts;
+    if (!refresh && cached != null) return cached;
+
+    late final List<GovContact> items;
+    if (AppConfig.useMocks) {
+      await Future<void>.delayed(AppConfig.mockDelay);
+      items = mockGovContacts;
+    } else {
+      final res = await _api.getJson('/catalogs/public/directory', auth: false);
+      items = asItems(res).map(GovContact.fromJson).toList();
+    }
+    _contacts = items;
+    return items;
+  }
 
   // --------------------------------------------------------------- Bài viết
 

@@ -3,7 +3,8 @@ import { apiClient, buildQuery, mockDelay, type Paged } from "@/services/api";
 import { mockArticles } from "@/mocks/news.mock";
 import { mockRadioBulletins } from "@/mocks/radio.mock";
 import { mockVideos } from "@/mocks/video.mock";
-import type { Article, ArticleType, RadioBulletin, VideoItem } from "@/types";
+import { mockGovContacts } from "@/mocks/directory.mock";
+import type { Article, ArticleType, GovContact, RadioBulletin, VideoItem } from "@/types";
 
 /**
  * Nội dung công khai của xã — tin tức, video tuyên truyền, bản tin truyền thanh.
@@ -97,7 +98,36 @@ function toBulletin(raw: ApiRadio): RadioBulletin {
   };
 }
 
+/** Bản ghi danh bạ backend trả về */
+interface ApiGovContact {
+  name: string;
+  title: string;
+  department: string;
+  phone: string;
+  group: string;
+  order: number;
+}
+
 export const contentService = {
+  /**
+   * Danh bạ chính quyền — GET /catalogs/public/directory, không cần token.
+   * Backend đã sắp xếp theo nhóm rồi tới thứ tự hiển thị.
+   */
+  async listGovContacts(): Promise<GovContact[]> {
+    if (appConfig.api.useMocks) {
+      await mockDelay();
+      return mockGovContacts;
+    }
+    const res = await apiClient.get<{ items: ApiGovContact[] }>("/catalogs/public/directory");
+    return res.items.map((raw) => ({
+      name: raw.name,
+      title: raw.title,
+      department: raw.department,
+      phone: raw.phone,
+      group: raw.group as GovContact["group"],
+    }));
+  },
+
   /** Bài viết đã phát hành, lọc theo loại (news | event | notice) */
   async listArticles(type?: ArticleType): Promise<Article[]> {
     if (appConfig.api.useMocks) {
