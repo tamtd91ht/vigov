@@ -16,6 +16,7 @@ Toàn bộ hạ tầng dựng bằng `docker-compose.yml` ở thư mục gốc d
 | `deploy/backup-mongo.sh` | Sao lưu MongoDB bằng `mongodump` |
 | `deploy/RELEASE.md` | Phát hành app công dân lên 3 store (P4-37) |
 | `deploy/UAT.md` | Kế hoạch kiểm thử hồi quy & UAT trên staging (P4-38) |
+| `deploy/huong-dan-trien-khai.html` | Bản trang đơn để gửi khách — mở bằng trình duyệt, không cần công cụ |
 
 ---
 

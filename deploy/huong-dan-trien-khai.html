@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Triển khai ViGov</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+  /* Reset tối thiểu — bản Artifact được runtime cấp sẵn, bản standalone thì không.
+     Phải đứng TRƯỚC style trang để không đè lên khoảng cách bên dưới. */
+  html { -webkit-text-size-adjust: 100%; }
+  body, h1, h2, h3, h4, p, figure, blockquote, dl, dd, ol, ul, pre { margin: 0; }
+  ol, ul { padding: 0; }
+  img, svg { max-width: 100%; }
+  table { border-collapse: collapse; }
+  button, input { font: inherit; }
+</style>
+<style>
+  :root {
+    --ground:        #F5F6F8;
+    --surface:       #FFFFFF;
+    --surface-sunk:  #EDEFF3;
+    --ink:           #14181F;
+    --ink-soft:      #4A5464;
+    --ink-faint:     #78828F;
+    --rule:          #DCE0E7;
+    --rule-strong:   #C3C9D3;
+    --accent:        #9E2B34;
+    --accent-ink:    #7C1F27;
+    --accent-wash:   #F6E9EA;
+    --infra:         #2E5C7E;
+    --infra-wash:    #E6EEF4;
+    --warn:          #8A5A00;
+    --warn-wash:     #FBF2DE;
+    --ok:            #1C6B4A;
+    --ok-wash:       #E3F1EA;
+    --code-bg:       #12151B;
+    --code-ink:      #DDE3EC;
+
+    --measure: 68ch;
+    --step-1: .8125rem;
+    --step0:  1rem;
+    --step1:  1.1875rem;
+    --step2:  1.5rem;
+    --step3:  2rem;
+    --step4:  2.75rem;
+
+    --serif: "Newsreader", "Iowan Old Style", Georgia, serif;
+    --sans:  "Be Vietnam Pro", "Segoe UI", system-ui, sans-serif;
+    --mono:  "JetBrains Mono", ui-monospace, "SF Mono", Consolas, monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:       #101319;
+      --surface:      #181C24;
+      --surface-sunk: #1F242E;
+      --ink:          #E7EAEF;
+      --ink-soft:     #A4AEBC;
+      --ink-faint:    #7B8593;
+      --rule:         #2B313C;
+      --rule-strong:  #3B4350;
+      --accent:       #E1737C;
+      --accent-ink:   #EE949B;
+      --accent-wash:  #2C1A1D;
+      --infra:        #82B4D6;
+      --infra-wash:   #17242E;
+      --warn:         #D9A33C;
+      --warn-wash:    #2A2214;
+      --ok:           #62B58C;
+      --ok-wash:      #14261E;
+      --code-bg:      #0B0E13;
+      --code-ink:     #D4DBE6;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:       #101319;
+    --surface:      #181C24;
+    --surface-sunk: #1F242E;
+    --ink:          #E7EAEF;
+    --ink-soft:     #A4AEBC;
+    --ink-faint:    #7B8593;
+    --rule:         #2B313C;
+    --rule-strong:  #3B4350;
+    --accent:       #E1737C;
+    --accent-ink:   #EE949B;
+    --accent-wash:  #2C1A1D;
+    --infra:        #82B4D6;
+    --infra-wash:   #17242E;
+    --warn:         #D9A33C;
+    --warn-wash:    #2A2214;
+    --ok:           #62B58C;
+    --ok-wash:      #14261E;
+    --code-bg:      #0B0E13;
+    --code-ink:     #D4DBE6;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: var(--step0);
+    font-weight: 400;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 clamp(1.15rem, 4vw, 3rem);
+  }
+
+  /* ─── Layout: rail + column ─────────────────────────────── */
+  .shell { display: block; }
+  @media (min-width: 1100px) {
+    .shell {
+      display: grid;
+      grid-template-columns: 13.5rem minmax(0, 1fr);
+      gap: clamp(2rem, 5vw, 4.5rem);
+      align-items: start;
+    }
+  }
+
+  .rail { display: none; }
+  @media (min-width: 1100px) {
+    .rail {
+      display: block;
+      position: sticky;
+      top: 2.25rem;
+      padding-block: .25rem;
+      border-left: 1px solid var(--rule);
+    }
+  }
+  .rail-title {
+    font-family: var(--sans);
+    font-size: .6875rem;
+    font-weight: 600;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 .9rem 1rem;
+  }
+  .rail ol { list-style: none; margin: 0; padding: 0; }
+  .rail li { margin: 0; }
+  .rail a {
+    display: grid;
+    grid-template-columns: 1.9rem 1fr;
+    align-items: baseline;
+    padding: .3rem 0 .3rem 1rem;
+    margin-left: -1px;
+    border-left: 2px solid transparent;
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: .8125rem;
+    line-height: 1.35;
+  }
+  .rail a:hover, .rail a:focus-visible {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    background: var(--accent-wash);
+  }
+  .rail a .n {
+    font-family: var(--mono);
+    font-size: .6875rem;
+    color: var(--ink-faint);
+    font-variant-numeric: tabular-nums;
+  }
+  .rail .phase {
+    margin: 1.15rem 0 .35rem 1rem;
+    font-size: .625rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  /* ─── Masthead ──────────────────────────────────────────── */
+  .masthead {
+    border-bottom: 1px solid var(--rule);
+    background: var(--surface);
+  }
+  .masthead .wrap { padding-block: clamp(2.5rem, 6vw, 4.25rem) clamp(2rem, 4vw, 3rem); }
+  .eyebrow {
+    font-size: .6875rem;
+    font-weight: 600;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 1rem;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(2.1rem, 6vw, var(--step4));
+    line-height: 1.08;
+    letter-spacing: -.015em;
+    text-wrap: balance;
+    margin: 0 0 1rem;
+    max-width: 20ch;
+  }
+  .lede {
+    font-size: var(--step1);
+    line-height: 1.6;
+    color: var(--ink-soft);
+    max-width: 58ch;
+    margin: 0;
+    font-weight: 300;
+  }
+  .facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    margin-top: 2.25rem;
+    border-top: 1px solid var(--rule);
+  }
+  .fact {
+    flex: 1 1 11rem;
+    padding: 1rem 1.25rem 1rem 0;
+    border-right: 1px solid var(--rule);
+  }
+  .fact:last-child { border-right: 0; }
+  .fact dt {
+    font-size: .6875rem;
+    letter-spacing: .11em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 600;
+    margin-bottom: .3rem;
+  }
+  .fact dd {
+    margin: 0;
+    font-size: .9375rem;
+    font-weight: 500;
+    line-height: 1.4;
+  }
+
+  /* ─── Sections ──────────────────────────────────────────── */
+  main .wrap { padding-block: clamp(2.5rem, 5vw, 3.75rem) 1rem; }
+
+  section { margin-bottom: clamp(2.75rem, 6vw, 4.25rem); scroll-margin-top: 1.5rem; }
+
+  h2 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(1.55rem, 3.6vw, var(--step3));
+    line-height: 1.2;
+    letter-spacing: -.01em;
+    text-wrap: balance;
+    margin: 0 0 .5rem;
+  }
+  h3 {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: var(--step1);
+    line-height: 1.3;
+    margin: 2rem 0 .6rem;
+    text-wrap: balance;
+  }
+  .section-note {
+    color: var(--ink-soft);
+    max-width: var(--measure);
+    margin: 0 0 1.75rem;
+  }
+  p { max-width: var(--measure); }
+  p + p { margin-top: .9rem; }
+
+  a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+  a:focus-visible, button:focus-visible, summary:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+
+  code {
+    font-family: var(--mono);
+    font-size: .875em;
+    background: var(--surface-sunk);
+    padding: .12em .35em;
+    border-radius: 3px;
+    word-break: break-word;
+  }
+
+  /* ─── Preparation checklist ─────────────────────────────── */
+  .prep {
+    display: grid;
+    gap: 1px;
+    background: var(--rule);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  @media (min-width: 640px) { .prep { grid-template-columns: 1fr 1fr; } }
+  .prep-item {
+    background: var(--surface);
+    padding: 1.1rem 1.25rem;
+  }
+  .prep-item h4 {
+    margin: 0 0 .3rem;
+    font-size: .9375rem;
+    font-weight: 600;
+    display: flex;
+    align-items: baseline;
+    gap: .55rem;
+  }
+  .prep-item h4::before {
+    content: "";
+    flex: none;
+    width: .5rem; height: .5rem;
+    border: 1.5px solid var(--accent);
+    border-radius: 1px;
+    transform: translateY(-1px);
+  }
+  .prep-item p { margin: 0; font-size: .875rem; color: var(--ink-soft); line-height: 1.55; }
+
+  /* ─── Figures ───────────────────────────────────────────── */
+  figure {
+    margin: 0 0 1.5rem;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: clamp(1rem, 3vw, 1.75rem);
+  }
+  .fig-scroll { overflow-x: auto; }
+  figure svg { display: block; max-width: 100%; height: auto; margin-inline: auto; color: var(--ink-soft); }
+  figcaption {
+    margin-top: 1rem;
+    padding-top: .85rem;
+    border-top: 1px solid var(--rule);
+    font-size: .875rem;
+    color: var(--ink-soft);
+    line-height: 1.55;
+  }
+  figcaption b { color: var(--ink); font-weight: 600; }
+
+  /* ─── Steps ─────────────────────────────────────────────── */
+  .phase-head {
+    display: flex;
+    align-items: baseline;
+    gap: .9rem;
+    margin: 0 0 .4rem;
+    padding-top: .35rem;
+    border-top: 2px solid var(--accent);
+  }
+  .phase-head .tag {
+    font-family: var(--mono);
+    font-size: .6875rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    font-weight: 500;
+    color: var(--accent);
+  }
+  .phase-head h2 { margin: 0; }
+
+  .step {
+    border-top: 1px solid var(--rule);
+    padding: 1.75rem 0 .5rem;
+    scroll-margin-top: 1.5rem;
+  }
+  .step-head {
+    display: grid;
+    grid-template-columns: 2.75rem minmax(0, 1fr);
+    gap: 0 .85rem;
+    align-items: baseline;
+  }
+  .step-num {
+    font-family: var(--serif);
+    font-size: 1.6rem;
+    font-weight: 400;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+  .step-head h3 { margin: 0; grid-column: 2; }
+  .step-body { padding-left: 0; }
+  @media (min-width: 700px) { .step-body { padding-left: 3.6rem; } }
+
+  .owner {
+    display: inline-block;
+    font-size: .6875rem;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: .16rem .5rem;
+    border-radius: 2px;
+    margin-bottom: .7rem;
+    white-space: nowrap;
+  }
+  .owner-client { background: var(--accent-wash); color: var(--accent-ink); }
+  .owner-team   { background: var(--infra-wash); color: var(--infra); }
+
+  pre {
+    background: var(--code-bg);
+    color: var(--code-ink);
+    font-family: var(--mono);
+    font-size: .8125rem;
+    line-height: 1.7;
+    padding: .95rem 1.1rem;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin: .9rem 0;
+    tab-size: 2;
+  }
+  pre code { background: none; padding: 0; font-size: inherit; color: inherit; }
+  pre .c { color: #7E8CA0; }
+
+  .check {
+    background: var(--ok-wash);
+    border-left: 3px solid var(--ok);
+    padding: .8rem 1rem;
+    margin: .9rem 0;
+    border-radius: 0 3px 3px 0;
+  }
+  .check b {
+    display: block;
+    font-size: .6875rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--ok);
+    margin-bottom: .35rem;
+  }
+  .check p, .check ul { margin: 0; font-size: .9375rem; }
+  .check pre { margin: .5rem 0 0; }
+
+  .warn {
+    background: var(--warn-wash);
+    border-left: 3px solid var(--warn);
+    padding: .8rem 1rem;
+    margin: 1rem 0;
+    border-radius: 0 3px 3px 0;
+    font-size: .9375rem;
+  }
+  .warn b { color: var(--warn); }
+  .warn p { margin: 0; max-width: none; }
+  .warn p + p { margin-top: .5rem; }
+
+  ul, ol { max-width: var(--measure); padding-left: 1.15rem; }
+  li { margin-bottom: .3rem; }
+  li::marker { color: var(--ink-faint); }
+
+  .tbl-scroll { overflow-x: auto; margin: 1rem 0; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 30rem;
+    font-size: .875rem;
+  }
+  th, td {
+    text-align: left;
+    padding: .55rem .8rem .55rem 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  th {
+    font-size: .6875rem;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 600;
+    border-bottom-color: var(--rule-strong);
+  }
+  td code { font-size: .8125rem; }
+
+  footer {
+    border-top: 1px solid var(--rule);
+    background: var(--surface);
+    margin-top: 3rem;
+  }
+  footer .wrap { padding-block: 2rem 2.5rem; }
+  footer p { font-size: .875rem; color: var(--ink-faint); margin: 0; max-width: 62ch; }
+  footer p + p { margin-top: .5rem; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  }
+</style>
+</head>
+<body>
+<header class="masthead">
+  <div class="wrap">
+    <p class="eyebrow">ViGov · Nền tảng Điều hành số cấp Xã/Phường</p>
+    <h1>Triển khai lên máy chủ</h1>
+    <p class="lede">
+      Toàn bộ hệ thống — Web Quản trị, API, Zalo Mini App, cơ sở dữ liệu và hàng đợi —
+      chạy trên <strong>một máy chủ duy nhất</strong>. Tài liệu này đi từ một VPS trống
+      tới hệ thống chạy thật, rồi bàn giao cho quy trình CI/CD bằng Jenkins.
+    </p>
+    <dl class="facts">
+      <div class="fact">
+        <dt>Thời gian</dt>
+        <dd>60–90 phút<br><span style="color:var(--ink-faint);font-weight:400">chưa kể chờ DNS &amp; build</span></dd>
+      </div>
+      <div class="fact">
+        <dt>Kiến trúc</dt>
+        <dd>All-in-one<br><span style="color:var(--ink-faint);font-weight:400">1 máy chủ, 5 container</span></dd>
+      </div>
+      <div class="fact">
+        <dt>Quy mô thiết kế</dt>
+        <dd>Một xã<br><span style="color:var(--ink-faint);font-weight:400">≈ 10.000 dân</span></dd>
+      </div>
+      <div class="fact">
+        <dt>Cấu hình tối thiểu</dt>
+        <dd>4 vCPU · 8 GB RAM<br><span style="color:var(--ink-faint);font-weight:400">100 GB SSD</span></dd>
+      </div>
+    </dl>
+  </div>
+</header>
+
+<main>
+  <div class="wrap shell">
+
+    <nav class="rail" aria-label="Các bước triển khai">
+      <p class="rail-title">Các bước</p>
+      <p class="phase">Giai đoạn 1 · Trên VPS</p>
+      <ol>
+        <li><a href="#b0"><span class="n">00</span><span>Chuẩn bị thông tin</span></a></li>
+        <li><a href="#b1"><span class="n">01</span><span>Hệ điều hành</span></a></li>
+        <li><a href="#b2"><span class="n">02</span><span>Cài Docker</span></a></li>
+        <li><a href="#b3"><span class="n">03</span><span>User &amp; thư mục</span></a></li>
+        <li><a href="#b4"><span class="n">04</span><span>Lấy mã nguồn</span></a></li>
+        <li><a href="#b5"><span class="n">05</span><span>Cấu hình .env</span></a></li>
+        <li><a href="#b6"><span class="n">06</span><span>Build image</span></a></li>
+        <li><a href="#b7"><span class="n">07</span><span>Khởi chạy</span></a></li>
+        <li><a href="#b8"><span class="n">08</span><span>Seed dữ liệu</span></a></li>
+        <li><a href="#b9"><span class="n">09</span><span>Tên miền &amp; TLS</span></a></li>
+        <li><a href="#b10"><span class="n">10</span><span>Sao lưu</span></a></li>
+        <li><a href="#b11"><span class="n">11</span><span>Nghiệm thu</span></a></li>
+      </ol>
+      <p class="phase">Giai đoạn 2 · CI/CD</p>
+      <ol>
+        <li><a href="#b12"><span class="n">12</span><span>Chuyển sang Jenkins</span></a></li>
+      </ol>
+    </nav>
+
+    <div>
+
+      <!-- ── Khách hàng chuẩn bị ─────────────────────────── -->
+      <section id="chuanbi">
+        <h2>Khách hàng cần chuẩn bị</h2>
+        <p class="section-note">
+          Thiếu bất kỳ mục nào dưới đây thì quá trình triển khai sẽ phải dừng giữa chừng.
+          Đây là phần <strong>duy nhất</strong> cần đến quyết định và tài khoản của phía khách hàng —
+          các bước còn lại do đội triển khai thực hiện.
+        </p>
+
+        <div class="prep">
+          <div class="prep-item">
+            <h4>Máy chủ VPS</h4>
+            <p>Tối thiểu 4 vCPU · 8 GB RAM · 100 GB SSD. Ubuntu Server 22.04/24.04 LTS
+               hoặc RHEL/Rocky 9. Kèm tài khoản <code>root</code> hoặc quyền <code>sudo</code>.</p>
+          </div>
+          <div class="prep-item">
+            <h4>Ba tên miền</h4>
+            <p>Đã trỏ bản ghi A về IP máy chủ: một cho Web Quản trị, một cho API,
+               một cho Zalo Mini App.</p>
+          </div>
+          <div class="prep-item">
+            <h4>Máy chủ ra được Internet</h4>
+            <p>Cần để tải Docker image và thư viện. Nếu mạng chuyên dùng chặn Internet,
+               phải chuẩn bị registry và mirror nội bộ — việc này làm phát sinh khối lượng.</p>
+          </div>
+          <div class="prep-item">
+            <h4>Nơi lưu bản sao lưu</h4>
+            <p>Một máy khác, NAS, hoặc object storage — <strong>không nằm trên chính VPS này</strong>.
+               Xem giải thích ở bước 10.</p>
+          </div>
+          <div class="prep-item">
+            <h4>Email quản trị</h4>
+            <p>Dùng để đăng ký chứng thư TLS và nhận cảnh báo khi chứng thư sắp hết hạn.</p>
+          </div>
+          <div class="prep-item">
+            <h4>Đầu mối vận hành</h4>
+            <p>Người tiếp nhận hệ thống sau bàn giao, có quyền truy cập máy chủ và
+               chịu trách nhiệm theo dõi sao lưu.</p>
+          </div>
+        </div>
+
+        <div class="warn">
+          <p><b>Nếu chưa có tên miền:</b> vẫn triển khai được và truy cập bằng địa chỉ IP,
+          nhưng chỉ dùng cho môi trường thử nghiệm nội bộ. Không có TLS thì mật khẩu đăng nhập
+          truyền qua mạng dưới dạng văn bản thuần — không chấp nhận được với dữ liệu công dân.</p>
+        </div>
+      </section>
+
+      <!-- ── Kiến trúc ───────────────────────────────────── -->
+      <section id="kientruc">
+        <h2>Hệ thống chạy như thế nào</h2>
+        <p class="section-note">
+          Mọi thành phần là container trên cùng một máy. Chỉ duy nhất reverse proxy
+          lộ ra Internet; cơ sở dữ liệu và hàng đợi bị khoá vào <code>127.0.0.1</code>,
+          không thể truy cập từ bên ngoài kể cả khi biết mật khẩu.
+        </p>
+
+        <figure>
+          <div class="fig-scroll">
+            <svg viewBox="0 0 760 430" role="img" width="760"
+                 aria-label="Sơ đồ kiến trúc all-in-one: người dùng đi qua nginx TLS trên cổng 443, nginx chuyển tiếp vào ba container ứng dụng; backend nối tới MongoDB và RabbitMQ chỉ nghe trên 127.0.0.1; bản sao lưu được đẩy sang máy khác">
+              <defs>
+                <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5"
+                        markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+                </marker>
+                <marker id="ar-a" viewBox="0 0 10 10" refX="9" refY="5"
+                        markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="#9E2B34"/>
+                </marker>
+              </defs>
+
+              <!-- users -->
+              <text x="60" y="30" font-family="Be Vietnam Pro, sans-serif" font-size="12"
+                    font-weight="600" fill="currentColor" text-anchor="middle">Cán bộ</text>
+              <text x="60" y="46" font-family="Be Vietnam Pro, sans-serif" font-size="12"
+                    font-weight="600" fill="currentColor" text-anchor="middle">Công dân</text>
+              <line x1="60" y1="58" x2="60" y2="92" stroke="currentColor" stroke-width="1.5"
+                    marker-end="url(#ar)"/>
+              <text x="70" y="80" font-family="JetBrains Mono, monospace" font-size="10"
+                    fill="currentColor">HTTPS</text>
+
+              <!-- server boundary -->
+              <rect x="14" y="100" width="600" height="290" rx="5" fill="none"
+                    stroke="currentColor" stroke-width="1.5" stroke-dasharray="5 4" opacity=".55"/>
+              <text x="26" y="119" font-family="Be Vietnam Pro, sans-serif" font-size="11"
+                    font-weight="700" fill="currentColor" opacity=".75">MÁY CHỦ VPS</text>
+
+              <!-- nginx -->
+              <rect x="26" y="132" width="150" height="46" rx="3" fill="#9E2B34"/>
+              <text x="101" y="152" font-family="Be Vietnam Pro, sans-serif" font-size="12.5"
+                    font-weight="600" fill="#fff" text-anchor="middle">nginx · TLS</text>
+              <text x="101" y="168" font-family="JetBrains Mono, monospace" font-size="10"
+                    fill="#F2C9CC" text-anchor="middle">:443 — duy nhất mở ra</text>
+
+              <!-- app containers -->
+              <g font-family="Be Vietnam Pro, sans-serif">
+                <rect x="230" y="122" width="164" height="40" rx="3" fill="none"
+                      stroke="currentColor" stroke-width="1.3"/>
+                <text x="242" y="140" font-size="12" font-weight="600" fill="currentColor">Web Quản trị</text>
+                <text x="242" y="154" font-family="JetBrains Mono, monospace" font-size="9.5"
+                      fill="currentColor" opacity=".7">127.0.0.1:3000</text>
+
+                <rect x="230" y="172" width="164" height="40" rx="3" fill="none"
+                      stroke="currentColor" stroke-width="1.3"/>
+                <text x="242" y="190" font-size="12" font-weight="600" fill="currentColor">API backend</text>
+                <text x="242" y="204" font-family="JetBrains Mono, monospace" font-size="9.5"
+                      fill="currentColor" opacity=".7">127.0.0.1:3001</text>
+
+                <rect x="230" y="222" width="164" height="40" rx="3" fill="none"
+                      stroke="currentColor" stroke-width="1.3"/>
+                <text x="242" y="240" font-size="12" font-weight="600" fill="currentColor">Zalo Mini App</text>
+                <text x="242" y="254" font-family="JetBrains Mono, monospace" font-size="9.5"
+                      fill="currentColor" opacity=".7">127.0.0.1:8080</text>
+              </g>
+
+              <line x1="176" y1="146" x2="228" y2="142" stroke="currentColor" stroke-width="1.3" marker-end="url(#ar)"/>
+              <line x1="176" y1="155" x2="228" y2="192" stroke="currentColor" stroke-width="1.3" marker-end="url(#ar)"/>
+              <line x1="176" y1="164" x2="228" y2="242" stroke="currentColor" stroke-width="1.3" marker-end="url(#ar)"/>
+
+              <!-- infra -->
+              <rect x="440" y="160" width="158" height="44" rx="3" fill="#E6EEF4" stroke="#2E5C7E" stroke-width="1.3"/>
+              <text x="452" y="179" font-family="Be Vietnam Pro, sans-serif" font-size="12"
+                    font-weight="600" fill="#1D4462">MongoDB</text>
+              <text x="452" y="194" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#2E5C7E">127.0.0.1:27017</text>
+
+              <rect x="440" y="216" width="158" height="44" rx="3" fill="#E6EEF4" stroke="#2E5C7E" stroke-width="1.3"/>
+              <text x="452" y="235" font-family="Be Vietnam Pro, sans-serif" font-size="12"
+                    font-weight="600" fill="#1D4462">RabbitMQ</text>
+              <text x="452" y="250" font-family="JetBrains Mono, monospace" font-size="9.5" fill="#2E5C7E">127.0.0.1:5672</text>
+
+              <line x1="394" y1="188" x2="438" y2="180" stroke="currentColor" stroke-width="1.3" marker-end="url(#ar)"/>
+              <text x="398" y="176" font-family="JetBrains Mono, monospace" font-size="9.5" fill="currentColor">đọc/ghi</text>
+              <line x1="394" y1="196" x2="438" y2="234" stroke="currentColor" stroke-width="1.3" marker-end="url(#ar)"/>
+              <text x="398" y="222" font-family="JetBrains Mono, monospace" font-size="9.5" fill="currentColor">sự kiện</text>
+
+              <!-- uploads -->
+              <rect x="230" y="300" width="368" height="40" rx="3" fill="none" stroke="currentColor"
+                    stroke-width="1.3" stroke-dasharray="4 3"/>
+              <text x="242" y="318" font-family="Be Vietnam Pro, sans-serif" font-size="12"
+                    font-weight="600" fill="currentColor">Kho tệp — ảnh phản ánh, bản scan văn bản</text>
+              <text x="242" y="333" font-family="JetBrains Mono, monospace" font-size="9.5"
+                    fill="currentColor" opacity=".7">volume uploads</text>
+              <line x1="312" y1="214" x2="312" y2="298" stroke="currentColor" stroke-width="1.3" marker-end="url(#ar)"/>
+
+              <!-- backup -->
+              <line x1="600" y1="320" x2="672" y2="320" stroke="#9E2B34" stroke-width="1.8" marker-end="url(#ar-a)"/>
+              <text x="636" y="312" font-family="JetBrains Mono, monospace" font-size="9.5"
+                    fill="#9E2B34" text-anchor="middle">02:00</text>
+              <rect x="666" y="270" width="82" height="100" rx="3" fill="none" stroke="#9E2B34"
+                    stroke-width="1.5"/>
+              <text x="707" y="300" font-family="Be Vietnam Pro, sans-serif" font-size="11.5"
+                    font-weight="700" fill="#9E2B34" text-anchor="middle">Sao lưu</text>
+              <text x="707" y="318" font-family="Be Vietnam Pro, sans-serif" font-size="11"
+                    fill="#9E2B34" text-anchor="middle">máy khác</text>
+              <text x="707" y="336" font-family="Be Vietnam Pro, sans-serif" font-size="11"
+                    fill="#9E2B34" text-anchor="middle">BẮT BUỘC</text>
+
+              <text x="26" y="378" font-family="Be Vietnam Pro, sans-serif" font-size="10.5"
+                    fill="currentColor" opacity=".65">Khung nét đứt = ranh giới máy chủ · Khối xanh = hạ tầng dữ liệu, không mở ra Internet</text>
+            </svg>
+          </div>
+          <figcaption>
+            <b>Một máy chủ, một cửa ra vào.</b> MongoDB và RabbitMQ chỉ nghe trên
+            <code>127.0.0.1</code> nên không thể kết nối từ Internet — muốn truy cập để
+            xử lý sự cố phải đi qua SSH. Đổi lại, cả hệ thống nằm trên một máy: hỏng máy là
+            mất tất cả, nên mũi tên sao lưu sang máy khác không phải tuỳ chọn.
+          </figcaption>
+        </figure>
+      </section>
+
+      <!-- ── Hai giai đoạn ───────────────────────────────── -->
+      <section id="giaidoan">
+        <h2>Hai giai đoạn</h2>
+        <p class="section-note">
+          Khách hàng yêu cầu CI/CD bằng Jenkins. Giai đoạn này cài đặt tay trên VPS trước —
+          và đó không phải làm tạm rồi bỏ.
+        </p>
+
+        <figure>
+          <div class="fig-scroll">
+            <svg viewBox="0 0 700 250" role="img" width="700"
+                 aria-label="Sơ đồ hai giai đoạn: cài đặt tay tạo ra Docker, file .env, nginx và cron sao lưu trên máy chủ; Jenkins về sau chỉ đổi IMAGE_TAG rồi pull và khởi động lại, không đụng tới bốn thứ đã cài">
+              <defs>
+                <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5"
+                        markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+                </marker>
+              </defs>
+
+              <text x="20" y="24" font-family="Be Vietnam Pro, sans-serif" font-size="11"
+                    font-weight="700" fill="#9E2B34">GIAI ĐOẠN 1 · BƯỚC 0–11</text>
+              <rect x="20" y="36" width="250" height="176" rx="4" fill="none"
+                    stroke="currentColor" stroke-width="1.5"/>
+              <text x="36" y="60" font-family="Be Vietnam Pro, sans-serif" font-size="12.5"
+                    font-weight="600" fill="currentColor">Cài đặt tay — làm một lần</text>
+              <g font-family="Be Vietnam Pro, sans-serif" font-size="11.5" fill="currentColor">
+                <text x="36" y="88">Docker Engine</text>
+                <text x="36" y="112">Tệp .env — toàn bộ mật khẩu</text>
+                <text x="36" y="136">nginx + chứng thư TLS</text>
+                <text x="36" y="160">Lịch sao lưu tự động</text>
+                <text x="36" y="190" font-size="11" opacity=".7">Bốn thứ này Jenkins không tạo ra</text>
+              </g>
+
+              <line x1="272" y1="124" x2="392" y2="124" stroke="currentColor" stroke-width="1.8"
+                    marker-end="url(#ar2)"/>
+              <text x="332" y="114" font-family="Be Vietnam Pro, sans-serif" font-size="11"
+                    font-weight="600" fill="currentColor" text-anchor="middle">là tiền đề của</text>
+
+              <text x="396" y="24" font-family="Be Vietnam Pro, sans-serif" font-size="11"
+                    font-weight="700" fill="#2E5C7E">GIAI ĐOẠN 2 · BƯỚC 12</text>
+              <rect x="396" y="36" width="284" height="176" rx="4" fill="#E6EEF4"
+                    stroke="#2E5C7E" stroke-width="1.5"/>
+              <text x="412" y="60" font-family="Be Vietnam Pro, sans-serif" font-size="12.5"
+                    font-weight="600" fill="#1D4462">Jenkins — mỗi lần phát hành</text>
+              <g font-family="JetBrains Mono, monospace" font-size="11" fill="#2E5C7E">
+                <text x="412" y="88">1. build + test + đẩy image</text>
+                <text x="412" y="112">2. sửa 1 dòng IMAGE_TAG</text>
+                <text x="412" y="136">3. docker compose pull</text>
+                <text x="412" y="160">4. docker compose up -d</text>
+              </g>
+              <text x="412" y="190" font-family="Be Vietnam Pro, sans-serif" font-size="11"
+                    fill="#2E5C7E" opacity=".85">Không đụng tới .env, Docker hay nginx</text>
+
+              <text x="20" y="238" font-family="Be Vietnam Pro, sans-serif" font-size="10.5"
+                    fill="currentColor" opacity=".65">Cài tay là điều kiện tiên quyết, không phải phương án thay thế cho Jenkins.</text>
+            </svg>
+          </div>
+          <figcaption>
+            <b>Jenkins chỉ đổi phiên bản, không dựng hệ thống.</b> Hàm triển khai trong
+            <code>Jenkinsfile</code> làm đúng ba việc: sửa một dòng <code>IMAGE_TAG</code> trong
+            tệp <code>.env</code> <em>đã có sẵn</em>, tải image mới, khởi động lại. Nó không cài
+            Docker, không tạo <code>.env</code>, không dựng nginx — nên toàn bộ bước 0–11 phải
+            hoàn tất trước.
+          </figcaption>
+        </figure>
+      </section>
+
+      <!-- ── GIAI ĐOẠN 1 ─────────────────────────────────── -->
+      <section id="gd1">
+        <div class="phase-head">
+          <span class="tag">Giai đoạn 1</span>
+          <h2>Cài đặt trên VPS</h2>
+        </div>
+        <p class="section-note">
+          Làm tuần tự từ trên xuống. Mỗi bước có phần <strong>Xác nhận</strong> — thấy đúng kết quả
+          đó rồi mới sang bước tiếp theo.
+        </p>
+
+        <div class="step" id="b0">
+          <div class="step-head"><span class="step-num">0</span><h3>Chuẩn bị thông tin</h3></div>
+          <div class="step-body">
+            <span class="owner owner-client">Khách hàng</span>
+            <p>Tập hợp đủ 6 mục ở phần <a href="#chuanbi">Khách hàng cần chuẩn bị</a> phía trên.
+               Đây là bước duy nhất phía khách hàng chủ động; các bước sau do đội triển khai làm.</p>
+          </div>
+        </div>
+
+        <div class="step" id="b1">
+          <div class="step-head"><span class="step-num">1</span><h3>Chuẩn bị hệ điều hành</h3></div>
+          <div class="step-body">
+            <span class="owner owner-team">Đội triển khai</span>
+            <p>Cập nhật bản vá và đặt múi giờ — múi giờ ảnh hưởng tới nhật ký, lịch sao lưu
+               và cách tính hạn xử lý phản ánh.</p>
+<pre><code><span class="c"># Ubuntu</span>
+apt update &amp;&amp; apt upgrade -y
+apt install -y git curl ca-certificates
+
+timedatectl set-timezone Asia/Ho_Chi_Minh</code></pre>
+            <div class="check">
+              <b>Xác nhận</b>
+              <p><code>timedatectl</code> hiển thị <code>Asia/Ho_Chi_Minh</code>, và
+                 <code>free -g</code> cho thấy đủ RAM như cấu hình đã thoả thuận.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" id="b2">
+          <div class="step-head"><span class="step-num">2</span><h3>Cài Docker</h3></div>
+          <div class="step-body">
+            <span class="owner owner-team">Đội triển khai</span>
+<pre><code>curl -fsSL https://get.docker.com | sh
+systemctl enable --now docker</code></pre>
+            <div class="check">
+              <b>Xác nhận</b>
+              <p><code>docker --version</code> ≥ 24 và <code>docker compose version</code> ≥ 2.22.
+                 Bản Compose cũ hơn thiếu tuỳ chọn chờ container sẵn sàng dùng ở bước 7.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" id="b3">
+          <div class="step-head"><span class="step-num">3</span><h3>Tạo tài khoản triển khai</h3></div>
+          <div class="step-body">
+            <span class="owner owner-team">Đội triển khai</span>
+            <p>Hệ thống không chạy bằng <code>root</code>. Mã nguồn đặt ở phân vùng còn dung lượng —
+               không đặt trong <code>/root</code> vì quyền thư mục đó chặn tiến trình dịch vụ.</p>
+<pre><code>useradd -r -m -d /opt/vigov -s /bin/bash vigov
+usermod -aG docker vigov
+chown -R vigov:vigov /opt/vigov &amp;&amp; chmod 750 /opt/vigov</code></pre>
+            <div class="warn">
+              <p><b>Với RHEL/Rocky đang bật SELinux:</b> phải gán nhãn cho thư mục, nếu không
+              container bị chặn đọc tệp dù quyền Unix đã đúng — lỗi hiện ra là
+              <code>Permission denied</code> rất khó lần.</p>
+            </div>
+            <div class="check">
+              <b>Xác nhận</b>
+              <p><code>su - vigov -c "docker ps"</code> chạy được, không báo thiếu quyền.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" id="b4">
+          <div class="step-head"><span class="step-num">4</span><h3>Lấy mã nguồn</h3></div>
+          <div class="step-body">
+            <span class="owner owner-team">Đội triển khai</span>
+<pre><code>su - vigov
+cd /opt/vigov
+git clone &lt;repo-url&gt; .</code></pre>
+            <div class="check">
+              <b>Xác nhận</b>
+              <p>Thư mục có <code>docker-compose.yml</code>, <code>.env.example</code> và thư mục
+                 <code>deploy/</code> nằm ngay ở cấp ngoài cùng.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" id="b5">
+          <div class="step-head"><span class="step-num">5</span><h3>Cấu hình <code>.env</code></h3></div>
+          <div class="step-body">
+            <span class="owner owner-team">Đội triển khai</span>
+            <p>Bước quan trọng nhất. Tệp <code>.env</code> chứa toàn bộ mật khẩu của hệ thống,
+               đặt quyền <code>600</code> và không bao giờ đưa vào mã nguồn.</p>
+<pre><code>cp .env.example .env
+chmod 600 .env
+
+<span class="c"># Sinh khoá ký phiên đăng nhập và 2 mật khẩu hạ tầng</span>
+openssl rand -base64 48
+openssl rand -base64 24</code></pre>
+            <div class="tbl-scroll">
+              <table>
+                <thead><tr><th>Nhóm</th><th>Phải điền</th></tr></thead>
+                <tbody>
+                  <tr><td>Bảo mật</td><td>Khoá ký phiên đăng nhập, mật khẩu MongoDB, mật khẩu RabbitMQ</td></tr>
+                  <tr><td>Tên miền</td><td>Địa chỉ API mà trình duyệt gọi tới, danh sách nguồn được phép truy cập</td></tr>
+                  <tr><td>Tài nguyên</td><td>Giới hạn bộ nhớ đệm MongoDB ≈ 1/4 RAM máy chủ</td></tr>
+                  <tr><td>Khởi tạo</td><td>Mật khẩu tài khoản quản trị đầu tiên — dùng một lần rồi đổi</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="warn">
+              <p><b>Địa chỉ API phải là tên miền công khai</b>, không phải tên nội bộ của container —
+              vì bên gọi là trình duyệt của cán bộ, nằm ngoài máy chủ.</p>
+              <p><b>Giá trị này được nhúng cứng vào mã JavaScript lúc dựng image.</b> Sửa sau khi
+              đã dựng là vô tác dụng — phải dựng lại. Đây là lỗi tốn thời gian nhất nếu điền sai.</p>
+            </div>
+            <div class="check">
+              <b>Xác nhận</b>
+              <p>Không còn giá trị mẫu nào sót lại, và <code>docker compose config</code> chạy sạch.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" id="b6">
+          <div class="step-head"><span class="step-num">6</span><h3>Dựng image</h3></div>
+          <div class="step-body">
+            <span class="owner owner-team">Đội triển khai</span>
+            <p>Mất 5–15 phút tuỳ băng thông. Ba ứng dụng được dựng; MongoDB và RabbitMQ
+               dùng bản chính thức, chỉ cần tải về.</p>
+<pre><code>docker compose build</code></pre>
+          </div>
+        </div>
+
+        <div class="step" id="b7">
+          <div class="step-head"><span class="step-num">7</span><h3>Khởi chạy</h3></div>
+          <div class="step-body">
+            <span class="owner owner-team">Đội triển khai</span>
+            <p>Thứ tự khởi động do hệ thống tự lo: cơ sở dữ liệu và hàng đợi phải
+               <em>sẵn sàng nhận lệnh</em> rồi API mới được bật, sau đó mới tới hai giao diện.</p>
+<pre><code>docker compose up -d --wait
+docker compose ps</code></pre>
+            <div class="check">
+              <b>Xác nhận</b>
+              <p>Cả 5 container ở trạng thái <code>healthy</code>, và endpoint kiểm tra sức khoẻ
+                 của API trả về <code>database: connected</code>.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" id="b8">
+          <div class="step-head"><span class="step-num">8</span><h3>Tạo dữ liệu khởi tạo</h3></div>
+          <div class="step-body">
+            <span class="owner owner-team">Đội triển khai</span>
+            <p>Tạo tài khoản cán bộ theo danh bạ xã và bộ cấu hình thời hạn xử lý. Chạy lại
+               nhiều lần không tạo bản ghi trùng và không ghi đè mật khẩu đã đổi.</p>
+            <div class="warn">
+              <p><b>Bắt buộc làm ngay sau đó:</b> đổi mật khẩu tất cả tài khoản vừa tạo,
+              xoá các tài khoản mẫu không dùng, rồi xoá mật khẩu khởi tạo khỏi tệp cấu hình.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" id="b9">
+          <div class="step-head"><span class="step-num">9</span><h3>Tên miền &amp; chứng thư TLS</h3></div>
+          <div class="step-body">
+            <span class="owner owner-team">Đội triển khai</span>
+            <p>Đây là bước đưa hệ thống ra Internet. Reverse proxy nhận HTTPS, ép mọi truy cập
+               HTTP chuyển sang HTTPS, rồi chuyển tiếp vào các container bên trong.</p>
+            <p>Tường lửa chỉ mở cổng 80 và 443. Các cổng ứng dụng, cơ sở dữ liệu và hàng đợi
+               không bao giờ mở ra ngoài.</p>
+            <div class="check">
+              <b>Xác nhận</b>
+              <p>Gọi thử từ <strong>máy khác</strong>: cả ba tên miền trả về qua HTTPS, truy cập
+                 HTTP tự chuyển hướng, và lệnh thử gia hạn chứng thư thành công.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" id="b10">
+          <div class="step-head"><span class="step-num">10</span><h3>Sao lưu tự động</h3></div>
+          <div class="step-body">
+            <span class="owner owner-team">Đội triển khai</span>
+            <p>Đặt lịch sao lưu cơ sở dữ liệu lúc 02:00 hằng ngày, rồi đẩy bản sao sang
+               máy khác lúc 03:00.</p>
+            <div class="warn">
+              <p><b>Giữ bản sao trên cùng một ổ đĩa không phải là sao lưu.</b> Kiến trúc một máy
+              nghĩa là hỏng máy thì mất đồng thời ứng dụng, cơ sở dữ liệu và toàn bộ ảnh phản ánh
+              của công dân.</p>
+              <p><b>Đừng quên tệp đính kèm.</b> Sao lưu cơ sở dữ liệu không bao gồm ảnh và bản scan —
+              phải sao lưu kho tệp riêng.</p>
+            </div>
+            <div class="check">
+              <b>Xác nhận</b>
+              <p>Hôm sau kiểm tra bản sao đã sang được máy đích. <strong>Thử khôi phục ít nhất
+                 một lần trước khi bàn giao</strong> — bản sao lưu chưa từng khôi phục thử thì
+                 chưa tính là có sao lưu.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" id="b11">
+          <div class="step-head"><span class="step-num">11</span><h3>Nghiệm thu</h3></div>
+          <div class="step-body">
+            <span class="owner owner-client">Khách hàng &amp; đội triển khai</span>
+            <ul>
+              <li>Cả 5 container khoẻ, API báo kết nối được cơ sở dữ liệu và hàng đợi</li>
+              <li>Đăng nhập Web Quản trị qua HTTPS bằng tài khoản thật</li>
+              <li>Gửi thử một phản ánh từ Zalo Mini App, thấy hiện trên Web Quản trị</li>
+              <li>Tải lên một ảnh đính kèm và xem lại được</li>
+              <li>Chứng thư TLS tự gia hạn được</li>
+              <li>Sao lưu đã chạy, đã sang máy khác, đã thử khôi phục</li>
+              <li>Đã xoá toàn bộ mật khẩu khởi tạo khỏi tệp cấu hình</li>
+              <li>Không còn cổng nào mở ra Internet ngoài 80 và 443</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── GIAI ĐOẠN 2 ─────────────────────────────────── -->
+      <section id="gd2">
+        <div class="phase-head">
+          <span class="tag">Giai đoạn 2</span>
+          <h2>Chuyển sang Jenkins</h2>
+        </div>
+        <p class="section-note">
+          Làm sau khi hệ thống đã chạy ổn định bằng tay. Pipeline đã được viết sẵn trong mã nguồn —
+          việc còn lại là cấu hình Jenkins và mở đường vào máy chủ.
+        </p>
+
+        <div class="step" id="b12">
+          <div class="step-head"><span class="step-num">12</span><h3>Cấu hình pipeline</h3></div>
+          <div class="step-body">
+            <span class="owner owner-team">Đội triển khai</span>
+
+            <h3 style="margin-top:.5rem">Pipeline chạy những gì</h3>
+            <div class="tbl-scroll">
+              <table>
+                <thead><tr><th>Giai đoạn</th><th>Nội dung</th><th>Chạy khi</th></tr></thead>
+                <tbody>
+                  <tr><td>Kiểm thử</td><td>Chạy song song 4 nhánh: API, Web Quản trị, Mini App, App di động</td><td>Mọi lần đẩy mã</td></tr>
+                  <tr><td>Dựng &amp; đẩy image</td><td>Ba image ứng dụng lên registry</td><td>Nhánh phát hành</td></tr>
+                  <tr><td>Triển khai thử</td><td>Lên máy chủ staging</td><td>Tự động</td></tr>
+                  <tr><td>Chờ duyệt</td><td>Người có thẩm quyền bấm duyệt, chọn có sao lưu trước hay không</td><td>Trước khi lên thật</td></tr>
+                  <tr><td>Triển khai thật</td><td>Sao lưu rồi đổi phiên bản</td><td>Sau khi duyệt</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <h3>Điều kiện tiên quyết</h3>
+            <ul>
+              <li><strong>Một Docker registry.</strong> Pipeline đẩy image lên đó, máy chủ tải về.
+                  Khách hàng cấp registry riêng hoặc đội triển khai tự dựng — đây là hạng mục
+                  hay bị bỏ sót nhất khi chuyển sang CI/CD.</li>
+              <li>Máy chạy Jenkins có Docker và quyền dựng image.</li>
+              <li>Bước 0–11 đã hoàn tất trên máy đích.</li>
+            </ul>
+
+            <div class="warn">
+              <p><b>Tệp cấu hình vẫn là việc thủ công, mãi mãi.</b> Jenkins cố ý không đụng vào
+              nó — mọi mật khẩu nằm trên máy chủ, pipeline không bao giờ nhìn thấy. Thêm biến
+              cấu hình mới thì phải sửa trực tiếp trên từng máy.</p>
+              <p><b>Địa chỉ API không đọc từ máy chủ.</b> Khi đã dùng Jenkins, giá trị này lấy từ
+              cấu hình toàn cục của Jenkins rồi nhúng vào image lúc dựng. Sửa trên máy chủ
+              không có tác dụng.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Sau bàn giao ────────────────────────────────── -->
+      <section id="saukhi">
+        <h2>Sau khi bàn giao</h2>
+        <p class="section-note">
+          Ba việc thuộc trách nhiệm bên vận hành, không phải phần mềm tự lo được.
+        </p>
+
+        <div class="prep">
+          <div class="prep-item">
+            <h4>Theo dõi sao lưu</h4>
+            <p>Kiểm tra định kỳ bản sao có sang được máy đích không, và thử khôi phục
+               tối thiểu mỗi quý một lần.</p>
+          </div>
+          <div class="prep-item">
+            <h4>Cập nhật bản vá</h4>
+            <p>Bật cập nhật bảo mật tự động cho hệ điều hành; theo dõi phiên bản mới của
+               MongoDB và RabbitMQ.</p>
+          </div>
+          <div class="prep-item">
+            <h4>Giữ nhật ký thao tác</h4>
+            <p>Nhật ký kiểm toán lưu tối thiểu 12 tháng và không được xoay vòng như
+               nhật ký ứng dụng thông thường.</p>
+          </div>
+          <div class="prep-item">
+            <h4>Theo dõi dung lượng</h4>
+            <p>Ảnh phản ánh do người dân gửi là yếu tố tăng nhanh nhất. Khi vượt ngưỡng,
+               chuyển kho tệp sang object storage — hệ thống đã chuẩn bị sẵn.</p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p>ViGov Phase 1 · Tài liệu triển khai · Cập nhật 29/08/2026</p>
+    <p>Bản chi tiết kèm đầy đủ câu lệnh, hướng dẫn xử lý sự cố và quy trình cập nhật phiên bản
+       nằm trong mã nguồn dự án: <code>DEPLOYMENT.md</code> và <code>deploy/README.md</code>.</p>
+  </div>
+</footer>
+</body>
+</html>
