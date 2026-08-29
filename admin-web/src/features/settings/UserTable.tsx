@@ -10,9 +10,16 @@ import { useToast } from "@/components/ui/Toast";
 import { Icon } from "@/lib/icons";
 import { useApiResource } from "@/hooks/useApiResource";
 import { useCatalog } from "@/hooks/useCatalog";
+import { generateTempPassword } from "./helpers";
 import { ApiError } from "@/services/api";
 import { fetchRoles } from "@/services/settings.service";
-import { createStaff, listStaff, updateStaff, type StaffAccount } from "@/services/users.service";
+import {
+  changeStaffPassword,
+  createStaff,
+  listStaff,
+  updateStaff,
+  type StaffAccount,
+} from "@/services/users.service";
 
 /**
  * Tab "Tài khoản & phân quyền" — danh sách cán bộ lấy từ GET /users/staff,
@@ -48,6 +55,8 @@ export function UserTable() {
   const [saving, setSaving] = useState(false);
   const [pendingUser, setPendingUser] = useState<string | null>(null);
   const [tempPassword, setTempPassword] = useState<TempPasswordInfo | null>(null);
+  /** Tài khoản đang mở hộp thoại đặt lại mật khẩu */
+  const [resetting, setResetting] = useState<StaffAccount | null>(null);
 
   const users = staff.data ?? [];
   /** Chưa chọn thì lấy bộ phận đầu danh mục làm mặc định */
@@ -127,6 +136,31 @@ export function UserTable() {
       failed(err, "Không tạo được tài khoản cán bộ");
     } finally {
       setSaving(false);
+    }
+  };
+
+  /**
+   * Đặt lại mật khẩu cho cán bộ. Mật khẩu mới sinh tại máy khách rồi gửi lên,
+   * hiển thị đúng một lần trong hộp thoại để cán bộ quản trị chuyển tận tay —
+   * máy chủ chỉ lưu bản băm nên không có cách nào xem lại.
+   */
+  const resetPassword = async (user: StaffAccount) => {
+    const newPassword = generateTempPassword();
+    setPendingUser(user.username);
+    try {
+      await changeStaffPassword(user.username, newPassword);
+      setResetting(null);
+      setDrawerOpen(true);
+      setTempPassword({
+        username: user.username,
+        displayName: user.displayName,
+        tempPassword: newPassword,
+      });
+      showToast(`Đã đặt lại mật khẩu cho ${user.displayName}`);
+    } catch (err) {
+      failed(err, "Không đặt lại được mật khẩu");
+    } finally {
+      setPendingUser(null);
     }
   };
 
@@ -232,6 +266,17 @@ export function UserTable() {
                           <Icon name={active ? "lock" : "unlock"} size={13} />
                           {active ? "Khoá" : "Mở khoá"}
                         </button>
+                        <button
+                          className="btn sm"
+                          type="button"
+                          disabled={busy}
+                          title="Đặt lại mật khẩu và cấp mật khẩu tạm"
+                          style={{ marginLeft: 6 }}
+                          onClick={() => setResetting(u)}
+                        >
+                          <Icon name="edit" size={13} />
+                          Đặt lại mật khẩu
+                        </button>
                       </td>
                     </tr>
                   );
@@ -243,16 +288,42 @@ export function UserTable() {
       </Card>
 
       <Drawer
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        title={tempPassword ? "Đã tạo tài khoản" : "Thêm tài khoản người dùng"}
+        open={drawerOpen || !!resetting}
+        onClose={() => {
+          setDrawerOpen(false);
+          setResetting(null);
+        }}
+        title={
+          resetting
+            ? "Đặt lại mật khẩu"
+            : tempPassword
+              ? "Mật khẩu tạm"
+              : "Thêm tài khoản người dùng"
+        }
         meta={
-          tempPassword
-            ? "Mật khẩu tạm chỉ hiển thị một lần duy nhất"
-            : "Tài khoản nội bộ dành cho cán bộ, công chức UBND xã"
+          resetting
+            ? `Tài khoản ${resetting.username} sẽ không đăng nhập được bằng mật khẩu cũ`
+            : tempPassword
+              ? "Mật khẩu tạm chỉ hiển thị một lần duy nhất"
+              : "Tài khoản nội bộ dành cho cán bộ, công chức UBND xã"
         }
         footer={
-          tempPassword ? (
+          resetting ? (
+            <>
+              <button className="btn" type="button" onClick={() => setResetting(null)}>
+                Huỷ
+              </button>
+              <button
+                className={pendingUser ? "btn pri saving" : "btn pri danger"}
+                type="button"
+                disabled={!!pendingUser}
+                onClick={() => resetPassword(resetting)}
+              >
+                <Icon name="edit" size={14} />
+                Đặt lại mật khẩu
+              </button>
+            </>
+          ) : tempPassword ? (
             <button className="btn pri" type="button" onClick={() => setDrawerOpen(false)}>
               <Icon name="ok" size={14} />
               Tôi đã lưu mật khẩu
@@ -275,7 +346,13 @@ export function UserTable() {
           )
         }
       >
-        {tempPassword ? (
+        {resetting ? (
+          <div className="note">
+            Đặt lại mật khẩu cho <b>{resetting.displayName}</b> ({resetting.username}). Mật khẩu cũ
+            mất hiệu lực ngay, và mật khẩu mới chỉ hiển thị đúng một lần ở bước sau — hãy chuẩn bị
+            sẵn cách bàn giao trực tiếp cho cán bộ trước khi bấm xác nhận.
+          </div>
+        ) : tempPassword ? (
           <>
             <div className="note" style={{ marginBottom: 16 }}>
               Mật khẩu tạm của <b>{tempPassword.displayName}</b> ({tempPassword.username}) chỉ hiển thị đúng một lần.
