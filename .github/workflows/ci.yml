@@ -1,0 +1,234 @@
+# =============================================================================
+# ViGov — CI trên GitHub Actions (P4-34 / WBS #34–35)
+#
+# Đây là bản tương đương của `Jenkinsfile` dành cho khách dùng GitHub thay vì
+# Jenkins. Phạm vi: KIỂM THỬ + ĐÓNG GÓI (4 job chạy song song).
+# Phần Docker build/push và deploy staging→production để riêng, vì phụ thuộc
+# câu trả lời cho "câu hỏi mở #6" (cloud hay on-premise) — xem deploy/README.md.
+#
+# Bí mật (nếu bật deploy sau này) đặt ở Settings → Secrets and variables:
+#   REGISTRY_USERNAME / REGISTRY_PASSWORD / DEPLOY_SSH_KEY
+# TUYỆT ĐỐI không ghi secret trực tiếp trong file này.
+# =============================================================================
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  # Cho phép chạy tay từ tab Actions
+  workflow_dispatch:
+
+# Push liên tiếp trên cùng nhánh: huỷ lần chạy cũ để tiết kiệm runner.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# Quyền tối thiểu — mặc định của repo có thể rộng hơn mức cần thiết.
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+  FLUTTER_VERSION: '3.35.x'
+  # Next/Vite không gửi telemetry ra ngoài (mạng nội bộ thường chặn).
+  NEXT_TELEMETRY_DISABLED: '1'
+
+jobs:
+  # ───────────────────────────────────────────────────────────────────────────
+  # Backend — NestJS 11 monorepo
+  # ───────────────────────────────────────────────────────────────────────────
+  backend:
+    name: Backend (NestJS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cài Node + cache npm
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          # setup-node tự cache ~/.npm theo hash của lock file chỉ định bên dưới.
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Cài dependencies
+        run: npm ci
+
+      - name: Biên dịch
+        run: npm run build
+
+      # Unit test (P5-07) — chạy trước E2E vì nhanh hơn nhiều, hỏng ở đây là fail sớm.
+      # Không chạm cơ sở dữ liệu: model Mongoose đều được thay bằng mock.
+      - name: Kiểm thử đơn vị
+        run: npm test
+
+      # test:e2e dùng mongodb-memory-server ⇒ tự tải mongod, không cần service container.
+      - name: Kiểm thử E2E
+        run: npm run test:e2e
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Web Quản trị — Next.js 16
+  # ───────────────────────────────────────────────────────────────────────────
+  admin-web:
+    name: Admin Web (Next.js)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: admin-web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cài Node + cache npm
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: admin-web/package-lock.json
+
+      # Cache riêng cho .next/cache giúp lần build sau nhanh hơn đáng kể.
+      - name: Cache build của Next
+        uses: actions/cache@v4
+        with:
+          path: admin-web/.next/cache
+          key: next-${{ runner.os }}-${{ hashFiles('admin-web/package-lock.json') }}-${{ hashFiles('admin-web/src/**') }}
+          restore-keys: |
+            next-${{ runner.os }}-${{ hashFiles('admin-web/package-lock.json') }}-
+            next-${{ runner.os }}-
+
+      - name: Cài dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      # Test component + hàm định dạng bằng Vitest (P5-07); test đỏ ⇒ fail job.
+      - name: Kiểm thử giao diện
+        run: npm test
+
+      # Build ở CI chỉ để bắt lỗi biên dịch. Bundle phát hành được build lại
+      # trong Docker với đúng bộ NEXT_PUBLIC_* của từng môi trường.
+      - name: Build
+        run: npm run build
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Zalo Mini App — Vite + React
+  # ───────────────────────────────────────────────────────────────────────────
+  zalo-miniapp:
+    name: Zalo Mini App (Vite)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: zalo-miniapp
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cài Node + cache npm
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: zalo-miniapp/package-lock.json
+
+      - name: Cài dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      # Gói tĩnh để nộp lên Zalo Mini App Store (P4-37) hoặc xem thử nội bộ.
+      - name: Lưu bản build tĩnh
+        uses: actions/upload-artifact@v4
+        with:
+          name: zalo-miniapp-dist
+          path: zalo-miniapp/dist
+          retention-days: 14
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Mobile — Flutter (Android APK; bản iOS phải build trên macOS runner)
+  # ───────────────────────────────────────────────────────────────────────────
+  mobile:
+    name: Mobile (Flutter Android)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      # Gradle/Android cần JDK 17 cho Android Gradle Plugin hiện hành.
+      - name: Cài JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Cài Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          # Cache chính SDK Flutter giữa các lần chạy.
+          cache: true
+
+      # Cache gói pub (~/.pub-cache) — khoá theo pubspec.lock để luôn đúng phiên bản.
+      - name: Cache pub
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('mobile/pubspec.lock') }}
+          restore-keys: |
+            pub-${{ runner.os }}-
+
+      - name: Tải dependencies
+        run: flutter pub get
+
+      - name: Phân tích tĩnh
+        run: flutter analyze
+
+      # Widget test + unit test của app công dân (P5-07); test đỏ ⇒ fail job.
+      - name: Kiểm thử widget
+        run: flutter test
+
+      - name: Build APK (release)
+        # Chưa cấu hình keystore ⇒ APK ký bằng debug key, chỉ dùng để QA cài thử.
+        # Bản ký phát hành lên CH Play làm ở P4-37 với keystore lấy từ secrets.
+        run: flutter build apk --release
+
+      - name: Tải lên APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: vigov-android-${{ github.ref_name }}-${{ github.sha }}
+          path: mobile/build/app/outputs/flutter-apk/*.apk
+          retention-days: 30
+          if-no-files-found: error
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Cổng tổng hợp — dùng làm "required status check" cho nhánh main/develop
+  # ───────────────────────────────────────────────────────────────────────────
+  ci-passed:
+    name: CI passed
+    runs-on: ubuntu-latest
+    needs: [backend, admin-web, zalo-miniapp, mobile]
+    if: always()
+    steps:
+      - name: Kiểm tra kết quả các job
+        run: |
+          if [ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" = "true" ]; then
+            echo "Có job thất bại hoặc bị huỷ."
+            exit 1
+          fi
+          echo "Tất cả job đã pass."

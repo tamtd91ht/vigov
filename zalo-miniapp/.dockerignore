@@ -1,0 +1,33 @@
+# =============================================================================
+# ViGov Zalo Mini App — loại khỏi build context Docker
+# LƯU Ý: KHÔNG loại nginx.conf — Dockerfile stage runtime cần copy file này.
+# =============================================================================
+
+node_modules/
+**/node_modules/
+
+# Sản phẩm build cũ trên máy dev
+dist/
+*.tsbuildinfo
+
+# --- Secret / cấu hình cục bộ: KHÔNG copy vào image ---
+# Biến VITE_* được truyền qua --build-arg (xem Dockerfile).
+.env
+.env.*
+!.env.example
+
+# Docker / CI
+Dockerfile
+.dockerignore
+
+# Công cụ lập trình & hệ điều hành
+.git/
+.gitignore
+.github/
+.vscode/
+.idea/
+README.md
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db

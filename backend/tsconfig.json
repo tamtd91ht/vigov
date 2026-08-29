@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "declaration": true,
+    "removeComments": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "target": "ES2023",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "baseUrl": "./",
+    "incremental": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "strictNullChecks": true,
+    /* Thuộc tính của schema/DTO được decorator gán lúc chạy */
+    "strictPropertyInitialization": false,
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "@vigov/shared": ["libs/shared/src"],
+      "@vigov/shared/*": ["libs/shared/src/*"]
+    }
+  }
+}

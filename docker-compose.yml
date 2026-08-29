@@ -1,0 +1,265 @@
+# =============================================================================
+# ViGov — dựng toàn hệ thống bằng Docker Compose (P4-34 / WBS #34–35)
+#
+#   mongo · rabbitmq · backend (NestJS) · admin-web (Next.js) · zalo-miniapp (nginx)
+#
+# Mọi giá trị đọc từ file `.env` cùng thư mục — xem `.env.example` để biết danh
+# sách biến. KHÔNG hardcode secret hay đường dẫn tuyệt đối trong file này.
+#
+#   cp .env.example .env && vi .env
+#   docker compose config          # kiểm tra cú pháp + giá trị sau nội suy
+#   docker compose build           # build 3 image ứng dụng
+#   docker compose up -d           # khởi chạy theo thứ tự phụ thuộc
+#   docker compose ps              # tất cả phải ở trạng thái (healthy)
+#
+# Thứ tự khởi chạy được đảm bảo bằng depends_on: condition: service_healthy,
+# nên backend chỉ chạy khi Mongo và RabbitMQ đã thực sự sẵn sàng nhận kết nối
+# (chờ container "started" là không đủ — Mongo mất vài giây để nạp xong).
+# =============================================================================
+
+# --- Khối dùng chung ---------------------------------------------------------
+# Xoay log ngay tại Docker daemon: mỗi service giữ tối đa 5 file × 10MB.
+# Không có khối này, /var/lib/docker/containers sẽ phình vô hạn trên máy chủ xã.
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-restart: &default-restart
+  restart: unless-stopped
+
+services:
+  # ───────────────────────────────────────────────────────────────────────────
+  # MongoDB — CSDL chính (tất cả phân hệ dùng chung 1 database `vigov`)
+  # ───────────────────────────────────────────────────────────────────────────
+  mongo:
+    image: ${MONGO_IMAGE:-mongo:7}
+    container_name: ${COMPOSE_PROJECT_NAME:-vigov}-mongo
+    <<: *default-restart
+    logging: *default-logging
+    environment:
+      # Bật xác thực: mongo image tự tạo user root khi volume còn trống.
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-vigov}
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+    ports:
+      # Chỉ bind 127.0.0.1 — Mongo KHÔNG được lộ ra Internet.
+      # Cần truy cập từ xa thì đi qua SSH tunnel.
+      - "${INFRA_BIND_IP:-127.0.0.1}:${MONGO_PORT:-27017}:27017"
+    volumes:
+      - mongo-data:/data/db
+      - mongo-config:/data/configdb
+      # Thư mục nhận file mongodump (xem deploy/README.md — mục Sao lưu).
+      - ${BACKUP_DIR:-./backups}:/backups
+    healthcheck:
+      # `db.adminCommand('ping')` xác nhận mongod đã nhận lệnh, không chỉ mở cổng.
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    networks:
+      - vigov-net
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # RabbitMQ — hàng đợi sự kiện (P3-30 workflow, P3-23 notification)
+  # ───────────────────────────────────────────────────────────────────────────
+  rabbitmq:
+    image: ${RABBITMQ_IMAGE:-rabbitmq:3.13-management}
+    container_name: ${COMPOSE_PROJECT_NAME:-vigov}-rabbitmq
+    <<: *default-restart
+    logging: *default-logging
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+    ports:
+      - "${INFRA_BIND_IP:-127.0.0.1}:${RABBITMQ_PORT:-5672}:5672"
+      # Giao diện quản trị — chỉ mở nội bộ, dùng qua SSH tunnel khi cần debug.
+      - "${INFRA_BIND_IP:-127.0.0.1}:${RABBITMQ_UI_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 40s
+    networks:
+      - vigov-net
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Backend — NestJS api-gateway (REST cho admin-web + mini app + mobile)
+  # ───────────────────────────────────────────────────────────────────────────
+  backend:
+    image: ${IMAGE_REGISTRY:-}vigov-backend:${IMAGE_TAG:-local}
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        PORT: "3001"
+        API_PREFIX: ${API_PREFIX:-api/v1}
+    container_name: ${COMPOSE_PROJECT_NAME:-vigov}-backend
+    <<: *default-restart
+    logging: *default-logging
+    environment:
+      NODE_ENV: ${NODE_ENV:-production}
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+      # Cổng BÊN TRONG container luôn là 3001; ánh xạ ra host ở khối ports.
+      PORT: "3001"
+      API_PREFIX: ${API_PREFIX:-api/v1}
+
+      # Hạ tầng — dùng tên service làm hostname trong mạng nội bộ vigov-net
+      MONGO_URI: ${MONGO_URI}
+      RABBITMQ_URI: ${RABBITMQ_URI}
+      RABBITMQ_NOTIFICATION_QUEUE: ${RABBITMQ_NOTIFICATION_QUEUE:-vigov.notification}
+      RABBITMQ_WORKFLOW_QUEUE: ${RABBITMQ_WORKFLOW_QUEUE:-vigov.workflow}
+
+      # Auth
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
+      REFRESH_EXPIRES_IN: ${REFRESH_EXPIRES_IN:-7d}
+
+      # Rate limit / chống spam (P3-31)
+      THROTTLE_TTL_SECONDS: ${THROTTLE_TTL_SECONDS:-60}
+      THROTTLE_LIMIT: ${THROTTLE_LIMIT:-120}
+      FEEDBACK_MAX_PER_DAY: ${FEEDBACK_MAX_PER_DAY:-5}
+
+      # Bảo mật tầng HTTP (P4-36). CORS_ORIGINS KHÔNG có giá trị mặc định:
+      # thiếu nó thì backend cố tình từ chối khởi động ở production thay vì
+      # âm thầm mở API cho mọi tên miền.
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      BODY_LIMIT: ${BODY_LIMIT:-1mb}
+      HSTS_MAX_AGE: ${HSTS_MAX_AGE:-31536000}
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+
+      # Tài khoản quản trị tạo khi chạy seed lần đầu
+      SEED_ADMIN_USERNAME: ${SEED_ADMIN_USERNAME:-admin}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
+
+      # Lưu tệp (P3-24) — trỏ vào volume `uploads` mount ở /app/uploads
+      STORAGE_DRIVER: ${STORAGE_DRIVER:-local}
+      STORAGE_LOCAL_DIR: /app/uploads
+      STORAGE_MAX_FILE_SIZE: ${STORAGE_MAX_FILE_SIZE:-20971520}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+
+      # Tích hợp bên thứ 3 — provider chốt sau (câu hỏi mở #1, #2, #3)
+      OCR_PROVIDER: ${OCR_PROVIDER:-mock}
+      OCR_API_KEY: ${OCR_API_KEY:-}
+      GEO_PROVIDER: ${GEO_PROVIDER:-mock}
+      GEO_API_KEY: ${GEO_API_KEY:-}
+      ZALO_OA_ID: ${ZALO_OA_ID:-}
+      ZALO_APP_ID: ${ZALO_APP_ID:-}
+      ZALO_APP_SECRET: ${ZALO_APP_SECRET:-}
+      ZNS_TEMPLATE_FEEDBACK_RECEIVED: ${ZNS_TEMPLATE_FEEDBACK_RECEIVED:-}
+      ZNS_TEMPLATE_FEEDBACK_RESOLVED: ${ZNS_TEMPLATE_FEEDBACK_RESOLVED:-}
+      PUSH_PROVIDER: ${PUSH_PROVIDER:-mock}
+      FCM_SERVER_KEY: ${FCM_SERVER_KEY:-}
+
+      # Dùng cho lệnh seed lần đầu (docker compose run --rm backend node dist/apps/api-gateway/apps/api-gateway/src/seed)
+      SEED_DEFAULT_PASSWORD: ${SEED_DEFAULT_PASSWORD:-}
+    ports:
+      - "${PUBLIC_BIND_IP:-127.0.0.1}:${BACKEND_PORT:-3001}:3001"
+    volumes:
+      # Tệp đính kèm phản ánh/văn bản — PHẢI là volume, nếu không sẽ mất khi
+      # cập nhật phiên bản (container bị tạo lại).
+      - uploads:/app/uploads
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - vigov-net
+    # HEALTHCHECK kế thừa từ backend/Dockerfile (gọi endpoint công khai
+    # {API_PREFIX}/health/ready — kiểm tra cả HTTP lẫn kết nối MongoDB).
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Web Quản trị — Next.js standalone
+  # LƯU Ý: NEXT_PUBLIC_* nhúng lúc BUILD (build.args), không phải environment.
+  # Đổi các giá trị này trong .env thì phải `docker compose build admin-web`.
+  # ───────────────────────────────────────────────────────────────────────────
+  admin-web:
+    image: ${IMAGE_REGISTRY:-}vigov-admin-web:${IMAGE_TAG:-local}
+    build:
+      context: ./admin-web
+      dockerfile: Dockerfile
+      args:
+        PORT: "3000"
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+        NEXT_PUBLIC_USE_MOCKS: ${NEXT_PUBLIC_USE_MOCKS:-false}
+        NEXT_PUBLIC_ORG_NAME: ${NEXT_PUBLIC_ORG_NAME:-}
+        NEXT_PUBLIC_ORG_PARENT: ${NEXT_PUBLIC_ORG_PARENT:-}
+        NEXT_PUBLIC_ORG_SHORT: ${NEXT_PUBLIC_ORG_SHORT:-VG}
+        NEXT_PUBLIC_APP_VERSION: ${NEXT_PUBLIC_APP_VERSION:-0.0.0}
+        NEXT_PUBLIC_DEMO_USERNAME: ${NEXT_PUBLIC_DEMO_USERNAME:-}
+        NEXT_PUBLIC_DEMO_PASSWORD: ${NEXT_PUBLIC_DEMO_PASSWORD:-}
+        NEXT_PUBLIC_MAP_PROVIDER: ${NEXT_PUBLIC_MAP_PROVIDER:-mock}
+        NEXT_PUBLIC_MAP_API_KEY: ${NEXT_PUBLIC_MAP_API_KEY:-}
+    container_name: ${COMPOSE_PROJECT_NAME:-vigov}-admin-web
+    <<: *default-restart
+    logging: *default-logging
+    environment:
+      NODE_ENV: production
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+      PORT: "3000"
+      HOSTNAME: 0.0.0.0
+    ports:
+      - "${PUBLIC_BIND_IP:-127.0.0.1}:${ADMIN_WEB_PORT:-3000}:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - vigov-net
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Zalo Mini App — bản web tĩnh phục vụ bằng nginx (xem thử / UAT)
+  # Cùng lưu ý: VITE_* nhúng lúc BUILD.
+  # ───────────────────────────────────────────────────────────────────────────
+  zalo-miniapp:
+    image: ${IMAGE_REGISTRY:-}vigov-zalo-miniapp:${IMAGE_TAG:-local}
+    build:
+      context: ./zalo-miniapp
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
+        VITE_USE_MOCKS: ${VITE_USE_MOCKS:-false}
+        VITE_ORG_NAME: ${VITE_ORG_NAME:-}
+        VITE_ORG_PARENT: ${VITE_ORG_PARENT:-}
+        VITE_ORG_SHORT: ${VITE_ORG_SHORT:-VG}
+        VITE_ZALO_APP_ID: ${VITE_ZALO_APP_ID:-}
+        VITE_ZALO_OA_ID: ${VITE_ZALO_OA_ID:-}
+        VITE_HOTLINE: ${VITE_HOTLINE:-}
+        VITE_APP_VERSION: ${VITE_APP_VERSION:-0.0.0}
+    container_name: ${COMPOSE_PROJECT_NAME:-vigov}-zalo-miniapp
+    <<: *default-restart
+    logging: *default-logging
+    environment:
+      TZ: ${TZ:-Asia/Ho_Chi_Minh}
+    ports:
+      - "${PUBLIC_BIND_IP:-127.0.0.1}:${ZALO_MINIAPP_PORT:-8080}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - vigov-net
+
+# --- Mạng --------------------------------------------------------------------
+networks:
+  # Mạng bridge riêng: các service gọi nhau bằng tên service (mongo, rabbitmq,
+  # backend) và KHÔNG dùng chung mạng với container khác trên cùng máy chủ.
+  vigov-net:
+    driver: bridge
+
+# --- Volume dữ liệu ----------------------------------------------------------
+# Đây là toàn bộ trạng thái cần sao lưu; container có thể xoá/tạo lại tuỳ ý.
+volumes:
+  mongo-data:
+  mongo-config:
+  rabbitmq-data:
+  uploads:

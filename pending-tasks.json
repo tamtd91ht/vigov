@@ -1,0 +1,488 @@
+[
+  {
+    "id": "P0-01",
+    "name": "Scaffold cấu trúc dự án 3 module",
+    "description": "Dựng khung 3 module chung 1 thư mục dự án (chưa init git): admin-web (Next.js), backend (NestJS monorepo), miniapp (Zalo Mini App ReactJS + Vite). Chuẩn hoá cấu hình chung: .env.example, quy ước đặt tên, cấu trúc thư mục.",
+    "planFilePath": "plans/p0-01-scaffold-monorepo.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T11:56:10.285Z",
+    "status": "done"
+  },
+  {
+    "id": "P0-02",
+    "name": "Đăng nhập & khung phân quyền RBAC (admin-web)",
+    "description": "Trang đăng nhập cán bộ + khung RBAC phía FE: định nghĩa vai trò (Quản trị hệ thống, Lãnh đạo phê duyệt, Chuyên viên xử lý, Kế toán – giải ngân, Tiếp nhận một cửa), guard theo route, mock auth service chờ backend thật ở P3.",
+    "planFilePath": "plans/p0-02-auth-rbac.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T11:56:10.285Z",
+    "status": "done"
+  },
+  {
+    "id": "P0-03",
+    "name": "Khung UI dùng chung (shell, drawer, toast, bình luận, nhật ký)",
+    "description": "WBS #1 — Sidebar + topbar (tìm kiếm, chuông, trợ giúp, hồ sơ người dùng), drawer chi tiết trượt phải dùng chung, toast, tabs, khối bình luận & timeline nhật ký, bảng/thẻ KPI/chip trạng thái. Port design token từ vigov-prototype.html.",
+    "planFilePath": "plans/p0-03-shared-ui-shell.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T11:56:10.285Z",
+    "status": "done"
+  },
+  {
+    "id": "P1-02",
+    "name": "Dashboard Tổng quan",
+    "description": "WBS #2 — 6 thẻ KPI drill-down (điều hướng sang phân hệ tương ứng), biểu đồ cột nhiệm vụ theo tháng (hoàn thành/được giao), biểu đồ đường giải ngân luỹ kế kế hoạch vs thực tế, bảng 'Cần xử lý ngay' (đánh dấu quá hạn), bộ chọn kỳ.",
+    "planFilePath": "plans/p1-02-dashboard.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T11:56:10.285Z",
+    "status": "done"
+  },
+  {
+    "id": "P1-03",
+    "name": "Quản lý Công việc (Kanban + Bảng)",
+    "description": "WBS #3 — Kanban 5 cột (Mới giao/Đang thực hiện/Chờ duyệt/Quá hạn/Hoàn thành) chuyển đổi được sang dạng bảng; bộ lọc bộ phận/người thực hiện/ưu tiên; drawer chi tiết: mô tả, checklist việc con tự cập nhật % tiến độ, bình luận, nhật ký, đính kèm, liên kết nguồn (văn bản/phản ánh/cuộc họp); form giao việc mới.",
+    "planFilePath": "plans/p1-03-tasks.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T12:12:49.190Z",
+    "status": "done"
+  },
+  {
+    "id": "P1-04",
+    "name": "Văn bản & Đơn thư",
+    "description": "WBS #4 — 2 tab Văn bản đến / Đơn thư công dân; cột hạn xử lý đếm ngược (quá hạn tô đỏ); drawer: xem bản scan + panel OCR trích 7 trường (số ký hiệu, ngày, cơ quan, trích yếu, hạn, độ mật, độ khẩn) cho cán bộ xác nhận/sửa; timeline luân chuyển; nút 'Chuyển thành công việc'; nhãn độ mật/độ khẩn.",
+    "planFilePath": "plans/p1-04-documents.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T12:12:49.190Z",
+    "status": "done"
+  },
+  {
+    "id": "P1-05",
+    "name": "Ngân sách / Giải ngân",
+    "description": "WBS #5 — Thẻ tóm tắt (tổng kế hoạch, đã giải ngân, tỷ lệ, số hạng mục chậm), danh sách hạng mục với progress bar kế hoạch/thực tế, drawer chi tiết: lịch sử giải ngân (chứng từ UNC), vướng mắc kèm hạn tháo gỡ, bình luận; nút đề nghị giải ngân / nhắc tháo gỡ; xuất Excel.",
+    "planFilePath": "plans/p1-05-disbursement.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T12:12:49.190Z",
+    "status": "done"
+  },
+  {
+    "id": "P1-06",
+    "name": "Phản ánh Người dân (admin)",
+    "description": "WBS #6 — 4 thẻ thống kê, lọc chip 8 lĩnh vực + trạng thái, lưới phiếu phản ánh có SLA đếm ngược (âm = quá hạn), drawer: ảnh hiện trường trước/sau, bản đồ mini vị trí, timeline xử lý, đánh giá sao + nhận xét của công dân, phân công cán bộ.",
+    "planFilePath": "plans/p1-06-feedback.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T12:12:49.190Z",
+    "status": "done"
+  },
+  {
+    "id": "P1-07",
+    "name": "Bản đồ Kinh tế số",
+    "description": "WBS #7 — Bản đồ toàn màn hình với 8 lớp bật/tắt (doanh nghiệp, hộ KD, chợ, trường, y tế, di tích, hạ tầng công cộng, đầu tư công), ghim popup chi tiết cơ sở, panel phân tích cơ cấu ngành (pie) + 4 chỉ số tổng hợp. Provider bản đồ thật TBD (VietMap/Goong/MapLibre) — Phase này dùng canvas mô phỏng như mockup, kiến trúc adapter để thay provider.",
+    "planFilePath": "plans/p1-07-map.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T12:12:49.190Z",
+    "status": "done"
+  },
+  {
+    "id": "P1-08",
+    "name": "Báo cáo",
+    "description": "WBS #8 — Bộ chọn kỳ + so sánh cùng kỳ năm trước; 4 nhóm biểu đồ: nhiệm vụ theo bộ phận (hbar), tỷ lệ đúng hạn theo tháng 2026 vs 2025 (line), phản ánh theo lĩnh vực (hbar), giải ngân theo nguồn vốn (cột đôi); bảng xếp hạng bộ phận (đúng hạn/trễ/thời gian TB); nút xuất PDF/Excel/PPT.",
+    "planFilePath": "plans/p1-08-reports.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T12:12:49.190Z",
+    "status": "done"
+  },
+  {
+    "id": "P1-09",
+    "name": "Cấu hình hệ thống",
+    "description": "WBS #9 — 4 khối: cấu hình SLA theo 8 lĩnh vực (thời gian tiếp nhận/xử lý/cảnh báo, sửa inline); sơ đồ tổ chức dạng cây (collapse/expand, CRUD node); tài khoản & phân quyền (bảng người dùng, vai trò, trạng thái, khoá/mở); danh mục lĩnh vực phản ánh.",
+    "planFilePath": "plans/p1-09-settings.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T12:12:49.190Z",
+    "status": "done"
+  },
+  {
+    "id": "P1-10",
+    "name": "CMS nội dung Mobile",
+    "description": "WBS #10 (chưa có mockup — thiết kế theo design system) — CRUD tin tức / sự kiện / thông báo, video tuyên truyền, bản tin truyền thanh; gửi broadcast ZNS/push; 2 lịch sử gửi (công dân / nội bộ).",
+    "planFilePath": "plans/p1-10-cms.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T12:12:49.190Z",
+    "status": "done"
+  },
+  {
+    "id": "P1-11",
+    "name": "User Mini App & Bảo mật",
+    "description": "WBS #11 (chưa có mockup) — Danh sách công dân dùng Mini App (khoá/mở tài khoản), 2 danh sách phiên đăng nhập (cán bộ web / công dân miniapp), lịch sử blacklist.",
+    "planFilePath": "plans/p1-11-users-security.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T12:12:49.190Z",
+    "status": "done"
+  },
+  {
+    "id": "P2-00",
+    "name": "Thiết kế UI/UX App công dân (Flutter)",
+    "description": "Design system Flutter (Material 3 tuỳ biến theo nhận diện ViGov: navy #1B3A5C, hồng #E91E8C), theme sáng, cỡ chữ điều chỉnh được; wireframe 9 màn + luồng điều hướng bottom nav. App chạy Android + iOS từ 1 codebase.",
+    "planFilePath": "plans/p2-00-mobile-design.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T16:38:23.897Z",
+    "status": "done"
+  },
+  {
+    "id": "P2-12",
+    "name": "Mobile — Home & Định danh SĐT",
+    "description": "Scaffold Flutter (go_router, provider); luồng định danh số điện thoại + OTP (mock, backend thật ở P3); Trang chủ: header chào theo định danh, 6 ô truy cập nhanh, widget 'Phản ánh của tôi' mới nhất, mini-feed tin tức.",
+    "planFilePath": "plans/p2-12-home-identity.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T16:38:23.897Z",
+    "status": "done"
+  },
+  {
+    "id": "P2-13",
+    "name": "Mobile — Gửi phản ánh 3 bước",
+    "description": "Stepper 3 bước: chọn 1/12 danh mục → mô tả (validate) + tối đa 3 ảnh (mock picker, preview/xoá) + vị trí GPS (mock service, sửa được địa chỉ) → xác nhận: sinh mã phiếu, cam kết SLA theo danh mục, nút theo dõi phiếu. Xử lý luồng từ chối quyền GPS/camera (nhập tay).",
+    "planFilePath": "plans/p2-13-send-feedback.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T16:38:23.897Z",
+    "status": "done"
+  },
+  {
+    "id": "P2-14",
+    "name": "Mobile — Phản ánh của tôi",
+    "description": "Danh sách phiếu của công dân (lọc trạng thái), màn chi tiết: mô tả, ảnh, timeline xử lý (widget dùng chung với Tra cứu hồ sơ), đánh giá sao khi hoàn thành.",
+    "planFilePath": "plans/p2-14-my-feedback.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T16:38:23.897Z",
+    "status": "done"
+  },
+  {
+    "id": "P2-15",
+    "name": "Mobile — Tra cứu Hồ sơ",
+    "description": "Nhập mã hồ sơ + quét QR (adapter mock, plugin camera thật ở tích hợp ngoài); kết quả: thủ tục, người nộp, trạng thái, cán bộ phụ trách, tracker 4 bước; lưu & hiển thị lịch sử tra cứu (shared_preferences).",
+    "planFilePath": "plans/p2-15-lookup.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T16:38:23.897Z",
+    "status": "done"
+  },
+  {
+    "id": "P2-16",
+    "name": "Mobile — Tin tức, Sự kiện",
+    "description": "3 tab (Tin tức/Sự kiện/Thông báo) đồng bộ CMS admin-web; danh sách card + màn chi tiết bài viết.",
+    "planFilePath": "plans/p2-16-news.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T16:38:23.897Z",
+    "status": "done"
+  },
+  {
+    "id": "P2-17",
+    "name": "Mobile — Truyền thanh phường",
+    "description": "Danh sách bản tin theo ngày, lọc chuyên mục; audio player sticky toàn app: play/pause, thanh tua, ±15s, tốc độ 1x/1.5x/2x, giữ phát khi chuyển màn (controller mock, just_audio thật ở tích hợp ngoài).",
+    "planFilePath": "plans/p2-17-radio.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T16:38:23.897Z",
+    "status": "done"
+  },
+  {
+    "id": "P2-18",
+    "name": "Mobile — Video tuyên truyền",
+    "description": "Lưới video (thumbnail, thời lượng, lượt xem), lọc chủ đề, màn phát video (mock player; YouTube/tự host chờ khách — câu hỏi mở #19).",
+    "planFilePath": "plans/p2-18-video.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T16:38:23.897Z",
+    "status": "done"
+  },
+  {
+    "id": "P2-19",
+    "name": "Mobile — Danh bạ chính quyền",
+    "description": "Tìm theo tên/chức danh/SĐT; 2 nhóm (Lãnh đạo/Bộ phận chuyên môn); nút gọi nhanh (url_launcher mock adapter); nút nhắn tin cho lãnh đạo.",
+    "planFilePath": "plans/p2-19-directory.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T16:38:23.897Z",
+    "status": "done"
+  },
+  {
+    "id": "P2-20",
+    "name": "Mobile — Cá nhân & Cài đặt",
+    "description": "Cỡ chữ lớn áp dụng toàn app (textScaleFactor qua provider, lưu shared_preferences), toggle nhận thông báo đẩy, thông tin định danh, lối tắt Phản ánh của tôi + lịch sử tra cứu, đăng xuất.",
+    "planFilePath": "plans/p2-20-profile.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T16:38:23.897Z",
+    "status": "done"
+  },
+  {
+    "id": "P3-21",
+    "name": "Backend — Thiết kế micro-services + scaffold",
+    "description": "WBS #21 — Monorepo NestJS: api-gateway + services theo phân hệ (tasks, documents, disbursement, feedback, content, users), MongoDB, RabbitMQ, shared libs (auth, dto, config). Docker compose dev.",
+    "planFilePath": "plans/p3-21-microservices-scaffold.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T17:21:10.982Z",
+    "status": "done"
+  },
+  {
+    "id": "P3-23",
+    "name": "Backend — Notification (ZNS + push + in-app)",
+    "description": "WBS #23 — Service thông báo hợp nhất: push FCM/APNs cho app Flutter, Zalo ZNS cho tin nhắn công dân (nếu khách giữ), in-app web. Template + hàng đợi RabbitMQ + retry. Kết nối provider thật thuộc hệ số tích hợp ngoài.",
+    "planFilePath": "plans/p3-23-notification.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T17:21:10.982Z",
+    "status": "done"
+  },
+  {
+    "id": "P3-24",
+    "name": "Backend — File storage",
+    "description": "WBS #24 — Lưu trữ file scan văn bản, ảnh phản ánh, audio truyền thanh, video: upload, resize ảnh, giới hạn dung lượng, phân quyền truy cập, CDN-ready.",
+    "planFilePath": "plans/p3-24-file-storage.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T17:21:10.982Z",
+    "status": "done"
+  },
+  {
+    "id": "P3-25",
+    "name": "Backend — Tích hợp OCR",
+    "description": "WBS #25 — Trích 7 trường từ bản scan văn bản qua OCR provider bên thứ 3 (TBD — khách đăng ký tài khoản). Thuộc hệ số tích hợp ngoài.",
+    "planFilePath": "plans/p3-25-ocr.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T17:21:10.982Z",
+    "status": "done"
+  },
+  {
+    "id": "P3-26",
+    "name": "Backend — GIS / Geocoding",
+    "description": "WBS #26 — Geocoding + tile bản đồ qua provider TBD (VietMap/Goong/MapLibre+OSM). Thuộc hệ số tích hợp ngoài.",
+    "planFilePath": "plans/p3-26-gis.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T17:21:10.982Z",
+    "status": "done"
+  },
+  {
+    "id": "P3-27",
+    "name": "Backend — Kết xuất báo cáo PDF/Excel/PPT",
+    "description": "WBS #27 — Service render báo cáo theo kỳ: PDF, Excel, PPT (PPT có thể bỏ — câu hỏi mở #11).",
+    "planFilePath": "plans/p3-27-report-export.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T17:21:10.982Z",
+    "status": "done"
+  },
+  {
+    "id": "P3-28",
+    "name": "Backend — Tìm kiếm toàn cục",
+    "description": "WBS #28 — Tìm việc/văn bản/phản ánh: MongoDB text search cho Phase 1 (câu hỏi mở FE #1: phạm vi thật).",
+    "planFilePath": "plans/p3-28-search.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T17:21:10.982Z",
+    "status": "done"
+  },
+  {
+    "id": "P3-29",
+    "name": "Backend — Audit log",
+    "description": "WBS #29 — Ghi vết mọi hành động ghi/duyệt/khoá: ai, làm gì, lúc nào, dữ liệu trước/sau.",
+    "planFilePath": "plans/p3-29-audit-log.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T17:21:10.982Z",
+    "status": "done"
+  },
+  {
+    "id": "P3-30",
+    "name": "Backend — Workflow xuyên phân hệ",
+    "description": "WBS #30 — Luồng Văn bản → Công việc, Phản ánh → Công việc; đồng bộ trạng thái ngược; CronJob nhắc SLA/hạn xử lý.",
+    "planFilePath": "plans/p3-30-workflow.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T17:21:10.982Z",
+    "status": "done"
+  },
+  {
+    "id": "P3-31",
+    "name": "Backend — Bảo mật API",
+    "description": "WBS #31 — Encryption, blacklist token/thiết bị, rate-limit, chống spam phản ánh.",
+    "planFilePath": "plans/p3-31-api-security.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T17:21:10.982Z",
+    "status": "done"
+  },
+  {
+    "id": "P4-34",
+    "name": "Triển khai — CI/CD + hạ tầng staging/production",
+    "description": "WBS #34–35 — Jenkins pipeline + Docker cho 3 module; hạ tầng staging + production (cloud hay on-premise — câu hỏi mở #6).",
+    "planFilePath": "plans/p4-34-cicd-infra.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T17:46:52.256Z",
+    "status": "done"
+  },
+  {
+    "id": "P4-36",
+    "name": "Triển khai — Hardening & rà soát bảo mật",
+    "description": "WBS #36 — Rà soát bảo mật tổng thể trước phát hành: dependency audit, pentest cơ bản, cấu hình TLS/headers.",
+    "planFilePath": "plans/p4-36-hardening.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T17:46:52.256Z",
+    "status": "done"
+  },
+  {
+    "id": "P4-37",
+    "name": "Triển khai — Phát hành Google Play, App Store & Zalo Mini App Store",
+    "description": "Chuẩn bị hồ sơ, ký ứng dụng (keystore Android, chứng chỉ iOS + tài khoản Apple Developer của khách), nộp kiểm duyệt Google Play, App Store và Zalo Mini App Store; xử lý feedback kiểm duyệt của cả 3 kênh. Lead time review ngoài tầm kiểm soát — nộp ngay khi code-complete.",
+    "planFilePath": "plans/p4-37-zalo-store.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T17:21:10.982Z",
+    "status": "in-progress"
+  },
+  {
+    "id": "P4-38",
+    "name": "Triển khai — Regression & hỗ trợ UAT",
+    "description": "WBS #38 — Regression xuyên phân hệ trên staging, hỗ trợ khách UAT, sửa lỗi theo biên bản UAT.",
+    "planFilePath": "plans/p4-38-uat.md",
+    "createdAt": "2026-08-27T11:40:31.666Z",
+    "updatedAt": "2026-08-27T17:21:10.982Z",
+    "status": "in-progress"
+  },
+  {
+    "id": "P2Z-00",
+    "name": "Zalo Mini App — Scaffold & nền tảng dùng chung",
+    "description": "Dựng module zalo-miniapp (ReactJS + Vite + zmp-ui), cấu hình app-config.json, design system theo nhận diện ViGov, layout khung (header + bottom nav 5 mục), router, adapter Zalo SDK (mock được trên trình duyệt), store phản ánh + cài đặt.",
+    "planFilePath": "plans/p2z-00-scaffold.md",
+    "createdAt": "2026-08-27T16:39:12.280Z",
+    "updatedAt": "2026-08-27T16:56:26.578Z",
+    "status": "done"
+  },
+  {
+    "id": "P2Z-01",
+    "name": "Zalo Mini App — Home & Định danh SĐT Zalo",
+    "description": "Luồng định danh số điện thoại qua Zalo SDK (xin quyền → token → đổi SĐT ở server, mock ở phase này); Trang chủ: header chào, 6 ô truy cập nhanh, widget phản ánh mới nhất, mini-feed tin tức.",
+    "planFilePath": "plans/p2z-01-home-identity.md",
+    "createdAt": "2026-08-27T16:39:12.280Z",
+    "updatedAt": "2026-08-27T16:56:26.578Z",
+    "status": "done"
+  },
+  {
+    "id": "P2Z-02",
+    "name": "Zalo Mini App — Gửi phản ánh 3 bước",
+    "description": "Stepper 3 bước: chọn danh mục → mô tả + tối đa 3 ảnh + định vị GPS (adapter mock, xử lý từ chối quyền) → xác nhận sinh mã phiếu + cam kết SLA.",
+    "planFilePath": "plans/p2z-02-send-feedback.md",
+    "createdAt": "2026-08-27T16:39:12.280Z",
+    "updatedAt": "2026-08-27T16:56:26.578Z",
+    "status": "done"
+  },
+  {
+    "id": "P2Z-03",
+    "name": "Zalo Mini App — Phản ánh của tôi & chi tiết",
+    "description": "Danh sách phiếu + lọc trạng thái; chi tiết: mô tả, ảnh, timeline xử lý, đánh giá sao khi hoàn thành.",
+    "planFilePath": "plans/p2z-03-my-feedback.md",
+    "createdAt": "2026-08-27T16:39:12.280Z",
+    "updatedAt": "2026-08-27T16:56:26.578Z",
+    "status": "done"
+  },
+  {
+    "id": "P2Z-04",
+    "name": "Zalo Mini App — Tra cứu hồ sơ (QR)",
+    "description": "Nhập mã hồ sơ + quét QR bằng Zalo SDK (mock); kết quả + tracker 4 bước; lịch sử tra cứu lưu local.",
+    "planFilePath": "plans/p2z-04-lookup.md",
+    "createdAt": "2026-08-27T16:39:12.280Z",
+    "updatedAt": "2026-08-27T16:56:26.578Z",
+    "status": "done"
+  },
+  {
+    "id": "P2Z-05",
+    "name": "Zalo Mini App — Tin tức, Truyền thanh, Video",
+    "description": "Tin tức/Sự kiện/Thông báo (3 tab + chi tiết bài); Truyền thanh: danh sách theo ngày + player sticky (±15s, tốc độ, giữ phát khi chuyển màn); Video: lưới + màn phát.",
+    "planFilePath": "plans/p2z-05-content.md",
+    "createdAt": "2026-08-27T16:39:12.280Z",
+    "updatedAt": "2026-08-27T16:56:26.578Z",
+    "status": "done"
+  },
+  {
+    "id": "P2Z-06",
+    "name": "Zalo Mini App — Danh bạ & Cá nhân",
+    "description": "Danh bạ chính quyền (tìm kiếm, 2 nhóm, gọi nhanh, nhắn Zalo cho lãnh đạo); Cá nhân: cỡ chữ lớn toàn app, toggle nhận thông báo Zalo, lối tắt, thông tin định danh.",
+    "planFilePath": "plans/p2z-06-directory-profile.md",
+    "createdAt": "2026-08-27T16:39:12.280Z",
+    "updatedAt": "2026-08-27T16:56:26.578Z",
+    "status": "done"
+  },
+  {
+    "id": "P5-01",
+    "name": "Nối Web Quản trị vào API thật (11 phân hệ)",
+    "description": "Đã nối 10/11 phân hệ vào API thật (đăng nhập, Nhiệm vụ, Văn bản, Phản ánh, Giải ngân, Cấu hình, CMS, Người dùng, Dashboard, Báo cáo). Bản đồ Kinh tế số vẫn dùng dữ liệu mẫu vì backend chưa có endpoint (chờ khách chốt provider — câu hỏi mở #2). Một số danh mục tĩnh (bộ phận, danh bạ cán bộ, thôn/tổ) vẫn đọc từ src/mocks.",
+    "planFilePath": "plans/p5-01-admin-web-api.md",
+    "createdAt": "2026-08-28T02:43:23.547Z",
+    "updatedAt": "2026-08-28T03:41:10.179Z",
+    "status": "done"
+  },
+  {
+    "id": "P5-02",
+    "name": "Nối app Flutter vào API thật",
+    "description": "App công dân Android/iOS đang chạy hoàn toàn bằng mock trong lib/mocks/*. Nối vào backend: định danh SĐT + OTP, gửi và theo dõi phản ánh, tin tức, truyền thanh, video, tra cứu hồ sơ.",
+    "planFilePath": "plans/p5-02-mobile-api.md",
+    "createdAt": "2026-08-28T02:43:23.547Z",
+    "updatedAt": "2026-08-28T08:04:42.179Z",
+    "status": "done"
+  },
+  {
+    "id": "P5-03",
+    "name": "Nối Zalo Mini App vào API thật",
+    "description": "Tương tự P5-02 cho kênh Zalo: định danh qua token Zalo SDK đổi lấy SĐT ở server, các màn còn lại gọi API chung với app Flutter.",
+    "planFilePath": "plans/p5-03-zalo-api.md",
+    "createdAt": "2026-08-28T02:43:23.547Z",
+    "updatedAt": "2026-08-28T08:04:42.179Z",
+    "status": "done"
+  },
+  {
+    "id": "P5-04",
+    "name": "RabbitMQ — publisher/consumer thật",
+    "description": "Techstack yêu cầu RabbitMQ. Hiện đã có hợp đồng sự kiện (libs/shared/src/events) và docker-compose, nhưng workflow gọi trực tiếp và notification chỉ ghi log. Chuyển sang hàng đợi thật để tách rời và chịu lỗi tốt hơn.",
+    "planFilePath": "plans/p5-04-rabbitmq.md",
+    "createdAt": "2026-08-28T02:43:23.547Z",
+    "updatedAt": "2026-08-28T08:04:42.179Z",
+    "status": "done"
+  },
+  {
+    "id": "P5-05",
+    "name": "Socket.IO — cập nhật thời gian thực",
+    "description": "Techstack yêu cầu Socket.IO. Phạm vi màn hình nào cần realtime còn chờ khách xác nhận (câu hỏi mở #7) — ước tính thêm 0.5–1 ngày nếu áp dụng toàn cục.",
+    "planFilePath": "plans/p5-05-realtime.md",
+    "createdAt": "2026-08-28T02:43:23.547Z",
+    "updatedAt": "2026-08-28T08:04:42.179Z",
+    "status": "done"
+  },
+  {
+    "id": "P5-06",
+    "name": "Tải tệp thật từ giao diện",
+    "description": "Backend đã có `/files` (upload, link ký, phân quyền) nhưng giao diện chưa gọi: ảnh phản ánh, bản scan văn bản, audio truyền thanh, video CMS đều đang là màu giữ chỗ.",
+    "planFilePath": "plans/p5-06-file-upload-ui.md",
+    "createdAt": "2026-08-28T02:43:23.547Z",
+    "updatedAt": "2026-08-28T08:04:42.179Z",
+    "status": "done"
+  },
+  {
+    "id": "P5-07",
+    "name": "Kiểm thử tự động (thuộc hệ số QA 15%)",
+    "description": "Hiện chỉ có 11 test e2e của backend. Bổ sung unit test cho nghiệp vụ dễ sai, test giao diện cho luồng chính và widget test cho app Flutter.",
+    "planFilePath": "plans/p5-07-automated-tests.md",
+    "createdAt": "2026-08-28T02:43:23.547Z",
+    "updatedAt": "2026-08-28T08:04:42.179Z",
+    "status": "done"
+  },
+  {
+    "id": "P5-08",
+    "name": "Thu hồi token khi khoá tài khoản / thu hồi phiên",
+    "description": "Tồn đọng mức Trung bình TB-01 trong SECURITY.md: khoá tài khoản hoặc thu hồi phiên hiện không làm JWT đang lưu hết hiệu lực, token vẫn dùng được tới khi hết hạn (8 giờ).",
+    "planFilePath": "plans/p5-08-token-revocation.md",
+    "createdAt": "2026-08-28T02:43:23.547Z",
+    "updatedAt": "2026-08-28T08:04:42.179Z",
+    "status": "done"
+  },
+  {
+    "id": "P5-09",
+    "name": "Nối nhà cung cấp thật: OCR, GIS, ZNS, FCM/APNs",
+    "description": "Bốn adapter đang chạy mock, chờ khách chốt nhà cung cấp và cấp tài khoản (câu hỏi mở #1, #2, #3). Thuộc hệ số Tích hợp bên ngoài 15%.",
+    "planFilePath": "plans/p5-09-third-party-providers.md",
+    "createdAt": "2026-08-28T02:43:23.547Z",
+    "updatedAt": "2026-08-28T02:43:23.547Z",
+    "status": "pending"
+  },
+  {
+    "id": "P5-10",
+    "name": "Nối nốt Bản đồ và các danh mục tĩnh vào API",
+    "description": "Phần còn lại sau P5-01: phân hệ Bản đồ Kinh tế số chưa có endpoint backend (lớp dữ liệu, ghim cơ sở kinh tế, cơ cấu ngành); các danh mục tĩnh còn đọc từ src/mocks: bộ phận, danh bạ cán bộ, thôn/tổ dân phố, danh mục bài viết/video/truyền thanh, danh sách năm ngân sách.",
+    "planFilePath": "plans/p5-10-map-and-catalogs.md",
+    "createdAt": "2026-08-28T03:41:10.179Z",
+    "updatedAt": "2026-08-28T08:04:42.179Z",
+    "status": "done"
+  }
+]

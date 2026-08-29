@@ -1,0 +1,31 @@
+{
+  "name": "vigov",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ViGov — Nền tảng Điều hành số cấp Xã/Phường (4 module: admin-web, backend, mobile, zalo-miniapp)",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "npm --prefix admin-web run dev",
+    "dev:api": "npm --prefix backend run start:dev",
+    "dev:zalo": "npm --prefix zalo-miniapp run dev",
+    "dev:mobile": "cd mobile && flutter run",
+    "install:all": "npm --prefix admin-web install && npm --prefix backend install && npm --prefix zalo-miniapp install && cd mobile && flutter pub get",
+    "build:web": "npm --prefix admin-web run build",
+    "build:api": "npm --prefix backend run build",
+    "build:zalo": "npm --prefix zalo-miniapp run build",
+    "build:mobile": "cd mobile && flutter build apk --release",
+    "build:all": "npm run build:api && npm run build:web && npm run build:zalo",
+    "seed": "npm --prefix backend run seed",
+    "clean": "node scripts/clean.mjs",
+    "check:web": "npm --prefix admin-web run typecheck && npm --prefix admin-web run lint",
+    "check:api": "npm --prefix backend run typecheck",
+    "check:zalo": "npm --prefix zalo-miniapp run typecheck && npm --prefix zalo-miniapp run lint",
+    "check:mobile": "cd mobile && flutter analyze",
+    "check:all": "npm run check:api && npm run check:web && npm run check:zalo && npm run check:mobile",
+    "test:api": "npm --prefix backend run test:e2e",
+    "test:api:unit": "npm --prefix backend test",
+    "test:web": "npm --prefix admin-web test",
+    "test:mobile": "cd mobile && flutter test",
+    "test:all": "npm run test:api:unit && npm run test:api && npm run test:web && npm run test:mobile"
+  }
+}

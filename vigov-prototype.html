@@ -1,0 +1,1843 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ViGov — Nền tảng Điều hành số cấp Xã/Phường</title>
+<style>
+:root{
+  --navy:#1B3A5C; --blue:#3B82C4; --pink:#E91E8C; --green:#27AE60;
+  --orange:#E67E22; --purple:#8E44AD; --red:#E74C3C; --teal:#17A2A2;
+  --bg:#FFFFFF; --bg2:#FAFBFC; --bd:#E5E8EB; --tx:#4A5568; --mut:#8896A6;
+  --sh:0 1px 3px rgba(0,0,0,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{overflow-x:hidden}
+body{font-family:Inter,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--tx);font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+.ic{display:block;flex:none}
+h1,h2,h3,h4{color:var(--navy);font-weight:700;line-height:1.3}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#D5DBE1;border-radius:6px}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ---------- SIDEBAR ---------- */
+.sb{position:fixed;top:0;left:0;bottom:0;width:240px;background:var(--navy);color:#fff;display:flex;flex-direction:column;z-index:40}
+.sb-logo{padding:20px 20px 16px;display:flex;gap:11px;align-items:center;border-bottom:1px solid rgba(255,255,255,.09)}
+.sb-logo .mark{width:36px;height:36px;border-radius:10px;background:var(--pink);display:grid;place-items:center;font-weight:800;font-size:15px;letter-spacing:.5px}
+.sb-logo b{display:block;font-size:17px;letter-spacing:.3px}
+.sb-logo span{display:block;font-size:10.5px;color:rgba(255,255,255,.55);letter-spacing:.4px;text-transform:uppercase}
+.sb-menu{padding:14px 12px;display:flex;flex-direction:column;gap:2px;overflow-y:auto;flex:1}
+.sb-cap{font-size:10.5px;letter-spacing:.8px;color:rgba(255,255,255,.38);text-transform:uppercase;padding:12px 12px 6px;font-weight:600}
+.sb-item{position:relative;display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:9px;color:rgba(255,255,255,.74);cursor:pointer;font-size:13.5px;transition:.15s;border:none;background:none;width:100%;text-align:left}
+.sb-item:hover{background:rgba(255,255,255,.07);color:#fff}
+.sb-item.on{background:rgba(255,255,255,.13);color:#fff;font-weight:600}
+.sb-item.on::before{content:"";position:absolute;left:-12px;top:7px;bottom:7px;width:3px;background:var(--pink);border-radius:0 3px 3px 0}
+.sb-item .cnt{margin-left:auto;font-size:11px;background:rgba(255,255,255,.16);padding:1px 7px;border-radius:10px;font-weight:600}
+.sb-foot{padding:14px 18px;border-top:1px solid rgba(255,255,255,.09);font-size:11px;color:rgba(255,255,255,.42)}
+
+/* ---------- TOPBAR ---------- */
+.main{margin-left:240px;min-height:100vh;background:#fff}
+.tb{height:64px;position:sticky;top:0;background:rgba(255,255,255,.96);backdrop-filter:blur(6px);border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:20px;padding:0 28px;z-index:30}
+.tb-title b{display:block;color:var(--navy);font-size:14.5px;font-weight:700;letter-spacing:.2px}
+.tb-title span{display:block;font-size:11.5px;color:var(--mut)}
+.tb-search{margin-left:8px;flex:1;max-width:400px;display:flex;align-items:center;gap:9px;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:8px 12px;color:var(--mut)}
+.tb-search input{border:none;background:none;outline:none;width:100%;font-size:13px}
+.tb-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.icbtn{position:relative;width:38px;height:38px;border-radius:10px;border:1px solid var(--bd);background:#fff;display:grid;place-items:center;color:var(--tx);cursor:pointer}
+.icbtn:hover{background:var(--bg2)}
+.badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;border-radius:9px;background:var(--pink);color:#fff;font-size:10.5px;font-weight:700;display:grid;place-items:center;border:2px solid #fff;padding:0 4px}
+.user{display:flex;align-items:center;gap:10px;padding:5px 10px 5px 5px;border-radius:10px;cursor:pointer}
+.user:hover{background:var(--bg2)}
+.user b{display:block;font-size:13px;color:var(--navy)}
+.user span{display:block;font-size:11.5px;color:var(--mut)}
+
+/* ---------- PAGE ---------- */
+.pg{padding:28px;max-width:1420px}
+.pg-head{display:flex;align-items:flex-end;gap:18px;margin-bottom:22px;flex-wrap:wrap}
+.pg-head h1{font-size:22px}
+.pg-head p{font-size:13px;color:var(--mut);margin-top:3px}
+.pg-head .sp{margin-left:auto;display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.sec{display:none}
+.sec.on{display:block;animation:fade .22s ease}
+@keyframes fade{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
+
+.card{background:#fff;border:1px solid var(--bd);border-radius:12px;box-shadow:var(--sh)}
+.card-h{padding:16px 20px;border-bottom:1px solid var(--bd);display:flex;align-items:center;gap:12px}
+.card-h h3{font-size:14.5px}
+.card-h .sp{margin-left:auto;font-size:12px;color:var(--mut);display:flex;gap:8px;align-items:center}
+.card-b{padding:20px}
+
+.btn{display:inline-flex;align-items:center;gap:7px;padding:9px 15px;border-radius:10px;border:1px solid var(--bd);background:#fff;color:var(--tx);font-size:13px;font-weight:600;cursor:pointer;transition:.15s;white-space:nowrap}
+.btn:hover{background:var(--bg2)}
+.btn.pri{background:var(--navy);border-color:var(--navy);color:#fff}
+.btn.pri:hover{background:#16314e}
+.btn.sm{padding:6px 11px;font-size:12px;border-radius:8px}
+.seg{display:flex;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:3px;gap:3px}
+.seg button{border:none;background:none;padding:6px 14px;border-radius:8px;font-size:12.5px;font-weight:600;color:var(--mut);cursor:pointer}
+.seg button.on{background:#fff;color:var(--navy);box-shadow:var(--sh)}
+.sel{padding:8px 12px;border:1px solid var(--bd);border-radius:10px;background:#fff;font-size:12.5px;color:var(--tx);cursor:pointer;outline:none;min-width:150px}
+.fchip{border:1px solid var(--bd);background:#fff;padding:7px 14px;border-radius:20px;cursor:pointer;font-size:12.5px;font-weight:600;color:var(--tx);transition:.15s}
+.fchip:hover{border-color:#C9D2DA}
+.fchip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:600;white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;flex:none}
+.av{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:10.5px;font-weight:700;color:#fff;flex:none;letter-spacing:.2px}
+.av.lg{width:34px;height:34px;font-size:12.5px}
+.pbar{height:6px;background:#EDF0F3;border-radius:4px;overflow:hidden}
+.pbar>i{display:block;height:100%;border-radius:4px;transition:width .4s}
+.pbar.thick{height:12px;border-radius:6px}
+.pbar.thick>i{border-radius:6px}
+.muted{color:var(--mut)}
+.tiny{font-size:11.5px}
+.sm{font-size:12.5px}
+
+/* ---------- KPI ---------- */
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.kpi{position:relative;border-radius:12px;padding:18px 20px;border:1px solid var(--bd);box-shadow:var(--sh);cursor:pointer;transition:.18s;overflow:hidden}
+.kpi:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(27,58,92,.10)}
+.kpi .num{font-size:32px;font-weight:800;letter-spacing:-.8px;line-height:1.1}
+.kpi .lb{font-size:13px;font-weight:600;color:var(--navy);margin-top:4px}
+.kpi .sub{font-size:11.5px;color:var(--mut);margin-top:2px}
+.kpi .kic{position:absolute;top:16px;right:16px;width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:rgba(255,255,255,.75)}
+
+/* ---------- CHARTS ---------- */
+.split{display:grid;grid-template-columns:6fr 4fr;gap:18px;margin-top:18px}
+.bars{display:flex;align-items:flex-end;gap:12px;height:180px;padding-top:8px}
+.bars .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:7px;height:100%;justify-content:flex-end}
+.bars .stack{width:100%;display:flex;align-items:flex-end;justify-content:center;gap:3px;flex:1}
+.bars .bar{width:46%;max-width:22px;border-radius:5px 5px 0 0;background:var(--blue);transition:height .5s;position:relative}
+.bars .bar.b2{background:#DCE7F2}
+.bars .lbl{font-size:11px;color:var(--mut)}
+.bars .col:hover .bar{filter:brightness(1.08)}
+.legend{display:flex;gap:16px;font-size:11.5px;color:var(--mut);align-items:center}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block;margin-right:5px;vertical-align:-1px}
+.hbars{display:flex;flex-direction:column;gap:13px}
+.hbar-row{display:grid;grid-template-columns:180px 1fr 52px;gap:12px;align-items:center;font-size:12.5px}
+.hbar{height:10px;border-radius:5px;background:#EDF0F3;overflow:hidden}
+.hbar>i{display:block;height:100%;border-radius:5px}
+
+/* ---------- LIST ---------- */
+.rows{display:flex;flex-direction:column}
+.row-it{display:flex;gap:12px;align-items:flex-start;padding:13px 20px;border-bottom:1px solid var(--bd);cursor:pointer;transition:.13s}
+.row-it:last-child{border-bottom:none}
+.row-it:hover{background:var(--bg2)}
+.row-it .t{font-size:13px;font-weight:600;color:var(--navy)}
+.row-it .m{font-size:11.5px;color:var(--mut);margin-top:2px}
+
+/* ---------- TABLE ---------- */
+.tw{overflow-x:auto}
+table.tb2{width:100%;border-collapse:collapse;font-size:12.8px}
+table.tb2 th{text-align:left;padding:11px 14px;background:var(--bg2);color:var(--mut);font-weight:600;font-size:11.5px;border-bottom:1px solid var(--bd);white-space:nowrap}
+table.tb2 td{padding:12px 14px;border-bottom:1px solid var(--bd);vertical-align:middle}
+table.tb2 tr:last-child td{border-bottom:none}
+table.tb2 tbody tr{cursor:pointer;transition:.13s}
+table.tb2 tbody tr:hover{background:var(--bg2)}
+table.tb2 tr.late{background:rgba(231,76,60,.055)}
+table.tb2 tr.late:hover{background:rgba(231,76,60,.09)}
+table.tb2 .tt{font-weight:600;color:var(--navy)}
+
+/* ---------- KANBAN ---------- */
+.kb{display:grid;grid-template-columns:repeat(5,minmax(210px,1fr));gap:14px;align-items:start}
+.kbc{background:var(--bg2);border:1px solid var(--bd);border-radius:12px;padding:12px;min-height:180px}
+.kbc-h{display:flex;align-items:center;gap:8px;padding:2px 4px 12px;font-size:12.5px;font-weight:700;color:var(--navy)}
+.kbc-h .n{margin-left:auto;font-size:11px;background:#fff;border:1px solid var(--bd);border-radius:10px;padding:1px 8px;color:var(--mut)}
+.tk{background:#fff;border:1px solid var(--bd);border-radius:10px;box-shadow:var(--sh);cursor:pointer;margin-bottom:10px;overflow:hidden;transition:.15s}
+.tk:hover{transform:translateY(-2px);box-shadow:0 5px 14px rgba(27,58,92,.10)}
+.tk .top{height:3px}
+.tk .in{padding:12px 13px 13px}
+.tk .ti{font-size:12.8px;font-weight:600;color:var(--navy);line-height:1.4}
+.tk .src{display:inline-block;margin-top:8px;font-size:10.5px;padding:2px 8px;border-radius:6px;background:var(--bg2);border:1px solid var(--bd);color:var(--mut);font-weight:600}
+.tk .ft{display:flex;align-items:center;gap:8px;margin-top:11px}
+
+/* ---------- DRAWER ---------- */
+.ovl{position:fixed;inset:0;background:rgba(27,58,92,.30);opacity:0;pointer-events:none;transition:.22s;z-index:50}
+.ovl.on{opacity:1;pointer-events:auto}
+.dw{position:fixed;top:0;right:0;bottom:0;width:520px;max-width:96vw;background:#fff;transform:translateX(102%);transition:transform .28s cubic-bezier(.4,0,.2,1);z-index:60;display:flex;flex-direction:column;box-shadow:-10px 0 36px rgba(27,58,92,.13)}
+.dw.on{transform:none}
+.dw-h{padding:20px 22px 16px;border-bottom:1px solid var(--bd);display:flex;gap:14px;align-items:flex-start}
+.dw-h h3{font-size:16px;line-height:1.35}
+.dw-h .m{font-size:12px;color:var(--mut);margin-top:4px}
+.dw-b{overflow-y:auto;flex:1;padding:20px 22px 32px}
+.dw-f{padding:14px 22px;border-top:1px solid var(--bd);display:flex;gap:9px;background:var(--bg2)}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--bd);margin:6px 0 16px}
+.tabs button{border:none;background:none;padding:9px 14px;font-size:12.5px;font-weight:600;color:var(--mut);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px}
+.tabs button.on{color:var(--navy);border-bottom-color:var(--pink)}
+.tp{display:none}.tp.on{display:block}
+.fld{margin-bottom:16px}
+.fld .k{font-size:11px;color:var(--mut);font-weight:600;letter-spacing:.3px;text-transform:uppercase;margin-bottom:5px;display:flex;align-items:center;gap:6px}
+.fld .v{font-size:13px;color:var(--tx)}
+.ocr{font-size:9.5px;background:rgba(142,68,173,.12);color:var(--purple);padding:1px 6px;border-radius:5px;font-weight:700;letter-spacing:.3px;text-transform:none}
+.gsec{border-top:1px solid var(--bd);margin:20px 0 16px;padding-top:16px}
+.gsec h4{font-size:12.5px;margin-bottom:12px}
+.chk{display:flex;gap:10px;align-items:flex-start;padding:9px 11px;border:1px solid var(--bd);border-radius:9px;margin-bottom:8px;cursor:pointer;background:#fff;transition:.13s}
+.chk:hover{background:var(--bg2)}
+.chk input{margin-top:2px;accent-color:var(--green);width:15px;height:15px;cursor:pointer}
+.chk.done .lb{text-decoration:line-through;color:var(--mut)}
+.chk .lb{font-size:12.5px}
+.cmt{display:flex;gap:11px;margin-bottom:16px}
+.cmt .bd{flex:1;background:var(--bg2);border:1px solid var(--bd);border-radius:10px;padding:10px 13px}
+.cmt .hd{display:flex;align-items:baseline;gap:8px;margin-bottom:4px}
+.cmt .hd b{font-size:12.5px;color:var(--navy)}
+.cmt .hd span{font-size:11px;color:var(--mut)}
+.cmt .tx{font-size:12.5px}
+.tl{position:relative;padding-left:24px}
+.tl:before{content:"";position:absolute;left:6px;top:5px;bottom:5px;width:2px;background:var(--bd)}
+.tl-it{position:relative;padding-bottom:16px}
+.tl-it:last-child{padding-bottom:0}
+.tl-it:before{content:"";position:absolute;left:-22px;top:4px;width:10px;height:10px;border-radius:50%;background:#fff;border:2.5px solid var(--blue)}
+.tl-it.ok:before{border-color:var(--green)}
+.tl-it.cur:before{border-color:var(--orange);box-shadow:0 0 0 4px rgba(230,126,34,.15)}
+.tl-it .t{font-size:12.8px;font-weight:600;color:var(--navy)}
+.tl-it .m{font-size:11.5px;color:var(--mut);margin-top:2px}
+.files{display:flex;gap:10px;flex-wrap:wrap}
+.file{width:96px}
+.file .ph{height:78px;border-radius:9px;border:1px solid var(--bd);background:linear-gradient(135deg,#EEF2F6,#E2E9F0);display:grid;place-items:center;color:#A8B6C4}
+.file .nm{font-size:10.5px;color:var(--mut);margin-top:5px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scan{height:170px;border-radius:10px;border:1px dashed #C9D2DA;background:repeating-linear-gradient(0deg,#F4F6F8 0 22px,#EFF2F5 22px 24px);display:grid;place-items:center;color:#9AA8B6;font-size:12.5px;font-weight:600;gap:6px;margin-bottom:18px}
+.note{background:rgba(59,130,196,.07);border:1px solid rgba(59,130,196,.22);border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--navy)}
+
+/* ---------- FEEDBACK ---------- */
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+.fb{border:1px solid var(--bd);border-radius:12px;overflow:hidden;box-shadow:var(--sh);cursor:pointer;background:#fff;transition:.16s;display:flex;flex-direction:column}
+.fb:hover{transform:translateY(-2px);box-shadow:0 6px 16px rgba(27,58,92,.10)}
+.fb .img{height:118px;display:grid;place-items:center;color:rgba(255,255,255,.9);font-size:11.5px;font-weight:700;letter-spacing:.4px;position:relative}
+.fb .in{padding:13px 15px 15px;flex:1;display:flex;flex-direction:column}
+.fb .cd{font-size:11px;color:var(--mut);font-weight:700;letter-spacing:.4px}
+.fb .ti{font-size:13px;font-weight:600;color:var(--navy);margin:5px 0 6px;line-height:1.42}
+.fb .ex{font-size:12px;color:var(--tx);margin-bottom:10px}
+.fb .ft{margin-top:auto;display:flex;align-items:center;gap:8px;padding-top:10px;border-top:1px solid var(--bd)}
+.sla{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700}
+.stars{display:inline-flex;gap:1.5px;color:var(--orange)}
+.ba{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.ba .b{border:1px solid var(--bd);border-radius:10px;overflow:hidden}
+.ba .b .h{font-size:11px;font-weight:700;padding:6px 10px;text-align:center;letter-spacing:.3px}
+.ba .b .p{height:110px;display:grid;place-items:center;color:rgba(255,255,255,.85);font-size:11px;font-weight:600}
+
+/* ---------- MAP ---------- */
+.mapwrap{position:relative;height:calc(100vh - 190px);min-height:520px;border-radius:12px;overflow:hidden;border:1px solid var(--bd);box-shadow:var(--sh);
+  background:#EDF4EE;
+  background-image:linear-gradient(rgba(39,174,96,.09) 1px,transparent 1px),linear-gradient(90deg,rgba(39,174,96,.09) 1px,transparent 1px);
+  background-size:52px 52px}
+.road{position:absolute;background:#fff;box-shadow:0 0 0 1px #E1E7E3}
+.river{position:absolute;background:rgba(59,130,196,.28);border-radius:40px}
+.blk{position:absolute;background:rgba(39,174,96,.10);border:1px solid rgba(39,174,96,.16);border-radius:8px}
+.mlbl{position:absolute;font-size:11px;color:#7C8F84;font-weight:600;letter-spacing:.3px;pointer-events:none}
+.pin{position:absolute;width:15px;height:15px;border-radius:50%;border:2.5px solid #fff;box-shadow:0 1.5px 5px rgba(0,0,0,.28);cursor:pointer;transform:translate(-50%,-50%);transition:.15s}
+.pin:hover{transform:translate(-50%,-50%) scale(1.35);z-index:8}
+.mpanel{position:absolute;background:#fff;border:1px solid var(--bd);border-radius:12px;box-shadow:0 6px 22px rgba(27,58,92,.13);z-index:10}
+.mpanel.l{top:18px;left:18px;width:252px}
+.mpanel.r{top:18px;right:18px;width:264px}
+.mpanel .h{padding:13px 16px;border-bottom:1px solid var(--bd);font-size:12.5px;font-weight:700;color:var(--navy)}
+.mpanel .b{padding:10px 12px;max-height:calc(100vh - 300px);overflow-y:auto}
+.lyr{display:flex;align-items:center;gap:9px;padding:7px 8px;border-radius:8px;cursor:pointer;font-size:12.3px}
+.lyr:hover{background:var(--bg2)}
+.lyr .n{margin-left:auto;font-size:11px;color:var(--mut);font-weight:600}
+.sw{width:32px;height:18px;border-radius:10px;background:#D8DEE4;position:relative;transition:.18s;flex:none}
+.sw:after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:#fff;transition:.18s;box-shadow:0 1px 2px rgba(0,0,0,.2)}
+.lyr.on .sw{background:var(--green)}
+.lyr.on .sw:after{left:16px}
+.pop{position:absolute;width:250px;background:#fff;border:1px solid var(--bd);border-radius:12px;box-shadow:0 8px 26px rgba(27,58,92,.18);z-index:20;transform:translate(-50%,calc(-100% - 16px));overflow:hidden}
+.pop .h{padding:11px 14px;border-bottom:1px solid var(--bd);display:flex;gap:8px;align-items:flex-start}
+.pop .h b{font-size:12.8px;color:var(--navy);line-height:1.35}
+.pop .b{padding:11px 14px;display:flex;flex-direction:column;gap:7px}
+.pop .r{display:flex;gap:8px;font-size:11.8px}
+.pop .r .k{color:var(--mut);width:76px;flex:none}
+.pop:after{content:"";position:absolute;bottom:-7px;left:50%;margin-left:-7px;width:12px;height:12px;background:#fff;border-right:1px solid var(--bd);border-bottom:1px solid var(--bd);transform:rotate(45deg)}
+.pop.below{transform:translate(-50%,18px)}
+.pop.below:after{bottom:auto;top:-7px;border:none;border-left:1px solid var(--bd);border-top:1px solid var(--bd)}
+.pie{width:172px;height:172px;border-radius:50%;margin:4px auto 16px;position:relative}
+.pie:after{content:"";position:absolute;inset:31%;background:#fff;border-radius:50%}
+.pl{display:flex;align-items:center;gap:8px;font-size:12px;padding:4px 0}
+.pl .n{margin-left:auto;font-weight:700;color:var(--navy);font-size:12px}
+.mstat{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px;padding-top:14px;border-top:1px solid var(--bd)}
+.mstat div{background:var(--bg2);border-radius:9px;padding:9px 11px}
+.mstat b{display:block;font-size:16px;color:var(--navy);font-weight:800}
+.mstat span{font-size:10.5px;color:var(--mut)}
+
+/* ---------- TOAST ---------- */
+.toast{position:fixed;bottom:26px;left:50%;transform:translate(-50%,22px);background:var(--navy);color:#fff;padding:12px 20px;border-radius:11px;font-size:13px;font-weight:600;box-shadow:0 8px 26px rgba(27,58,92,.3);opacity:0;pointer-events:none;transition:.24s;z-index:80;display:flex;gap:9px;align-items:center}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- ORG TREE ---------- */
+.tree{padding-left:4px}
+.tnode{margin:8px 0}
+.tbox{display:flex;align-items:center;gap:11px;border:1px solid var(--bd);border-radius:10px;padding:11px 14px;background:#fff;box-shadow:var(--sh)}
+.tbox b{font-size:13px;color:var(--navy)}
+.tbox span{font-size:11.5px;color:var(--mut)}
+.tkids{margin-left:26px;padding-left:20px;border-left:2px dashed var(--bd)}
+.inp{width:78px;padding:6px 9px;border:1px solid var(--bd);border-radius:8px;text-align:center;font-size:12.5px;outline:none}
+.inp:focus{border-color:var(--blue)}
+
+@media (max-width:1280px){
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .split{grid-template-columns:1fr}
+  .grid3{grid-template-columns:repeat(2,1fr)}
+  .grid4{grid-template-columns:repeat(2,1fr)}
+  .kb{overflow-x:auto;grid-template-columns:repeat(5,232px);padding-bottom:8px}
+  .tb-search{max-width:230px}
+}
+@media (max-width:1080px){
+  .grid2{grid-template-columns:1fr}
+  .mpanel.r{display:none}
+}
+</style>
+</head>
+<body>
+
+<aside class="sb">
+  <div class="sb-logo">
+    <div class="mark">VG</div>
+    <div><b>ViGov</b><span>Điều hành số cấp xã</span></div>
+  </div>
+  <nav class="sb-menu" id="menu"></nav>
+  <div class="sb-foot">Phiên bản thử nghiệm 1.4<br>Dữ liệu mô phỏng phục vụ trình diễn</div>
+</aside>
+
+<div class="main">
+  <header class="tb">
+    <div class="tb-title"><b id="tbXa">UBND XÃ</b><span id="tbHuyen"></span></div>
+    <div class="tb-search" id="searchBox">
+      <span id="searchIcon"></span>
+      <input type="text" placeholder="Tìm nhiệm vụ, văn bản, phản ánh…" id="searchInput">
+    </div>
+    <div class="tb-right">
+      <button class="icbtn" id="btnBell" title="Thông báo"></button>
+      <button class="icbtn" id="btnHelp" title="Trợ giúp"></button>
+      <div class="user" id="userBox"></div>
+    </div>
+  </header>
+
+  <main>
+    <section class="sec" id="sec-overview"></section>
+    <section class="sec" id="sec-tasks"></section>
+    <section class="sec" id="sec-docs"></section>
+    <section class="sec" id="sec-fund"></section>
+    <section class="sec" id="sec-feedback"></section>
+    <section class="sec" id="sec-map"></section>
+    <section class="sec" id="sec-report"></section>
+    <section class="sec" id="sec-config"></section>
+  </main>
+</div>
+
+<div class="ovl" id="ovl"></div>
+<aside class="dw" id="dw">
+  <div class="dw-h">
+    <div style="flex:1"><h3 id="dwTitle"></h3><div class="m" id="dwMeta"></div></div>
+    <button class="icbtn" id="dwClose" title="Đóng"></button>
+  </div>
+  <div class="dw-b" id="dwBody"></div>
+  <div class="dw-f" id="dwFoot"></div>
+</aside>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ============================================================
+   DỮ LIỆU MẪU — sửa trực tiếp trong object này
+   ============================================================ */
+const MOCK_DATA = {
+  xa: "Xã Đại Thắng",
+  huyen: "Huyện Phú Xuyên · Thành phố Hà Nội",
+  nguoiDung: { ten: "Nguyễn Văn Bình", chucVu: "Chủ tịch UBND", tat: "NB" },
+  soThongBao: 5,
+
+  boPhan: ["Văn phòng UBND","Địa chính – Xây dựng","Tư pháp – Hộ tịch","Văn hoá – Xã hội",
+           "Tài chính – Kế toán","Trung tâm Phục vụ hành chính công","Công an xã","Quân sự xã"],
+
+  canBo: [
+    { ten:"Nguyễn Văn Bình", tat:"NB", mau:"#1B3A5C", bp:"Văn phòng UBND", cv:"Chủ tịch UBND" },
+    { ten:"Trần Thị Hạnh",  tat:"TH", mau:"#E91E8C", bp:"Văn phòng UBND", cv:"Phó Chủ tịch UBND" },
+    { ten:"Lê Minh Tuấn",   tat:"LT", mau:"#3B82C4", bp:"Địa chính – Xây dựng", cv:"Công chức Địa chính" },
+    { ten:"Phạm Thị Ngọc",  tat:"PN", mau:"#8E44AD", bp:"Tư pháp – Hộ tịch", cv:"Công chức Tư pháp" },
+    { ten:"Vũ Đức Anh",     tat:"VA", mau:"#27AE60", bp:"Văn hoá – Xã hội", cv:"Công chức Văn hoá" },
+    { ten:"Đỗ Thanh Hà",    tat:"ĐH", mau:"#E67E22", bp:"Tài chính – Kế toán", cv:"Kế toán trưởng" },
+    { ten:"Hoàng Văn Sơn",  tat:"HS", mau:"#17A2A2", bp:"Công an xã", cv:"Trưởng Công an xã" },
+    { ten:"Ngô Thị Lan",    tat:"NL", mau:"#E74C3C", bp:"Trung tâm Phục vụ hành chính công", cv:"Chuyên viên tiếp nhận" },
+    { ten:"Bùi Quang Khải", tat:"BK", mau:"#5B6C8F", bp:"Quân sự xã", cv:"Chỉ huy trưởng" }
+  ],
+
+  kpi: [
+    { id:"k1", so:"124", nhan:"Nhiệm vụ đang thực hiện", phu:"Tăng 12 việc so với tuần trước", mau:"var(--blue)",   tint:"rgba(59,130,196,.07)",  ic:"check", man:"tasks" },
+    { id:"k2", so:"9",   nhan:"Nhiệm vụ quá hạn",        phu:"Cần đôn đốc trong ngày",         mau:"var(--red)",    tint:"rgba(231,76,60,.07)",   ic:"alert", man:"tasks" },
+    { id:"k3", so:"31",  nhan:"Văn bản chưa xử lý",      phu:"Trong đó 6 văn bản đến hạn",     mau:"var(--purple)", tint:"rgba(142,68,173,.07)",  ic:"file",  man:"docs" },
+    { id:"k4", so:"68%", nhan:"Tỷ lệ giải ngân",         phu:"8,5 / 12,5 tỷ đồng",             mau:"var(--orange)", tint:"rgba(230,126,34,.07)",  ic:"wallet",man:"fund" },
+    { id:"k5", so:"87%", nhan:"Phản ánh đúng hạn",       phu:"271 / 312 lượt trong tháng",     mau:"var(--green)",  tint:"rgba(39,174,96,.07)",   ic:"msg",   man:"feedback" },
+    { id:"k6", so:"4,6", nhan:"Mức hài lòng người dân",  phu:"Thang điểm 5 · 1.204 lượt đánh giá", mau:"var(--teal)", tint:"rgba(23,162,162,.07)", ic:"smile", man:"feedback" }
+  ],
+
+  nhiemVuThang: [
+    {t:"T1",ht:18,g:24},{t:"T2",ht:15,g:19},{t:"T3",ht:26,g:31},{t:"T4",ht:22,g:28},
+    {t:"T5",ht:31,g:36},{t:"T6",ht:28,g:33},{t:"T7",ht:34,g:39},{t:"T8",ht:41,g:47},
+    {t:"T9",ht:37,g:44},{t:"T10",ht:29,g:38},{t:"T11",ht:24,g:30},{t:"T12",ht:16,g:22}
+  ],
+
+  giaiNganLuyKe: {
+    thang:["T1","T2","T3","T4","T5","T6","T7","T8","T9","T10","T11","T12"],
+    keHoach:[0.9,1.9,3.0,4.1,5.2,6.3,7.4,8.6,9.7,10.8,11.7,12.5],
+    thucTe:[0.6,1.4,2.2,3.1,4.0,5.1,6.2,7.3,8.5,null,null,null]
+  },
+
+  canXuLy: [
+    { muc:"cao", tieuDe:"Phúc đáp Công văn 214/UBND-VP về rà soát đất công ích", bp:"Địa chính – Xây dựng", nhan:"Quá hạn 3 ngày", late:true },
+    { muc:"cao", tieuDe:"Xử lý ô nhiễm kênh tiêu Thôn Đoài", bp:"Văn hoá – Xã hội", nhan:"Quá hạn 1 ngày", late:true },
+    { muc:"tb",  tieuDe:"Chuẩn bị nội dung kỳ họp HĐND xã tháng 9", bp:"Văn phòng UBND", nhan:"Còn 2 ngày", late:false },
+    { muc:"cao", tieuDe:"Giải trình chậm giải ngân hạng mục Nhà văn hoá xã", bp:"Tài chính – Kế toán", nhan:"Quá hạn 2 ngày", late:true },
+    { muc:"tb",  tieuDe:"Duyệt hồ sơ hộ nghèo Quý III đợt bổ sung", bp:"Văn hoá – Xã hội", nhan:"Còn 1 ngày", late:false },
+    { muc:"thap",tieuDe:"Tổng hợp phản ánh lĩnh vực trật tự đô thị tuần 34", bp:"Công an xã", nhan:"Còn 4 ngày", late:false }
+  ]
+};
+
+/* ---------- NHIỆM VỤ ---------- */
+MOCK_DATA.nhiemVu = [
+  { id:"NV-2601", tieuDe:"Rà soát quỹ đất công ích năm 2026", nguon:"Từ kết luận họp 12/8", nguonLoai:"hop",
+    nguoiTH:"Lê Minh Tuấn", bp:"Địa chính – Xây dựng", han:"30/08/2026", tienDo:65, tt:"dang", uuTien:"cao",
+    nguoiGiao:"Nguyễn Văn Bình", phoiHop:["Đỗ Thanh Hà","Trần Thị Hạnh"],
+    moTa:"Rà soát, thống kê toàn bộ diện tích đất công ích (đất 5%) trên địa bàn xã; đối chiếu hồ sơ địa chính với hiện trạng sử dụng; lập danh sách các trường hợp sử dụng sai mục đích, báo cáo UBND huyện trước ngày 30/8/2026.",
+    viec:[{t:"Trích lục hồ sơ địa chính 8 thôn, tổ dân phố",done:true},
+          {t:"Đo đạc, kiểm tra hiện trạng thực địa",done:true},
+          {t:"Lập biên bản các trường hợp sử dụng sai mục đích",done:false},
+          {t:"Dự thảo báo cáo gửi Phòng Tài nguyên và Môi trường huyện",done:false}] },
+
+  { id:"NV-2602", tieuDe:"Chuẩn bị nội dung kỳ họp HĐND xã", nguon:"Từ kết luận họp 12/8", nguonLoai:"hop",
+    nguoiTH:"Trần Thị Hạnh", bp:"Văn phòng UBND", han:"26/08/2026", tienDo:80, tt:"cho", uuTien:"cao",
+    nguoiGiao:"Nguyễn Văn Bình", phoiHop:["Đỗ Thanh Hà"],
+    moTa:"Xây dựng tài liệu phục vụ kỳ họp thường lệ HĐND xã tháng 9/2026: báo cáo tình hình kinh tế – xã hội 8 tháng, tờ trình điều chỉnh dự toán ngân sách, dự thảo nghị quyết.",
+    viec:[{t:"Dự thảo báo cáo kinh tế – xã hội 8 tháng",done:true},
+          {t:"Tờ trình điều chỉnh dự toán ngân sách xã",done:true},
+          {t:"Trình Thường trực HĐND xã cho ý kiến",done:false}] },
+
+  { id:"NV-2603", tieuDe:"Xử lý ô nhiễm kênh tiêu Thôn Đoài", nguon:"Từ phản ánh #PA-1042", nguonLoai:"pa",
+    nguoiTH:"Vũ Đức Anh", bp:"Văn hoá – Xã hội", han:"21/08/2026", tienDo:45, tt:"qua", uuTien:"cao",
+    nguoiGiao:"Trần Thị Hạnh", phoiHop:["Hoàng Văn Sơn","Lê Minh Tuấn"],
+    moTa:"Kiểm tra, xác minh nguồn xả thải gây ô nhiễm đoạn kênh tiêu qua Thôn Đoài; yêu cầu cơ sở vi phạm khắc phục; tổ chức nạo vét, khơi thông dòng chảy.",
+    viec:[{t:"Kiểm tra hiện trường, lấy mẫu nước",done:true},
+          {t:"Lập biên bản làm việc với cơ sở chế biến",done:true},
+          {t:"Tổ chức nạo vét đoạn kênh 420m",done:false},
+          {t:"Báo cáo kết quả về UBND xã",done:false}] },
+
+  { id:"NV-2604", tieuDe:"Hoàn thiện hồ sơ hộ nghèo Quý III", nguon:"Từ CV 198/UBND-VHXH", nguonLoai:"vb",
+    nguoiTH:"Vũ Đức Anh", bp:"Văn hoá – Xã hội", han:"05/09/2026", tienDo:30, tt:"dang", uuTien:"tb",
+    nguoiGiao:"Trần Thị Hạnh", phoiHop:["Ngô Thị Lan"],
+    moTa:"Rà soát, bổ sung hồ sơ hộ nghèo, hộ cận nghèo Quý III/2026 theo chuẩn nghèo đa chiều giai đoạn 2022–2026; niêm yết công khai danh sách tại nhà văn hoá các thôn.",
+    viec:[{t:"Thu thập phiếu rà soát tại 8 thôn, tổ dân phố",done:true},
+          {t:"Chấm điểm theo chuẩn nghèo đa chiều",done:false},
+          {t:"Niêm yết công khai danh sách 10 ngày",done:false}] },
+
+  { id:"NV-2605", tieuDe:"Phúc đáp Công văn 214/UBND-VP", nguon:"Từ CV 214/UBND", nguonLoai:"vb",
+    nguoiTH:"Lê Minh Tuấn", bp:"Địa chính – Xây dựng", han:"19/08/2026", tienDo:55, tt:"qua", uuTien:"cao",
+    nguoiGiao:"Nguyễn Văn Bình", phoiHop:["Phạm Thị Ngọc"],
+    moTa:"Phúc đáp Công văn số 214/UBND-VP ngày 08/8/2026 của UBND huyện về việc báo cáo kết quả quản lý, sử dụng đất công ích và đất chưa sử dụng trên địa bàn.",
+    viec:[{t:"Tổng hợp số liệu từ hồ sơ địa chính",done:true},
+          {t:"Dự thảo văn bản phúc đáp",done:true},
+          {t:"Trình Chủ tịch UBND xã ký ban hành",done:false}] },
+
+  { id:"NV-2606", tieuDe:"Giải phóng mặt bằng đường liên thôn Đông – Trung", nguon:"Từ kết luận họp 05/8", nguonLoai:"hop",
+    nguoiTH:"Lê Minh Tuấn", bp:"Địa chính – Xây dựng", han:"15/09/2026", tienDo:25, tt:"dang", uuTien:"cao",
+    nguoiGiao:"Nguyễn Văn Bình", phoiHop:["Đỗ Thanh Hà","Hoàng Văn Sơn"],
+    moTa:"Tổ chức kiểm đếm, lập phương án bồi thường, hỗ trợ giải phóng mặt bằng tuyến đường liên thôn Đông – Trung dài 1,8km; vận động 34 hộ dân bàn giao mặt bằng.",
+    viec:[{t:"Thành lập Tổ công tác giải phóng mặt bằng",done:true},
+          {t:"Kiểm đếm tài sản trên đất của 34 hộ",done:false},
+          {t:"Niêm yết phương án bồi thường, hỗ trợ",done:false},
+          {t:"Tổ chức đối thoại với các hộ chưa đồng thuận",done:false}] },
+
+  { id:"NV-2607", tieuDe:"Cấp phát trang thiết bị phòng chống thiên tai", nguon:"Từ CV 187/UBND-QS", nguonLoai:"vb",
+    nguoiTH:"Bùi Quang Khải", bp:"Quân sự xã", han:"28/08/2026", tienDo:0, tt:"moi", uuTien:"tb",
+    nguoiGiao:"Nguyễn Văn Bình", phoiHop:["Đỗ Thanh Hà"],
+    moTa:"Tiếp nhận, phân bổ trang thiết bị, vật tư phòng chống thiên tai và tìm kiếm cứu nạn năm 2026 cho lực lượng xung kích 8 thôn, tổ dân phố.",
+    viec:[{t:"Lập danh sách nhu cầu của từng thôn",done:false},
+          {t:"Tiếp nhận vật tư từ Ban Chỉ huy huyện",done:false},
+          {t:"Bàn giao, ký nhận tại các thôn",done:false}] },
+
+  { id:"NV-2608", tieuDe:"Số hoá hồ sơ hộ tịch giai đoạn 2015–2020", nguon:"Từ Kế hoạch 42/KH-UBND", nguonLoai:"vb",
+    nguoiTH:"Phạm Thị Ngọc", bp:"Tư pháp – Hộ tịch", han:"30/09/2026", tienDo:52, tt:"dang", uuTien:"tb",
+    nguoiGiao:"Trần Thị Hạnh", phoiHop:["Ngô Thị Lan"],
+    moTa:"Quét, chuẩn hoá và cập nhật 6.480 hồ sơ hộ tịch giai đoạn 2015–2020 lên Hệ thống thông tin đăng ký và quản lý hộ tịch dùng chung.",
+    viec:[{t:"Phân loại, sắp xếp sổ gốc theo năm",done:true},
+          {t:"Quét và đặt tên tệp theo quy chuẩn",done:true},
+          {t:"Nhập liệu, đối chiếu dữ liệu dân cư",done:false}] },
+
+  { id:"NV-2609", tieuDe:"Kiểm tra an toàn thực phẩm dịp Tết Trung thu", nguon:"Từ kết luận họp 12/8", nguonLoai:"hop",
+    nguoiTH:"Ngô Thị Lan", bp:"Trung tâm Phục vụ hành chính công", han:"12/09/2026", tienDo:0, tt:"moi", uuTien:"thap",
+    nguoiGiao:"Trần Thị Hạnh", phoiHop:["Hoàng Văn Sơn"],
+    moTa:"Thành lập đoàn kiểm tra liên ngành, kiểm tra điều kiện an toàn thực phẩm tại 26 cơ sở sản xuất, kinh doanh bánh kẹo trên địa bàn dịp Tết Trung thu 2026.",
+    viec:[{t:"Ban hành quyết định thành lập đoàn kiểm tra",done:false},
+          {t:"Kiểm tra 26 cơ sở trên địa bàn",done:false},
+          {t:"Công khai kết quả kiểm tra",done:false}] },
+
+  { id:"NV-2610", tieuDe:"Quyết toán kinh phí hoạt động Quý II/2026", nguon:"Từ CV 176/UBND-TC", nguonLoai:"vb",
+    nguoiTH:"Đỗ Thanh Hà", bp:"Tài chính – Kế toán", han:"18/08/2026", tienDo:100, tt:"xong", uuTien:"tb",
+    nguoiGiao:"Nguyễn Văn Bình", phoiHop:[],
+    moTa:"Lập báo cáo quyết toán kinh phí hoạt động thường xuyên Quý II/2026, gửi Phòng Tài chính – Kế hoạch huyện thẩm định.",
+    viec:[{t:"Đối chiếu chứng từ chi thường xuyên",done:true},
+          {t:"Lập báo cáo quyết toán theo biểu mẫu",done:true},
+          {t:"Gửi Phòng Tài chính – Kế hoạch huyện",done:true}] },
+
+  { id:"NV-2611", tieuDe:"Lắp đặt hệ thống chiếu sáng Tổ dân phố số 3", nguon:"Từ phản ánh #PA-1028", nguonLoai:"pa",
+    nguoiTH:"Lê Minh Tuấn", bp:"Địa chính – Xây dựng", han:"14/08/2026", tienDo:100, tt:"xong", uuTien:"tb",
+    nguoiGiao:"Trần Thị Hạnh", phoiHop:["Đỗ Thanh Hà"],
+    moTa:"Thay thế 18 bộ đèn chiếu sáng công cộng hỏng và bổ sung 6 bộ mới trên tuyến đường Tổ dân phố số 3 theo phản ánh của người dân.",
+    viec:[{t:"Khảo sát, lập dự toán",done:true},{t:"Thi công thay thế 18 bộ đèn",done:true},{t:"Nghiệm thu, bàn giao cho tổ dân phố",done:true}] },
+
+  { id:"NV-2612", tieuDe:"Tổng hợp báo cáo cải cách hành chính 8 tháng", nguon:"Từ CV 203/UBND-VP", nguonLoai:"vb",
+    nguoiTH:"Trần Thị Hạnh", bp:"Văn phòng UBND", han:"31/08/2026", tienDo:70, tt:"cho", uuTien:"tb",
+    nguoiGiao:"Nguyễn Văn Bình", phoiHop:["Ngô Thị Lan"],
+    moTa:"Tổng hợp kết quả thực hiện công tác cải cách hành chính 8 tháng đầu năm 2026, đánh giá chỉ số hài lòng của người dân đối với dịch vụ công.",
+    viec:[{t:"Thu thập số liệu từ các bộ phận",done:true},
+          {t:"Phân tích chỉ số hài lòng",done:true},
+          {t:"Hoàn thiện báo cáo trình ký",done:false}] },
+
+  { id:"NV-2613", tieuDe:"Bảo đảm an ninh trật tự dịp Quốc khánh 2/9", nguon:"Từ Kế hoạch 51/KH-CAX", nguonLoai:"vb",
+    nguoiTH:"Hoàng Văn Sơn", bp:"Công an xã", han:"03/09/2026", tienDo:40, tt:"dang", uuTien:"cao",
+    nguoiGiao:"Nguyễn Văn Bình", phoiHop:["Bùi Quang Khải"],
+    moTa:"Xây dựng và triển khai phương án bảo đảm an ninh trật tự, an toàn giao thông trên địa bàn xã dịp kỷ niệm Quốc khánh 2/9/2026.",
+    viec:[{t:"Xây dựng phương án, phân công lực lượng",done:true},
+          {t:"Tuần tra, kiểm soát địa bàn trọng điểm",done:false},
+          {t:"Báo cáo kết quả sau đợt cao điểm",done:false}] },
+
+  { id:"NV-2614", tieuDe:"Cập nhật dữ liệu hộ kinh doanh cá thể", nguon:"Từ phản ánh #PA-1035", nguonLoai:"pa",
+    nguoiTH:"Ngô Thị Lan", bp:"Trung tâm Phục vụ hành chính công", han:"17/08/2026", tienDo:60, tt:"qua", uuTien:"tb",
+    nguoiGiao:"Trần Thị Hạnh", phoiHop:["Đỗ Thanh Hà"],
+    moTa:"Rà soát, cập nhật thông tin 1.812 hộ kinh doanh cá thể lên bản đồ kinh tế số của xã; bổ sung ngành nghề, quy mô lao động.",
+    viec:[{t:"Đối chiếu danh sách với cơ quan thuế",done:true},
+          {t:"Khảo sát bổ sung tại 3 chợ trên địa bàn",done:true},
+          {t:"Cập nhật lên bản đồ kinh tế số",done:false}] },
+
+  { id:"NV-2615", tieuDe:"Sửa chữa, chống xuống cấp Nhà văn hoá Thôn Trung", nguon:"Từ kết luận họp 05/8", nguonLoai:"hop",
+    nguoiTH:"Đỗ Thanh Hà", bp:"Tài chính – Kế toán", han:"22/09/2026", tienDo:15, tt:"moi", uuTien:"thap",
+    nguoiGiao:"Nguyễn Văn Bình", phoiHop:["Lê Minh Tuấn"],
+    moTa:"Bố trí kinh phí, tổ chức sửa chữa mái, hệ thống điện và sân Nhà văn hoá Thôn Trung đã xuống cấp sau mùa mưa bão.",
+    viec:[{t:"Khảo sát, lập dự toán sửa chữa",done:true},
+          {t:"Trình phê duyệt nguồn kinh phí",done:false},
+          {t:"Lựa chọn đơn vị thi công",done:false}] }
+];
+
+/* ---------- VĂN BẢN & ĐƠN THƯ ---------- */
+MOCK_DATA.vanBanDen = [
+  { soDen:"412", ky:"214/UBND-VP", ngay:"08/08/2026", coQuan:"UBND huyện Phú Xuyên",
+    trichYeu:"V/v báo cáo kết quả quản lý, sử dụng đất công ích và đất chưa sử dụng trên địa bàn",
+    han:"19/08/2026", conLai:-3, bp:"Địa chính – Xây dựng", tt:"dangxl", loai:"Công văn", doMat:"Thường", doKhan:"Khẩn",
+    nguoiKy:"Phó Chủ tịch Nguyễn Đức Trung", soTrang:4,
+    lo:[{t:"Văn phòng tiếp nhận, vào sổ văn bản đến",m:"08/08/2026 09:12 · Trần Thị Hạnh",s:"ok"},
+        {t:"Trình Chủ tịch UBND xã cho ý kiến",m:"08/08/2026 14:30 · Trần Thị Hạnh",s:"ok"},
+        {t:"Chuyển bộ phận Địa chính – Xây dựng chủ trì",m:"09/08/2026 08:05 · Nguyễn Văn Bình",s:"ok"},
+        {t:"Chuyển Tư pháp – Hộ tịch phối hợp rà soát pháp lý",m:"12/08/2026 10:40 · Lê Minh Tuấn",s:"ok"},
+        {t:"Đang xử lý — dự thảo văn bản phúc đáp",m:"Từ 14/08/2026 · Lê Minh Tuấn",s:"cur"}] },
+
+  { soDen:"418", ky:"1123/QĐ-UBND", ngay:"11/08/2026", coQuan:"UBND Thành phố Hà Nội",
+    trichYeu:"Quyết định phê duyệt kế hoạch sử dụng đất năm 2026 huyện Phú Xuyên",
+    han:"25/08/2026", conLai:2, bp:"Địa chính – Xây dựng", tt:"dangxl", loai:"Quyết định", doMat:"Thường", doKhan:"Thường",
+    nguoiKy:"Phó Chủ tịch Trần Quốc Hưng", soTrang:12,
+    lo:[{t:"Văn phòng tiếp nhận qua trục liên thông",m:"11/08/2026 07:55 · Hệ thống",s:"ok"},
+        {t:"Trình Chủ tịch UBND xã",m:"11/08/2026 10:20 · Trần Thị Hạnh",s:"ok"},
+        {t:"Chuyển Địa chính – Xây dựng nghiên cứu, triển khai",m:"12/08/2026 08:15 · Nguyễn Văn Bình",s:"ok"},
+        {t:"Đang xử lý — xây dựng kế hoạch triển khai",m:"Từ 13/08/2026 · Lê Minh Tuấn",s:"cur"}] },
+
+  { soDen:"421", ky:"198/UBND-VHXH", ngay:"12/08/2026", coQuan:"UBND huyện Phú Xuyên",
+    trichYeu:"V/v rà soát, bổ sung hồ sơ hộ nghèo, hộ cận nghèo Quý III năm 2026",
+    han:"05/09/2026", conLai:13, bp:"Văn hoá – Xã hội", tt:"dangxl", loai:"Công văn", doMat:"Thường", doKhan:"Thường",
+    nguoiKy:"Phó Chủ tịch Lê Thị Vân", soTrang:3,
+    lo:[{t:"Văn phòng tiếp nhận, vào sổ văn bản đến",m:"12/08/2026 08:40 · Trần Thị Hạnh",s:"ok"},
+        {t:"Chuyển Văn hoá – Xã hội chủ trì",m:"12/08/2026 15:10 · Nguyễn Văn Bình",s:"ok"},
+        {t:"Đã tạo nhiệm vụ NV-2604 theo dõi",m:"13/08/2026 09:00 · Vũ Đức Anh",s:"cur"}] },
+
+  { soDen:"425", ky:"87/TB-CAH", ngay:"14/08/2026", coQuan:"Công an huyện Phú Xuyên",
+    trichYeu:"Thông báo tình hình an ninh trật tự và phương án bảo đảm dịp Quốc khánh 2/9",
+    han:"22/08/2026", conLai:-1, bp:"Công an xã", tt:"dangxl", loai:"Thông báo", doMat:"Mật", doKhan:"Khẩn",
+    nguoiKy:"Trưởng Công an huyện Phạm Văn Đông", soTrang:6,
+    lo:[{t:"Văn phòng tiếp nhận bản giấy",m:"14/08/2026 09:25 · Trần Thị Hạnh",s:"ok"},
+        {t:"Chuyển Công an xã chủ trì",m:"14/08/2026 11:00 · Nguyễn Văn Bình",s:"ok"},
+        {t:"Đang xử lý — xây dựng phương án",m:"Từ 15/08/2026 · Hoàng Văn Sơn",s:"cur"}] },
+
+  { soDen:"429", ky:"203/UBND-VP", ngay:"15/08/2026", coQuan:"UBND huyện Phú Xuyên",
+    trichYeu:"V/v báo cáo kết quả công tác cải cách hành chính 8 tháng đầu năm 2026",
+    han:"31/08/2026", conLai:8, bp:"Văn phòng UBND", tt:"dangxl", loai:"Công văn", doMat:"Thường", doKhan:"Thường",
+    nguoiKy:"Chánh Văn phòng Đinh Thị Mai", soTrang:2,
+    lo:[{t:"Văn phòng tiếp nhận qua trục liên thông",m:"15/08/2026 08:02 · Hệ thống",s:"ok"},
+        {t:"Chuyển Văn phòng UBND chủ trì tổng hợp",m:"15/08/2026 09:30 · Nguyễn Văn Bình",s:"ok"},
+        {t:"Đang xử lý — chờ số liệu các bộ phận",m:"Từ 16/08/2026 · Trần Thị Hạnh",s:"cur"}] },
+
+  { soDen:"433", ky:"42/KH-UBND", ngay:"17/08/2026", coQuan:"UBND huyện Phú Xuyên",
+    trichYeu:"Kế hoạch số hoá dữ liệu hộ tịch giai đoạn 2015–2020 trên địa bàn huyện",
+    han:"30/09/2026", conLai:38, bp:"Tư pháp – Hộ tịch", tt:"dangxl", loai:"Kế hoạch", doMat:"Thường", doKhan:"Thường",
+    nguoiKy:"Phó Chủ tịch Lê Thị Vân", soTrang:8,
+    lo:[{t:"Văn phòng tiếp nhận, vào sổ văn bản đến",m:"17/08/2026 08:15 · Trần Thị Hạnh",s:"ok"},
+        {t:"Chuyển Tư pháp – Hộ tịch chủ trì",m:"17/08/2026 14:00 · Nguyễn Văn Bình",s:"ok"},
+        {t:"Đang xử lý — triển khai nhiệm vụ NV-2608",m:"Từ 18/08/2026 · Phạm Thị Ngọc",s:"cur"}] },
+
+  { soDen:"436", ky:"176/UBND-TC", ngay:"18/08/2026", coQuan:"Phòng Tài chính – Kế hoạch huyện",
+    trichYeu:"V/v đôn đốc tiến độ giải ngân vốn đầu tư công năm 2026",
+    han:"29/08/2026", conLai:6, bp:"Tài chính – Kế toán", tt:"choduyet", loai:"Công văn", doMat:"Thường", doKhan:"Khẩn",
+    nguoiKy:"Trưởng phòng Nguyễn Hữu Thọ", soTrang:5,
+    lo:[{t:"Văn phòng tiếp nhận qua trục liên thông",m:"18/08/2026 07:48 · Hệ thống",s:"ok"},
+        {t:"Chuyển Tài chính – Kế toán chủ trì",m:"18/08/2026 09:10 · Nguyễn Văn Bình",s:"ok"},
+        {t:"Dự thảo báo cáo trình Chủ tịch UBND xã ký",m:"20/08/2026 16:20 · Đỗ Thanh Hà",s:"cur"}] },
+
+  { soDen:"440", ky:"51/GM-UBND", ngay:"20/08/2026", coQuan:"UBND huyện Phú Xuyên",
+    trichYeu:"Giấy mời dự Hội nghị sơ kết công tác chuyển đổi số cấp xã 8 tháng đầu năm",
+    han:"27/08/2026", conLai:4, bp:"Văn phòng UBND", tt:"moi", loai:"Giấy mời", doMat:"Thường", doKhan:"Thường",
+    nguoiKy:"Chánh Văn phòng Đinh Thị Mai", soTrang:1,
+    lo:[{t:"Văn phòng tiếp nhận qua trục liên thông",m:"20/08/2026 10:05 · Hệ thống",s:"ok"},
+        {t:"Chờ trình Chủ tịch UBND xã phân công dự",m:"Từ 20/08/2026 · Trần Thị Hạnh",s:"cur"}] }
+];
+
+MOCK_DATA.donThu = [
+  { soDen:"ĐT-087", ky:"Đơn kiến nghị", ngay:"09/08/2026", coQuan:"Ông Nguyễn Văn Thắng — Thôn Đông",
+    trichYeu:"Kiến nghị giải quyết tranh chấp ranh giới thửa đất số 214, tờ bản đồ số 7",
+    han:"08/09/2026", conLai:16, bp:"Địa chính – Xây dựng", tt:"dangxl", loai:"Đơn kiến nghị", doMat:"Thường", doKhan:"Thường",
+    nguoiKy:"Người làm đơn: Nguyễn Văn Thắng", soTrang:3,
+    lo:[{t:"Trung tâm Phục vụ hành chính công tiếp nhận",m:"09/08/2026 08:20 · Ngô Thị Lan",s:"ok"},
+        {t:"Chuyển Văn phòng UBND vào sổ theo dõi",m:"09/08/2026 10:15 · Trần Thị Hạnh",s:"ok"},
+        {t:"Chuyển Địa chính – Xây dựng xác minh",m:"10/08/2026 08:30 · Nguyễn Văn Bình",s:"ok"},
+        {t:"Đang xử lý — đã mời hai bên hoà giải lần 1",m:"Từ 16/08/2026 · Lê Minh Tuấn",s:"cur"}] },
+
+  { soDen:"ĐT-088", ky:"Đơn phản ánh", ngay:"12/08/2026", coQuan:"Bà Trần Thị Mến — Tổ dân phố số 2",
+    trichYeu:"Phản ánh hộ kinh doanh lấn chiếm vỉa hè gây cản trở giao thông",
+    han:"27/08/2026", conLai:4, bp:"Công an xã", tt:"dangxl", loai:"Đơn phản ánh", doMat:"Thường", doKhan:"Thường",
+    nguoiKy:"Người làm đơn: Trần Thị Mến", soTrang:2,
+    lo:[{t:"Trung tâm Phục vụ hành chính công tiếp nhận",m:"12/08/2026 09:40 · Ngô Thị Lan",s:"ok"},
+        {t:"Chuyển Công an xã kiểm tra, xử lý",m:"12/08/2026 15:00 · Trần Thị Hạnh",s:"ok"},
+        {t:"Đang xử lý — đã lập biên bản nhắc nhở",m:"Từ 14/08/2026 · Hoàng Văn Sơn",s:"cur"}] },
+
+  { soDen:"ĐT-089", ky:"Đơn đề nghị", ngay:"14/08/2026", coQuan:"Ông Lê Văn Hoà — Thôn Đoài",
+    trichYeu:"Đề nghị xác nhận tình trạng hôn nhân để hoàn thiện hồ sơ chuyển nhượng quyền sử dụng đất",
+    han:"19/08/2026", conLai:-2, bp:"Tư pháp – Hộ tịch", tt:"dangxl", loai:"Đơn đề nghị", doMat:"Thường", doKhan:"Khẩn",
+    nguoiKy:"Người làm đơn: Lê Văn Hoà", soTrang:2,
+    lo:[{t:"Trung tâm Phục vụ hành chính công tiếp nhận",m:"14/08/2026 08:05 · Ngô Thị Lan",s:"ok"},
+        {t:"Chuyển Tư pháp – Hộ tịch thụ lý",m:"14/08/2026 09:30 · Trần Thị Hạnh",s:"ok"},
+        {t:"Đang xử lý — chờ xác minh nơi cư trú trước đây",m:"Từ 15/08/2026 · Phạm Thị Ngọc",s:"cur"}] },
+
+  { soDen:"ĐT-090", ky:"Đơn khiếu nại", ngay:"16/08/2026", coQuan:"Bà Phạm Thị Xuân — Thôn Trung",
+    trichYeu:"Khiếu nại về phương án bồi thường, hỗ trợ khi thu hồi đất làm đường liên thôn",
+    han:"15/09/2026", conLai:23, bp:"Văn phòng UBND", tt:"choduyet", loai:"Đơn khiếu nại", doMat:"Thường", doKhan:"Khẩn",
+    nguoiKy:"Người làm đơn: Phạm Thị Xuân", soTrang:5,
+    lo:[{t:"Trung tâm Phục vụ hành chính công tiếp nhận",m:"16/08/2026 08:50 · Ngô Thị Lan",s:"ok"},
+        {t:"Trình Chủ tịch UBND xã xem xét thẩm quyền",m:"16/08/2026 14:20 · Trần Thị Hạnh",s:"ok"},
+        {t:"Chờ ban hành quyết định thụ lý giải quyết",m:"Từ 18/08/2026 · Nguyễn Văn Bình",s:"cur"}] },
+
+  { soDen:"ĐT-091", ky:"Đơn kiến nghị", ngay:"18/08/2026", coQuan:"Tập thể nhân dân Tổ dân phố số 4",
+    trichYeu:"Kiến nghị nâng cấp hệ thống thoát nước khu dân cư tránh ngập úng mùa mưa",
+    han:"17/09/2026", conLai:25, bp:"Địa chính – Xây dựng", tt:"moi", loai:"Đơn kiến nghị", doMat:"Thường", doKhan:"Thường",
+    nguoiKy:"Đại diện: Tổ trưởng Vũ Ngọc Bảo", soTrang:4,
+    lo:[{t:"Trung tâm Phục vụ hành chính công tiếp nhận",m:"18/08/2026 09:15 · Ngô Thị Lan",s:"ok"},
+        {t:"Chờ phân công bộ phận chủ trì",m:"Từ 18/08/2026 · Trần Thị Hạnh",s:"cur"}] },
+
+  { soDen:"ĐT-092", ky:"Đơn đề nghị", ngay:"20/08/2026", coQuan:"Ông Đinh Văn Cường — Thôn Đông",
+    trichYeu:"Đề nghị hỗ trợ kinh phí học nghề cho lao động nông thôn theo chính sách hiện hành",
+    han:"04/09/2026", conLai:12, bp:"Văn hoá – Xã hội", tt:"dangxl", loai:"Đơn đề nghị", doMat:"Thường", doKhan:"Thường",
+    nguoiKy:"Người làm đơn: Đinh Văn Cường", soTrang:2,
+    lo:[{t:"Trung tâm Phục vụ hành chính công tiếp nhận",m:"20/08/2026 08:30 · Ngô Thị Lan",s:"ok"},
+        {t:"Chuyển Văn hoá – Xã hội thẩm định điều kiện",m:"20/08/2026 11:00 · Trần Thị Hạnh",s:"ok"},
+        {t:"Đang xử lý — đối chiếu danh sách lao động",m:"Từ 21/08/2026 · Vũ Đức Anh",s:"cur"}] }
+];
+
+/* ---------- GIẢI NGÂN ---------- */
+MOCK_DATA.giaiNgan = {
+  tongKeHoach:"12,5 tỷ", daGiaiNgan:"8,5 tỷ", tyLe:68, soCham:2,
+  hangMuc:[
+    { id:"HM-01", ten:"Đường giao thông Thôn Đông", nguonVon:"Ngân sách xã", mauNguon:"var(--blue)",
+      phuTrach:"Lê Minh Tuấn", ke:3.7, thuc:3.2, cham:false,
+      chiTiet:[
+        {ngay:"12/03/2026",nd:"Tạm ứng hợp đồng thi công đợt 1",tien:"1,10 tỷ",dv:"Công ty TNHH Xây dựng Phú Thành",ng:"Đỗ Thanh Hà",ct:"UNC 041/2026"},
+        {ngay:"28/05/2026",nd:"Thanh toán khối lượng hoàn thành đợt 1",tien:"1,25 tỷ",dv:"Công ty TNHH Xây dựng Phú Thành",ng:"Đỗ Thanh Hà",ct:"UNC 118/2026"},
+        {ngay:"30/07/2026",nd:"Thanh toán khối lượng hoàn thành đợt 2",tien:"0,85 tỷ",dv:"Công ty TNHH Xây dựng Phú Thành",ng:"Đỗ Thanh Hà",ct:"UNC 176/2026"}],
+      binhLuan:[
+        {ten:"Lê Minh Tuấn",tat:"LT",mau:"#3B82C4",tg:"02/08/2026 09:15",nd:"Khối lượng thi công đạt 88%, dự kiến nghiệm thu toàn tuyến trong tháng 9/2026."},
+        {ten:"Đỗ Thanh Hà",tat:"ĐH",mau:"#E67E22",tg:"05/08/2026 14:40",nd:"Đề nghị nhà thầu bổ sung hồ sơ nghiệm thu đợt 2 để hoàn thiện thủ tục thanh toán."},
+        {ten:"Nguyễn Văn Bình",tat:"NB",mau:"#1B3A5C",tg:"06/08/2026 08:05",nd:"Đồng ý. Giao Địa chính – Xây dựng đôn đốc nhà thầu hoàn thiện trước 15/8/2026."}],
+      vuongMac:[
+        {nd:"Nhà thầu chậm nộp hồ sơ nghiệm thu khối lượng đợt 2",ng:"Lê Minh Tuấn",han:"15/08/2026"},
+        {nd:"Còn 2 hộ chưa bàn giao mặt bằng đoạn cuối tuyến",ng:"Hoàng Văn Sơn",han:"30/08/2026"}] },
+
+    { id:"HM-02", ten:"Nhà văn hoá xã", nguonVon:"Ngân sách huyện", mauNguon:"var(--purple)",
+      phuTrach:"Đỗ Thanh Hà", ke:4.2, thuc:1.1, cham:true,
+      chiTiet:[
+        {ngay:"20/04/2026",nd:"Chi phí khảo sát, lập báo cáo kinh tế – kỹ thuật",tien:"0,18 tỷ",dv:"Công ty CP Tư vấn Đại Việt",ng:"Đỗ Thanh Hà",ct:"UNC 072/2026"},
+        {ngay:"15/06/2026",nd:"Tạm ứng hợp đồng thi công phần móng",tien:"0,92 tỷ",dv:"Công ty TNHH Xây dựng Hoàng Long",ng:"Đỗ Thanh Hà",ct:"UNC 135/2026"}],
+      binhLuan:[
+        {ten:"Đỗ Thanh Hà",tat:"ĐH",mau:"#E67E22",tg:"01/08/2026 10:20",nd:"Hạng mục mới giải ngân 26% kế hoạch, chậm so với tiến độ đề ra khoảng 8 tuần."},
+        {ten:"Lê Minh Tuấn",tat:"LT",mau:"#3B82C4",tg:"03/08/2026 15:35",nd:"Vướng mắc: thủ tục điều chỉnh thiết kế phần mái đang chờ Phòng Kinh tế – Hạ tầng huyện thẩm định, nhà thầu phải dừng thi công từ 20/7/2026."},
+        {ten:"Nguyễn Văn Bình",tat:"NB",mau:"#1B3A5C",tg:"04/08/2026 08:50",nd:"Giao Tài chính – Kế toán làm việc trực tiếp với Phòng Kinh tế – Hạ tầng huyện trong tuần này, báo cáo Chủ tịch UBND xã trước ngày 12/8/2026."}],
+      vuongMac:[
+        {nd:"Chờ thẩm định hồ sơ điều chỉnh thiết kế phần mái",ng:"Đỗ Thanh Hà",han:"12/08/2026"},
+        {nd:"Chưa bố trí đủ vốn đối ứng của ngân sách xã",ng:"Trần Thị Hạnh",han:"25/08/2026"}] },
+
+    { id:"HM-03", ten:"Nâng cấp Trạm y tế xã", nguonVon:"Chương trình mục tiêu quốc gia", mauNguon:"var(--green)",
+      phuTrach:"Vũ Đức Anh", ke:2.4, thuc:2.1, cham:false,
+      chiTiet:[
+        {ngay:"10/02/2026",nd:"Tạm ứng thi công cải tạo khối nhà chính",tien:"0,70 tỷ",dv:"Công ty TNHH Xây dựng Tân Tiến",ng:"Đỗ Thanh Hà",ct:"UNC 022/2026"},
+        {ngay:"18/05/2026",nd:"Thanh toán khối lượng hoàn thành",tien:"0,95 tỷ",dv:"Công ty TNHH Xây dựng Tân Tiến",ng:"Đỗ Thanh Hà",ct:"UNC 104/2026"},
+        {ngay:"05/07/2026",nd:"Mua sắm trang thiết bị y tế",tien:"0,45 tỷ",dv:"Công ty CP Thiết bị Y tế Hà Nội",ng:"Vũ Đức Anh",ct:"UNC 152/2026"}],
+      binhLuan:[
+        {ten:"Vũ Đức Anh",tat:"VA",mau:"#27AE60",tg:"28/07/2026 09:00",nd:"Đã hoàn thành cải tạo khối nhà chính, đang lắp đặt trang thiết bị."},
+        {ten:"Đỗ Thanh Hà",tat:"ĐH",mau:"#E67E22",tg:"29/07/2026 11:25",nd:"Vướng mắc: một số thiết bị nhập về chậm so với hợp đồng 3 tuần."},
+        {ten:"Trần Thị Hạnh",tat:"TH",mau:"#E91E8C",tg:"30/07/2026 08:15",nd:"Đề nghị nhà cung cấp cam kết mốc bàn giao cụ thể, hoàn thành trước 20/8/2026."}],
+      vuongMac:[
+        {nd:"Thiết bị y tế chuyên dụng về chậm so với hợp đồng",ng:"Vũ Đức Anh",han:"20/08/2026"},
+        {nd:"Chưa hoàn thiện hồ sơ quyết toán giai đoạn 1",ng:"Đỗ Thanh Hà",han:"31/08/2026"}] },
+
+    { id:"HM-04", ten:"Hệ thống chiếu sáng công cộng", nguonVon:"Ngân sách xã", mauNguon:"var(--blue)",
+      phuTrach:"Lê Minh Tuấn", ke:1.2, thuc:1.1, cham:false,
+      chiTiet:[
+        {ngay:"14/03/2026",nd:"Mua sắm 240 bộ đèn LED chiếu sáng",tien:"0,62 tỷ",dv:"Công ty CP Thiết bị điện Thăng Long",ng:"Đỗ Thanh Hà",ct:"UNC 048/2026"},
+        {ngay:"22/06/2026",nd:"Chi phí lắp đặt, đấu nối",tien:"0,48 tỷ",dv:"Hợp tác xã Dịch vụ điện Đại Thắng",ng:"Lê Minh Tuấn",ct:"UNC 141/2026"}],
+      binhLuan:[
+        {ten:"Lê Minh Tuấn",tat:"LT",mau:"#3B82C4",tg:"25/07/2026 16:10",nd:"Đã lắp đặt xong 228/240 bộ đèn trên 12 tuyến đường thôn."},
+        {ten:"Đỗ Thanh Hà",tat:"ĐH",mau:"#E67E22",tg:"26/07/2026 08:45",nd:"Vướng mắc: 12 bộ còn lại phụ thuộc tiến độ giải phóng mặt bằng đường liên thôn."},
+        {ten:"Nguyễn Văn Bình",tat:"NB",mau:"#1B3A5C",tg:"26/07/2026 15:00",nd:"Chấp thuận lắp đặt sau khi bàn giao mặt bằng, không kéo dài quá 30/9/2026."}],
+      vuongMac:[
+        {nd:"12 bộ đèn chờ mặt bằng tuyến Đông – Trung",ng:"Lê Minh Tuấn",han:"30/09/2026"},
+        {nd:"Chưa ký biên bản bàn giao quản lý cho các thôn",ng:"Vũ Đức Anh",han:"10/09/2026"}] },
+
+    { id:"HM-05", ten:"Kênh mương nội đồng Thôn Đoài", nguonVon:"Vốn sự nghiệp nông nghiệp", mauNguon:"var(--orange)",
+      phuTrach:"Đỗ Thanh Hà", ke:1.0, thuc:0.2, cham:true,
+      chiTiet:[
+        {ngay:"08/05/2026",nd:"Chi phí khảo sát, thiết kế bản vẽ thi công",tien:"0,12 tỷ",dv:"Công ty CP Tư vấn Đại Việt",ng:"Đỗ Thanh Hà",ct:"UNC 096/2026"},
+        {ngay:"19/07/2026",nd:"Tạm ứng thi công đoạn K0+000 – K0+350",tien:"0,08 tỷ",dv:"Hợp tác xã Nông nghiệp Đại Thắng",ng:"Đỗ Thanh Hà",ct:"UNC 164/2026"}],
+      binhLuan:[
+        {ten:"Đỗ Thanh Hà",tat:"ĐH",mau:"#E67E22",tg:"10/08/2026 09:30",nd:"Hạng mục mới đạt 20% kế hoạch vốn, chậm so với tiến độ khoảng 10 tuần."},
+        {ten:"Vũ Đức Anh",tat:"VA",mau:"#27AE60",tg:"11/08/2026 10:05",nd:"Vướng mắc: phải chờ hết vụ lúa mùa mới thi công được đoạn qua cánh đồng Thôn Đoài."},
+        {ten:"Nguyễn Văn Bình",tat:"NB",mau:"#1B3A5C",tg:"11/08/2026 16:20",nd:"Giao Tài chính – Kế toán xây dựng lại tiến độ chi tiết, bảo đảm giải ngân tối thiểu 80% trong năm 2026."}],
+      vuongMac:[
+        {nd:"Chờ thu hoạch vụ lúa mùa mới thi công được",ng:"Vũ Đức Anh",han:"20/09/2026"},
+        {nd:"Điều chỉnh tiến độ giải ngân trình UBND huyện",ng:"Đỗ Thanh Hà",han:"05/09/2026"}] }
+  ]
+};
+
+/* ---------- PHẢN ÁNH NGƯỜI DÂN ---------- */
+MOCK_DATA.phanAnh = {
+  thongKe:[
+    {so:"312", nhan:"Tiếp nhận trong tháng", phu:"Tăng 24 lượt so với tháng trước", mau:"var(--blue)",  tint:"rgba(59,130,196,.07)",  ic:"msg"},
+    {so:"271", nhan:"Đã xử lý xong",        phu:"41 lượt đang trong hạn xử lý",     mau:"var(--green)", tint:"rgba(39,174,96,.07)",   ic:"check"},
+    {so:"87%", nhan:"Tỷ lệ đúng hạn",       phu:"Chỉ tiêu giao năm 2026: 85%",      mau:"var(--orange)",tint:"rgba(230,126,34,.07)",  ic:"clock"},
+    {so:"4,6", nhan:"Điểm hài lòng",        phu:"Thang điểm 5 · 1.204 lượt đánh giá", mau:"var(--teal)", tint:"rgba(23,162,162,.07)", ic:"smile"}
+  ],
+  linhVuc:["Rác thải","Giao thông","Vệ sinh môi trường","Trật tự đô thị","An ninh","Xây dựng","Cán bộ","Khác"],
+  danhSach:[
+    { ma:"#PA-1042", lv:"Vệ sinh môi trường", mau:"var(--green)", tieuDe:"Bãi rác tự phát đầu cầu Thôn Đông",
+      trich:"Người dân tự ý đổ rác thải sinh hoạt tại khu đất trống đầu cầu, bốc mùi hôi thối, ruồi muỗi nhiều.",
+      thon:"Thôn Đông", sla:-24, tt:"Đang xử lý", sao:0, nguoiGui:"Ông Nguyễn Văn Thắng", sdt:"098•••432",
+      ngayGui:"18/08/2026 07:42", canBo:"Vũ Đức Anh", bp:"Văn hoá – Xã hội",
+      lo:[{t:"Người dân gửi phản ánh qua ứng dụng ViGov",m:"18/08/2026 07:42",s:"ok"},
+          {t:"Trung tâm Phục vụ hành chính công tiếp nhận, phân loại",m:"18/08/2026 08:10 · Ngô Thị Lan",s:"ok"},
+          {t:"Chuyển Văn hoá – Xã hội xử lý",m:"18/08/2026 09:05 · Trần Thị Hạnh",s:"ok"},
+          {t:"Kiểm tra hiện trường, lập biên bản",m:"19/08/2026 14:20 · Vũ Đức Anh",s:"ok"},
+          {t:"Đang tổ chức thu gom, cắm biển cấm đổ rác",m:"Từ 21/08/2026 · Vũ Đức Anh",s:"cur"}] },
+
+    { ma:"#PA-1041", lv:"Giao thông", mau:"var(--blue)", tieuDe:"Ổ gà lớn đường liên thôn Đoài – Trung",
+      trich:"Đoạn đường dài khoảng 60m xuất hiện nhiều ổ gà sâu, nước đọng, đã có 2 vụ ngã xe máy.",
+      thon:"Thôn Đoài", sla:6, tt:"Đang xử lý", sao:0, nguoiGui:"Bà Trần Thị Mến", sdt:"091•••118",
+      ngayGui:"21/08/2026 16:05", canBo:"Lê Minh Tuấn", bp:"Địa chính – Xây dựng",
+      lo:[{t:"Người dân gửi phản ánh kèm 3 ảnh hiện trường",m:"21/08/2026 16:05",s:"ok"},
+          {t:"Trung tâm Phục vụ hành chính công tiếp nhận",m:"21/08/2026 16:30 · Ngô Thị Lan",s:"ok"},
+          {t:"Chuyển Địa chính – Xây dựng xử lý",m:"22/08/2026 08:00 · Trần Thị Hạnh",s:"ok"},
+          {t:"Đang khảo sát, chuẩn bị vật liệu vá đường",m:"Từ 22/08/2026 · Lê Minh Tuấn",s:"cur"}] },
+
+    { ma:"#PA-1040", lv:"Vệ sinh môi trường", mau:"var(--green)", tieuDe:"Cống thoát nước tắc gây ngập Tổ dân phố số 4",
+      trich:"Mỗi khi mưa lớn, nước dâng ngập vào sân nhà dân khoảng 30cm, thoát rất chậm.",
+      thon:"Tổ dân phố số 4", sla:-48, tt:"Đang xử lý", sao:0, nguoiGui:"Tập thể Tổ dân phố số 4", sdt:"090•••765",
+      ngayGui:"17/08/2026 09:20", canBo:"Lê Minh Tuấn", bp:"Địa chính – Xây dựng",
+      lo:[{t:"Người dân gửi phản ánh tập thể",m:"17/08/2026 09:20",s:"ok"},
+          {t:"Trung tâm Phục vụ hành chính công tiếp nhận",m:"17/08/2026 10:00 · Ngô Thị Lan",s:"ok"},
+          {t:"Chuyển Địa chính – Xây dựng xử lý",m:"17/08/2026 14:15 · Trần Thị Hạnh",s:"ok"},
+          {t:"Đã nạo vét 2 hố ga, đang chờ bố trí kinh phí nâng cấp",m:"Từ 20/08/2026 · Lê Minh Tuấn",s:"cur"}] },
+
+    { ma:"#PA-1039", lv:"Trật tự đô thị", mau:"var(--purple)", tieuDe:"Đèn chiếu sáng hỏng đoạn Tổ dân phố số 3",
+      trich:"18 bộ đèn chiếu sáng công cộng không sáng gần một tháng, người dân đi lại buổi tối không an toàn.",
+      thon:"Tổ dân phố số 3", sla:0, tt:"Đã xử lý", sao:5, nguoiGui:"Ông Vũ Ngọc Bảo", sdt:"097•••201",
+      ngayGui:"02/08/2026 19:30", canBo:"Lê Minh Tuấn", bp:"Địa chính – Xây dựng",
+      danhGia:"Cán bộ xã xử lý rất nhanh, chỉ sau 5 ngày đã thay xong toàn bộ đèn. Bà con trong tổ rất phấn khởi.",
+      lo:[{t:"Người dân gửi phản ánh qua ứng dụng ViGov",m:"02/08/2026 19:30",s:"ok"},
+          {t:"Trung tâm Phục vụ hành chính công tiếp nhận",m:"03/08/2026 08:05 · Ngô Thị Lan",s:"ok"},
+          {t:"Chuyển Địa chính – Xây dựng, tạo nhiệm vụ NV-2611",m:"03/08/2026 09:40 · Trần Thị Hạnh",s:"ok"},
+          {t:"Thi công thay thế 18 bộ đèn, bổ sung 6 bộ mới",m:"06/08/2026 · Lê Minh Tuấn",s:"ok"},
+          {t:"Hoàn thành, người dân đánh giá 5 sao",m:"08/08/2026 17:10 · Lê Minh Tuấn",s:"ok"}] },
+
+    { ma:"#PA-1038", lv:"Rác thải", mau:"var(--orange)", tieuDe:"Quán ăn xả nước thải ra kênh Thôn Đoài",
+      trich:"Quán ăn ven đường xả trực tiếp nước thải chưa qua xử lý ra kênh tiêu, nước đen và có mùi.",
+      thon:"Thôn Đoài", sla:-12, tt:"Đang xử lý", sao:0, nguoiGui:"Ông Lê Văn Hoà", sdt:"094•••887",
+      ngayGui:"19/08/2026 11:15", canBo:"Vũ Đức Anh", bp:"Văn hoá – Xã hội",
+      lo:[{t:"Người dân gửi phản ánh kèm video",m:"19/08/2026 11:15",s:"ok"},
+          {t:"Trung tâm Phục vụ hành chính công tiếp nhận",m:"19/08/2026 13:40 · Ngô Thị Lan",s:"ok"},
+          {t:"Chuyển Văn hoá – Xã hội phối hợp Công an xã",m:"19/08/2026 15:00 · Trần Thị Hạnh",s:"ok"},
+          {t:"Đã lập biên bản, yêu cầu cơ sở khắc phục trong 10 ngày",m:"Từ 20/08/2026 · Vũ Đức Anh",s:"cur"}] },
+
+    { ma:"#PA-1037", lv:"An ninh", mau:"var(--red)", tieuDe:"Tụ tập gây mất trật tự ban đêm khu chợ Đại Thắng",
+      trich:"Một nhóm thanh niên thường xuyên tụ tập, nẹt pô sau 23 giờ gây ồn ào khu dân cư quanh chợ.",
+      thon:"Tổ dân phố số 1", sla:18, tt:"Đang xử lý", sao:0, nguoiGui:"Bà Phạm Thị Xuân", sdt:"096•••330",
+      ngayGui:"20/08/2026 22:40", canBo:"Hoàng Văn Sơn", bp:"Công an xã",
+      lo:[{t:"Người dân gửi phản ánh qua tổng đài",m:"20/08/2026 22:40",s:"ok"},
+          {t:"Trực ban Công an xã tiếp nhận",m:"20/08/2026 22:55 · Hoàng Văn Sơn",s:"ok"},
+          {t:"Đang tăng cường tuần tra ban đêm khu vực chợ",m:"Từ 21/08/2026 · Hoàng Văn Sơn",s:"cur"}] },
+
+    { ma:"#PA-1036", lv:"Xây dựng", mau:"var(--teal)", tieuDe:"Công trình xây dựng không che chắn Thôn Trung",
+      trich:"Nhà dân đang xây không che chắn, vật liệu rơi vãi xuống đường gây nguy hiểm cho người qua lại.",
+      thon:"Thôn Trung", sla:0, tt:"Đã xử lý", sao:4, nguoiGui:"Ông Đinh Văn Cường", sdt:"098•••512",
+      ngayGui:"10/08/2026 08:25", canBo:"Lê Minh Tuấn", bp:"Địa chính – Xây dựng",
+      danhGia:"Xã có xuống kiểm tra và nhắc nhở chủ nhà. Xử lý được nhưng mong lần sau nhanh hơn một chút.",
+      lo:[{t:"Người dân gửi phản ánh qua ứng dụng ViGov",m:"10/08/2026 08:25",s:"ok"},
+          {t:"Trung tâm Phục vụ hành chính công tiếp nhận",m:"10/08/2026 09:10 · Ngô Thị Lan",s:"ok"},
+          {t:"Chuyển Địa chính – Xây dựng kiểm tra",m:"10/08/2026 10:30 · Trần Thị Hạnh",s:"ok"},
+          {t:"Lập biên bản, yêu cầu chủ đầu tư che chắn",m:"12/08/2026 · Lê Minh Tuấn",s:"ok"},
+          {t:"Hoàn thành, người dân đánh giá 4 sao",m:"14/08/2026 16:00 · Lê Minh Tuấn",s:"ok"}] },
+
+    { ma:"#PA-1035", lv:"Cán bộ", mau:"var(--pink)", tieuDe:"Thủ tục cấp bản sao hộ tịch chờ lâu",
+      trich:"Người dân đến làm bản sao trích lục khai sinh phải chờ hơn 40 phút do máy in bị lỗi.",
+      thon:"Tổ dân phố số 2", sla:0, tt:"Đã xử lý", sao:4, nguoiGui:"Bà Nguyễn Thị Hoà", sdt:"093•••604",
+      ngayGui:"08/08/2026 10:05", canBo:"Ngô Thị Lan", bp:"Trung tâm Phục vụ hành chính công",
+      danhGia:"Bộ phận một cửa đã xin lỗi và bố trí máy in dự phòng. Lần sau đi làm nhanh hơn hẳn.",
+      lo:[{t:"Người dân góp ý tại quầy tiếp nhận",m:"08/08/2026 10:05",s:"ok"},
+          {t:"Trung tâm Phục vụ hành chính công ghi nhận",m:"08/08/2026 10:20 · Ngô Thị Lan",s:"ok"},
+          {t:"Bố trí máy in dự phòng, rà soát quy trình",m:"09/08/2026 · Ngô Thị Lan",s:"ok"},
+          {t:"Hoàn thành, người dân đánh giá 4 sao",m:"11/08/2026 09:00 · Ngô Thị Lan",s:"ok"}] },
+
+    { ma:"#PA-1034", lv:"Giao thông", mau:"var(--blue)", tieuDe:"Biển báo giao thông ngã ba Thôn Đông bị che khuất",
+      trich:"Cây xanh mọc um tùm che khuất biển báo giao hạn chế tốc độ tại ngã ba vào Thôn Đông.",
+      thon:"Thôn Đông", sla:30, tt:"Mới tiếp nhận", sao:0, nguoiGui:"Ông Hoàng Minh Đức", sdt:"090•••977",
+      ngayGui:"22/08/2026 07:50", canBo:"Chưa phân công", bp:"Chưa phân công",
+      lo:[{t:"Người dân gửi phản ánh qua ứng dụng ViGov",m:"22/08/2026 07:50",s:"ok"},
+          {t:"Chờ Trung tâm Phục vụ hành chính công phân loại",m:"Từ 22/08/2026",s:"cur"}] }
+  ]
+};
+
+/* ---------- BẢN ĐỒ KINH TẾ SỐ ---------- */
+MOCK_DATA.banDo = {
+  lop:[
+    { id:"dn", ten:"Doanh nghiệp", so:247, mau:"#3B82C4", on:true },
+    { id:"hkd", ten:"Hộ kinh doanh", so:1812, mau:"#E91E8C", on:true },
+    { id:"cho", ten:"Chợ", so:3, mau:"#E67E22", on:true },
+    { id:"th", ten:"Trường học", so:11, mau:"#8E44AD", on:true },
+    { id:"yt", ten:"Cơ sở y tế", so:4, mau:"#E74C3C", on:true },
+    { id:"dt", ten:"Di tích", so:6, mau:"#17A2A2", on:true },
+    { id:"htcc", ten:"Hạ tầng công cộng", so:28, mau:"#27AE60", on:true },
+    { id:"dtc", ten:"Công trình đầu tư công", so:9, mau:"#5B6C8F", on:true }
+  ],
+  ghim:[
+    {lop:"dn",x:30,y:30,ten:"Công ty TNHH May Đại Thắng",nghe:"May mặc xuất khẩu",dc:"Thôn Đông, Xã Đại Thắng",ld:186,dd:"Nguyễn Văn Thịnh",sdt:"024 3378 4412"},
+    {lop:"dn",x:37,y:22,ten:"Công ty CP Cơ khí Phú Thành",nghe:"Gia công cơ khí",dc:"Thôn Trung, Xã Đại Thắng",ld:64,dd:"Trần Quốc Toản",sdt:"024 3378 5120"},
+    {lop:"dn",x:63,y:41,ten:"Công ty TNHH Thực phẩm Hoà Bình",nghe:"Chế biến nông sản",dc:"Thôn Đoài, Xã Đại Thắng",ld:42,dd:"Lê Thị Bình",sdt:"024 3378 6033"},
+    {lop:"dn",x:74,y:64,ten:"Công ty CP Thương mại Đại Việt",nghe:"Bán buôn vật liệu xây dựng",dc:"Tổ dân phố số 5, Xã Đại Thắng",ld:28,dd:"Phạm Văn Kiên",sdt:"024 3378 7715"},
+    {lop:"hkd",x:29,y:52,ten:"Hộ kinh doanh Nguyễn Thị Lan",nghe:"Tạp hoá tổng hợp",dc:"Tổ dân phố số 1, Xã Đại Thắng",ld:3,dd:"Nguyễn Thị Lan",sdt:"098•••221"},
+    {lop:"hkd",x:47,y:57,ten:"Hộ kinh doanh Trần Văn Hùng",nghe:"Cơ khí, sửa chữa xe máy",dc:"Thôn Đông, Xã Đại Thắng",ld:5,dd:"Trần Văn Hùng",sdt:"091•••554"},
+    {lop:"hkd",x:56,y:28,ten:"Hộ kinh doanh Đỗ Thị Nhung",nghe:"Chế biến bún, bánh",dc:"Thôn Đoài, Xã Đại Thắng",ld:7,dd:"Đỗ Thị Nhung",sdt:"094•••108"},
+    {lop:"hkd",x:18,y:68,ten:"Hộ kinh doanh Vũ Đình Nam",nghe:"Ăn uống, giải khát",dc:"Tổ dân phố số 3, Xã Đại Thắng",ld:6,dd:"Vũ Đình Nam",sdt:"097•••390"},
+    {lop:"cho",x:42,y:44,ten:"Chợ Đại Thắng",nghe:"Chợ hạng 3, 214 điểm kinh doanh",dc:"Tổ dân phố số 1, Xã Đại Thắng",ld:214,dd:"Ban Quản lý chợ",sdt:"024 3378 2200"},
+    {lop:"cho",x:69,y:26,ten:"Chợ đầu mối nông sản Thôn Đoài",nghe:"Chợ nông sản, họp buổi sáng",dc:"Thôn Đoài, Xã Đại Thắng",ld:86,dd:"Hợp tác xã Đại Thắng",sdt:"024 3378 2318"},
+    {lop:"th",x:33,y:38,ten:"Trường Tiểu học Đại Thắng",nghe:"Giáo dục tiểu học · 642 học sinh",dc:"Thôn Trung, Xã Đại Thắng",ld:38,dd:"Hiệu trưởng Nguyễn Thị Thu",sdt:"024 3378 3010"},
+    {lop:"th",x:52,y:70,ten:"Trường Trung học cơ sở Đại Thắng",nghe:"Giáo dục trung học cơ sở · 518 học sinh",dc:"Thôn Đông, Xã Đại Thắng",ld:34,dd:"Hiệu trưởng Lê Văn Quang",sdt:"024 3378 3125"},
+    {lop:"yt",x:45,y:34,ten:"Trạm Y tế xã Đại Thắng",nghe:"Y tế cơ sở · 8 giường bệnh",dc:"Tổ dân phố số 2, Xã Đại Thắng",ld:9,dd:"Trạm trưởng Bùi Thị Hương",sdt:"024 3378 4001"},
+    {lop:"yt",x:69,y:48,ten:"Phòng khám đa khoa Thành An",nghe:"Khám chữa bệnh ngoài công lập",dc:"Tổ dân phố số 5, Xã Đại Thắng",ld:12,dd:"Bác sĩ Trần Thành An",sdt:"024 3378 4188"},
+    {lop:"dt",x:25,y:20,ten:"Đình làng Thôn Đông",nghe:"Di tích lịch sử cấp Thành phố",dc:"Thôn Đông, Xã Đại Thắng",ld:2,dd:"Ban Khánh tiết",sdt:"098•••640"},
+    {lop:"dt",x:61,y:76,ten:"Chùa Đại Thắng",nghe:"Di tích kiến trúc nghệ thuật",dc:"Thôn Trung, Xã Đại Thắng",ld:3,dd:"Ban Trị sự",sdt:"091•••702"},
+    {lop:"htcc",x:39,y:62,ten:"Nhà văn hoá Thôn Trung",nghe:"Thiết chế văn hoá cơ sở · 180 chỗ",dc:"Thôn Trung, Xã Đại Thắng",ld:2,dd:"Trưởng thôn Đặng Văn Tú",sdt:"090•••415"},
+    {lop:"htcc",x:66,y:55,ten:"Sân thể thao Thôn Đoài",nghe:"Hạ tầng thể dục thể thao",dc:"Thôn Đoài, Xã Đại Thắng",ld:1,dd:"Trưởng thôn Ngô Văn Hải",sdt:"093•••228"},
+    {lop:"htcc",x:9,y:64,ten:"Điểm tập kết rác Thôn Đông",nghe:"Hạ tầng môi trường",dc:"Thôn Đông, Xã Đại Thắng",ld:4,dd:"Hợp tác xã Môi trường",sdt:"094•••860"},
+    {lop:"dtc",x:50,y:48,ten:"Công trình Nhà văn hoá xã",nghe:"Đầu tư công · Kế hoạch 4,2 tỷ đồng",dc:"Tổ dân phố số 2, Xã Đại Thắng",ld:0,dd:"Phụ trách: Đỗ Thanh Hà",sdt:"024 3378 2001"},
+    {lop:"dtc",x:31,y:72,ten:"Đường giao thông Thôn Đông",nghe:"Đầu tư công · Kế hoạch 3,7 tỷ đồng",dc:"Thôn Đông, Xã Đại Thắng",ld:0,dd:"Phụ trách: Lê Minh Tuấn",sdt:"024 3378 2002"},
+    {lop:"dtc",x:88,y:68,ten:"Kênh mương nội đồng Thôn Đoài",nghe:"Đầu tư công · Kế hoạch 1,0 tỷ đồng",dc:"Thôn Đoài, Xã Đại Thắng",ld:0,dd:"Phụ trách: Đỗ Thanh Hà",sdt:"024 3378 2003"}
+  ],
+  coCau:[
+    {ten:"Thương mại – dịch vụ", tyLe:38, mau:"#3B82C4"},
+    {ten:"Công nghiệp – xây dựng", tyLe:27, mau:"#E91E8C"},
+    {ten:"Chế biến nông sản", tyLe:18, mau:"#27AE60"},
+    {ten:"Vận tải – kho bãi", tyLe:11, mau:"#E67E22"},
+    {ten:"Lĩnh vực khác", tyLe:6, mau:"#8E44AD"}
+  ],
+  tongHop:[
+    {so:"2.059", nhan:"Cơ sở kinh tế"},{so:"6.412", nhan:"Lao động"},
+    {so:"94,7 tỷ", nhan:"Doanh thu ước năm"},{so:"12,4 tỷ", nhan:"Nộp ngân sách"}
+  ]
+};
+
+/* ---------- BÁO CÁO ---------- */
+MOCK_DATA.baoCao = {
+  theoBoPhan:[
+    {ten:"Văn phòng UBND", so:48, mau:"var(--navy)"},
+    {ten:"Địa chính – Xây dựng", so:42, mau:"var(--blue)"},
+    {ten:"Văn hoá – Xã hội", so:31, mau:"var(--green)"},
+    {ten:"Tư pháp – Hộ tịch", so:27, mau:"var(--purple)"},
+    {ten:"Tài chính – Kế toán", so:24, mau:"var(--orange)"},
+    {ten:"Trung tâm Phục vụ hành chính công", so:22, mau:"var(--teal)"},
+    {ten:"Công an xã", so:19, mau:"var(--red)"},
+    {ten:"Quân sự xã", so:11, mau:"var(--pink)"}
+  ],
+  dungHanThang:{ thang:["T3","T4","T5","T6","T7","T8"], nam2026:[78,81,84,83,86,87], nam2025:[71,74,73,77,79,80] },
+  phanAnhLinhVuc:[
+    {ten:"Rác thải", so:74},{ten:"Giao thông", so:61},{ten:"Vệ sinh môi trường", so:52},
+    {ten:"Trật tự đô thị", so:43},{ten:"An ninh", so:31},{ten:"Xây dựng", so:26},
+    {ten:"Cán bộ", so:14},{ten:"Khác", so:11}
+  ],
+  giaiNganNguonVon:[
+    {ten:"Ngân sách xã", ke:4.9, thuc:4.3},
+    {ten:"Ngân sách huyện", ke:4.2, thuc:1.1},
+    {ten:"Chương trình mục tiêu quốc gia", ke:2.4, thuc:2.1},
+    {ten:"Vốn sự nghiệp nông nghiệp", ke:1.0, thuc:0.2}
+  ],
+  xepHang:[
+    {bp:"Văn phòng UBND", so:48, dung:45, tre:3, tb:"1,8 ngày"},
+    {bp:"Trung tâm Phục vụ hành chính công", so:22, dung:21, tre:1, tb:"0,9 ngày"},
+    {bp:"Tư pháp – Hộ tịch", so:27, dung:25, tre:2, tb:"1,4 ngày"},
+    {bp:"Công an xã", so:19, dung:17, tre:2, tb:"2,1 ngày"},
+    {bp:"Văn hoá – Xã hội", so:31, dung:27, tre:4, tb:"2,6 ngày"},
+    {bp:"Tài chính – Kế toán", so:24, dung:20, tre:4, tb:"3,2 ngày"},
+    {bp:"Địa chính – Xây dựng", so:42, dung:34, tre:8, tb:"4,1 ngày"},
+    {bp:"Quân sự xã", so:11, dung:9, tre:2, tb:"2,4 ngày"}
+  ]
+};
+
+/* ---------- CẤU HÌNH ---------- */
+MOCK_DATA.cauHinh = {
+  sla:[
+    {lv:"Rác thải", tiepNhan:4, xuLy:3, donVi:"ngày làm việc", canhBao:"Trước hạn 8 giờ"},
+    {lv:"Giao thông", tiepNhan:4, xuLy:5, donVi:"ngày làm việc", canhBao:"Trước hạn 12 giờ"},
+    {lv:"Vệ sinh môi trường", tiepNhan:4, xuLy:3, donVi:"ngày làm việc", canhBao:"Trước hạn 8 giờ"},
+    {lv:"Trật tự đô thị", tiepNhan:6, xuLy:5, donVi:"ngày làm việc", canhBao:"Trước hạn 12 giờ"},
+    {lv:"An ninh", tiepNhan:2, xuLy:2, donVi:"ngày làm việc", canhBao:"Trước hạn 4 giờ"},
+    {lv:"Xây dựng", tiepNhan:8, xuLy:7, donVi:"ngày làm việc", canhBao:"Trước hạn 24 giờ"},
+    {lv:"Cán bộ", tiepNhan:4, xuLy:5, donVi:"ngày làm việc", canhBao:"Trước hạn 12 giờ"},
+    {lv:"Khác", tiepNhan:8, xuLy:7, donVi:"ngày làm việc", canhBao:"Trước hạn 24 giờ"}
+  ],
+  toChuc:{
+    ten:"UBND Xã Đại Thắng", cv:"Cơ quan hành chính nhà nước cấp xã", mau:"#1B3A5C",
+    con:[
+      {ten:"Chủ tịch UBND xã", cv:"Nguyễn Văn Bình", mau:"#E91E8C", con:[
+        {ten:"Văn phòng UBND", cv:"Trần Thị Hạnh · 6 cán bộ", mau:"#3B82C4"},
+        {ten:"Công an xã", cv:"Hoàng Văn Sơn · 9 cán bộ", mau:"#E74C3C"},
+        {ten:"Quân sự xã", cv:"Bùi Quang Khải · 4 cán bộ", mau:"#5B6C8F"}
+      ]},
+      {ten:"Phó Chủ tịch UBND xã (Kinh tế)", cv:"Trần Thị Hạnh", mau:"#8E44AD", con:[
+        {ten:"Địa chính – Xây dựng", cv:"Lê Minh Tuấn · 5 cán bộ", mau:"#3B82C4"},
+        {ten:"Tài chính – Kế toán", cv:"Đỗ Thanh Hà · 3 cán bộ", mau:"#E67E22"}
+      ]},
+      {ten:"Phó Chủ tịch UBND xã (Văn xã)", cv:"Vũ Đức Anh phụ trách chuyên môn", mau:"#27AE60", con:[
+        {ten:"Tư pháp – Hộ tịch", cv:"Phạm Thị Ngọc · 3 cán bộ", mau:"#8E44AD"},
+        {ten:"Văn hoá – Xã hội", cv:"Vũ Đức Anh · 4 cán bộ", mau:"#27AE60"},
+        {ten:"Trung tâm Phục vụ hành chính công", cv:"Ngô Thị Lan · 5 cán bộ", mau:"#17A2A2"}
+      ]}
+    ]
+  },
+  nguoiDung:[
+    {ten:"Nguyễn Văn Bình", tat:"NB", mau:"#1B3A5C", bp:"Văn phòng UBND", vt:"Quản trị hệ thống", tk:"binh.nv", tt:"Đang hoạt động", dn:"Hôm nay 07:42"},
+    {ten:"Trần Thị Hạnh", tat:"TH", mau:"#E91E8C", bp:"Văn phòng UBND", vt:"Lãnh đạo phê duyệt", tk:"hanh.tt", tt:"Đang hoạt động", dn:"Hôm nay 08:05"},
+    {ten:"Lê Minh Tuấn", tat:"LT", mau:"#3B82C4", bp:"Địa chính – Xây dựng", vt:"Chuyên viên xử lý", tk:"tuan.lm", tt:"Đang hoạt động", dn:"Hôm nay 07:58"},
+    {ten:"Phạm Thị Ngọc", tat:"PN", mau:"#8E44AD", bp:"Tư pháp – Hộ tịch", vt:"Chuyên viên xử lý", tk:"ngoc.pt", tt:"Đang hoạt động", dn:"Hôm qua 16:30"},
+    {ten:"Vũ Đức Anh", tat:"VA", mau:"#27AE60", bp:"Văn hoá – Xã hội", vt:"Chuyên viên xử lý", tk:"anh.vd", tt:"Đang hoạt động", dn:"Hôm nay 08:12"},
+    {ten:"Đỗ Thanh Hà", tat:"ĐH", mau:"#E67E22", bp:"Tài chính – Kế toán", vt:"Kế toán – giải ngân", tk:"ha.dt", tt:"Đang hoạt động", dn:"Hôm nay 07:35"},
+    {ten:"Hoàng Văn Sơn", tat:"HS", mau:"#17A2A2", bp:"Công an xã", vt:"Chuyên viên xử lý", tk:"son.hv", tt:"Đang hoạt động", dn:"Hôm nay 06:50"},
+    {ten:"Ngô Thị Lan", tat:"NL", mau:"#E74C3C", bp:"Trung tâm Phục vụ hành chính công", vt:"Tiếp nhận một cửa", tk:"lan.nt", tt:"Đang hoạt động", dn:"Hôm nay 07:20"},
+    {ten:"Bùi Quang Khải", tat:"BK", mau:"#5B6C8F", bp:"Quân sự xã", vt:"Chuyên viên xử lý", tk:"khai.bq", tt:"Tạm khoá", dn:"12/08/2026 15:10"}
+  ]
+};
+
+/* ============================================================
+   TIỆN ÍCH CHUNG
+   ============================================================ */
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+
+const ICONS = {
+  grid:'<rect x="3" y="3" width="7" height="7" rx="1.6"/><rect x="14" y="3" width="7" height="7" rx="1.6"/><rect x="14" y="14" width="7" height="7" rx="1.6"/><rect x="3" y="14" width="7" height="7" rx="1.6"/>',
+  check:'<path d="M9 11.5l2.6 2.6L21 4.7"/><path d="M21 12.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>',
+  file:'<path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/>',
+  wallet:'<path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5.5A2.5 2.5 0 0 1 3 16.5z"/><path d="M16.5 12h2.5"/>',
+  msg:'<path d="M21 14.5a2 2 0 0 1-2 2H8l-4 3.5V5a2 2 0 0 1 2-2h13a2 2 0 0 1 2 2z"/><path d="M8 8h9M8 11.5h6"/>',
+  map:'<path d="M9 4L3 6.5v14L9 18l6 2.5 6-2.5v-14L15 6.5z"/><path d="M9 4v14M15 6.5v14"/>',
+  chart:'<path d="M3 3v16.5A1.5 1.5 0 0 0 4.5 21H21"/><path d="M7.5 16v-4M12 16V8M16.5 16v-6"/>',
+  gear:'<circle cx="12" cy="12" r="3.1"/><path d="M12 2.6v2.6M12 18.8v2.6M2.6 12h2.6M18.8 12h2.6M5.3 5.3l1.9 1.9M16.8 16.8l1.9 1.9M18.7 5.3l-1.9 1.9M7.2 16.8l-1.9 1.9"/>',
+  search:'<circle cx="11" cy="11" r="7"/><path d="M20.5 20.5L16.7 16.7"/>',
+  bell:'<path d="M18 8.5a6 6 0 1 0-12 0c0 6.5-2.5 8.5-2.5 8.5h17S18 15 18 8.5"/><path d="M13.8 20.5a2 2 0 0 1-3.6 0"/>',
+  help:'<circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 1 1 3.4 2.4c-.7.3-1 .9-1 1.6v.4"/><path d="M12 17.2h.01"/>',
+  plus:'<path d="M12 5.5v13M5.5 12h13"/>',
+  close:'<path d="M18 6L6 18M6 6l12 12"/>',
+  clock:'<circle cx="12" cy="12" r="8.6"/><path d="M12 7.2V12l3.1 2"/>',
+  alert:'<path d="M12 3.4l8.8 15.6H3.2z"/><path d="M12 9.5v4.2M12 16.7h.01"/>',
+  star:'<path d="M12 3.5l2.8 5.7 6.3.9-4.6 4.4 1.1 6.2L12 17.8l-5.6 2.9 1.1-6.2L2.9 10l6.3-.9z"/>',
+  clip:'<path d="M20.5 11.5l-8.4 8.4a5 5 0 0 1-7.1-7.1l8.9-8.9a3.4 3.4 0 0 1 4.8 4.8l-8.6 8.6a1.8 1.8 0 1 1-2.5-2.5l7.6-7.6"/>',
+  users:'<circle cx="9.5" cy="8" r="3.3"/><path d="M3.5 20a6 6 0 0 1 12 0"/><path d="M16.5 5.2a3.3 3.3 0 0 1 0 6.4"/><path d="M18 20a6.2 6.2 0 0 0-2.6-4.6"/>',
+  smile:'<circle cx="12" cy="12" r="8.6"/><path d="M8.4 14.2s1.3 1.9 3.6 1.9 3.6-1.9 3.6-1.9"/><path d="M9.4 9.4h.01M14.6 9.4h.01"/>',
+  pin:'<path d="M12 21s6.8-6.3 6.8-10.8A6.8 6.8 0 0 0 5.2 10.2C5.2 14.7 12 21 12 21z"/><circle cx="12" cy="10.2" r="2.4"/>',
+  down:'<path d="M12 3.5v12M7.2 11l4.8 4.8L16.8 11"/><path d="M4 20.5h16"/>',
+  right:'<path d="M4.5 12h15M13.5 6l6 6-6 6"/>',
+  layer:'<path d="M12 3.2l8.6 4.4L12 12 3.4 7.6z"/><path d="M3.4 12.4L12 16.8l8.6-4.4M3.4 16.6L12 21l8.6-4.4"/>',
+  cal:'<rect x="3.4" y="5" width="17.2" height="16" rx="2"/><path d="M3.4 10h17.2M8 3v4M16 3v4"/>',
+  filter:'<path d="M3.5 5.5h17l-6.7 7.9V20l-3.6-2v-4.6z"/>',
+  send:'<path d="M21 3.5L10.5 14M21 3.5l-6.6 17.2-3.9-6.7-6.7-3.9z"/>',
+  ok:'<circle cx="12" cy="12" r="8.6"/><path d="M8.2 12.2l2.6 2.6 5-5.4"/>',
+  arrowUp:'<path d="M12 19.5v-15M6 10.5l6-6 6 6"/>',
+  book:'<path d="M4 4.5A1.5 1.5 0 0 1 5.5 3H19v18H5.5A1.5 1.5 0 0 1 4 19.5z"/><path d="M4 17.2h15"/>',
+  build:'<path d="M3 21h18"/><path d="M5 21V8.5L12 4l7 4.5V21"/><path d="M9.5 21v-5h5v5"/>'
+};
+function ic(name, size=18, stroke=1.7){
+  return '<svg class="ic" width="'+size+'" height="'+size+'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="'+stroke+'" stroke-linecap="round" stroke-linejoin="round">'+(ICONS[name]||'')+'</svg>';
+}
+function avatar(ten, lg){
+  const cb = MOCK_DATA.canBo.find(c => c.ten === ten);
+  const tat = cb ? cb.tat : (ten||'?').trim().split(' ').slice(-2).map(w=>w[0]).join('').toUpperCase();
+  const mau = cb ? cb.mau : '#8896A6';
+  return '<span class="av'+(lg?' lg':'')+'" style="background:'+mau+'" title="'+ten+'">'+tat+'</span>';
+}
+function mauNguoi(ten){ const c = MOCK_DATA.canBo.find(c=>c.ten===ten); return c ? c.mau : '#8896A6'; }
+function chip(text, mau, bg){ return '<span class="chip" style="color:'+mau+';background:'+(bg||'rgba(0,0,0,.04)')+'">'+text+'</span>'; }
+function pbar(pct, mau, thick){
+  return '<div class="pbar'+(thick?' thick':'')+'"><i style="width:'+pct+'%;background:'+mau+'"></i></div>';
+}
+function mauTienDo(p){ return p>=80?'var(--green)': p>=50?'var(--blue)': p>=30?'var(--orange)':'var(--red)'; }
+function toast(msg){
+  const t = $('#toast'); t.innerHTML = ic('ok',17)+'<span>'+msg+'</span>'; t.classList.add('on');
+  clearTimeout(toast._t); toast._t = setTimeout(()=>t.classList.remove('on'), 2600);
+}
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ---------- Drawer ---------- */
+function openDrawer(title, meta, body, foot){
+  $('#dwTitle').innerHTML = title;
+  $('#dwMeta').innerHTML = meta || '';
+  $('#dwBody').innerHTML = body;
+  $('#dwFoot').innerHTML = foot || '<button class="btn" data-dwclose>Đóng</button>';
+  $('#dw').classList.add('on'); $('#ovl').classList.add('on');
+  $('#dwBody').scrollTop = 0;
+  bindTabs($('#dw'));
+}
+function closeDrawer(){ $('#dw').classList.remove('on'); $('#ovl').classList.remove('on'); }
+function bindTabs(root){
+  $$('.tabs', root).forEach(tabs => {
+    tabs.onclick = e => {
+      const b = e.target.closest('button'); if(!b) return;
+      $$('button', tabs).forEach(x=>x.classList.remove('on')); b.classList.add('on');
+      const wrap = tabs.parentElement;
+      $$(':scope > .tp', wrap).forEach(p=>p.classList.remove('on'));
+      const target = $(':scope > .tp[data-tp="'+b.dataset.tab+'"]', wrap);
+      if(target) target.classList.add('on');
+    };
+  });
+}
+
+/* ---------- Khối dựng sẵn ---------- */
+function pageHead(title, sub, right){
+  return '<div class="pg-head"><div><h1>'+title+'</h1><p>'+sub+'</p></div><div class="sp">'+(right||'')+'</div></div>';
+}
+function timeline(items){
+  return '<div class="tl">'+items.map(i =>
+    '<div class="tl-it '+(i.s==='cur'?'cur':(i.s==='ok'?'ok':''))+'"><div class="t">'+i.t+'</div><div class="m">'+i.m+'</div></div>'
+  ).join('')+'</div>';
+}
+function comments(list){
+  return list.map(c =>
+    '<div class="cmt"><span class="av" style="background:'+c.mau+'">'+c.tat+'</span>'+
+    '<div class="bd"><div class="hd"><b>'+c.ten+'</b><span>'+c.tg+'</span></div><div class="tx">'+c.nd+'</div></div></div>'
+  ).join('');
+}
+function fileBoxes(names){
+  return '<div class="files">'+names.map(n =>
+    '<div class="file"><div class="ph">'+ic('clip',20)+'</div><div class="nm">'+n+'</div></div>'
+  ).join('')+'</div>';
+}
+function stars(n){
+  let s=''; for(let i=1;i<=5;i++) s += '<span style="opacity:'+(i<=n?1:.22)+'">'+ic('star',13,1.6)+'</span>';
+  return '<span class="stars">'+s+'</span>';
+}
+
+/* ============================================================
+   ĐIỀU HƯỚNG
+   ============================================================ */
+const MENU = [
+  { id:'overview', ten:'Tổng quan',           ic:'grid',   render:()=>renderOverview() },
+  { id:'tasks',    ten:'Nhiệm vụ',            ic:'check',  cnt:'124', render:()=>renderTasks() },
+  { id:'docs',     ten:'Văn bản & Đơn thư',   ic:'file',   cnt:'31',  render:()=>renderDocs() },
+  { id:'fund',     ten:'Giải ngân',           ic:'wallet', render:()=>renderFund() },
+  { id:'feedback', ten:'Phản ánh người dân',  ic:'msg',    cnt:'41',  render:()=>renderFeedback() },
+  { id:'map',      ten:'Bản đồ kinh tế số',   ic:'map',    render:()=>renderMap() },
+  { id:'report',   ten:'Báo cáo',             ic:'chart',  render:()=>renderReport() },
+  { id:'config',   ten:'Cấu hình',            ic:'gear',   render:()=>renderConfig() }
+];
+let manHienTai = 'overview';
+function nav(id){
+  const m = MENU.find(x=>x.id===id); if(!m) return;
+  manHienTai = id;
+  $$('.sb-item').forEach(b => b.classList.toggle('on', b.dataset.id===id));
+  $$('.sec').forEach(s => s.classList.remove('on'));
+  $('#sec-'+id).classList.add('on');
+  m.render();
+  closeDrawer();
+  window.scrollTo({top:0, behavior:'instant'});
+}
+
+/* ============================================================
+   1. TỔNG QUAN
+   ============================================================ */
+function renderOverview(){
+  const d = MOCK_DATA;
+  const kpis = d.kpi.map(k =>
+    '<div class="kpi" style="background:'+k.tint+';border-color:'+k.tint.replace('.07','.22')+'" data-nav="'+k.man+'">'+
+      '<div class="kic" style="color:'+k.mau+'">'+ic(k.ic,19)+'</div>'+
+      '<div class="num" style="color:'+k.mau+'">'+k.so+'</div>'+
+      '<div class="lb">'+k.nhan+'</div><div class="sub">'+k.phu+'</div></div>'
+  ).join('');
+
+  const maxG = Math.max(...d.nhiemVuThang.map(m=>m.g));
+  const bars = d.nhiemVuThang.map(m =>
+    '<div class="col" title="'+m.t+': hoàn thành '+m.ht+'/'+m.g+' việc">'+
+      '<div class="stack">'+
+        '<div class="bar" style="height:'+(m.ht/maxG*100)+'%"></div>'+
+        '<div class="bar b2" style="height:'+(m.g/maxG*100)+'%"></div>'+
+      '</div><div class="lbl">'+m.t+'</div></div>'
+  ).join('');
+
+  const urgent = d.canXuLy.map(u => {
+    const mau = u.muc==='cao'?'var(--red)':u.muc==='tb'?'var(--orange)':'var(--blue)';
+    return '<div class="row-it" data-nav="tasks"><span class="dot" style="background:'+mau+';margin-top:6px"></span>'+
+      '<div style="flex:1"><div class="t">'+u.tieuDe+'</div><div class="m">'+u.bp+'</div></div>'+
+      '<span class="chip" style="color:'+(u.late?'var(--red)':'var(--mut)')+';background:'+(u.late?'rgba(231,76,60,.10)':'var(--bg2)')+'">'+u.nhan+'</span></div>';
+  }).join('');
+
+  $('#sec-overview').innerHTML =
+    '<div class="pg">'+
+    pageHead('Tổng quan điều hành',
+      'Số liệu cập nhật lúc 08:15 ngày 23/08/2026 · Kỳ báo cáo: tháng 8 năm 2026',
+      '<button class="btn" id="btnKy">'+ic('cal',15)+'Tháng 8/2026</button><button class="btn pri" data-nav="report">'+ic('chart',15)+'Xem báo cáo tổng hợp</button>')+
+    '<div class="kpis">'+kpis+'</div>'+
+    '<div class="split">'+
+      '<div>'+
+        '<div class="card"><div class="card-h"><h3>Nhiệm vụ hoàn thành theo tháng</h3>'+
+          '<div class="sp legend"><span><i style="background:var(--blue)"></i>Đã hoàn thành</span><span><i style="background:#DCE7F2"></i>Được giao</span></div></div>'+
+          '<div class="card-b"><div class="bars">'+bars+'</div></div></div>'+
+        '<div class="card" style="margin-top:18px"><div class="card-h"><h3>Luỹ kế giải ngân: kế hoạch và thực tế</h3>'+
+          '<div class="sp legend"><span><i style="background:var(--orange)"></i>Kế hoạch</span><span><i style="background:var(--green)"></i>Thực tế</span></div></div>'+
+          '<div class="card-b">'+lineChart()+'</div></div>'+
+      '</div>'+
+      '<div class="card" style="align-self:start">'+
+        '<div class="card-h"><h3>Cần xử lý ngay</h3><div class="sp">6 việc</div></div>'+
+        '<div class="rows">'+urgent+'</div>'+
+        '<div style="padding:14px 20px;border-top:1px solid var(--bd)"><button class="btn sm" data-nav="tasks">Xem toàn bộ nhiệm vụ '+ic('right',14)+'</button></div>'+
+      '</div>'+
+    '</div></div>';
+}
+
+function lineChart(){
+  const g = MOCK_DATA.giaiNganLuyKe, W=640, H=210, pl=44, pr=14, pt=12, pb=28;
+  const max = 13, n = g.thang.length;
+  const X = i => pl + i*(W-pl-pr)/(n-1);
+  const Y = v => pt + (1 - v/max)*(H-pt-pb);
+  const path = arr => arr.map((v,i)=> v==null?null:(i===0||arr[i-1]==null?'M':'L')+X(i).toFixed(1)+' '+Y(v).toFixed(1)).filter(Boolean).join(' ');
+  const grid = [0,3,6,9,12].map(v =>
+    '<line x1="'+pl+'" y1="'+Y(v)+'" x2="'+(W-pr)+'" y2="'+Y(v)+'" stroke="#EDF0F3"/>'+
+    '<text x="'+(pl-9)+'" y="'+(Y(v)+4)+'" fill="#8896A6" font-size="10.5" text-anchor="end">'+v+' tỷ</text>').join('');
+  const lbl = g.thang.map((t,i)=>'<text x="'+X(i)+'" y="'+(H-8)+'" fill="#8896A6" font-size="10.5" text-anchor="middle">'+t+'</text>').join('');
+  const dots = g.thucTe.map((v,i)=> v==null?'':'<circle cx="'+X(i)+'" cy="'+Y(v)+'" r="3.1" fill="#fff" stroke="#27AE60" stroke-width="2"/>').join('');
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:210px;display:block">'+grid+lbl+
+    '<path d="'+path(g.keHoach)+'" fill="none" stroke="#E67E22" stroke-width="2.2" stroke-dasharray="6 4" stroke-linecap="round"/>'+
+    '<path d="'+path(g.thucTe)+'" fill="none" stroke="#27AE60" stroke-width="2.6" stroke-linecap="round"/>'+dots+
+    '<text x="'+(X(8)+8)+'" y="'+(Y(8.5)-10)+'" fill="#27AE60" font-size="11" font-weight="700">8,5 tỷ</text>'+
+    '</svg>';
+}
+
+/* ============================================================
+   2. NHIỆM VỤ
+   ============================================================ */
+const TT_NV = {
+  moi:{ten:'Mới giao', mau:'var(--mut)',   bg:'rgba(136,150,166,.12)'},
+  dang:{ten:'Đang thực hiện', mau:'var(--blue)', bg:'rgba(59,130,196,.12)'},
+  cho:{ten:'Chờ duyệt', mau:'var(--purple)', bg:'rgba(142,68,173,.12)'},
+  xong:{ten:'Hoàn thành', mau:'var(--green)', bg:'rgba(39,174,96,.12)'},
+  qua:{ten:'Quá hạn', mau:'var(--red)', bg:'rgba(231,76,60,.12)'}
+};
+const UT_NV = { cao:{ten:'Khẩn', mau:'var(--red)'}, tb:{ten:'Cao', mau:'var(--orange)'}, thap:{ten:'Thường', mau:'var(--blue)'} };
+let tvView = 'kanban';
+let tvLoc = { bp:'', ng:'', tt:'', nguon:'' };
+
+function locNhiemVu(){
+  return MOCK_DATA.nhiemVu.filter(t =>
+    (!tvLoc.bp || t.bp===tvLoc.bp) &&
+    (!tvLoc.ng || t.nguoiTH===tvLoc.ng) &&
+    (!tvLoc.tt || t.tt===tvLoc.tt) &&
+    (!tvLoc.nguon || t.nguonLoai===tvLoc.nguon));
+}
+function opts(list, cur, all){
+  return '<option value="">'+all+'</option>'+list.map(x=>'<option value="'+x+'"'+(x===cur?' selected':'')+'>'+x+'</option>').join('');
+}
+function renderTasks(){
+  const ds = locNhiemVu();
+  const toolbar =
+    '<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:18px">'+
+      '<button class="btn pri" id="btnGiaoViec">'+ic('plus',15)+'Giao việc mới</button>'+
+      '<select class="sel" id="fBp">'+opts(MOCK_DATA.boPhan, tvLoc.bp, 'Tất cả bộ phận')+'</select>'+
+      '<select class="sel" id="fNg">'+opts(MOCK_DATA.canBo.map(c=>c.ten), tvLoc.ng, 'Tất cả người thực hiện')+'</select>'+
+      '<select class="sel" id="fTt"><option value="">Tất cả trạng thái</option>'+
+        Object.keys(TT_NV).map(k=>'<option value="'+k+'"'+(k===tvLoc.tt?' selected':'')+'>'+TT_NV[k].ten+'</option>').join('')+'</select>'+
+      '<select class="sel" id="fNguon"><option value="">Tất cả nguồn giao</option>'+
+        [['hop','Từ kết luận họp'],['vb','Từ văn bản đến'],['pa','Từ phản ánh người dân']]
+          .map(o=>'<option value="'+o[0]+'"'+(o[0]===tvLoc.nguon?' selected':'')+'>'+o[1]+'</option>').join('')+'</select>'+
+      (Object.values(tvLoc).some(Boolean)?'<button class="btn sm" id="btnXoaLoc">Xoá bộ lọc</button>':'')+
+      '<div style="margin-left:auto;display:flex;gap:10px;align-items:center">'+
+        '<span class="tiny muted">Hiển thị '+ds.length+'/'+MOCK_DATA.nhiemVu.length+' nhiệm vụ</span>'+
+        '<div class="seg" id="segView"><button data-v="kanban" class="'+(tvView==='kanban'?'on':'')+'">Kanban</button>'+
+        '<button data-v="list" class="'+(tvView==='list'?'on':'')+'">Danh sách</button></div>'+
+      '</div></div>';
+
+  $('#sec-tasks').innerHTML = '<div class="pg">'+
+    pageHead('Quản lý nhiệm vụ','Theo dõi nhiệm vụ giao từ kết luận họp, văn bản đến và phản ánh của người dân')+
+    toolbar + (tvView==='kanban' ? kanban(ds) : listNV(ds)) + '</div>';
+}
+function taskCard(t){
+  const ut = UT_NV[t.uuTien];
+  return '<div class="tk" data-nv="'+t.id+'">'+
+    '<div class="top" style="background:'+ut.mau+'"></div><div class="in">'+
+    '<div class="ti">'+t.tieuDe+'</div>'+
+    '<div class="src">'+t.nguon+'</div>'+
+    '<div style="margin-top:11px">'+pbar(t.tienDo, mauTienDo(t.tienDo))+
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px" class="tiny">'+
+        '<span style="color:'+(t.tt==='qua'?'var(--red)':'var(--mut)')+';font-weight:600;display:flex;gap:4px;align-items:center">'+ic('clock',13)+'Hạn '+t.han+'</span>'+
+        '<span style="font-weight:700;color:var(--navy)">'+t.tienDo+'%</span></div></div>'+
+    '<div class="ft">'+avatar(t.nguoiTH)+
+      '<span class="tiny muted" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+t.nguoiTH+'</span></div>'+
+    '</div></div>';
+}
+function kanban(ds){
+  return '<div class="kb">'+Object.keys(TT_NV).map(k => {
+    const col = ds.filter(t=>t.tt===k);
+    return '<div class="kbc"><div class="kbc-h"><span class="dot" style="background:'+TT_NV[k].mau+'"></span>'+TT_NV[k].ten+
+      '<span class="n">'+col.length+'</span></div>'+
+      (col.length ? col.map(taskCard).join('') : '<div class="tiny muted" style="padding:14px 6px;text-align:center">Không có nhiệm vụ</div>')+
+      '</div>';
+  }).join('')+'</div>';
+}
+function listNV(ds){
+  const rows = ds.map(t =>
+    '<tr data-nv="'+t.id+'" class="'+(t.tt==='qua'?'late':'')+'">'+
+      '<td><div class="tt">'+t.tieuDe+'</div><div class="tiny muted">'+t.id+' · Ưu tiên: '+UT_NV[t.uuTien].ten+'</div></td>'+
+      '<td><span class="tiny">'+t.nguon+'</span></td>'+
+      '<td><div style="display:flex;gap:8px;align-items:center">'+avatar(t.nguoiTH)+'<span>'+t.nguoiTH+'</span></div></td>'+
+      '<td>'+t.bp+'</td>'+
+      '<td style="'+(t.tt==='qua'?'color:var(--red);font-weight:700':'')+'">'+t.han+'</td>'+
+      '<td style="min-width:130px">'+pbar(t.tienDo, mauTienDo(t.tienDo))+'<div class="tiny muted" style="margin-top:4px">'+t.tienDo+'%</div></td>'+
+      '<td>'+chip(TT_NV[t.tt].ten, TT_NV[t.tt].mau, TT_NV[t.tt].bg)+'</td></tr>').join('');
+  return '<div class="card"><div class="tw"><table class="tb2"><thead><tr>'+
+    '<th style="min-width:260px">Tên việc</th><th>Nguồn</th><th>Người thực hiện</th><th>Bộ phận</th><th>Hạn</th><th>Tiến độ</th><th>Trạng thái</th>'+
+    '</tr></thead><tbody>'+(rows||'<tr><td colspan="7" class="muted" style="text-align:center;padding:28px">Không có nhiệm vụ phù hợp bộ lọc</td></tr>')+'</tbody></table></div></div>';
+}
+
+function taskComments(t){
+  const th = MOCK_DATA.canBo.find(c=>c.ten===t.nguoiTH) || MOCK_DATA.canBo[2];
+  const gi = MOCK_DATA.canBo.find(c=>c.ten===t.nguoiGiao) || MOCK_DATA.canBo[0];
+  const ph = MOCK_DATA.canBo.find(c=>c.ten===(t.phoiHop[0]||'')) || MOCK_DATA.canBo[5];
+  const sets = [
+    ['Đã hoàn thành các bước đầu, hiện còn vướng khâu tổng hợp số liệu từ các thôn. Đề nghị bộ phận phối hợp hỗ trợ thêm.',
+     'Bộ phận chúng tôi sẽ gửi số liệu trong ngày mai để đồng chí tổng hợp kịp thời hạn.',
+     'Đề nghị đồng chí bám sát tiến độ, báo cáo Thường trực UBND xã trước ngày hết hạn 01 ngày.'],
+    ['Báo cáo lãnh đạo: khối lượng công việc đã đạt khoảng '+t.tienDo+'%, phần còn lại tập trung hoàn thiện hồ sơ.',
+     'Tôi đã rà soát dự thảo, đề nghị bổ sung phần căn cứ pháp lý cho đầy đủ.',
+     'Thống nhất. Giao Văn phòng UBND theo dõi, tổng hợp vào báo cáo tuần.'],
+    ['Hiện trường đã được kiểm tra, biên bản lập đầy đủ. Đề xuất bố trí kinh phí để triển khai bước tiếp theo.',
+     'Tài chính – Kế toán đã tiếp nhận đề xuất, sẽ cân đối trong dự toán quý này.',
+     'Đồng ý chủ trương. Đề nghị các bộ phận phối hợp chặt chẽ, không để chậm tiến độ.']
+  ];
+  const s = sets[parseInt(t.id.slice(-2),10) % sets.length];
+  return [
+    {ten:th.ten, tat:th.tat, mau:th.mau, tg:'19/08/2026 09:20', nd:s[0]},
+    {ten:ph.ten, tat:ph.tat, mau:ph.mau, tg:'20/08/2026 14:05', nd:s[1]},
+    {ten:gi.ten, tat:gi.tat, mau:gi.mau, tg:'21/08/2026 08:35', nd:s[2]}
+  ];
+}
+function taskLog(t){
+  return [
+    {t:'Tạo nhiệm vụ và giao chủ trì cho '+t.nguoiTH, m:'12/08/2026 08:10 · '+t.nguoiGiao},
+    {t:'Bổ sung cán bộ phối hợp: '+(t.phoiHop.join(', ')||'không có'), m:'12/08/2026 09:25 · '+t.nguoiGiao},
+    {t:'Cập nhật tiến độ từ 0% lên '+Math.max(0,t.tienDo-25)+'%', m:'16/08/2026 15:40 · '+t.nguoiTH},
+    {t:'Đính kèm 02 tệp minh chứng thực hiện', m:'19/08/2026 10:12 · '+t.nguoiTH},
+    {t:'Cập nhật tiến độ lên '+t.tienDo+'% · Trạng thái: '+TT_NV[t.tt].ten, m:'22/08/2026 16:30 · '+t.nguoiTH}
+  ];
+}
+function openTask(id){
+  const t = MOCK_DATA.nhiemVu.find(x=>x.id===id); if(!t) return;
+  const ut = UT_NV[t.uuTien], tt = TT_NV[t.tt];
+  const body =
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'+
+      chip(tt.ten, tt.mau, tt.bg)+chip('Ưu tiên: '+ut.ten, ut.mau, 'rgba(0,0,0,.04)')+
+      chip(t.nguon, 'var(--navy)', 'var(--bg2)')+'</div>'+
+    '<div class="fld"><div class="k">Mô tả nhiệm vụ</div><div class="v">'+t.moTa+'</div></div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'+
+      '<div class="fld"><div class="k">Người giao việc</div><div class="v" style="display:flex;gap:8px;align-items:center">'+avatar(t.nguoiGiao)+t.nguoiGiao+'</div></div>'+
+      '<div class="fld"><div class="k">Người thực hiện</div><div class="v" style="display:flex;gap:8px;align-items:center">'+avatar(t.nguoiTH)+t.nguoiTH+'</div></div>'+
+      '<div class="fld"><div class="k">Bộ phận chủ trì</div><div class="v">'+t.bp+'</div></div>'+
+      '<div class="fld"><div class="k">Hạn xử lý</div><div class="v" style="color:'+(t.tt==='qua'?'var(--red)':'var(--tx)')+';font-weight:600">'+t.han+'</div></div>'+
+    '</div>'+
+    '<div class="fld"><div class="k">Cán bộ phối hợp</div><div class="v" style="display:flex;gap:8px;flex-wrap:wrap">'+
+      (t.phoiHop.length ? t.phoiHop.map(n=>'<span style="display:flex;gap:7px;align-items:center;border:1px solid var(--bd);border-radius:20px;padding:3px 12px 3px 3px;font-size:12.5px">'+avatar(n)+n+'</span>').join('') : '<span class="muted">Không có</span>')+
+    '</div></div>'+
+    '<div class="gsec"><h4>Nhiệm vụ con ('+t.viec.filter(v=>v.done).length+'/'+t.viec.length+' đã hoàn thành)</h4>'+
+      '<div id="subList">'+t.viec.map((v,i)=>
+        '<label class="chk '+(v.done?'done':'')+'"><input type="checkbox" data-sub="'+i+'" '+(v.done?'checked':'')+'><span class="lb">'+v.t+'</span></label>').join('')+'</div>'+
+      '<div style="margin-top:14px">'+pbar(t.tienDo, mauTienDo(t.tienDo), true)+
+      '<div style="display:flex;justify-content:space-between;margin-top:6px" class="tiny"><span class="muted">Tiến độ tổng thể</span><b id="subPct" style="color:var(--navy)">'+t.tienDo+'%</b></div></div>'+
+    '</div>'+
+    '<div class="gsec"><div class="tabs"><button class="on" data-tab="cmt">Trao đổi</button><button data-tab="log">Nhật ký</button></div>'+
+      '<div class="tp on" data-tp="cmt">'+comments(taskComments(t))+
+        '<div style="display:flex;gap:9px;margin-top:6px"><input class="sel" style="flex:1;min-width:0" placeholder="Nhập ý kiến trao đổi…" id="cmtIn"><button class="btn pri sm" id="cmtSend">'+ic('send',14)+'Gửi</button></div>'+
+      '</div>'+
+      '<div class="tp" data-tp="log">'+timeline(taskLog(t))+'</div>'+
+    '</div>'+
+    '<div class="gsec"><h4>Tệp đính kèm minh chứng</h4>'+fileBoxes(['Bien-ban-hien-truong.jpg','Anh-minh-chung-02.jpg'])+'</div>';
+
+  openDrawer(t.tieuDe, t.id+' · Cập nhật lần cuối 22/08/2026 16:30', body,
+    '<button class="btn pri" data-toast="Đã cập nhật tiến độ nhiệm vụ '+t.id+'">Cập nhật tiến độ</button>'+
+    '<button class="btn" data-toast="Đã gửi nhắc việc tới '+t.nguoiTH+'">Nhắc việc</button>'+
+    '<button class="btn" data-dwclose>Đóng</button>');
+
+  // Nhiệm vụ con: bật/tắt cập nhật tiến độ
+  $('#subList').addEventListener('change', e => {
+    const cb = e.target.closest('input[type=checkbox]'); if(!cb) return;
+    t.viec[+cb.dataset.sub].done = cb.checked;
+    cb.closest('.chk').classList.toggle('done', cb.checked);
+    const pct = Math.round(t.viec.filter(v=>v.done).length / t.viec.length * 100);
+    t.tienDo = pct;
+    $('#subPct').textContent = pct+'%';
+    const b = $('#dwBody .pbar.thick > i'); b.style.width = pct+'%'; b.style.background = mauTienDo(pct);
+    $('#dwBody .gsec h4').textContent = 'Nhiệm vụ con ('+t.viec.filter(v=>v.done).length+'/'+t.viec.length+' đã hoàn thành)';
+  });
+  $('#cmtSend').onclick = () => {
+    const v = $('#cmtIn').value.trim();
+    if(!v){ toast('Vui lòng nhập nội dung trao đổi'); return; }
+    $('#cmtIn').closest('.tp').insertAdjacentHTML('afterbegin', comments([{ten:MOCK_DATA.nguoiDung.ten, tat:MOCK_DATA.nguoiDung.tat, mau:'#1B3A5C', tg:'Vừa xong', nd:esc(v)}]));
+    $('#cmtIn').value=''; toast('Đã gửi ý kiến trao đổi');
+  };
+}
+
+/* ============================================================
+   3. VĂN BẢN & ĐƠN THƯ
+   ============================================================ */
+const TT_VB = {
+  moi:{ten:'Mới tiếp nhận', mau:'var(--mut)', bg:'rgba(136,150,166,.12)'},
+  dangxl:{ten:'Đang xử lý', mau:'var(--blue)', bg:'rgba(59,130,196,.12)'},
+  choduyet:{ten:'Chờ duyệt', mau:'var(--purple)', bg:'rgba(142,68,173,.12)'},
+  xong:{ten:'Đã hoàn thành', mau:'var(--green)', bg:'rgba(39,174,96,.12)'}
+};
+let vbTab = 'den';
+function hanText(n){
+  if(n < 0) return '<span style="color:var(--red);font-weight:700">quá hạn '+Math.abs(n)+' ngày</span>';
+  if(n === 0) return '<span style="color:var(--orange);font-weight:700">đến hạn hôm nay</span>';
+  if(n <= 3) return '<span style="color:var(--orange);font-weight:700">còn '+n+' ngày</span>';
+  return '<span class="muted">còn '+n+' ngày</span>';
+}
+function renderDocs(){
+  const ds = vbTab==='den' ? MOCK_DATA.vanBanDen : MOCK_DATA.donThu;
+  const rows = ds.map((v,i) =>
+    '<tr data-vb="'+vbTab+':'+i+'" class="'+(v.conLai<0?'late':'')+'">'+
+      '<td><b style="color:var(--navy)">'+v.soDen+'</b></td>'+
+      '<td>'+v.ky+'</td><td>'+v.ngay+'</td><td>'+v.coQuan+'</td>'+
+      '<td style="min-width:280px"><div class="tt">'+v.trichYeu+'</div></td>'+
+      '<td style="white-space:nowrap">'+v.han+'<div class="tiny" style="margin-top:2px">'+hanText(v.conLai)+'</div></td>'+
+      '<td>'+v.bp+'</td>'+
+      '<td>'+chip(TT_VB[v.tt].ten, TT_VB[v.tt].mau, TT_VB[v.tt].bg)+'</td></tr>').join('');
+  $('#sec-docs').innerHTML = '<div class="pg">'+
+    pageHead('Văn bản và đơn thư','Quản lý văn bản đến, đơn thư của công dân và theo dõi luồng chuyển tiếp xử lý',
+      '<button class="btn">'+ic('filter',15)+'Bộ lọc nâng cao</button><button class="btn pri" data-toast="Đã mở biểu mẫu tiếp nhận văn bản mới">'+ic('plus',15)+'Tiếp nhận văn bản</button>')+
+    '<div class="seg" id="segVb" style="margin-bottom:16px;display:inline-flex">'+
+      '<button data-t="den" class="'+(vbTab==='den'?'on':'')+'">Văn bản đến ('+MOCK_DATA.vanBanDen.length+')</button>'+
+      '<button data-t="dt" class="'+(vbTab==='dt'?'on':'')+'">Đơn thư công dân ('+MOCK_DATA.donThu.length+')</button></div>'+
+    '<div class="card"><div class="tw"><table class="tb2"><thead><tr>'+
+      '<th>Số đến</th><th>Số/Ký hiệu</th><th>Ngày đến</th><th>Cơ quan ban hành</th><th>Trích yếu</th><th>Hạn xử lý</th><th>Bộ phận đang giữ</th><th>Trạng thái</th>'+
+      '</tr></thead><tbody>'+rows+'</tbody></table></div></div></div>';
+}
+function openDoc(key){
+  const [tab, idx] = key.split(':');
+  const v = (tab==='den' ? MOCK_DATA.vanBanDen : MOCK_DATA.donThu)[+idx]; if(!v) return;
+  const f = (k, val, ocr) => '<div class="fld"><div class="k">'+k+(ocr?' <span class="ocr">OCR</span>':'')+'</div><div class="v">'+val+'</div></div>';
+  const body =
+    '<div class="scan">'+ic('file',26)+'<div>Bản scan văn bản · '+v.soTrang+' trang</div>'+
+      '<div class="tiny muted" style="font-weight:400">Nhấn để phóng to bản gốc</div></div>'+
+    '<div class="note" style="margin-bottom:18px">'+ic('ok',15)+' Hệ thống đã tự động bóc tách '+
+      '<b>7 trường thông tin</b> từ bản scan bằng công nghệ nhận dạng ký tự. Các trường có nhãn <span class="ocr">OCR</span> cần cán bộ kiểm tra lại trước khi lưu.</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'+
+      f('Số đến', '<b style="color:var(--navy)">'+v.soDen+'</b>')+
+      f('Số/Ký hiệu', v.ky, true)+
+      f('Ngày đến', v.ngay, true)+
+      f('Loại văn bản', v.loai, true)+
+      f('Độ khẩn', v.doKhan, true)+
+      f('Độ mật', v.doMat, true)+
+    '</div>'+
+    f('Cơ quan ban hành', v.coQuan, true)+
+    f('Người ký', v.nguoiKy, true)+
+    f('Trích yếu nội dung', v.trichYeu, true)+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'+
+      f('Hạn xử lý', v.han+' · '+hanText(v.conLai))+
+      f('Bộ phận đang giữ', v.bp)+
+    '</div>'+
+    '<div class="gsec"><h4>Dòng thời gian chuyển tiếp xử lý</h4>'+timeline(v.lo)+'</div>'+
+    '<div class="gsec"><h4>Tệp đính kèm</h4>'+fileBoxes(['Ban-scan-goc.pdf','Phu-luc-kem-theo.pdf'])+'</div>';
+  openDrawer(v.trichYeu, 'Số đến '+v.soDen+' · '+v.ky+' · '+v.coQuan, body,
+    '<button class="btn pri" id="btnToTask">'+ic('check',15)+'Chuyển thành nhiệm vụ</button>'+
+    '<button class="btn" data-toast="Đã chuyển văn bản tới bộ phận chuyên môn">Chuyển xử lý</button>'+
+    '<button class="btn" data-dwclose>Đóng</button>');
+  $('#btnToTask').onclick = () => {
+    toast('Đã tạo nhiệm vụ mới từ văn bản số đến '+v.soDen);
+    closeDrawer(); setTimeout(()=>nav('tasks'), 260);
+  };
+}
+
+/* ============================================================
+   4. GIẢI NGÂN
+   ============================================================ */
+function renderFund(){
+  const g = MOCK_DATA.giaiNgan;
+  const cards =
+    '<div class="grid3" style="margin-bottom:20px">'+
+      '<div class="kpi" style="background:rgba(59,130,196,.07);border-color:rgba(59,130,196,.22);cursor:default">'+
+        '<div class="kic" style="color:var(--blue)">'+ic('wallet',19)+'</div>'+
+        '<div class="num" style="color:var(--blue)">'+g.tongKeHoach+'</div><div class="lb">Tổng kế hoạch vốn năm 2026</div>'+
+        '<div class="sub">05 hạng mục · 04 nguồn vốn</div></div>'+
+      '<div class="kpi" style="background:rgba(39,174,96,.07);border-color:rgba(39,174,96,.22);cursor:default">'+
+        '<div class="kic" style="color:var(--green)">'+ic('arrowUp',19)+'</div>'+
+        '<div class="num" style="color:var(--green)">'+g.daGiaiNgan+'</div><div class="lb">Đã giải ngân · đạt '+g.tyLe+'%</div>'+
+        '<div class="sub" style="margin-top:8px">'+pbar(g.tyLe,'var(--green)')+'</div></div>'+
+      '<div class="kpi" style="background:rgba(231,76,60,.07);border-color:rgba(231,76,60,.24);cursor:default">'+
+        '<div class="kic" style="color:var(--red)">'+ic('alert',19)+'</div>'+
+        '<div class="num" style="color:var(--red)">'+g.soCham+'</div><div class="lb">Hạng mục chậm tiến độ</div>'+
+        '<div class="sub">Nhà văn hoá xã · Kênh mương nội đồng Thôn Đoài</div></div>'+
+    '</div>';
+  const items = g.hangMuc.map(h => {
+    const pct = Math.round(h.thuc/h.ke*100);
+    return '<div class="card" data-hm="'+h.id+'" style="margin-bottom:14px;cursor:pointer;'+(h.cham?'border-left:3px solid var(--red)':'')+'">'+
+      '<div class="card-b" style="padding:18px 20px">'+
+        '<div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap">'+
+          '<div style="flex:1;min-width:260px">'+
+            '<div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap">'+
+              '<h3 style="font-size:14.5px">'+h.ten+'</h3>'+
+              chip(h.nguonVon, h.mauNguon, 'rgba(0,0,0,.04)')+
+              (h.cham ? chip('Chậm so với tiến độ','var(--red)','rgba(231,76,60,.10)') : '')+
+            '</div>'+
+            '<div class="tiny muted" style="margin-top:6px;display:flex;gap:8px;align-items:center">'+avatar(h.phuTrach)+' Phụ trách: '+h.phuTrach+' · Mã hạng mục '+h.id+'</div>'+
+          '</div>'+
+          '<div style="text-align:right;min-width:150px">'+
+            '<div style="font-size:17px;font-weight:800;color:var(--navy)">'+String(h.thuc).replace('.',',')+' / '+String(h.ke).replace('.',',')+' tỷ</div>'+
+            '<div class="tiny muted">Đã giải ngân / Kế hoạch vốn</div></div>'+
+        '</div>'+
+        '<div style="display:flex;gap:14px;align-items:center;margin-top:14px">'+
+          '<div style="flex:1">'+pbar(pct, mauTienDo(pct), true)+'</div>'+
+          '<b style="width:52px;text-align:right;color:'+mauTienDo(pct)+';font-size:15px">'+pct+'%</b></div>'+
+      '</div></div>';
+  }).join('');
+  $('#sec-fund').innerHTML = '<div class="pg">'+
+    pageHead('Theo dõi giải ngân vốn đầu tư','Tiến độ giải ngân các hạng mục đầu tư công và vốn sự nghiệp trên địa bàn xã năm 2026',
+      '<button class="btn">'+ic('cal',15)+'Năm 2026</button><button class="btn pri" data-toast="Đã xuất báo cáo giải ngân định dạng Excel">'+ic('down',15)+'Xuất báo cáo</button>')+
+    cards + '<h3 style="font-size:15px;margin-bottom:12px">Danh sách hạng mục ('+g.hangMuc.length+')</h3>' + items + '</div>';
+}
+function openFund(id){
+  const h = MOCK_DATA.giaiNgan.hangMuc.find(x=>x.id===id); if(!h) return;
+  const pct = Math.round(h.thuc/h.ke*100);
+  const rows = h.chiTiet.map(c =>
+    '<tr><td>'+c.ngay+'</td><td class="tt">'+c.nd+'</td><td style="white-space:nowrap;font-weight:700;color:var(--navy)">'+c.tien+'</td>'+
+    '<td>'+c.dv+'</td><td>'+c.ng+'</td><td>'+c.ct+'</td></tr>').join('');
+  const vm = h.vuongMac.map(v =>
+    '<div style="display:flex;gap:11px;align-items:flex-start;border:1px solid var(--bd);border-left:3px solid var(--orange);border-radius:10px;padding:11px 13px;margin-bottom:9px">'+
+      '<span style="color:var(--orange);margin-top:1px">'+ic('alert',16)+'</span>'+
+      '<div style="flex:1"><div style="font-size:12.8px;font-weight:600;color:var(--navy)">'+v.nd+'</div>'+
+      '<div class="tiny muted" style="margin-top:3px">Phụ trách tháo gỡ: '+v.ng+' · Hạn: '+v.han+'</div></div></div>').join('');
+  const body =
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'+
+      chip(h.nguonVon, h.mauNguon,'rgba(0,0,0,.04)')+
+      (h.cham?chip('Chậm so với tiến độ','var(--red)','rgba(231,76,60,.10)'):chip('Đúng tiến độ','var(--green)','rgba(39,174,96,.10)'))+'</div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'+
+      '<div class="fld"><div class="k">Kế hoạch vốn</div><div class="v" style="font-size:16px;font-weight:800;color:var(--navy)">'+String(h.ke).replace('.',',')+' tỷ đồng</div></div>'+
+      '<div class="fld"><div class="k">Đã giải ngân</div><div class="v" style="font-size:16px;font-weight:800;color:'+mauTienDo(pct)+'">'+String(h.thuc).replace('.',',')+' tỷ đồng</div></div>'+
+    '</div>'+
+    '<div style="margin-bottom:6px">'+pbar(pct, mauTienDo(pct), true)+'</div>'+
+    '<div class="tiny muted" style="margin-bottom:18px">Đạt '+pct+'% kế hoạch vốn giao · Cán bộ phụ trách: '+h.phuTrach+'</div>'+
+    '<div class="gsec"><h4>Các lần giải ngân ('+h.chiTiet.length+' lần)</h4>'+
+      '<div class="tw" style="border:1px solid var(--bd);border-radius:10px"><table class="tb2">'+
+      '<thead><tr><th>Ngày</th><th>Nội dung chi</th><th>Số tiền</th><th>Đơn vị thụ hưởng</th><th>Người thực hiện</th><th>Chứng từ</th></tr></thead>'+
+      '<tbody>'+rows+'</tbody></table></div></div>'+
+    '<div class="gsec"><h4>Vướng mắc đang theo dõi ('+h.vuongMac.length+')</h4>'+vm+'</div>'+
+    '<div class="gsec"><h4>Trao đổi của các bộ phận</h4>'+comments(h.binhLuan)+'</div>';
+  openDrawer(h.ten, h.id+' · '+h.nguonVon+' · Phụ trách: '+h.phuTrach, body,
+    '<button class="btn pri" data-toast="Đã ghi nhận đề nghị giải ngân đợt tiếp theo">Đề nghị giải ngân</button>'+
+    '<button class="btn" data-toast="Đã gửi nhắc tháo gỡ vướng mắc tới '+h.phuTrach+'">Nhắc tháo gỡ</button>'+
+    '<button class="btn" data-dwclose>Đóng</button>');
+}
+
+/* ============================================================
+   5. PHẢN ÁNH NGƯỜI DÂN
+   ============================================================ */
+let paLoc = [];
+function slaInfo(p){
+  if(p.tt === 'Đã xử lý') return {t:'Hoàn thành đúng hạn', mau:'var(--green)'};
+  if(p.sla < 0){ const d = Math.round(Math.abs(p.sla)/24); return {t:'Quá hạn '+(d<1?'dưới 1 ngày':d+' ngày'), mau:'var(--red)'}; }
+  if(p.sla <= 12) return {t:'Còn '+p.sla+' giờ', mau:'var(--orange)'};
+  return {t:'Còn '+p.sla+' giờ', mau:'var(--green)'};
+}
+function ttPA(tt){
+  if(tt==='Đã xử lý') return chip(tt,'var(--green)','rgba(39,174,96,.12)');
+  if(tt==='Mới tiếp nhận') return chip(tt,'var(--mut)','rgba(136,150,166,.14)');
+  return chip(tt,'var(--blue)','rgba(59,130,196,.12)');
+}
+function renderFeedback(){
+  const pa = MOCK_DATA.phanAnh;
+  const ds = paLoc.length ? pa.danhSach.filter(p => paLoc.includes(p.lv)) : pa.danhSach;
+  const stats = pa.thongKe.map(k =>
+    '<div class="kpi" style="background:'+k.tint+';border-color:'+k.tint.replace('.07','.22')+';cursor:default">'+
+      '<div class="kic" style="color:'+k.mau+'">'+ic(k.ic,19)+'</div>'+
+      '<div class="num" style="color:'+k.mau+'">'+k.so+'</div><div class="lb">'+k.nhan+'</div><div class="sub">'+k.phu+'</div></div>').join('');
+  const chips = pa.linhVuc.map(lv =>
+    '<button class="fchip '+(paLoc.includes(lv)?'on':'')+'" data-lv="'+lv+'">'+lv+'</button>').join('');
+  const cards = ds.map(p => {
+    const s = slaInfo(p);
+    return '<div class="fb" data-pa="'+p.ma+'">'+
+      '<div class="img" style="background:'+p.mau+'"><span style="opacity:.9">ẢNH HIỆN TRƯỜNG</span></div>'+
+      '<div class="in"><div style="display:flex;gap:8px;align-items:center;justify-content:space-between">'+
+        '<span class="cd">'+p.ma+'</span>'+chip(p.lv, p.mau, 'rgba(0,0,0,.045)')+'</div>'+
+        '<div class="ti">'+p.tieuDe+'</div><div class="ex">'+p.trich+'</div>'+
+        '<div class="tiny muted" style="display:flex;gap:5px;align-items:center">'+ic('pin',13)+p.thon+'</div>'+
+        '<div class="ft"><span class="sla" style="color:'+s.mau+'">'+ic('clock',13)+s.t+'</span>'+
+        '<span style="margin-left:auto;display:flex;gap:8px;align-items:center">'+(p.sao?stars(p.sao):'')+ttPA(p.tt)+'</span></div>'+
+      '</div></div>';
+  }).join('');
+  $('#sec-feedback').innerHTML = '<div class="pg">'+
+    pageHead('Phản ánh, kiến nghị của người dân','Tiếp nhận, phân loại và xử lý phản ánh theo cam kết thời hạn (SLA) từng lĩnh vực',
+      '<button class="btn">'+ic('cal',15)+'Tháng 8/2026</button><button class="btn pri" data-toast="Đã mở biểu mẫu tiếp nhận phản ánh trực tiếp">'+ic('plus',15)+'Tiếp nhận phản ánh</button>')+
+    '<div class="grid4" style="margin-bottom:20px">'+stats+'</div>'+
+    '<div style="display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-bottom:18px" id="paChips">'+
+      '<span class="tiny muted" style="display:flex;gap:6px;align-items:center;margin-right:4px">'+ic('filter',14)+'Lọc theo lĩnh vực:</span>'+chips+
+      (paLoc.length?'<button class="btn sm" id="paClear">Bỏ lọc ('+paLoc.length+')</button>':'')+
+      '<span class="tiny muted" style="margin-left:auto">Hiển thị '+ds.length+'/'+pa.danhSach.length+' phiếu phản ánh</span></div>'+
+    (ds.length ? '<div class="grid3">'+cards+'</div>'
+      : '<div class="card"><div class="card-b muted" style="text-align:center;padding:44px">Không có phiếu phản ánh nào thuộc lĩnh vực đã chọn.</div></div>')+
+    '</div>';
+}
+function openPA(ma){
+  const p = MOCK_DATA.phanAnh.danhSach.find(x=>x.ma===ma); if(!p) return;
+  const s = slaInfo(p), done = p.tt==='Đã xử lý';
+  const body =
+    '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'+
+      chip(p.lv, p.mau, 'rgba(0,0,0,.045)')+ttPA(p.tt)+
+      chip(s.t, s.mau, 'rgba(0,0,0,.04)')+'</div>'+
+    '<div class="gsec" style="border-top:none;margin-top:0;padding-top:0"><h4>Hình ảnh trước và sau khi xử lý</h4>'+
+      '<div class="ba">'+
+        '<div class="b"><div class="h" style="background:rgba(231,76,60,.10);color:var(--red)">TRƯỚC KHI XỬ LÝ</div>'+
+          '<div class="p" style="background:'+p.mau+';opacity:.85">Ảnh người dân gửi kèm</div></div>'+
+        '<div class="b"><div class="h" style="background:rgba(39,174,96,.10);color:var(--green)">SAU KHI XỬ LÝ</div>'+
+          '<div class="p" style="background:'+(done?'var(--green)':'#B8C2CC')+'">'+(done?'Ảnh cán bộ nghiệm thu':'Chưa có ảnh nghiệm thu')+'</div></div>'+
+      '</div></div>'+
+    '<div class="fld"><div class="k">Nội dung phản ánh</div><div class="v">'+p.trich+'</div></div>'+
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">'+
+      '<div class="fld"><div class="k">Người gửi</div><div class="v">'+p.nguoiGui+'<div class="tiny muted">'+p.sdt+'</div></div></div>'+
+      '<div class="fld"><div class="k">Thời điểm gửi</div><div class="v">'+p.ngayGui+'</div></div>'+
+      '<div class="fld"><div class="k">Bộ phận xử lý</div><div class="v">'+p.bp+'</div></div>'+
+      '<div class="fld"><div class="k">Cán bộ được giao</div><div class="v">'+p.canBo+'</div></div>'+
+    '</div>'+
+    '<div class="gsec"><h4>Vị trí phản ánh</h4>'+
+      '<div style="position:relative;height:150px;border-radius:10px;border:1px solid var(--bd);overflow:hidden;'+
+        'background:#EDF4EE;background-image:linear-gradient(rgba(39,174,96,.10) 1px,transparent 1px),linear-gradient(90deg,rgba(39,174,96,.10) 1px,transparent 1px);background-size:34px 34px">'+
+        '<div style="position:absolute;left:0;right:0;top:56%;height:9px;background:#fff;box-shadow:0 0 0 1px #E1E7E3"></div>'+
+        '<div style="position:absolute;top:0;bottom:0;left:34%;width:8px;background:#fff;box-shadow:0 0 0 1px #E1E7E3"></div>'+
+        '<div style="position:absolute;left:0;right:0;top:22%;height:12px;background:rgba(59,130,196,.28);border-radius:20px"></div>'+
+        '<div style="position:absolute;left:48%;top:52%;transform:translate(-50%,-100%);color:'+p.mau+'">'+ic('pin',30,2)+'</div>'+
+        '<div style="position:absolute;left:48%;top:52%;transform:translate(-50%,4px);font-size:11px;font-weight:700;color:var(--navy);background:#fff;padding:2px 8px;border-radius:10px;border:1px solid var(--bd);white-space:nowrap">'+p.thon+'</div>'+
+      '</div></div>'+
+    '<div class="gsec"><h4>Dòng thời gian xử lý</h4>'+timeline(p.lo)+'</div>'+
+    '<div class="gsec"><h4>Đánh giá của người dân</h4>'+
+      (p.sao ?
+        '<div style="border:1px solid var(--bd);border-radius:11px;padding:14px 16px;background:var(--bg2)">'+
+          '<div style="display:flex;gap:10px;align-items:center;margin-bottom:8px">'+stars(p.sao)+
+          '<b style="color:var(--navy);font-size:14px">'+p.sao+'/5</b><span class="tiny muted">· '+p.nguoiGui+'</span></div>'+
+          '<div class="sm">“'+p.danhGia+'”</div></div>'
+        : '<div class="note">'+ic('clock',15)+' Phiếu phản ánh chưa hoàn thành xử lý nên chưa có đánh giá của người dân.</div>')+
+    '</div>';
+  openDrawer(p.tieuDe, p.ma+' · '+p.lv+' · '+p.thon, body,
+    (done ? '<button class="btn" data-toast="Đã gửi lời cảm ơn tới người dân">Gửi lời cảm ơn</button>'
+          : '<button class="btn pri" data-toast="Đã cập nhật kết quả xử lý phiếu '+p.ma+'">Cập nhật kết quả</button>'+
+            '<button class="btn" data-toast="Đã chuyển phiếu '+p.ma+' thành nhiệm vụ theo dõi">Chuyển thành nhiệm vụ</button>')+
+    '<button class="btn" data-dwclose>Đóng</button>');
+}
+
+/* ============================================================
+   6. BẢN ĐỒ KINH TẾ SỐ
+   ============================================================ */
+let bdLop = {};
+MOCK_DATA.banDo.lop.forEach(l => bdLop[l.id] = l.on);
+function renderMap(){
+  const bd = MOCK_DATA.banDo;
+  const lops = bd.lop.map(l =>
+    '<div class="lyr '+(bdLop[l.id]?'on':'')+'" data-lop="'+l.id+'">'+
+      '<span class="dot" style="background:'+l.mau+'"></span><span>'+l.ten+'</span>'+
+      '<span class="n">'+l.so.toLocaleString('vi-VN')+'</span><span class="sw"></span></div>').join('');
+  const pins = bd.ghim.map((g,i) => {
+    const l = bd.lop.find(x=>x.id===g.lop);
+    return bdLop[g.lop] ? '<div class="pin" data-ghim="'+i+'" style="left:'+g.x+'%;top:'+g.y+'%;background:'+l.mau+'"></div>' : '';
+  }).join('');
+  let acc = 0;
+  const stops = bd.coCau.map(c => { const a=acc; acc+=c.tyLe; return c.mau+' '+a+'% '+acc+'%'; }).join(',');
+  const legend = bd.coCau.map(c =>
+    '<div class="pl"><span class="dot" style="background:'+c.mau+'"></span><span>'+c.ten+'</span><span class="n">'+c.tyLe+'%</span></div>').join('');
+  const tong = bd.tongHop.map(t => '<div><b>'+t.so+'</b><span>'+t.nhan+'</span></div>').join('');
+
+  $('#sec-map').innerHTML = '<div class="pg" style="padding-bottom:18px">'+
+    pageHead('Bản đồ kinh tế số','Cơ sở dữ liệu không gian về doanh nghiệp, hộ kinh doanh và hạ tầng trên địa bàn xã',
+      '<button class="btn" data-toast="Đã cập nhật dữ liệu bản đồ lúc 08:00 ngày 23/08/2026">'+ic('layer',15)+'Cập nhật dữ liệu</button>'+
+      '<button class="btn pri" data-toast="Đã xuất dữ liệu bản đồ kinh tế số">'+ic('down',15)+'Xuất dữ liệu</button>')+
+    '<div class="mapwrap" id="mapWrap">'+
+      '<div class="blk" style="left:8%;top:12%;width:26%;height:22%"></div>'+
+      '<div class="blk" style="left:56%;top:16%;width:30%;height:20%"></div>'+
+      '<div class="blk" style="left:12%;top:58%;width:24%;height:26%"></div>'+
+      '<div class="blk" style="left:58%;top:60%;width:28%;height:24%"></div>'+
+      '<div class="river" style="left:-4%;top:8%;width:110%;height:16px;transform:rotate(-4deg)"></div>'+
+      '<div class="road" style="left:0;right:0;top:46%;height:14px"></div>'+
+      '<div class="road" style="top:0;bottom:0;left:44%;width:12px"></div>'+
+      '<div class="road" style="left:0;right:0;top:78%;height:8px"></div>'+
+      '<div class="road" style="top:0;bottom:0;left:76%;width:8px"></div>'+
+      '<div class="mlbl" style="left:20%;top:8%">THÔN ĐÔNG</div>'+
+      '<div class="mlbl" style="left:66%;top:12%">THÔN ĐOÀI</div>'+
+      '<div class="mlbl" style="left:18%;top:88%">THÔN TRUNG</div>'+
+      '<div class="mlbl" style="left:62%;top:88%">TỔ DÂN PHỐ SỐ 5</div>'+
+      '<div class="mlbl" style="left:45.5%;top:43%;color:#9AA8B6">Đường liên xã ĐT-428</div>'+
+      pins+
+      '<div class="mpanel l"><div class="h">Lớp dữ liệu bản đồ</div><div class="b" id="lopList">'+lops+'</div></div>'+
+      '<div class="mpanel r"><div class="h">Cơ cấu doanh nghiệp theo ngành nghề</div><div class="b">'+
+        '<div class="pie" style="background:conic-gradient('+stops+')"></div>'+legend+
+        '<div class="mstat">'+tong+'</div></div></div>'+
+    '</div></div>';
+}
+function openGhim(i, elPin){
+  const bd = MOCK_DATA.banDo, g = bd.ghim[+i], l = bd.lop.find(x=>x.id===g.lop);
+  $$('.pop').forEach(p=>p.remove());
+  const html = '<div class="pop'+(g.y < 46 ? ' below' : '')+'" style="left:'+g.x+'%;top:'+g.y+'%">'+
+    '<div class="h"><span class="dot" style="background:'+l.mau+';margin-top:5px"></span><div><b>'+g.ten+'</b>'+
+      '<div class="tiny muted">'+l.ten+'</div></div>'+
+      '<button class="icbtn" style="width:26px;height:26px;margin-left:auto;border:none" data-popclose>'+ic('close',14)+'</button></div>'+
+    '<div class="b">'+
+      '<div class="r"><span class="k">Ngành nghề</span><span>'+g.nghe+'</span></div>'+
+      '<div class="r"><span class="k">Địa chỉ</span><span>'+g.dc+'</span></div>'+
+      '<div class="r"><span class="k">Số lao động</span><span>'+(g.ld?g.ld+' người':'Không áp dụng')+'</span></div>'+
+      '<div class="r"><span class="k">Đại diện</span><span>'+g.dd+'</span></div>'+
+      '<div class="r"><span class="k">Điện thoại</span><span>'+g.sdt+'</span></div>'+
+    '</div></div>';
+  $('#mapWrap').insertAdjacentHTML('beforeend', html);
+}
+
+/* ============================================================
+   7. BÁO CÁO
+   ============================================================ */
+let bcKy = 'thang', bcSoSanh = false;
+const KY_TEN = { tuan:'tuần 34 năm 2026', thang:'tháng 8 năm 2026', quy:'quý III năm 2026', nam:'năm 2026' };
+function renderReport(){
+  const b = MOCK_DATA.baoCao;
+  const maxBp = Math.max(...b.theoBoPhan.map(x=>x.so));
+  const hbars = b.theoBoPhan.map(x =>
+    '<div class="hbar-row"><span class="muted" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+x.ten+'</span>'+
+    '<div class="hbar"><i style="width:'+(x.so/maxBp*100)+'%;background:'+x.mau+'"></i></div>'+
+    '<b style="text-align:right;color:var(--navy)">'+x.so+'</b></div>').join('');
+
+  const maxPa = Math.max(...b.phanAnhLinhVuc.map(x=>x.so));
+  const paBars = b.phanAnhLinhVuc.map(x =>
+    '<div class="col" title="'+x.ten+': '+x.so+' lượt"><div class="stack">'+
+      '<div class="bar" style="height:'+(x.so/maxPa*100)+'%;background:var(--pink);max-width:26px"></div></div>'+
+      '<div class="lbl" style="text-align:center;line-height:1.25">'+
+      x.ten.replace('Vệ sinh môi trường','Vệ sinh MT').replace('Trật tự đô thị','Trật tự ĐT')+'</div></div>').join('');
+
+  const maxGn = Math.max(...b.giaiNganNguonVon.map(x=>x.ke));
+  const gnRows = b.giaiNganNguonVon.map(x => {
+    const pct = Math.round(x.thuc/x.ke*100);
+    return '<div style="margin-bottom:15px"><div style="display:flex;justify-content:space-between;font-size:12.5px;margin-bottom:6px">'+
+      '<span style="font-weight:600;color:var(--navy)">'+x.ten+'</span>'+
+      '<span class="muted">'+String(x.thuc).replace('.',',')+' / '+String(x.ke).replace('.',',')+' tỷ · <b style="color:'+mauTienDo(pct)+'">'+pct+'%</b></span></div>'+
+      '<div style="position:relative;height:12px;border-radius:6px;background:#EDF0F3;overflow:hidden">'+
+        '<i style="position:absolute;left:0;top:0;bottom:0;width:'+(x.ke/maxGn*100)+'%;background:rgba(230,126,34,.28)"></i>'+
+        '<i style="position:absolute;left:0;top:0;bottom:0;width:'+(x.thuc/maxGn*100)+'%;background:'+mauTienDo(pct)+';border-radius:6px"></i>'+
+      '</div></div>';
+  }).join('');
+
+  const rank = b.xepHang.map(r => {
+    const tl = Math.round(r.dung/r.so*100);
+    const mau = tl>=90?'var(--green)': tl>=80?'var(--blue)': tl>=70?'var(--orange)':'var(--red)';
+    return '<tr><td class="tt">'+r.bp+'</td><td>'+r.so+'</td><td style="color:var(--green);font-weight:600">'+r.dung+'</td>'+
+      '<td style="color:'+(r.tre>3?'var(--red)':'var(--tx)')+';font-weight:600">'+r.tre+'</td>'+
+      '<td style="min-width:170px"><div style="display:flex;gap:10px;align-items:center">'+
+        '<div class="hbar" style="flex:1"><i style="width:'+tl+'%;background:'+mau+'"></i></div>'+
+        '<b style="color:'+mau+';width:38px;text-align:right">'+tl+'%</b></div></td><td>'+r.tb+'</td></tr>';
+  }).join('');
+
+  $('#sec-report').innerHTML = '<div class="pg">'+
+    pageHead('Báo cáo tổng hợp','Số liệu điều hành kỳ '+KY_TEN[bcKy]+(bcSoSanh?' · có so sánh cùng kỳ năm 2025':''),
+      '<button class="btn" data-xuat="PDF">'+ic('down',15)+'PDF</button>'+
+      '<button class="btn" data-xuat="Excel">'+ic('down',15)+'Excel</button>'+
+      '<button class="btn" data-xuat="PowerPoint">'+ic('down',15)+'PowerPoint</button>')+
+    '<div style="display:flex;gap:12px;align-items:center;margin-bottom:18px;flex-wrap:wrap">'+
+      '<div class="seg" id="segKy">'+
+        [['tuan','Tuần'],['thang','Tháng'],['quy','Quý'],['nam','Năm']].map(k=>
+          '<button data-k="'+k[0]+'" class="'+(bcKy===k[0]?'on':'')+'">'+k[1]+'</button>').join('')+'</div>'+
+      '<button class="btn '+(bcSoSanh?'pri':'')+'" id="btnSoSanh">'+ic('chart',15)+'So sánh cùng kỳ</button>'+
+      '<span class="tiny muted" style="margin-left:auto">Kỳ báo cáo: '+KY_TEN[bcKy]+'</span></div>'+
+    '<div class="grid2">'+
+      '<div class="card"><div class="card-h"><h3>Nhiệm vụ theo bộ phận</h3><div class="sp">Tổng 224 việc</div></div>'+
+        '<div class="card-b"><div class="hbars">'+hbars+'</div></div></div>'+
+      '<div class="card"><div class="card-h"><h3>Tỷ lệ xử lý đúng hạn theo tháng</h3>'+
+        '<div class="sp legend"><span><i style="background:var(--blue)"></i>Năm 2026</span>'+
+        (bcSoSanh?'<span><i style="background:#C9D6E3"></i>Năm 2025</span>':'')+'</div></div>'+
+        '<div class="card-b">'+dungHanChart()+'</div></div>'+
+      '<div class="card"><div class="card-h"><h3>Phân bố phản ánh theo lĩnh vực</h3><div class="sp">312 lượt</div></div>'+
+        '<div class="card-b"><div class="bars">'+paBars+'</div></div></div>'+
+      '<div class="card"><div class="card-h"><h3>Tiến độ giải ngân theo nguồn vốn</h3>'+
+        '<div class="sp legend"><span><i style="background:rgba(230,126,34,.28)"></i>Kế hoạch</span><span><i style="background:var(--green)"></i>Thực hiện</span></div></div>'+
+        '<div class="card-b">'+gnRows+'</div></div>'+
+    '</div>'+
+    '<div class="card" style="margin-top:18px"><div class="card-h"><h3>Xếp hạng bộ phận theo tỷ lệ đúng hạn</h3>'+
+      '<div class="sp">Kỳ '+KY_TEN[bcKy]+'</div></div>'+
+      '<div class="tw"><table class="tb2"><thead><tr><th>Bộ phận</th><th>Số việc</th><th>Đúng hạn</th><th>Trễ</th>'+
+      '<th>Tỷ lệ đúng hạn</th><th>Thời gian xử lý trung bình</th></tr></thead><tbody>'+rank+'</tbody></table></div></div>'+
+    '</div>';
+}
+function dungHanChart(){
+  const d = MOCK_DATA.baoCao.dungHanThang, W=620, H=200, pl=40, pr=14, pt=14, pb=28;
+  const n = d.thang.length, min=60, max=100;
+  const X = i => pl + i*(W-pl-pr)/(n-1);
+  const Y = v => pt + (1-(v-min)/(max-min))*(H-pt-pb);
+  const p = arr => arr.map((v,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(v).toFixed(1)).join(' ');
+  const grid = [60,70,80,90,100].map(v=>'<line x1="'+pl+'" y1="'+Y(v)+'" x2="'+(W-pr)+'" y2="'+Y(v)+'" stroke="#EDF0F3"/>'+
+    '<text x="'+(pl-8)+'" y="'+(Y(v)+4)+'" fill="#8896A6" font-size="10.5" text-anchor="end">'+v+'%</text>').join('');
+  const lbl = d.thang.map((t,i)=>'<text x="'+X(i)+'" y="'+(H-8)+'" fill="#8896A6" font-size="10.5" text-anchor="middle">'+t+'</text>').join('');
+  const dots = d.nam2026.map((v,i)=>'<circle cx="'+X(i)+'" cy="'+Y(v)+'" r="3.1" fill="#fff" stroke="#3B82C4" stroke-width="2"/>').join('');
+  return '<svg viewBox="0 0 '+W+' '+H+'" style="width:100%;height:200px;display:block">'+grid+lbl+
+    (bcSoSanh?'<path d="'+p(d.nam2025)+'" fill="none" stroke="#C9D6E3" stroke-width="2.2" stroke-dasharray="6 4" stroke-linecap="round"/>':'')+
+    '<path d="'+p(d.nam2026)+'" fill="none" stroke="#3B82C4" stroke-width="2.6" stroke-linecap="round"/>'+dots+'</svg>';
+}
+
+/* ============================================================
+   8. CẤU HÌNH
+   ============================================================ */
+let chTab = 'sla';
+function renderConfig(){
+  const c = MOCK_DATA.cauHinh;
+  const slaRows = c.sla.map((s,i) =>
+    '<tr style="cursor:default"><td class="tt">'+s.lv+'</td>'+
+    '<td><input class="inp" type="number" value="'+s.tiepNhan+'" data-sla="'+i+'" data-f="tiepNhan"> giờ</td>'+
+    '<td><input class="inp" type="number" value="'+s.xuLy+'" data-sla="'+i+'" data-f="xuLy"> '+s.donVi+'</td>'+
+    '<td>'+s.canhBao+'</td>'+
+    '<td>'+chip('Đang áp dụng','var(--green)','rgba(39,174,96,.12)')+'</td></tr>').join('');
+
+  const node = (n, root) =>
+    '<div class="tnode"><div class="tbox"'+(root?' style="border-left:3px solid '+n.mau+'"':'')+'>'+
+      '<span class="av" style="background:'+n.mau+'">'+ic('build',14)+'</span>'+
+      '<div><b>'+n.ten+'</b><span>'+n.cv+'</span></div></div>'+
+      (n.con && n.con.length ? '<div class="tkids">'+n.con.map(x=>node(x)).join('')+'</div>' : '')+
+    '</div>';
+
+  const userRows = c.nguoiDung.map(u =>
+    '<tr style="cursor:default"><td><div style="display:flex;gap:9px;align-items:center">'+
+      '<span class="av" style="background:'+u.mau+'">'+u.tat+'</span><div><div class="tt">'+u.ten+'</div>'+
+      '<div class="tiny muted">'+u.tk+'@daithang.gov.vn</div></div></div></td>'+
+      '<td>'+u.bp+'</td><td>'+u.vt+'</td><td>'+u.dn+'</td>'+
+      '<td>'+(u.tt==='Đang hoạt động'?chip(u.tt,'var(--green)','rgba(39,174,96,.12)'):chip(u.tt,'var(--red)','rgba(231,76,60,.12)'))+'</td>'+
+      '<td><button class="btn sm" data-toast="Đã mở biểu mẫu phân quyền cho '+u.ten+'">Phân quyền</button></td></tr>').join('');
+
+  $('#sec-config').innerHTML = '<div class="pg">'+
+    pageHead('Cấu hình hệ thống','Thiết lập thời hạn xử lý, sơ đồ tổ chức và tài khoản người dùng của UBND xã',
+      '<button class="btn pri" data-toast="Đã lưu thay đổi cấu hình hệ thống">'+ic('ok',15)+'Lưu thay đổi</button>')+
+    '<div class="tabs" id="chTabs" style="margin-bottom:18px">'+
+      '<button data-tab="sla" class="'+(chTab==='sla'?'on':'')+'">SLA theo lĩnh vực</button>'+
+      '<button data-tab="org" class="'+(chTab==='org'?'on':'')+'">Sơ đồ tổ chức</button>'+
+      '<button data-tab="usr" class="'+(chTab==='usr'?'on':'')+'">Người dùng</button></div>'+
+
+    '<div class="tp '+(chTab==='sla'?'on':'')+'" data-tp="sla">'+
+      '<div class="note" style="margin-bottom:16px">'+ic('clock',15)+' Thời hạn (SLA) được tính theo giờ hành chính, không tính ngày nghỉ và ngày lễ. Thay đổi có hiệu lực với các phiếu phản ánh tiếp nhận sau thời điểm lưu.</div>'+
+      '<div class="card"><div class="tw"><table class="tb2"><thead><tr>'+
+      '<th>Lĩnh vực phản ánh</th><th>Thời hạn tiếp nhận, phân loại</th><th>Thời hạn xử lý</th><th>Ngưỡng cảnh báo</th><th>Trạng thái</th>'+
+      '</tr></thead><tbody>'+slaRows+'</tbody></table></div></div></div>'+
+
+    '<div class="tp '+(chTab==='org'?'on':'')+'" data-tp="org">'+
+      '<div class="card"><div class="card-h"><h3>Sơ đồ tổ chức UBND xã</h3><div class="sp">39 cán bộ, công chức</div></div>'+
+      '<div class="card-b"><div class="tree">'+node(c.toChuc, true)+'</div></div></div></div>'+
+
+    '<div class="tp '+(chTab==='usr'?'on':'')+'" data-tp="usr">'+
+      '<div class="card"><div class="card-h"><h3>Tài khoản người dùng</h3>'+
+        '<div class="sp"><button class="btn sm pri" data-toast="Đã mở biểu mẫu thêm tài khoản người dùng">'+ic('plus',14)+'Thêm người dùng</button></div></div>'+
+      '<div class="tw"><table class="tb2"><thead><tr><th>Họ và tên</th><th>Bộ phận</th><th>Vai trò</th>'+
+      '<th>Đăng nhập gần nhất</th><th>Trạng thái</th><th></th></tr></thead><tbody>'+userRows+'</tbody></table></div></div></div>'+
+    '</div>';
+}
+
+/* ============================================================
+   KHỞI TẠO VÀ GẮN SỰ KIỆN
+   ============================================================ */
+function initShell(){
+  const d = MOCK_DATA;
+  $('#tbXa').textContent = 'UBND ' + d.xa.toUpperCase();
+  $('#tbHuyen').textContent = d.huyen;
+  $('#searchIcon').innerHTML = ic('search',16);
+  $('#btnBell').innerHTML = ic('bell',18)+'<span class="badge">'+d.soThongBao+'</span>';
+  $('#btnHelp').innerHTML = ic('help',18);
+  $('#dwClose').innerHTML = ic('close',17);
+  $('#userBox').innerHTML = '<span class="av lg" style="background:var(--navy)">'+d.nguoiDung.tat+'</span>'+
+    '<div><b>'+d.nguoiDung.ten+'</b><span>'+d.nguoiDung.chucVu+'</span></div>';
+  $('#menu').innerHTML =
+    '<div class="sb-cap">Điều hành</div>'+
+    MENU.slice(0,6).map(m => menuBtn(m)).join('')+
+    '<div class="sb-cap">Quản trị</div>'+
+    MENU.slice(6).map(m => menuBtn(m)).join('');
+}
+function menuBtn(m){
+  return '<button class="sb-item" data-id="'+m.id+'">'+ic(m.ic,17)+'<span>'+m.ten+'</span>'+
+    (m.cnt?'<span class="cnt">'+m.cnt+'</span>':'')+'</button>';
+}
+
+document.addEventListener('click', e => {
+  const t = e.target;
+  // điều hướng
+  const mi = t.closest('.sb-item'); if(mi){ nav(mi.dataset.id); return; }
+  const nv = t.closest('[data-nav]'); if(nv){ nav(nv.dataset.nav); return; }
+  // đóng drawer
+  if(t.closest('[data-dwclose]') || t.id==='dwClose' || t.closest('#dwClose') || t.id==='ovl'){ closeDrawer(); return; }
+  // thông báo giả lập
+  const tt = t.closest('[data-toast]'); if(tt){ toast(tt.dataset.toast); return; }
+  const xu = t.closest('[data-xuat]'); if(xu){ toast('Đã tạo tệp báo cáo định dạng '+xu.dataset.xuat+' · Hệ thống sẽ gửi vào hộp thư của bạn'); return; }
+  // mở chi tiết
+  const nvi = t.closest('[data-nv]'); if(nvi){ openTask(nvi.dataset.nv); return; }
+  const vb  = t.closest('[data-vb]'); if(vb){ openDoc(vb.dataset.vb); return; }
+  const hm  = t.closest('[data-hm]'); if(hm){ openFund(hm.dataset.hm); return; }
+  const pa  = t.closest('[data-pa]'); if(pa){ openPA(pa.dataset.pa); return; }
+  // bản đồ
+  if(t.closest('[data-popclose]')){ $$('.pop').forEach(p=>p.remove()); return; }
+  const gh = t.closest('[data-ghim]'); if(gh){ openGhim(gh.dataset.ghim); return; }
+  const lp = t.closest('[data-lop]'); if(lp){ bdLop[lp.dataset.lop] = !bdLop[lp.dataset.lop]; renderMap(); return; }
+  if(manHienTai==='map' && !t.closest('.pop') && !t.closest('.mpanel')) $$('.pop').forEach(p=>p.remove());
+  // lọc phản ánh theo lĩnh vực
+  const lv = t.closest('[data-lv]');
+  if(lv){
+    const v = lv.dataset.lv;
+    paLoc = paLoc.includes(v) ? paLoc.filter(x=>x!==v) : paLoc.concat(v);
+    renderFeedback(); return;
+  }
+  if(t.id==='paClear'){ paLoc=[]; renderFeedback(); return; }
+  // nhiệm vụ: chế độ xem, xoá lọc, giao việc
+  const sv = t.closest('#segView button'); if(sv){ tvView = sv.dataset.v; renderTasks(); return; }
+  if(t.id==='btnXoaLoc'){ tvLoc={bp:'',ng:'',tt:'',nguon:''}; renderTasks(); return; }
+  if(t.id==='btnGiaoViec'){ toast('Đã mở biểu mẫu giao việc mới'); return; }
+  if(t.id==='btnKy'){ toast('Kỳ số liệu hiện tại: tháng 8 năm 2026'); return; }
+  // văn bản: chuyển tab
+  const sb = t.closest('#segVb button'); if(sb){ vbTab = sb.dataset.t; renderDocs(); return; }
+  // báo cáo: kỳ và so sánh
+  const sk = t.closest('#segKy button'); if(sk){ bcKy = sk.dataset.k; renderReport(); return; }
+  if(t.closest('#btnSoSanh')){ bcSoSanh = !bcSoSanh; renderReport(); return; }
+  // cấu hình: chuyển tab
+  const ct = t.closest('#chTabs button'); if(ct){ chTab = ct.dataset.tab; renderConfig(); return; }
+});
+
+document.addEventListener('change', e => {
+  const t = e.target;
+  if(t.id==='fBp'){ tvLoc.bp = t.value; renderTasks(); }
+  if(t.id==='fNg'){ tvLoc.ng = t.value; renderTasks(); }
+  if(t.id==='fTt'){ tvLoc.tt = t.value; renderTasks(); }
+  if(t.id==='fNguon'){ tvLoc.nguon = t.value; renderTasks(); }
+  if(t.dataset && t.dataset.sla !== undefined){
+    MOCK_DATA.cauHinh.sla[+t.dataset.sla][t.dataset.f] = +t.value;
+    toast('Đã cập nhật thời hạn lĩnh vực '+MOCK_DATA.cauHinh.sla[+t.dataset.sla].lv);
+  }
+});
+document.addEventListener('keydown', e => { if(e.key==='Escape') { closeDrawer(); $$('.pop').forEach(p=>p.remove()); } });
+$('#searchInput').addEventListener('keydown', e => {
+  if(e.key==='Enter' && e.target.value.trim()){ toast('Đang tìm kiếm: “'+e.target.value.trim()+'”'); }
+});
+
+initShell();
+nav('overview');
+</script>
+</body>
+</html>

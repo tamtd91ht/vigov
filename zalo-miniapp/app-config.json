@@ -1,0 +1,15 @@
+{
+  "app": {
+    "title": "ViGov — Điều hành số cấp xã",
+    "headerColor": "#1B3A5C",
+    "textColor": "white",
+    "leftButton": "back",
+    "statusBar": "transparent",
+    "actionBarHidden": true,
+    "hideIOSSafeAreaBottom": false,
+    "hideAndroidBottomNavigationBar": false
+  },
+  "listCSS": [],
+  "listSyncJS": [],
+  "listAsyncJS": []
+}

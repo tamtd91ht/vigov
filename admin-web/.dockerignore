@@ -1,0 +1,35 @@
+# =============================================================================
+# ViGov Admin Web — loại khỏi build context Docker
+# =============================================================================
+
+node_modules/
+**/node_modules/
+
+# Cache build của Next trên máy dev — phải build sạch trong image
+.next/
+out/
+*.tsbuildinfo
+
+# --- Secret / cấu hình cục bộ: KHÔNG copy vào image ---
+# Biến NEXT_PUBLIC_* được truyền qua --build-arg (xem Dockerfile).
+.env
+.env.*
+!.env.example
+
+# Docker / CI
+Dockerfile
+.dockerignore
+
+# Công cụ lập trình & hệ điều hành
+.git/
+.gitignore
+.github/
+.vscode/
+.idea/
+README.md
+AGENTS.md
+CLAUDE.md
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db

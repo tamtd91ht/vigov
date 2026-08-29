@@ -1,0 +1,45 @@
+# =============================================================================
+# ViGov Backend — loại khỏi build context Docker
+# Mục tiêu: context nhỏ (build nhanh) và KHÔNG để lọt secret vào image.
+# =============================================================================
+
+# Dependencies: image tự chạy `npm ci` từ package-lock.json
+node_modules/
+**/node_modules/
+
+# Sản phẩm build cũ trên máy dev (image build lại từ đầu trong stage `build`)
+dist/
+*.tsbuildinfo
+**/*.tsbuildinfo
+
+# --- Secret: KHÔNG BAO GIỜ copy vào image ---
+# Cấu hình thật được nạp lúc chạy qua env_file / biến môi trường.
+.env
+.env.*
+!.env.example
+
+# Dữ liệu người dùng tải lên (mount volume lúc chạy)
+uploads/
+
+# Kiểm thử — chỉ chạy trên CI runner, không cần trong image
+test/
+**/*.spec.ts
+**/*.e2e-spec.ts
+coverage/
+
+# Docker / CI
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.*.yml
+
+# Công cụ lập trình & hệ điều hành
+.git/
+.gitignore
+.github/
+.vscode/
+.idea/
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db

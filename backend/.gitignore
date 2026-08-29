@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.env
+uploads/
+*.log
+# Thư mục tạm của mongodb-memory-server khi chạy test e2e (P5-07)
+.tmp-e2e/
