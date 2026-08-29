@@ -129,13 +129,6 @@ export async function listCitizens(query: CitizenQuery = {}): Promise<Paged<Citi
   return apiClient.get<Paged<CitizenAccount>>(`/users/citizens${buildQuery({ ...query })}`);
 }
 
-/**
- * PATCH /users/citizens/:phone/lock
- *
- * LƯU Ý: backend định danh công dân bằng SỐ ĐIỆN THOẠI THẬT trên đường dẫn,
- * trong khi danh sách chỉ trả ra số đã che → xem phần "endpoint còn thiếu"
- * trong báo cáo P5-01. Ở đây gửi đúng giá trị backend đã cấp cho từng dòng.
- */
 /** Thống kê tài khoản công dân cho 3 thẻ KPI đầu trang */
 export interface CitizenStats {
   total: number;
@@ -155,12 +148,20 @@ export async function fetchCitizenStats(): Promise<CitizenStats> {
   return apiClient.get<CitizenStats>("/users/citizens/stats");
 }
 
-export async function lockCitizen(phone: string, reason: string): Promise<CitizenAccount> {
+/**
+ * PATCH /users/citizens/id/:id/lock
+ *
+ * Tra theo `id`, KHÔNG theo số điện thoại: danh sách trả SĐT đã che
+ * ("098•••321") theo quy định bảo vệ dữ liệu cá nhân, nên số đó không tra
+ * ngược được — gửi lên sẽ nhận 404. Số đã che cũng có thể trùng nhau giữa hai
+ * công dân khác nhau.
+ */
+export async function lockCitizen(id: string, reason: string): Promise<CitizenAccount> {
   if (appConfig.api.useMocks) {
-    const found = citizenUsers.find((c) => c.phoneMasked === phone);
+    const found = citizenUsers.find((c) => c.id === id);
     return mockDelay({
-      id: found?.id ?? phone,
-      phone,
+      id,
+      phone: found?.phoneMasked ?? "",
       displayName: found?.zaloName ?? "",
       area: found?.area ?? "",
       channel: "zalo",
@@ -169,16 +170,18 @@ export async function lockCitizen(phone: string, reason: string): Promise<Citize
       lockReason: reason,
     });
   }
-  return apiClient.patch<CitizenAccount>(`/users/citizens/${encodeURIComponent(phone)}/lock`, { reason });
+  return apiClient.patch<CitizenAccount>(`/users/citizens/id/${encodeURIComponent(id)}/lock`, {
+    reason,
+  });
 }
 
-/** PATCH /users/citizens/:phone/unlock — gỡ luôn bản ghi chặn tương ứng */
-export async function unlockCitizen(phone: string): Promise<CitizenAccount> {
+/** PATCH /users/citizens/id/:id/unlock — gỡ luôn bản ghi chặn tương ứng */
+export async function unlockCitizen(id: string): Promise<CitizenAccount> {
   if (appConfig.api.useMocks) {
-    const found = citizenUsers.find((c) => c.phoneMasked === phone);
+    const found = citizenUsers.find((c) => c.id === id);
     return mockDelay({
-      id: found?.id ?? phone,
-      phone,
+      id,
+      phone: found?.phoneMasked ?? "",
       displayName: found?.zaloName ?? "",
       area: found?.area ?? "",
       channel: "zalo",
@@ -186,7 +189,7 @@ export async function unlockCitizen(phone: string): Promise<CitizenAccount> {
       status: "active",
     });
   }
-  return apiClient.patch<CitizenAccount>(`/users/citizens/${encodeURIComponent(phone)}/unlock`);
+  return apiClient.patch<CitizenAccount>(`/users/citizens/id/${encodeURIComponent(id)}/unlock`);
 }
 
 // ─── Phiên đăng nhập ───────────────────────────────────────────────────────

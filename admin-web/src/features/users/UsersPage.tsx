@@ -52,7 +52,8 @@ export function UsersPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [areaKey, setAreaKey] = useState("all");
   const [page, setPage] = useState(1);
-  const [busyPhone, setBusyPhone] = useState<string | null>(null);
+  /** Id công dân đang khoá/mở khoá — dùng id chứ không dùng SĐT vì SĐT trả ra đã bị che */
+  const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -84,28 +85,28 @@ export function UsersPage() {
   };
 
   const handleLock = async (user: CitizenAccount, reason: string) => {
-    setBusyPhone(user.phone);
+    setBusyId(user.id);
     try {
-      await lockCitizen(user.phone, reason);
+      await lockCitizen(user.id, reason);
       showToast(`Đã khoá tài khoản ${user.displayName} và đưa vào blacklist`);
       refreshCitizens();
     } catch (err) {
       failed(err, "Không khoá được tài khoản công dân");
     } finally {
-      setBusyPhone(null);
+      setBusyId(null);
     }
   };
 
   const handleUnlock = async (user: CitizenAccount) => {
-    setBusyPhone(user.phone);
+    setBusyId(user.id);
     try {
-      await unlockCitizen(user.phone);
+      await unlockCitizen(user.id);
       showToast(`Đã mở khoá tài khoản ${user.displayName}`);
       refreshCitizens();
     } catch (err) {
       failed(err, "Không mở khoá được tài khoản công dân");
     } finally {
-      setBusyPhone(null);
+      setBusyId(null);
     }
   };
 
@@ -162,7 +163,7 @@ export function UsersPage() {
             setAreaKey(key);
             setPage(1);
           }}
-          busyPhone={busyPhone}
+          busyId={busyId}
           onLock={handleLock}
           onUnlock={handleUnlock}
         />

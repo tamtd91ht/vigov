@@ -56,7 +56,7 @@ export interface CitizenTableProps {
   areaKey: string;
   onAreaChange: (key: string) => void;
   /** Số điện thoại của dòng đang có thao tác khoá/mở dở dang */
-  busyPhone: string | null;
+  busyId: string | null;
   onLock: (user: CitizenAccount, reason: string) => void;
   onUnlock: (user: CitizenAccount) => void;
 }
@@ -75,7 +75,7 @@ export function CitizenTable({
   onSearchChange,
   areaKey,
   onAreaChange,
-  busyPhone,
+  busyId,
   onLock,
   onUnlock,
 }: CitizenTableProps) {
@@ -162,7 +162,8 @@ export function CitizenTable({
               <tbody>
                 {citizens.map((c) => {
                   const st = STATUS_CHIP[c.status];
-                  const busy = busyPhone === c.phone;
+                  // So theo id: SĐT đã che có thể trùng nhau giữa hai công dân
+                  const busy = busyId === c.id;
                   return (
                     <tr key={c.id} className={busy ? "saving" : undefined} onClick={() => setDetailId(c.id)}>
                       <td>
