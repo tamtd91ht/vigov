@@ -29,7 +29,7 @@ backend/
 
 ```bash
 docker compose up -d   # mongo + rabbitmq
-cp .env.example .env
+cp .env.example .env.local
 npm install
 npm run start:dev
 ```

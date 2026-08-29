@@ -73,8 +73,8 @@ docker compose run --rm --no-deps backend node dist/apps/api-gateway/apps/api-ga
 ```bash
 cd backend
 npm install
-cp .env.example .env
-docker compose up -d          # mongo + rabbitmq (bỏ qua nếu dùng MongoDB sẵn có — khai trong .env)
+cp .env.example .env.local    # điền giá trị thật vào .env.local — KHÔNG commit
+docker compose up -d          # mongo + rabbitmq (bỏ qua nếu dùng MongoDB sẵn có — khai trong .env.local)
 npm run seed                  # tạo 10 tài khoản (admin/123456) + cấu hình SLA
 npm run start:dev             # http://localhost:3001/api/v1
 npm run test:e2e              # 11 test API đầu-cuối
@@ -109,7 +109,7 @@ flutter run          # chọn thiết bị Android/iOS/emulator
 ```bash
 cd zalo-miniapp
 npm install
-cp .env.example .env
+cp .env.example .env.local
 npm run dev          # http://localhost:5173 — chạy được trên trình duyệt nhờ adapter SDK mock
 ```
 

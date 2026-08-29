@@ -140,7 +140,7 @@ curl -I http://api.vigov.<tên-miền>               # 301 sang https
 
 ### B1. Cấu hình trước khi build
 
-Trong `zalo-miniapp/.env`:
+Trong `zalo-miniapp/.env.local`:
 
 ```
 VITE_API_BASE_URL=https://api.vigov.<tên-miền>/api/v1
@@ -149,7 +149,7 @@ VITE_ZALO_APP_ID=<App ID lấy từ Zalo Developers>
 VITE_ZALO_OA_ID=<OA ID>
 ```
 
-Trong `backend/.env` (hoặc `.env` gốc) để bật định danh Zalo thật:
+Trong `backend/.env.local` (hoặc `.env` gốc khi chạy Docker) để bật định danh Zalo thật:
 
 ```
 ZALO_APP_ID=<App ID>
@@ -194,7 +194,7 @@ npm run zmp:deploy     # build rồi tải bundle lên hạ tầng Zalo
 ### B4. Template ZNS — nộp song song, đừng chờ
 
 Template ZNS được **duyệt riêng**, không đi cùng Mini App, thời gian **vài ngày
-đến 1 tuần**. Cần 2 template (xem `backend/.env`):
+đến 1 tuần**. Cần 2 template (xem `backend/.env.example`):
 
 | Biến | Nội dung |
 |---|---|

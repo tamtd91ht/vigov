@@ -34,7 +34,14 @@ import { HealthController } from './health.controller';
  */
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, load: [configuration] }),
+    // `.env.local` giữ giá trị thật của máy đang chạy và không bao giờ được commit;
+    // `.env` chỉ còn là đường lui cho môi trường cũ. Xem `.env.example` để biết
+    // danh sách biến. Biến đã có sẵn trong môi trường (Docker, CI) luôn thắng.
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: ['.env.local', '.env'],
+      load: [configuration],
+    }),
 
     // Sổ phiên dùng chung cho guard toàn cục, AuthModule và UsersModule (P5-08)
     SessionRegistryModule,
