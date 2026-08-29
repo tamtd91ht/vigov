@@ -36,6 +36,11 @@ export class CatalogsController {
   }
 
   /** Chủ đề video tuyên truyền */
+  @Get('document-types')
+  documentTypes() {
+    return this.catalogs.documentTypes();
+  }
+
   @Get('video-topics')
   videoTopics() {
     return this.catalogs.videoTopics();

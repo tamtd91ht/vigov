@@ -8,6 +8,8 @@ import {
   type BudgetItemDocument,
   CitizenUser,
   type CitizenUserDocument,
+  IncomingDocument,
+  type IncomingDocumentDocument,
   findRole,
   StaffUser,
   type StaffUserDocument,
@@ -36,6 +38,17 @@ export interface StaffOption {
  * phân biệt của chính các collection nghiệp vụ), không khai báo hằng số cứng —
  * nhờ đó thêm bản ghi mới là danh mục tự có thêm lựa chọn.
  */
+/** Loại văn bản hành chính thông dụng — bộ khởi tạo khi database còn rỗng */
+const DEFAULT_DOCUMENT_TYPES = [
+  'Công văn',
+  'Quyết định',
+  'Thông báo',
+  'Kế hoạch',
+  'Giấy mời',
+  'Tờ trình',
+  'Báo cáo',
+];
+
 @Injectable()
 export class CatalogsService {
   constructor(
@@ -46,6 +59,8 @@ export class CatalogsService {
     @InjectModel(Video.name) private readonly videoModel: Model<VideoDocument>,
     @InjectModel(RadioBulletin.name) private readonly radioModel: Model<RadioBulletinDocument>,
     @InjectModel(BudgetItem.name) private readonly budgetModel: Model<BudgetItemDocument>,
+    @InjectModel(IncomingDocument.name)
+    private readonly documentModel: Model<IncomingDocumentDocument>,
   ) {}
 
   /**
@@ -97,6 +112,19 @@ export class CatalogsService {
   async articleCategories(): Promise<{ items: string[] }> {
     const rows = await this.articleModel.distinct('category').exec();
     return { items: this.uniqueStrings(rows) };
+  }
+
+  /**
+   * Loại văn bản đến.
+   *
+   * Khác các danh mục còn lại ở một điểm: form "Tiếp nhận văn bản" cần danh sách
+   * này để tạo bản ghi ĐẦU TIÊN, mà lúc đó collection còn rỗng nên `distinct`
+   * trả mảng rỗng và dropdown sẽ trắng. Vì vậy hợp nhất với bộ mặc định — thêm
+   * văn bản loại mới thì loại đó tự xuất hiện ở lần gọi sau.
+   */
+  async documentTypes(): Promise<{ items: string[] }> {
+    const rows = await this.documentModel.distinct('docType').exec();
+    return { items: this.uniqueStrings([...DEFAULT_DOCUMENT_TYPES, ...rows]) };
   }
 
   /** Chủ đề video tuyên truyền */

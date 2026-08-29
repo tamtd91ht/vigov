@@ -42,6 +42,9 @@ interface FeedbackApiItem {
   title?: string;
   description?: string;
   location?: string;
+  /** Toạ độ GPS kèm theo phản ánh — Mini App lấy từ điện thoại người gửi */
+  lat?: number;
+  lng?: number;
   /** Số giờ còn lại tới hạn SLA; âm = quá hạn; null khi chưa có hạn */
   slaHoursLeft?: number | null;
   status?: string;
@@ -126,6 +129,8 @@ function toCitizenFeedback(raw: FeedbackApiItem): CitizenFeedback {
     title: raw.title ?? "",
     excerpt: raw.description ?? "",
     location: raw.location ?? "",
+    lat: raw.lat,
+    lng: raw.lng,
     // Giao diện hiển thị số giờ nguyên; backend trả số thực (ví dụ -24.3)
     slaHoursLeft: Math.round(raw.slaHoursLeft ?? 0),
     status: STATUS_TO_UI[(raw.status ?? "received") as FeedbackApiStatus] ?? "Mới tiếp nhận",

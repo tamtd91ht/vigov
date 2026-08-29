@@ -6,7 +6,8 @@ import { defaultSlaRules, findCategory } from "@/config/sla.config";
 import { feedbackStatuses, findStatus } from "@/config/status.config";
 import { fetchDepartments, fetchStaffDirectory } from "@/services/catalogs.service";
 import { useCatalog } from "@/hooks/useCatalog";
-import { DEFAULT_PIN, feedbackPins, UNASSIGNED } from "@/mocks/feedback";
+import { UNASSIGNED } from "@/config/status.config";
+import { latLngToPin } from "@/config/map.config";
 import { slaLabel } from "@/lib/format";
 import { Icon } from "@/lib/icons";
 import { Avatar } from "@/components/ui/Avatar";
@@ -127,7 +128,8 @@ export function FeedbackDrawer({ item, onClose, onAssign, onTransfer, onResolve,
   const sla = slaLabel(item?.slaHoursLeft ?? 0, resolved);
   const unassigned = item?.assignee === UNASSIGNED;
   const slaRule = defaultSlaRules.find((r) => r.categoryKey === cat.key);
-  const pin = (item && feedbackPins[item.code]) ?? DEFAULT_PIN;
+  // Ghim suy ra từ toạ độ GPS người dân gửi; chưa có toạ độ thì về vị trí mặc định
+  const pin = latLngToPin(item);
 
   /** Mở / đóng một panel thao tác, luôn xoá nội dung nháp của panel trước */
   function togglePanel(next: Exclude<PanelMode, null>) {

@@ -14,16 +14,15 @@
    ============================================================ */
 
 import { useState } from "react";
-import type { BroadcastLog, CmsArticle } from "@/types";
+import type { CmsArticle } from "@/types";
 import { PageHead } from "@/components/ui/PageHead";
 import { Tabs } from "@/components/ui/Tabs";
 import { useToast } from "@/components/ui/Toast";
 import { Icon } from "@/lib/icons";
 import { formatNumber } from "@/lib/format";
-import { broadcastLogs } from "@/mocks/cms";
+import { fetchBroadcastLogs } from "@/services/notifications.service";
 import { useApiResource } from "@/hooks/useApiResource";
 import { ApiError } from "@/services/api";
-import { authService } from "@/services/auth";
 import {
   createArticle,
   deleteArticle,
@@ -32,7 +31,6 @@ import {
   sendBroadcast,
   updateArticle,
 } from "@/services/content.service";
-import { nowStamp } from "./config";
 import { ArticleTable } from "./ArticleTable";
 import { ArticleForm, type ArticleFormValue } from "./ArticleForm";
 import { VideoGrid } from "./VideoGrid";
@@ -51,8 +49,6 @@ const TAB_ITEMS = [
 /** Số bài viết mỗi trang gửi lên tham số `limit` */
 const ARTICLE_PAGE_SIZE = 20;
 
-/** Người gửi hiển thị trong lịch sử khi phiên không có tên hiển thị */
-const DEFAULT_AUTHOR = "Cán bộ quản trị";
 
 export function CmsPage() {
   const { showToast } = useToast();
@@ -76,8 +72,8 @@ export function CmsPage() {
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
 
-  // --- Broadcast: gửi thật qua API, lịch sử còn dùng dữ liệu mẫu ---
-  const [logs, setLogs] = useState<BroadcastLog[]>(broadcastLogs);
+  // --- Broadcast: gửi và lịch sử đều qua API (GET /notifications/broadcasts) ---
+  const logs = useApiResource(fetchBroadcastLogs, []);
   const [sending, setSending] = useState(false);
 
   const failed = (err: unknown, fallback: string) => showToast(err instanceof ApiError ? err.message : fallback);
@@ -163,20 +159,9 @@ export function CmsPage() {
         title: value.title,
         body: value.body,
       });
-      setLogs((prev) => [
-        {
-          id: `BC-${Date.now()}`,
-          channel: value.channel,
-          audience: value.audience,
-          title: value.title,
-          sentAt: nowStamp(),
-          sentBy: authService.getSession()?.displayName ?? DEFAULT_AUTHOR,
-          total: result.total,
-          delivered: result.ok,
-          status: result.failed > 0 && result.ok === 0 ? "failed" : "sent",
-        },
-        ...prev,
-      ]);
+      // Tải lại từ máy chủ thay vì tự dựng bản ghi: số đã gửi / thất bại còn
+      // thay đổi sau khi nhà cung cấp trả kết quả, và id do máy chủ cấp.
+      logs.reload();
       setTab("history");
       showToast(`Đã gửi thông báo tới ${formatNumber(result.ok)}/${formatNumber(result.total)} người nhận`);
     } catch (err) {
@@ -224,7 +209,7 @@ export function CmsPage() {
       {tab === "videos" && <VideoGrid />}
       {tab === "radio" && <RadioList />}
       {tab === "broadcast" && <BroadcastPanel sending={sending} onSend={submitBroadcast} />}
-      {tab === "history" && <BroadcastHistory logs={logs} />}
+      {tab === "history" && <BroadcastHistory logs={logs.data ?? []} />}
 
       <ArticleForm
         open={formOpen}

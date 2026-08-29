@@ -1,6 +1,7 @@
 import { apiClient } from "./api";
 import { appConfig } from "@/config/app.config";
 import { departments as mockDepartments, staffDirectory } from "@/mocks/directory";
+import { incomingDocTypes } from "@/mocks/documents";
 import { citizenAreas } from "@/mocks/users";
 import { articleCategories, radioCategories, videoTopics } from "@/mocks/cms";
 import { budgetYearConfig } from "@/mocks/disbursement";
@@ -45,6 +46,15 @@ export async function fetchStaffDirectory(): Promise<StaffOption[]> {
   if (appConfig.api.useMocks) return mockDelay(staffDirectory.map((s) => ({ ...s })));
   const res = await apiClient.get<ListResponse<StaffOption>>("/catalogs/staff");
   return res.items;
+}
+
+/**
+ * GET /catalogs/document-types — loại văn bản đến.
+ * Backend hợp nhất bộ mặc định với các loại đã dùng thật trong sổ văn bản,
+ * nên danh sách không bao giờ rỗng kể cả khi chưa tiếp nhận văn bản nào.
+ */
+export function fetchDocumentTypes(): Promise<string[]> {
+  return fetchStringCatalog("/catalogs/document-types", incomingDocTypes);
 }
 
 /** GET /catalogs/areas — thôn / tổ dân phố */

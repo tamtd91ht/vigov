@@ -136,6 +136,25 @@ export async function listCitizens(query: CitizenQuery = {}): Promise<Paged<Citi
  * trong khi danh sách chỉ trả ra số đã che → xem phần "endpoint còn thiếu"
  * trong báo cáo P5-01. Ở đây gửi đúng giá trị backend đã cấp cho từng dòng.
  */
+/** Thống kê tài khoản công dân cho 3 thẻ KPI đầu trang */
+export interface CitizenStats {
+  total: number;
+  /** Số công dân có phiên hoạt động trong cửa sổ `windowDays` gần nhất */
+  activeLast30Days: number;
+  locked: number;
+  /** Cửa sổ thống kê máy chủ đang áp dụng, để giao diện hiển thị đúng nhãn */
+  windowDays: number;
+}
+
+/**
+ * GET /users/citizens/stats — máy chủ đếm sẵn cả ba con số.
+ * Trước đây giao diện gọi `listCitizens` hai lần chỉ để lấy `total`, và không
+ * có cách nào đếm người hoạt động vì thông tin phiên không nằm trong danh sách.
+ */
+export async function fetchCitizenStats(): Promise<CitizenStats> {
+  return apiClient.get<CitizenStats>("/users/citizens/stats");
+}
+
 export async function lockCitizen(phone: string, reason: string): Promise<CitizenAccount> {
   if (appConfig.api.useMocks) {
     const found = citizenUsers.find((c) => c.phoneMasked === phone);

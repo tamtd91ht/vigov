@@ -20,6 +20,7 @@ import { formatNumber } from "@/lib/format";
 import { useApiResource } from "@/hooks/useApiResource";
 import { ApiError } from "@/services/api";
 import {
+  fetchCitizenStats,
   listCitizens,
   lockCitizen,
   unlockCitizen,
@@ -72,14 +73,8 @@ export function UsersPage() {
     [debouncedSearch, areaKey, page],
   );
 
-  /** Hai thẻ thống kê đầu trang lấy đúng tổng số máy chủ đếm được */
-  const stats = useApiResource(async () => {
-    const [all, locked] = await Promise.all([
-      listCitizens({ page: 1, limit: 1 }),
-      listCitizens({ page: 1, limit: 1, status: "locked" }),
-    ]);
-    return { total: all.total, locked: locked.total };
-  }, []);
+  /** Ba thẻ thống kê đầu trang — máy chủ đếm sẵn trong một lượt gọi */
+  const stats = useApiResource(fetchCitizenStats, []);
 
   const failed = (err: unknown, fallback: string) => showToast(err instanceof ApiError ? err.message : fallback);
 
@@ -131,9 +126,9 @@ export function UsersPage() {
           icon="users"
         />
         <KpiCard
-          value="—"
-          label="Hoạt động 30 ngày qua"
-          sub="Cần API thống kê hoạt động của người dùng"
+          value={kpiValue(stats.data?.activeLast30Days)}
+          label={`Hoạt động ${stats.data?.windowDays ?? 30} ngày qua`}
+          sub="Có phiên đăng nhập trên Mini App hoặc app công dân"
           color="var(--green)"
           tint="rgba(39,174,96,.07)"
           icon="ok"

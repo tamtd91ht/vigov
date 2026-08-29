@@ -7,7 +7,7 @@ import { slaLabel } from "@/lib/format";
 import { Icon } from "@/lib/icons";
 import { Chip } from "@/components/ui/Chip";
 import { StarRating } from "@/components/ui/StarRating";
-import { UNASSIGNED } from "@/mocks/feedback";
+import { UNASSIGNED } from "@/config/status.config";
 
 /** Nền cover "ảnh hiện trường": gradient từ màu lĩnh vực sang tông đậm hơn */
 export function categoryCover(color: string): string {

@@ -7,6 +7,8 @@ import {
   BudgetItemSchema,
   CitizenUser,
   CitizenUserSchema,
+  IncomingDocument,
+  IncomingDocumentSchema,
   StaffUser,
   StaffUserSchema,
 } from '@vigov/shared';
@@ -25,6 +27,7 @@ import { RadioBulletin, RadioBulletinSchema, Video, VideoSchema } from '../conte
       { name: OrgNode.name, schema: OrgNodeSchema },
       { name: StaffUser.name, schema: StaffUserSchema },
       { name: CitizenUser.name, schema: CitizenUserSchema },
+      { name: IncomingDocument.name, schema: IncomingDocumentSchema },
       { name: Article.name, schema: ArticleSchema },
       { name: Video.name, schema: VideoSchema },
       { name: RadioBulletin.name, schema: RadioBulletinSchema },

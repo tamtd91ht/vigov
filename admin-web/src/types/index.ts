@@ -107,6 +107,13 @@ export interface CitizenFeedback {
   title: string;
   excerpt: string;
   location: string;
+  /**
+   * Toạ độ GPS người dân gửi kèm khi tạo phản ánh.
+   * Bản đồ mô phỏng chiếu cặp này ra phần trăm bằng `latLngToPin`
+   * (`config/map.config.ts`); vắng toạ độ thì ghim về vị trí mặc định.
+   */
+  lat?: number;
+  lng?: number;
   /** Giờ còn lại theo SLA; âm = quá hạn; 0 khi đã xử lý */
   slaHoursLeft: number;
   status: "Mới tiếp nhận" | "Đang xử lý" | "Đã xử lý";

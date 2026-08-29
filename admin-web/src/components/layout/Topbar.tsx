@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { appConfig } from "@/config/app.config";
-import { unreadNotifications } from "@/mocks/directory";
+import { useApiResource } from "@/hooks/useApiResource";
+import { fetchInbox } from "@/services/notifications.service";
 import { Icon } from "@/lib/icons";
 import { authService, getServerSession } from "@/services/auth";
 import { useToast } from "@/components/ui/Toast";
@@ -15,6 +16,17 @@ export function Topbar() {
   const session = useSyncExternalStore(authService.subscribe, authService.getSession, getServerSession);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  /**
+   * Hộp thư của chính người đang đăng nhập (GET /notifications).
+   * Chỉ tải khi đã có phiên — trang đăng nhập không dựng Topbar, nhưng lúc
+   * khôi phục phiên từ bộ nhớ thì `session` rỗng trong một nhịp render đầu.
+   */
+  const inbox = useApiResource(
+    async () => (session ? fetchInbox() : { items: [], total: 0, unread: 0, page: 1, limit: 0 }),
+    [session?.username],
+  );
+  const unread = inbox.data?.unread ?? 0;
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -52,10 +64,16 @@ export function Topbar() {
           className="icbtn"
           title="Thông báo"
           type="button"
-          onClick={() => showToast("Trung tâm thông báo in-app đang chờ khách hàng xác nhận phạm vi")}
+          onClick={() =>
+            showToast(
+              unread > 0
+                ? `Bạn có ${unread} thông báo chưa đọc`
+                : "Không có thông báo chưa đọc",
+            )
+          }
         >
           <Icon name="bell" size={18} />
-          {unreadNotifications > 0 && <span className="badge">{unreadNotifications}</span>}
+          {unread > 0 && <span className="badge">{unread}</span>}
         </button>
         <button
           className="icbtn"

@@ -4,10 +4,10 @@ import { useState } from "react";
 import { Icon } from "@/lib/icons";
 import { Drawer } from "@/components/ui/Drawer";
 import { FileUpload } from "@/components/ui/FileUpload";
-import { fetchDepartments } from "@/services/catalogs.service";
+import { fetchDepartments, fetchDocumentTypes } from "@/services/catalogs.service";
 import { useCatalog } from "@/hooks/useCatalog";
 import { urgencyLevels, confidentialityLevels } from "@/config/status.config";
-import { incomingDocTypes } from "@/mocks/documents";
+
 import type { CreateDocumentInput } from "@/services/documents.service";
 
 interface FormState {
@@ -24,7 +24,8 @@ interface FormState {
 }
 
 const EMPTY_FORM: FormState = {
-  docType: incomingDocTypes[0],
+  // Bỏ trống — loại văn bản mặc định là mục đầu của danh mục sau khi tải xong
+  docType: "",
   refNo: "",
   date: "",
   sender: "",
@@ -56,6 +57,8 @@ export function ReceiveDocForm({
 }) {
   // Danh mục bộ phận lấy từ API (GET /catalogs/departments)
   const departments = useCatalog(fetchDepartments);
+  // Loại văn bản lấy từ API (GET /catalogs/document-types)
+  const docTypes = useCatalog(fetchDocumentTypes);
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
@@ -67,6 +70,8 @@ export function ReceiveDocForm({
 
   /** Chưa chọn thì lấy bộ phận đầu danh mục làm mặc định */
   const department = form.department || departments[0] || "";
+  /** Chưa chọn thì lấy loại văn bản đầu danh mục làm mặc định */
+  const docType = form.docType || docTypes[0] || "";
 
   // Làm mới form mỗi lần mở lại (điều chỉnh state trong render)
   const [wasOpen, setWasOpen] = useState(false);
@@ -95,7 +100,7 @@ export function ReceiveDocForm({
     setSaving(true);
     try {
       await onSubmit({
-        docType: form.docType,
+        docType,
         refNo: form.refNo.trim(),
         date: toVnDate(form.date),
         sender: form.sender.trim(),
@@ -145,8 +150,8 @@ export function ReceiveDocForm({
         >
           <div className="fgroup">
             <label>Loại văn bản{req}</label>
-            <select className="finp" value={form.docType} onChange={(e) => set("docType", e.target.value)}>
-              {incomingDocTypes.map((t) => (
+            <select className="finp" value={docType} onChange={(e) => set("docType", e.target.value)}>
+              {docTypes.map((t) => (
                 <option key={t} value={t}>
                   {t}
                 </option>

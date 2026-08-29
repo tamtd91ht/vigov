@@ -67,3 +67,10 @@ export const feedbackStatuses: StatusMeta[] = [
 export function findStatus(list: StatusMeta[], key: string): StatusMeta {
   return list.find((s) => s.key === key) ?? { key, label: key, color: "var(--mut)", tint: "rgba(136,150,166,.12)" };
 }
+
+/**
+ * Nhãn hiển thị khi phiếu phản ánh / nhiệm vụ chưa được phân công.
+ * Backend trả đúng chuỗi này ở trường `assignee`, nên đây là hằng số giao ước
+ * giữa hai bên chứ không phải dữ liệu — không lấy qua API.
+ */
+export const UNASSIGNED = "Chưa phân công";
