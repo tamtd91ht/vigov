@@ -8,6 +8,7 @@ Toàn bộ hạ tầng dựng bằng `docker-compose.yml` ở thư mục gốc d
 
 | File | Vai trò |
 |---|---|
+| `DEPLOYMENT.md` (thư mục gốc) | **Bắt đầu từ đây** — runbook từng bước cho lần cài đặt đầu tiên |
 | `docker-compose.yml` | Dựng toàn hệ: mongo, rabbitmq, backend, admin-web, zalo-miniapp |
 | `.env.example` | Danh sách đầy đủ biến môi trường — sao chép thành `.env` |
 | `Jenkinsfile` | Pipeline CI/CD (Jenkins) |

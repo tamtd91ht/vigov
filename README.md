@@ -60,6 +60,12 @@ Lệnh tiện ích khác ở thư mục gốc: `npm run check:all` (type-check +
 | Test e2e backend lỗi `text index required for $text query` | Ổ đĩa chứa thư mục tạm còn dưới 500 MB — MongoDB từ chối tạo index | Dọn ổ C, hoặc chạy: `TEMP=D:	mpigov TMP=D:	mpigov npm run test:e2e` |
 | RabbitMQ nhận kết nối nhưng gửi tin bị treo | Máy chủ chặn publish do hết dung lượng đĩa (`low on disk`) | Giải phóng đĩa trên máy RabbitMQ; kiểm tra bằng `GET /api/v1/health/ready` — trường `messaging.blocked` |
 
+## Triển khai lên máy chủ
+
+Xem **[`DEPLOYMENT.md`](DEPLOYMENT.md)** — runbook từng bước từ VPS trống tới hệ
+thống chạy thật (Bước 0–11), rồi chuyển sang Jenkins (Bước 12).
+`deploy/README.md` là tài liệu tra cứu theo chủ đề khi cần đào sâu hoặc xử lý sự cố.
+
 ## Chạy toàn hệ bằng Docker
 
 ```bash
