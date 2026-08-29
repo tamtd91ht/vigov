@@ -3,6 +3,8 @@ import {
   ArrayNotEmpty,
   IsArray,
   IsInt,
+  Matches,
+  MaxLength,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -95,6 +97,66 @@ export class UpdateOrgNodeDto {
   @IsOptional()
   @IsString({ message: 'Mã đơn vị cha không hợp lệ' })
   parentId?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'Thứ tự hiển thị phải là số nguyên' })
+  @Min(0, { message: 'Thứ tự hiển thị không được âm' })
+  order?: number;
+}
+
+/** Độ dài tối đa tên hiển thị của lĩnh vực phản ánh */
+const MAX_CATEGORY_LABEL = 60;
+
+/**
+ * Khoá lĩnh vực: chữ thường, số và dấu gạch ngang.
+ * Ràng buộc chặt vì key đi vào đường dẫn API và bộ lọc của Mini App.
+ */
+const CATEGORY_KEY_PATTERN = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+export class CreateFeedbackCategoryDto {
+  @IsString()
+  @IsNotEmpty({ message: 'Vui lòng nhập mã lĩnh vực' })
+  @Matches(CATEGORY_KEY_PATTERN, {
+    message: 'Mã lĩnh vực chỉ gồm chữ thường không dấu, số và dấu gạch ngang',
+  })
+  key: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Vui lòng nhập tên lĩnh vực' })
+  @MaxLength(MAX_CATEGORY_LABEL, {
+    message: `Tên lĩnh vực không vượt quá ${MAX_CATEGORY_LABEL} ký tự`,
+  })
+  label: string;
+
+  @IsOptional()
+  @IsString({ message: 'Màu nhận diện không hợp lệ' })
+  color?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'Thứ tự hiển thị phải là số nguyên' })
+  @Min(0, { message: 'Thứ tự hiển thị không được âm' })
+  order?: number;
+}
+
+/**
+ * Cập nhật lĩnh vực — KHÔNG cho đổi `key`.
+ * Key đã nằm trong `feedbacks.categoryKey` và `sla_rules.categoryKey` của các
+ * bản ghi cũ; đổi key là làm mồ côi toàn bộ dữ liệu đã gắn với nó.
+ */
+export class UpdateFeedbackCategoryDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty({ message: 'Tên lĩnh vực không được để trống' })
+  @MaxLength(MAX_CATEGORY_LABEL, {
+    message: `Tên lĩnh vực không vượt quá ${MAX_CATEGORY_LABEL} ký tự`,
+  })
+  label?: string;
+
+  @IsOptional()
+  @IsString({ message: 'Màu nhận diện không hợp lệ' })
+  color?: string;
 
   @IsOptional()
   @Type(() => Number)

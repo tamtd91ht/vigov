@@ -1,6 +1,6 @@
 import { apiClient } from "./api";
 import { appConfig } from "@/config/app.config";
-import { defaultSlaRules, type SlaRule } from "@/config/sla.config";
+import { defaultSlaRules, feedbackCategories, type FeedbackCategory, type SlaRule } from "@/config/sla.config";
 import { roles as mockRoles } from "@/config/roles.config";
 import { orgTree as mockOrgTree } from "@/mocks/settings";
 import type { OrgNode } from "@/types";
@@ -150,4 +150,55 @@ export async function fetchRoles(): Promise<RoleOption[]> {
   }
   const res = await apiClient.get<{ roles: RoleOption[] }>("/settings/roles");
   return res.roles;
+}
+
+// ─── Lĩnh vực phản ánh ──────────────────────────────────────────────────────
+
+/** Lĩnh vực kèm thứ tự hiển thị do máy chủ quản lý */
+export interface CategoryRecord extends FeedbackCategory {
+  order: number;
+}
+
+export interface CategoryInput {
+  label: string;
+  color?: string;
+  order?: number;
+}
+
+interface CategoryListResponse {
+  items: CategoryRecord[];
+  total: number;
+}
+
+/**
+ * GET /settings/categories — danh mục lĩnh vực phản ánh.
+ * Máy chủ tự nạp bộ mặc định ở lần gọi đầu trên database trống, nên danh sách
+ * không bao giờ rỗng: Mini App luôn có lĩnh vực để người dân chọn.
+ */
+export async function fetchCategories(): Promise<CategoryRecord[]> {
+  if (appConfig.api.useMocks) {
+    return feedbackCategories.map((c, i) => ({ ...c, order: i + 1 }));
+  }
+  const res = await apiClient.get<CategoryListResponse>("/settings/categories");
+  return res.items;
+}
+
+/** POST /settings/categories — `key` do giao diện slug hoá từ tên */
+export async function createCategory(key: string, input: CategoryInput): Promise<CategoryRecord> {
+  return apiClient.post<CategoryRecord>("/settings/categories", { key, ...input });
+}
+
+/** PATCH /settings/categories/:key — sửa tên, màu, thứ tự; không đổi được key */
+export async function updateCategory(key: string, input: CategoryInput): Promise<CategoryRecord> {
+  return apiClient.patch<CategoryRecord>(
+    `/settings/categories/${encodeURIComponent(key)}`,
+    input,
+  );
+}
+
+/** DELETE /settings/categories/:key — máy chủ chặn nếu còn phiếu tham chiếu */
+export async function deleteCategory(key: string): Promise<{ key: string; deleted: boolean }> {
+  return apiClient.delete<{ key: string; deleted: boolean }>(
+    `/settings/categories/${encodeURIComponent(key)}`,
+  );
 }

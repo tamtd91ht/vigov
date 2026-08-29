@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import type { CitizenFeedback } from "@/types";
-import { defaultSlaRules, findCategory } from "@/config/sla.config";
+import { defaultSlaRules } from "@/config/sla.config";
+import { findCategoryIn, useCategoryDirectory } from "@/services/category-directory";
 import { feedbackStatuses, findStatus } from "@/config/status.config";
 import { fetchDepartments, fetchStaffDirectory } from "@/services/catalogs.service";
 import { useCatalog } from "@/hooks/useCatalog";
@@ -122,7 +123,8 @@ export function FeedbackDrawer({ item, onClose, onAssign, onTransfer, onResolve,
     resetPanelDraft();
   }
 
-  const cat = findCategory(item?.categoryLabel ?? "");
+  const categories = useCategoryDirectory();
+  const cat = findCategoryIn(categories, item?.categoryLabel ?? "");
   const status = findStatus(feedbackStatuses, item?.status ?? "");
   const resolved = item?.status === "Đã xử lý";
   const sla = slaLabel(item?.slaHoursLeft ?? 0, resolved);

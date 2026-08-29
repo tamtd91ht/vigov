@@ -1,17 +1,33 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { defaultSlaRules, feedbackCategories, type FeedbackCategory, type SlaRule } from "@/config/sla.config";
+import type { SlaRule } from "@/config/sla.config";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
+import { DataState } from "@/components/ui/DataState";
 import { Drawer } from "@/components/ui/Drawer";
 import { useToast } from "@/components/ui/Toast";
 import { Icon } from "@/lib/icons";
+import { useApiResource } from "@/hooks/useApiResource";
+import { ApiError } from "@/services/api";
+import {
+  createCategory,
+  deleteCategory,
+  fetchCategories,
+  type CategoryRecord,
+} from "@/services/settings.service";
+import { invalidateCategoryDirectory } from "@/services/category-directory";
 import { chipTint, slugify } from "./helpers";
 
 /**
- * Tab "Danh mục phản ánh" — danh sách lĩnh vực khởi nguồn từ feedbackCategories,
- * SLA tóm tắt lấy từ rules hiện hành (tab SLA). Thêm/xoá chỉ trên state (persist API P3).
+ * Tab "Danh mục phản ánh" — nguồn dữ liệu là /settings/categories.
+ *
+ * Mã lĩnh vực (`key`) được suy ra từ tên khi thêm mới và KHÔNG đổi được về sau:
+ * nó nằm trong `feedbacks.categoryKey`, `sla_rules.categoryKey` và bộ lọc của
+ * Zalo Mini App. Muốn đổi tên hiển thị thì sửa `label`, key giữ nguyên.
+ *
+ * Việc chặn xoá do máy chủ quyết định (đếm phiếu phản ánh đang tham chiếu) —
+ * giao diện chỉ hiển thị lại thông báo, không tự đoán.
  */
 
 /** 8 màu nhận diện có sẵn trong globals.css (CSS var) */
@@ -26,13 +42,23 @@ const COLOR_OPTIONS: { value: string; label: string }[] = [
   { value: "var(--red)", label: "Đỏ" },
 ];
 
+const DEFAULT_COLOR = COLOR_OPTIONS[0]?.value ?? "var(--mut)";
+
 export function CategoryManager({ rules }: { rules: SlaRule[] }) {
   const { showToast } = useToast();
-  const [categories, setCategories] = useState<FeedbackCategory[]>(feedbackCategories);
+  const categories = useApiResource(() => fetchCategories(), []);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [fLabel, setFLabel] = useState("");
-  const [fColor, setFColor] = useState(COLOR_OPTIONS[0]?.value ?? "var(--mut)");
+  const [fColor, setFColor] = useState(DEFAULT_COLOR);
   const [fErr, setFErr] = useState("");
+  const [saving, setSaving] = useState(false);
+  /** Mã lĩnh vực đang xoá — khoá nút để tránh bấm hai lần */
+  const [busyKey, setBusyKey] = useState<string | null>(null);
+
+  const items = categories.data ?? [];
+
+  const failed = (err: unknown, fallback: string) =>
+    showToast(err instanceof ApiError ? err.message : fallback);
 
   const slaSummary = (categoryKey: string): string => {
     const rule = rules.find((r) => r.categoryKey === categoryKey);
@@ -42,37 +68,56 @@ export function CategoryManager({ rules }: { rules: SlaRule[] }) {
 
   const openAdd = () => {
     setFLabel("");
-    setFColor(COLOR_OPTIONS[0]?.value ?? "var(--mut)");
+    setFColor(DEFAULT_COLOR);
     setFErr("");
     setDrawerOpen(true);
   };
 
-  const remove = (cat: FeedbackCategory) => {
-    // Mock đơn giản: danh mục đã có quy tắc SLA coi như đang được sử dụng
-    const inUse = defaultSlaRules.some((r) => r.categoryKey === cat.key);
-    if (inUse) {
-      showToast(`Danh mục "${cat.label}" đang được sử dụng bởi phản ánh và quy tắc SLA — không thể xoá`);
-      return;
+  const remove = async (cat: CategoryRecord) => {
+    setBusyKey(cat.key);
+    try {
+      await deleteCategory(cat.key);
+      showToast(`Đã xoá lĩnh vực "${cat.label}"`);
+      categories.reload();
+      // Các màn khác (bảng phản ánh, biểu đồ báo cáo) đang giữ bản sao — buộc tải lại
+      invalidateCategoryDirectory();
+    } catch (err) {
+      // Máy chủ trả 400 kèm số phiếu đang dùng — hiển thị nguyên văn cho cán bộ
+      failed(err, "Không xoá được lĩnh vực");
+    } finally {
+      setBusyKey(null);
     }
-    setCategories((prev) => prev.filter((c) => c.key !== cat.key));
-    showToast(`Đã xoá danh mục "${cat.label}" (mock)`);
   };
 
-  const submit = (e: FormEvent) => {
+  const submit = async (e: FormEvent) => {
     e.preventDefault();
     const label = fLabel.trim();
     if (!label) {
-      setFErr("Vui lòng nhập tên danh mục");
+      setFErr("Vui lòng nhập tên lĩnh vực");
       return;
     }
-    const key = slugify(label) || `danh-muc-${categories.length + 1}`;
-    if (categories.some((c) => c.key === key || c.label === label)) {
-      setFErr("Danh mục này đã tồn tại");
+    const key = slugify(label);
+    if (!key) {
+      setFErr("Tên lĩnh vực phải chứa ít nhất một chữ cái hoặc chữ số");
       return;
     }
-    setCategories((prev) => [...prev, { key, label, color: fColor }]);
-    setDrawerOpen(false);
-    showToast(`Đã thêm danh mục "${label}" (mock)`);
+    if (items.some((c) => c.key === key || c.label === label)) {
+      setFErr("Lĩnh vực này đã tồn tại");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await createCategory(key, { label, color: fColor });
+      setDrawerOpen(false);
+      showToast(`Đã thêm lĩnh vực "${label}". Hãy thiết lập SLA ở tab SLA phản ánh.`);
+      categories.reload();
+      invalidateCategoryDirectory();
+    } catch (err) {
+      setFErr(err instanceof ApiError ? err.message : "Không thêm được lĩnh vực");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -83,53 +128,72 @@ export function CategoryManager({ rules }: { rules: SlaRule[] }) {
           extra={
             <button className="btn sm pri" type="button" onClick={openAdd}>
               <Icon name="plus" size={14} />
-              Thêm danh mục
+              Thêm lĩnh vực
             </button>
           }
         />
-        <div className="tw">
-          <table className="tb2">
-            <thead>
-              <tr>
-                <th>Lĩnh vực</th>
-                <th>SLA hiện hành</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {categories.map((c) => (
-                <tr key={c.key} style={{ cursor: "default" }}>
-                  <td>
-                    <Chip color={c.color} tint={chipTint(c.color)} dot>
-                      {c.label}
-                    </Chip>
-                  </td>
-                  <td className="muted">{slaSummary(c.key)}</td>
-                  <td style={{ textAlign: "right" }}>
-                    <button className="btn sm danger" type="button" title="Xoá danh mục" onClick={() => remove(c)}>
-                      <Icon name="trash" size={13} />
-                    </button>
-                  </td>
+        <DataState
+          loading={categories.loading}
+          error={categories.error}
+          onRetry={categories.reload}
+          empty={items.length === 0}
+          emptyMessage="Chưa có lĩnh vực phản ánh nào"
+        >
+          <div className="tw">
+            <table className="tb2">
+              <thead>
+                <tr>
+                  <th>Lĩnh vực</th>
+                  <th>SLA hiện hành</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {items.map((c) => (
+                  <tr key={c.key} style={{ cursor: "default" }}>
+                    <td>
+                      <Chip color={c.color} tint={chipTint(c.color)} dot>
+                        {c.label}
+                      </Chip>
+                    </td>
+                    <td className="muted">{slaSummary(c.key)}</td>
+                    <td style={{ textAlign: "right" }}>
+                      <button
+                        className="btn sm danger"
+                        type="button"
+                        title="Xoá lĩnh vực"
+                        disabled={busyKey === c.key}
+                        onClick={() => remove(c)}
+                      >
+                        <Icon name="trash" size={13} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </DataState>
       </Card>
 
       <Drawer
         open={drawerOpen}
         onClose={() => setDrawerOpen(false)}
-        title="Thêm danh mục phản ánh"
-        meta="Danh mục mới cần thiết lập SLA tại tab SLA phản ánh sau khi thêm"
+        title="Thêm lĩnh vực phản ánh"
+        meta="Lĩnh vực mới cần thiết lập SLA tại tab SLA phản ánh sau khi thêm"
         footer={
           <>
             <button className="btn" type="button" onClick={() => setDrawerOpen(false)}>
               Huỷ
             </button>
-            <button className="btn pri" type="submit" form="category-add-form">
+            <button
+              className={saving ? "btn pri saving" : "btn pri"}
+              type="submit"
+              form="category-add-form"
+              disabled={saving}
+            >
               <Icon name="plus" size={14} />
-              Thêm danh mục
+              Thêm lĩnh vực
             </button>
           </>
         }
@@ -137,7 +201,7 @@ export function CategoryManager({ rules }: { rules: SlaRule[] }) {
         <form id="category-add-form" onSubmit={submit}>
           <div className="fgroup">
             <label>
-              Tên danh mục <span className="req">*</span>
+              Tên lĩnh vực <span className="req">*</span>
             </label>
             <input
               className={fErr ? "finp err" : "finp"}
@@ -145,6 +209,11 @@ export function CategoryManager({ rules }: { rules: SlaRule[] }) {
               onChange={(e) => setFLabel(e.target.value)}
               placeholder="vd: Chiếu sáng công cộng"
             />
+            {fLabel.trim() && !fErr && (
+              <div className="tiny muted" style={{ marginTop: 5 }}>
+                Mã lĩnh vực: <code>{slugify(fLabel.trim()) || "—"}</code> — không đổi được sau khi tạo
+              </div>
+            )}
             {fErr && (
               <div className="tiny" style={{ color: "var(--red)", marginTop: 5 }}>
                 {fErr}

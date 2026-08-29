@@ -1,9 +1,19 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { ROLES, SlaRule, type SlaRuleDocument } from '@vigov/shared';
-import { CreateOrgNodeDto, SlaRuleDto, UpdateOrgNodeDto } from './dto/settings.dto';
+import { Feedback, type FeedbackDocument, ROLES, SlaRule, type SlaRuleDocument } from '@vigov/shared';
+import {
+  CreateFeedbackCategoryDto,
+  CreateOrgNodeDto,
+  SlaRuleDto,
+  UpdateFeedbackCategoryDto,
+  UpdateOrgNodeDto,
+} from './dto/settings.dto';
 import { OrgNode, type OrgNodeDocument } from './schemas/org-node.schema';
+import {
+  FeedbackCategory,
+  type FeedbackCategoryDocument,
+} from './schemas/feedback-category.schema';
 
 /**
  * Bộ SLA mặc định cho 8 lĩnh vực phản ánh.
@@ -47,11 +57,34 @@ interface OrgTreeNode {
   children: OrgTreeNode[];
 }
 
+/**
+ * Bộ lĩnh vực phản ánh mặc định — nạp khi database chưa có danh mục nào.
+ * Khớp admin-web/src/config/sla.config.ts và DEFAULT_SLA_RULES ở trên.
+ */
+const DEFAULT_CATEGORIES = [
+  { key: 'rac-thai', label: 'Rác thải', color: 'var(--orange)', order: 1 },
+  { key: 'giao-thong', label: 'Giao thông', color: 'var(--blue)', order: 2 },
+  { key: 've-sinh-moi-truong', label: 'Vệ sinh môi trường', color: 'var(--green)', order: 3 },
+  { key: 'trat-tu-do-thi', label: 'Trật tự đô thị', color: 'var(--purple)', order: 4 },
+  { key: 'an-ninh', label: 'An ninh', color: 'var(--red)', order: 5 },
+  { key: 'xay-dung', label: 'Xây dựng', color: 'var(--teal)', order: 6 },
+  { key: 'can-bo', label: 'Cán bộ', color: 'var(--pink)', order: 7 },
+  { key: 'khac', label: 'Khác', color: 'var(--mut)', order: 8 },
+];
+
+/** Chỉ trả các trường giao diện cần; giấu _id và mốc thời gian của Mongo */
+function toCategoryView(doc: { key: string; label: string; color: string; order: number }) {
+  return { key: doc.key, label: doc.label, color: doc.color, order: doc.order };
+}
+
 @Injectable()
 export class SettingsService {
   constructor(
     @InjectModel(SlaRule.name) private readonly slaModel: Model<SlaRuleDocument>,
     @InjectModel(OrgNode.name) private readonly orgModel: Model<OrgNodeDocument>,
+    @InjectModel(FeedbackCategory.name)
+    private readonly categoryModel: Model<FeedbackCategoryDocument>,
+    @InjectModel(Feedback.name) private readonly feedbackModel: Model<FeedbackDocument>,
   ) {}
 
   // ─── Cấu hình SLA ────────────────────────────────────────────────────────
@@ -184,6 +217,68 @@ export class SettingsService {
     const doc = await this.orgModel.findByIdAndDelete(id).exec();
     if (!doc) throw new NotFoundException('Không tìm thấy đơn vị trong cây tổ chức');
     return { id, deleted: true };
+  }
+
+  // ─── Lĩnh vực phản ánh ───────────────────────────────────────────────────
+
+  /**
+   * Danh mục lĩnh vực phản ánh.
+   * Lần gọi đầu trên database trống sẽ tự nạp bộ mặc định — nếu trả rỗng thì
+   * Mini App không có lĩnh vực nào để người dân chọn, không gửi được phản ánh.
+   */
+  async getCategories() {
+    const existing = await this.categoryModel.find().sort({ order: 1, label: 1 }).lean().exec();
+    if (existing.length > 0) return { items: existing.map(toCategoryView), total: existing.length };
+
+    await this.categoryModel.insertMany(DEFAULT_CATEGORIES);
+    const seeded = await this.categoryModel.find().sort({ order: 1, label: 1 }).lean().exec();
+    return { items: seeded.map(toCategoryView), total: seeded.length };
+  }
+
+  async createCategory(dto: CreateFeedbackCategoryDto) {
+    const existed = await this.categoryModel.exists({ key: dto.key }).exec();
+    if (existed) throw new BadRequestException(`Mã lĩnh vực "${dto.key}" đã tồn tại`);
+
+    const last = await this.categoryModel.findOne().sort({ order: -1 }).select('order').lean().exec();
+    const doc = await this.categoryModel.create({
+      key: dto.key,
+      label: dto.label,
+      color: dto.color ?? 'var(--mut)',
+      order: dto.order ?? (last?.order ?? 0) + 1,
+    });
+    return toCategoryView(doc.toObject());
+  }
+
+  /** Cập nhật lĩnh vực theo `key`; bản thân `key` không đổi được (xem DTO) */
+  async updateCategory(key: string, dto: UpdateFeedbackCategoryDto) {
+    const doc = await this.categoryModel
+      .findOneAndUpdate({ key }, { $set: dto }, { new: true })
+      .lean()
+      .exec();
+    if (!doc) throw new NotFoundException('Không tìm thấy lĩnh vực phản ánh');
+    return toCategoryView(doc);
+  }
+
+  /**
+   * Xoá lĩnh vực.
+   *
+   * Chặn khi còn phiếu phản ánh đang tham chiếu: xoá đi thì các phiếu cũ mang
+   * `categoryKey` mồ côi, giao diện mất nhãn và bộ lọc theo lĩnh vực sai số.
+   * Quy tắc SLA gắn kèm thì xoá theo, vì nó vô nghĩa khi không còn lĩnh vực.
+   */
+  async removeCategory(key: string) {
+    const used = await this.feedbackModel.countDocuments({ categoryKey: key }).exec();
+    if (used > 0) {
+      throw new BadRequestException(
+        `Không thể xoá lĩnh vực đang có ${used} phiếu phản ánh. Hãy chuyển các phiếu sang lĩnh vực khác trước.`,
+      );
+    }
+
+    const doc = await this.categoryModel.findOneAndDelete({ key }).exec();
+    if (!doc) throw new NotFoundException('Không tìm thấy lĩnh vực phản ánh');
+
+    await this.slaModel.deleteOne({ categoryKey: key }).exec();
+    return { key, deleted: true };
   }
 
   // ─── Vai trò ─────────────────────────────────────────────────────────────

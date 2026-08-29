@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { findCategory, type SlaRule } from "@/config/sla.config";
+import type { SlaRule } from "@/config/sla.config";
+import { findCategoryIn, useCategoryDirectory } from "@/services/category-directory";
 import { Card } from "@/components/ui/Card";
 import { Chip } from "@/components/ui/Chip";
 import { useToast } from "@/components/ui/Toast";
@@ -25,6 +26,7 @@ export function SlaConfigTable({
   onRulesChange: (rules: SlaRule[]) => void;
 }) {
   const { showToast } = useToast();
+  const categories = useCategoryDirectory();
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -89,7 +91,7 @@ export function SlaConfigTable({
             </thead>
             <tbody>
               {rules.map((r) => {
-                const cat = findCategory(r.categoryKey);
+                const cat = findCategoryIn(categories, r.categoryKey);
                 return (
                   <tr key={r.categoryKey} style={{ cursor: "default" }}>
                     <td>

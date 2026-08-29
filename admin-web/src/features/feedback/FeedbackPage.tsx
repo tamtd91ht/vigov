@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { CitizenFeedback } from "@/types";
-import { feedbackCategories } from "@/config/sla.config";
+import { useCategoryDirectory } from "@/services/category-directory";
 import { feedbackStatuses } from "@/config/status.config";
 import { fetchStaffDirectory, findStaffIn } from "@/services/catalogs.service";
 import { Icon } from "@/lib/icons";
@@ -21,8 +21,6 @@ import { StatCards } from "./StatCards";
 
 const STATUS_OPTIONS = [{ key: "all", label: "Tất cả" }, ...feedbackStatuses.map((s) => ({ key: s.key, label: s.label }))];
 
-const CATEGORY_CHIPS = feedbackCategories.map((c) => ({ key: c.key, label: c.label }));
-
 /** Số phiếu tải về mỗi lần — trang Phản ánh hiển thị dạng lưới thẻ */
 const PAGE_SIZE = 60;
 
@@ -33,6 +31,8 @@ function errorMessage(err: unknown, fallback: string): string {
 
 /** Trang Phản ánh người dân (WBS #6) — dữ liệu từ API /feedback */
 export function FeedbackPage() {
+  // Chip lọc lĩnh vực lấy theo danh mục hiện hành, gồm cả lĩnh vực cán bộ mới thêm
+  const categoryChips = useCategoryDirectory().map((c) => ({ key: c.key, label: c.label }));
   const { showToast } = useToast();
 
   // Danh bạ cán bộ lấy từ API (GET /catalogs/staff) — tra bộ phận khi phân công
@@ -149,7 +149,7 @@ export function FeedbackPage() {
           <Icon name="filter" size={14} />
           Lọc theo lĩnh vực:
         </span>
-        <FilterChips chips={CATEGORY_CHIPS} active={category} onChange={setCategory} />
+        <FilterChips chips={categoryChips} active={category} onChange={setCategory} />
       </div>
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 18 }}>

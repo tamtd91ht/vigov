@@ -1,7 +1,7 @@
 "use client";
 
 import type { CitizenFeedback } from "@/types";
-import { findCategory } from "@/config/sla.config";
+import { findCategoryIn, useCategoryDirectory } from "@/services/category-directory";
 import { feedbackStatuses, findStatus } from "@/config/status.config";
 import { slaLabel } from "@/lib/format";
 import { Icon } from "@/lib/icons";
@@ -15,7 +15,8 @@ export function categoryCover(color: string): string {
 }
 
 function FeedbackCard({ item, onOpen }: { item: CitizenFeedback; onOpen: (code: string) => void }) {
-  const cat = findCategory(item.categoryLabel);
+  const categories = useCategoryDirectory();
+  const cat = findCategoryIn(categories, item.categoryLabel);
   const status = findStatus(feedbackStatuses, item.status);
   const resolved = item.status === "Đã xử lý";
   const sla = slaLabel(item.slaHoursLeft, resolved);

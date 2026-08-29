@@ -1,14 +1,17 @@
-import { findCategory } from "@/config/sla.config";
+"use client";
+
+import { findCategoryIn, useCategoryDirectory } from "@/services/category-directory";
 import type { CategoryStat } from "@/services/reports.service";
 
 /** Biểu đồ thanh ngang: phản ánh theo lĩnh vực — nhãn và màu tra từ findCategory theo categoryKey */
 export function CategoryChart({ data }: { data: CategoryStat[] }) {
   // max tối thiểu là 1 để không chia cho 0 khi kỳ báo cáo chưa có phản ánh
+  const categories = useCategoryDirectory();
   const max = Math.max(1, ...data.map((d) => d.total));
   return (
     <div className="hbars">
       {data.map((d) => {
-        const category = findCategory(d.categoryKey);
+        const category = findCategoryIn(categories, d.categoryKey);
         return (
           <div className="hbar-row" key={d.categoryKey} title={`${category.label}: ${d.total} lượt`}>
             <span className="muted" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
