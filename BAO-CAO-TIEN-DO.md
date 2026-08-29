@@ -105,4 +105,4 @@ Không có hạng mục WBS nào bị bỏ sót: WBS #22, #32, #33 vốn không 
 
 ## 7. Tài liệu liên quan
 
-`DEPLOYMENT.md` (runbook triển khai từng bước) · `README.md` (cách chạy, xử lý sự cố) · `SECURITY.md` (rà soát bảo mật) · `deploy/README.md` (triển khai) · `deploy/RELEASE.md` (hồ sơ 3 store) · `deploy/UAT.md` (10 kịch bản hồi quy) · `plans/` (plan chi tiết từng task).
+`docs/` (bộ 4 tài liệu bàn giao: Backend · Web Quản trị · Zalo Mini App · Triển khai) · `README.md` (cách chạy, xử lý sự cố) · `SECURITY.md` (rà soát bảo mật) · `deploy/README.md` (triển khai) · `deploy/RELEASE.md` (hồ sơ 3 store) · `deploy/UAT.md` (10 kịch bản hồi quy) · `plans/` (plan chi tiết từng task).

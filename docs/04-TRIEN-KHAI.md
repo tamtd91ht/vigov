@@ -1,7 +1,7 @@
 # ViGov — Triển khai lên VPS, từng bước
 
 Runbook cho **lần cài đặt đầu tiên** trên một máy chủ trống, theo kiến trúc
-all-in-one (mọi thứ chạy trên một máy — xem `deploy/README.md` mục 1.4).
+all-in-one (mọi thứ chạy trên một máy — xem `../deploy/README.md` mục 1.4).
 
 Làm tuần tự từ trên xuống. Mỗi bước có phần **Xác nhận** — làm xong phải thấy
 đúng kết quả đó rồi mới sang bước tiếp theo.
@@ -22,7 +22,7 @@ Giai đoạn 1 (tài liệu này, Bước 0–11)      Giai đoạn 2 (Bước 1
 └──────────────────────────────┘           └──────────────────────────┘
 ```
 
-`Jenkinsfile` đã có sẵn trong repo và hàm `deployTo()` của nó **không tạo `.env`,
+`../Jenkinsfile` đã có sẵn trong repo và hàm `deployTo()` của nó **không tạo `.env`,
 không cài Docker, không dựng nginx**. Nó chỉ SSH vào máy, `sed` đổi một dòng
 `IMAGE_TAG` trong `.env` sẵn có, rồi `docker compose pull && up -d --wait`.
 
@@ -30,7 +30,7 @@ Tức là toàn bộ Bước 0–11 dưới đây là **điều kiện tiên quy
 được, không phải phương án thay thế. Làm xong giai đoạn 1, sang Bước 12.
 
 - Tài liệu này: *làm gì, theo thứ tự nào.*
-- `deploy/README.md`: *vì sao, và xử lý khi hỏng.* Tra cứu theo mục khi cần.
+- `../deploy/README.md`: *vì sao, và xử lý khi hỏng.* Tra cứu theo mục khi cần.
 
 **Thời gian ước tính:** 60–90 phút, chưa kể chờ DNS lan truyền và chờ build image.
 
@@ -41,9 +41,9 @@ Tức là toàn bộ Bước 0–11 dưới đây là **điều kiện tiên quy
 Thiếu bất kỳ mục nào dưới đây là sẽ phải dừng giữa chừng.
 
 - [ ] IP public của VPS, tài khoản `root` hoặc user có `sudo`
-- [ ] Cấu hình máy: **tối thiểu 4 vCPU / 8 GB RAM / 100 GB SSD** (đối chiếu `deploy/README.md` mục 1.2)
+- [ ] Cấu hình máy: **tối thiểu 4 vCPU / 8 GB RAM / 100 GB SSD** (đối chiếu `../deploy/README.md` mục 1.2)
 - [ ] Hệ điều hành: Ubuntu Server 22.04/24.04 LTS, hoặc RHEL/Rocky 9
-- [ ] VPS ra được Internet (để `docker pull`, `npm ci`). Nếu không — cần registry nội bộ, xem `deploy/README.md` mục 7.2
+- [ ] VPS ra được Internet (để `docker pull`, `npm ci`). Nếu không — cần registry nội bộ, xem `../deploy/README.md` mục 7.2
 - [ ] 3 tên miền đã trỏ A record về IP VPS:
   - `quantri.vigov.<tên-miền>` — Web Quản trị
   - `api.vigov.<tên-miền>` — API
@@ -257,7 +257,7 @@ curl -sI http://127.0.0.1:8080/healthz | head -1     # 200
 curl -sI http://127.0.0.1:3000/        | head -1     # 200
 ```
 
-`database` phải là `connected`. Nếu không, xem `deploy/README.md` mục 8 — nguyên nhân
+`database` phải là `connected`. Nếu không, xem `../deploy/README.md` mục 8 — nguyên nhân
 thường gặp nhất là `MONGO_URI` thiếu `?authSource=admin` hoặc mật khẩu lệch với
 `MONGO_ROOT_PASSWORD`.
 
@@ -363,10 +363,10 @@ ls -lh /opt/vigov/backups/          # phải thấy file .archive.gz vừa tạo
 ```
 
 **Đừng quên tệp đính kèm.** `mongodump` chỉ sao lưu cơ sở dữ liệu, không sao lưu
-volume `uploads` (ảnh phản ánh, bản scan văn bản). Xem `deploy/README.md` mục 4.4.
+volume `uploads` (ảnh phản ánh, bản scan văn bản). Xem `../deploy/README.md` mục 4.4.
 
 **Xác nhận:** hôm sau kiểm tra `backups/backup.log` và đối chiếu file đã sang được
-máy đích. Thử khôi phục ít nhất một lần trước khi bàn giao (`deploy/README.md` mục 4.3) —
+máy đích. Thử khôi phục ít nhất một lần trước khi bàn giao (`../deploy/README.md` mục 4.3) —
 bản sao lưu chưa từng khôi phục thử thì chưa tính là có sao lưu.
 
 ---
@@ -381,17 +381,17 @@ bản sao lưu chưa từng khôi phục thử thì chưa tính là có sao lưu
 - [ ] `certbot renew --dry-run` thành công
 - [ ] Sao lưu đã chạy, đã sang được máy khác, đã thử khôi phục
 - [ ] Đã xoá toàn bộ biến `SEED_*` khỏi `.env`
-- [ ] Đã rà xong danh sách 12 việc bắt buộc trong `SECURITY.md` mục 4
+- [ ] Đã rà xong danh sách 12 việc bắt buộc trong `../SECURITY.md` mục 4
 - [ ] `docker compose ps` không thấy cổng nào bind `0.0.0.0` ngoài 80/443 của nginx
 
-Kịch bản kiểm thử đầy đủ: `deploy/UAT.md` (10 kịch bản hồi quy).
+Kịch bản kiểm thử đầy đủ: `../deploy/UAT.md` (10 kịch bản hồi quy).
 
 ---
 
 ## Bước 12 — Chuyển sang Jenkins (giai đoạn 2)
 
 Làm **sau khi** Bước 0–11 đã xong và hệ thống chạy ổn định bằng tay. Pipeline đã
-được viết sẵn trong `Jenkinsfile` ở thư mục gốc — việc còn lại là cấu hình Jenkins
+được viết sẵn trong `../Jenkinsfile` ở thư mục gốc — việc còn lại là cấu hình Jenkins
 và chuẩn bị đường vào máy chủ.
 
 ### 12.1 Pipeline đã có sẵn những gì
@@ -419,7 +419,7 @@ Mobile build bỏ qua được bằng tham số `SKIP_MOBILE` khi chỉ cần de
 
 ### 12.3 Khai báo Credentials trong Jenkins
 
-Đúng 3 mục, tên phải khớp chính xác — `Jenkinsfile` gọi theo tên:
+Đúng 3 mục, tên phải khớp chính xác — `../Jenkinsfile` gọi theo tên:
 
 | ID | Kiểu | Nội dung |
 |---|---|---|
@@ -444,7 +444,7 @@ Rồi dán **private key** vào credential `vigov-production-ssh`, username là 
 ### 12.4 Tham số job
 
 Tạo job kiểu **Multibranch Pipeline** trỏ vào repo, rồi đặt lại giá trị mặc định
-(giá trị trong `Jenkinsfile` chỉ là ví dụ):
+(giá trị trong `../Jenkinsfile` chỉ là ví dụ):
 
 | Tham số | Đổi thành |
 |---|---|
@@ -506,7 +506,7 @@ main       ──▶ push ──▶ Build & Test ──▶ Push image ──▶ 
 ```
 
 Ở bước duyệt, người duyệt chọn `BACKUP_BEFORE_DEPLOY` — mặc định **bật**, chạy
-`deploy/backup-mongo.sh` trên máy đích trước khi đổi phiên bản. Giữ mặc định này.
+`../deploy/backup-mongo.sh` trên máy đích trước khi đổi phiên bản. Giữ mặc định này.
 
 ### 12.8 Xác nhận
 
@@ -514,7 +514,7 @@ main       ──▶ push ──▶ Build & Test ──▶ Push image ──▶ 
 - [ ] `docker compose ps` trên staging cho thấy image có tag `develop-<sha>`
 - [ ] Đẩy lên `main` → pipeline dừng ở `Manual Approval`, không tự triển khai
 - [ ] Duyệt → thấy file sao lưu mới trong `backups/`, rồi production lên bản mới
-- [ ] Thử rollback theo `deploy/README.md` mục 6.4
+- [ ] Thử rollback theo `../deploy/README.md` mục 6.4
 
 ### 12.9 Hai điều cần biết trước
 
@@ -526,7 +526,7 @@ chúng. Thêm biến môi trường mới thì phải SSH vào từng máy sửa
 này trong `.env` trên VPS là vô tác dụng khi đã dùng Jenkins — chúng nhúng vào bundle
 lúc `docker build`, lấy giá trị từ **biến toàn cục của Jenkins** (mục 12.5). Muốn
 đổi: sửa biến toàn cục, rồi chạy lại pipeline để dựng image mới. Xem thêm
-`deploy/README.md` mục 6.3.
+`../deploy/README.md` mục 6.3.
 
 ---
 
@@ -571,9 +571,9 @@ Khác với luồng chính ở 4 chỗ:
 
 | Tình huống | Việc cần làm |
 |---|---|
-| Đổi `NEXT_PUBLIC_*` hoặc `VITE_*` | `docker compose build admin-web zalo-miniapp` rồi `up -d`. Đổi `.env` rồi `up` là **không** có tác dụng — xem `deploy/README.md` mục 6.3 |
+| Đổi `NEXT_PUBLIC_*` hoặc `VITE_*` | `docker compose build admin-web zalo-miniapp` rồi `up -d`. Đổi `.env` rồi `up` là **không** có tác dụng — xem `../deploy/README.md` mục 6.3 |
 | Đổi biến backend khác | `docker compose up -d backend` là đủ |
-| Cập nhật phiên bản | `deploy/README.md` mục 6 |
-| Quay lại bản trước | `deploy/README.md` mục 6.4 |
-| Container không lên `healthy` | `docker compose logs --since 10m <service>`, đối chiếu `deploy/README.md` mục 8 |
+| Cập nhật phiên bản | `../deploy/README.md` mục 6 |
+| Quay lại bản trước | `../deploy/README.md` mục 6.4 |
+| Container không lên `healthy` | `docker compose logs --since 10m <service>`, đối chiếu `../deploy/README.md` mục 8 |
 | Xoá sạch làm lại (**mất hết dữ liệu**) | `docker compose down -v` — chỉ làm trên máy dev |

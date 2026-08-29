@@ -62,9 +62,11 @@ Lệnh tiện ích khác ở thư mục gốc: `npm run check:all` (type-check +
 
 ## Triển khai lên máy chủ
 
-Xem **[`DEPLOYMENT.md`](DEPLOYMENT.md)** — runbook từng bước từ VPS trống tới hệ
-thống chạy thật (Bước 0–11), rồi chuyển sang Jenkins (Bước 12).
+Xem **[`docs/04-TRIEN-KHAI.md`](docs/04-TRIEN-KHAI.md)** — runbook từng bước từ VPS
+trống tới hệ thống chạy thật (Bước 0–11), rồi chuyển sang Jenkins (Bước 12).
 `deploy/README.md` là tài liệu tra cứu theo chủ đề khi cần đào sâu hoặc xử lý sự cố.
+
+Bộ tài liệu bàn giao đầy đủ: [`docs/`](docs/README.md).
 
 ## Chạy toàn hệ bằng Docker
 
