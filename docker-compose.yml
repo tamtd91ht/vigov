@@ -38,6 +38,10 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME:-vigov}-mongo
     <<: *default-restart
     logging: *default-logging
+    # Ghìm cache WiredTiger. Mặc định Mongo lấy ~50% (RAM - 1GB) — trên máy 8GB
+    # là ~3.5GB, đủ để OOM killer bắn Node/Next.js khi mọi thứ chạy chung 1 máy.
+    # Quy tắc: đặt khoảng 1/4 RAM máy chủ. Xem deploy/README.md mục 1.2.
+    command: ["--wiredTigerCacheSizeGB", "${MONGO_CACHE_GB:-2}"]
     environment:
       # Bật xác thực: mongo image tự tạo user root khi volume còn trống.
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME}

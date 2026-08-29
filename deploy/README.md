@@ -36,7 +36,7 @@ Toàn bộ hạ tầng dựng bằng `docker-compose.yml` ở thư mục gốc d
 | Hạng mục | Tối thiểu | Khuyến nghị | Ghi chú |
 |---|---|---|---|
 | CPU | 4 vCPU | 8 vCPU | Xuất báo cáo Excel (P3-27) và OCR (P3-25) là 2 tác vụ ngốn CPU nhất |
-| RAM | 8 GB | 16 GB | Mongo nên có ≥ 4 GB cho working set |
+| RAM | 8 GB | 16 GB | Ghìm cache Mongo bằng `MONGO_CACHE_GB` ≈ 1/4 RAM — xem mục 1.4 |
 | Đĩa | 100 GB SSD | 250 GB SSD | Tệp đính kèm phản ánh (ảnh) tăng nhanh nhất — xem ước tính bên dưới |
 | Đĩa sao lưu | 100 GB | Ổ/NAS **riêng** hoặc object storage | Không để chung ổ với dữ liệu gốc |
 | Băng thông | 50 Mbps | 100 Mbps | Mini app tải ảnh phản ánh từ điện thoại lên |
@@ -71,6 +71,109 @@ thước upload.
 > API** (`https://api.vigov.…/api/v1`), không phải tên service nội bộ `backend` —
 > vì trình duyệt/điện thoại của người dùng mới là bên gọi.
 
+### 1.4 Kiến trúc all-in-one — cái gì chạy ở đâu
+
+Toàn hệ chạy trên **một máy chủ duy nhất**, mọi thành phần là container trong cùng
+`docker-compose.yml`. Không phụ thuộc bất kỳ dịch vụ nào bên ngoài máy đó.
+
+```
+┌─ Máy chủ khách hàng cấp ───────────────────────────────────┐
+│                                                             │
+│  nginx / Caddy  (trên host, không nằm trong compose)        │
+│  :80 → :443  ← thứ DUY NHẤT lộ ra Internet                  │
+│    ├─ admin.vigov.<xã>… → 127.0.0.1:3000  admin-web         │
+│    ├─ api.vigov.<xã>…   → 127.0.0.1:3001  backend           │
+│    └─ app.vigov.<xã>…   → 127.0.0.1:8080  zalo-miniapp      │
+│                                                             │
+│  ┌─ mạng nội bộ Docker: vigov-net ────────────────────────┐ │
+│  │  backend      1 instance, NestJS api-gateway           │ │
+│  │  admin-web    Next.js standalone                       │ │
+│  │  zalo-miniapp tĩnh, phục vụ bởi nginx trong container  │ │
+│  │  mongo        volume mongo-data      ← bind 127.0.0.1  │ │
+│  │  rabbitmq     volume rabbitmq-data   ← bind 127.0.0.1  │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                             │
+│  volume uploads/  ← tệp đính kèm phản ánh, bản scan văn bản │
+└─────────────────────────────────────────────────────────────┘
+         │ mongodump 02:00 + rsync 03:00
+         ▼
+   Máy/NAS/object storage KHÁC   ← BẮT BUỘC, xem mục 4
+```
+
+| Thành phần | Chạy ở đâu | Cổng | Lộ ra Internet? |
+|---|---|---|---|
+| `backend` | container | 3001 | Qua reverse proxy |
+| `admin-web` | container | 3000 | Qua reverse proxy |
+| `zalo-miniapp` | container | 8080 | Qua reverse proxy |
+| `mongo` | container, volume `mongo-data` | 27017 | **Không** — `INFRA_BIND_IP=127.0.0.1` |
+| `rabbitmq` | container, volume `rabbitmq-data` | 5672 / 15672 | **Không** — như trên |
+| Redis | *không cài* | — | — |
+
+**Vì sao là container chứ không `apt install mongodb-org`:** `docker-compose.yml`
+đã định nghĩa sẵn healthcheck, volume, xoay log và thứ tự khởi động cho cả hai.
+Cài tay lên host là bỏ đi phần đó và tạo sai lệch giữa máy dev và máy chủ thật.
+Nâng phiên bản Mongo cũng chỉ còn là đổi biến `MONGO_IMAGE`.
+
+**Truy cập Mongo/RabbitMQ từ xa để debug:** đi qua SSH tunnel, không mở cổng.
+
+```bash
+ssh -L 27017:127.0.0.1:27017 -L 15672:127.0.0.1:15672 <user>@<máy-chủ>
+```
+
+#### Vì sao KHÔNG cài Redis
+
+Mã nguồn hiện **không dùng Redis ở bất kỳ đâu**. Rà toàn repo chỉ thấy 3 dòng chú
+thích dạng "khi chạy nhiều instance thì chuyển sang Redis"
+(`auth.service.ts:44`, `libs/shared/src/auth/session-registry.ts:11`,
+`plans/p5-08-token-revocation.md:13`). Không có client, không có module, không có
+biến môi trường. Cài Redis lúc này chỉ thêm một daemon không ai gọi tới, thêm cổng
+phải chặn và thêm CVE phải theo dõi.
+
+Redis chỉ trở thành **bắt buộc** khi backend chạy nhiều hơn một instance sau load
+balancer. Khi đó ba chỗ sau mới là vấn đề:
+
+| Thành phần | Trạng thái hiện tại | Vỡ khi nhiều instance? |
+|---|---|---|
+| Kho OTP — `Map` trong `AuthService` | Bộ nhớ tiến trình | **Có.** OTP sinh ở instance A, xác thực ở B sẽ fail ⇒ công dân không đăng nhập được |
+| Socket.IO — `realtime.gateway.ts` | Không có adapter | **Có.** Broadcast không xuyên instance |
+| Cache trạng thái phiên — `session-registry.ts` | TTL 10 giây, fallback về MongoDB | **Không.** Mỗi instance tự cache; thu hồi phiên trễ tối đa 10s — chấp nhận được |
+
+Tức là khi nào cần mở rộng, việc phải làm là **chuyển kho OTP và Socket.IO adapter
+sang Redis**, chứ không phải dựng sẵn Redis rồi để đấy.
+
+#### Ngân sách RAM khi nhốt chung một máy (mốc 8 GB)
+
+| Thành phần | Ước tính |
+|---|---|
+| MongoDB (cache WiredTiger ghìm ở 2 GB) | ~2,5 GB |
+| RabbitMQ | ~0,5 GB |
+| backend (Node) | ~0,5 GB |
+| admin-web (Next.js) | ~0,5 GB |
+| zalo-miniapp (nginx tĩnh) + reverse proxy | ~0,1 GB |
+| Hệ điều hành + Docker daemon | ~0,8 GB |
+| **Còn lại** | **~3 GB đệm** |
+
+> **Bẫy hay gặp nhất của mô hình all-in-one:** mặc định MongoDB lấy cache bằng
+> ~50% (RAM − 1 GB) — trên máy 8 GB là ~3,5 GB. Cộng với Node và Next.js là vừa đủ
+> để OOM killer bắn tiến trình backend vào lúc tải cao nhất. Vì vậy
+> `docker-compose.yml` truyền `--wiredTigerCacheSizeGB ${MONGO_CACHE_GB}`, mặc định
+> `2`. **Quy tắc: đặt khoảng 1/4 RAM máy chủ** — máy 8 GB → `2`, máy 16 GB → `4`.
+
+#### Khi nào mô hình này hết đúng
+
+Thiết kế trên giả định **quy mô một xã** (~10.000 dân, vài chục tài khoản cán bộ).
+Phải thiết kế lại nếu chạm một trong các mốc sau:
+
+| Dấu hiệu | Việc phải làm |
+|---|---|
+| Nhiều xã/phường dùng chung một hệ thống (**câu hỏi mở #13** trong `ESTIMATE_TECHNICAL.md`) | Nhiều instance backend + load balancer ⇒ kéo theo Redis, và Mongo nên tách máy riêng có replica set |
+| Yêu cầu SLA có tính sẵn sàng cao | Một máy chủ là một điểm chết duy nhất — hỏng máy là mất cả app lẫn dữ liệu. Cần replica set + máy dự phòng |
+| Tệp đính kèm vượt ~150 GB | Chuyển `STORAGE_DRIVER` sang `s3` (MinIO hoặc object storage) — adapter đã có sẵn từ P3-24 |
+| Mongo chiếm > 60% RAM máy trong thời gian dài | Tách MongoDB sang máy riêng |
+
+> Nâng cấp từ một-máy lên cụm là **làm lại phần triển khai**, không phải cắm thêm
+> RAM. Vì vậy nên chốt câu hỏi mở #13 với khách **trước khi** chốt cấu hình máy chủ.
+
 ---
 
 ## 2. Thứ tự khởi chạy
@@ -78,7 +181,9 @@ thước upload.
 ### 2.1 Chuẩn bị lần đầu
 
 ```bash
-# 1. Lấy mã nguồn về máy chủ (ví dụ /opt/vigov)
+# 1. Lấy mã nguồn về máy chủ.
+#    Đặt ở ổ dữ liệu, KHÔNG đặt trong /root (0750, service user thường không đọc được).
+#    Chạy `df -h` chọn phân vùng còn chỗ: thường /opt, hoặc /u01 nếu máy đã có ổ riêng.
 git clone <repo-url> /opt/vigov && cd /opt/vigov
 
 # 2. Tạo file cấu hình từ mẫu và điền giá trị thật
@@ -363,8 +468,21 @@ gian giữa bước 2 và bước 4.
 
 ## 7. Câu hỏi mở #6 — Cloud hay on-premise/hạ tầng nhà nước?
 
-**Chưa chốt.** Đây là quyết định của khách hàng và ảnh hưởng trực tiếp tới khối
-lượng công việc DevOps ở P4-34.
+> **Đã chốt (29/08/2026): triển khai all-in-one trên một máy chủ do khách hàng
+> cấp.** Mọi thành phần — kể cả MongoDB và RabbitMQ — chạy bằng container trong
+> cùng `docker-compose.yml` trên chính máy đó; không dùng dịch vụ managed bên
+> ngoài, không cài Redis. Chi tiết kiến trúc ở **mục 1.4**.
+>
+> Lý do không chọn managed service (MongoDB Atlas, CloudAMQP): dữ liệu phản ánh
+> của công dân là dữ liệu cá nhân thuộc phạm vi **Nghị định 13/2023/NĐ-CP**, lại
+> thuộc hệ thống của cơ quan nhà nước. Nhà cung cấp đặt máy chủ ngoài Việt Nam sẽ
+> thành vấn đề pháp lý phải giải trình. Managed nội địa (Viettel Cloud, VNPT, FPT,
+> CMC, Bizfly) thì hợp lệ nhưng đắt hơn và thêm một vòng mua sắm — chưa đáng cho
+> Phase 1 quy mô một xã.
+>
+> Phần so sánh bên dưới giữ lại để làm hồ sơ quyết định, và vẫn cần dùng khi khách
+> chốt máy chủ nằm ở cloud hay ở trung tâm dữ liệu tỉnh — điều này **chưa chốt** và
+> vẫn ảnh hưởng tới khối lượng DevOps.
 
 ### 7.1 So sánh
 
