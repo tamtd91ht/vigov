@@ -10,8 +10,10 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --force",
     "zmp:login": "zmp login",
-    "zmp:deploy": "npm run build && zmp deploy",
-    "zmp:start": "zmp start"
+    "zmp:deploy": "npm run build && npm run zmp:prepare && zmp deploy -e -o dist",
+    "zmp:deploy:test": "npm run build && npm run zmp:prepare && zmp deploy -e -o dist -t",
+    "zmp:start": "zmp start",
+    "zmp:prepare": "node scripts/zmp-prepare.mjs"
   },
   "dependencies": {
     "react": "^19.2.8",

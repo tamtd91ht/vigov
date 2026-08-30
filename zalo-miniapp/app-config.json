@@ -9,7 +9,12 @@
     "hideIOSSafeAreaBottom": false,
     "hideAndroidBottomNavigationBar": false
   },
-  "listCSS": [],
-  "listSyncJS": [],
+  "listCSS": [
+    "./assets/index-KPfvXnvl.css"
+  ],
+  "listSyncJS": [
+    "inline.js",
+    "./assets/index-BH-QMcwg.js"
+  ],
   "listAsyncJS": []
 }
