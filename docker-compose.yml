@@ -243,6 +243,15 @@ services:
     container_name: ${COMPOSE_PROJECT_NAME:-vigov}-zalo-miniapp
     <<: *default-restart
     logging: *default-logging
+    # Máy chủ dùng nhân/libseccomp cũ (CentOS 7) chặn syscall mà nginx dùng để
+    # ghi file pid: `pwrite() "/tmp/nginx.pid" failed (1: Operation not permitted)`
+    # ⇒ master thoát mã 1, container restart vô hạn, cổng không bao giờ mở.
+    # Lỗi xảy ra cả khi chạy bằng root nên KHÔNG phải vấn đề quyền: đổi đường dẫn
+    # pid hay chown đều vô ích, chính syscall bị chặn.
+    # Chỉ nới cho service này — nginx ở đây chỉ phục vụ file tĩnh, không nhận
+    # upload, không proxy. Bỏ dòng này khi host được nâng libseccomp/Docker.
+    security_opt:
+      - seccomp:unconfined
     environment:
       TZ: ${TZ:-Asia/Ho_Chi_Minh}
     ports:

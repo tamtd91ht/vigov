@@ -85,7 +85,7 @@ Toàn hệ chạy trên **một máy chủ duy nhất**, mọi thành phần là
 │  :80 → :443  ← thứ DUY NHẤT lộ ra Internet                  │
 │    ├─ admin.vigov.<xã>… → 127.0.0.1:3000  admin-web         │
 │    ├─ api.vigov.<xã>…   → 127.0.0.1:3001  backend           │
-│    └─ app.vigov.<xã>…   → 127.0.0.1:8080  zalo-miniapp      │
+│    └─ app.vigov.<xã>…   → 127.0.0.1:8085  zalo-miniapp      │
 │                                                             │
 │  ┌─ mạng nội bộ Docker: vigov-net ────────────────────────┐ │
 │  │  backend      1 instance, NestJS api-gateway           │ │
@@ -106,7 +106,7 @@ Toàn hệ chạy trên **một máy chủ duy nhất**, mọi thành phần là
 |---|---|---|---|
 | `backend` | container | 3001 | Qua reverse proxy |
 | `admin-web` | container | 3000 | Qua reverse proxy |
-| `zalo-miniapp` | container | 8080 | Qua reverse proxy |
+| `zalo-miniapp` | container | 8085 (host) → 8080 (trong container) | Qua reverse proxy |
 | `mongo` | container, volume `mongo-data` | 27017 | **Không** — `INFRA_BIND_IP=127.0.0.1` |
 | `rabbitmq` | container, volume `rabbitmq-data` | 5672 / 15672 | **Không** — như trên |
 | Redis | *không cài* | — | — |
