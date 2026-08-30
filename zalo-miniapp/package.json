@@ -5,13 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && vite build && npm run zmp:prepare",
     "lint": "oxlint",
     "preview": "vite preview",
     "typecheck": "tsc -b --force",
     "zmp:login": "zmp login",
-    "zmp:deploy": "npm run build && npm run zmp:prepare && zmp deploy -e -o dist",
-    "zmp:deploy:test": "npm run build && npm run zmp:prepare && zmp deploy -e -o dist -t",
+    "zmp:deploy": "npm run build && zmp deploy -e -o dist",
+    "zmp:deploy:test": "npm run build && zmp deploy -e -o dist -t",
     "zmp:start": "zmp start",
     "zmp:prepare": "node scripts/zmp-prepare.mjs"
   },
