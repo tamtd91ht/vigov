@@ -67,6 +67,14 @@ export default () => ({
     provider: process.env.OCR_PROVIDER ?? 'mock',
     apiKey: process.env.OCR_API_KEY ?? '',
   },
+  /**
+   * Đọc thẻ căn cước (P5-11) — tách khỏi `ocr` vì khác nhà cung cấp, khác bộ
+   * trường, và chịu ràng buộc dữ liệu cá nhân theo NĐ 13/2023.
+   */
+  idcard: {
+    provider: process.env.IDCARD_PROVIDER ?? 'mock',
+    apiKey: process.env.IDCARD_API_KEY ?? '',
+  },
   geo: {
     provider: process.env.GEO_PROVIDER ?? 'mock',
     apiKey: process.env.GEO_API_KEY ?? '',

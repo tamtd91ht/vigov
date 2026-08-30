@@ -90,6 +90,27 @@ export const zaloService = {
     return null;
   },
 
+  /**
+   * Quét mã QR in trên mặt trước thẻ CCCD gắn chip (P5-11, tầng 2).
+   *
+   * Tách riêng khỏi scanQrCode() dù cùng gọi một API SDK: hai luồng nghiệp vụ
+   * khác nhau, trả về chuỗi có định dạng khác nhau, và tách ra thì bản mock
+   * mới trả được dữ liệu mẫu đúng kiểu cho từng luồng.
+   *
+   * Chuỗi trả về CHƯA được kiểm tra — nơi gọi phải đưa qua parseCccdQr().
+   * Người dùng hoàn toàn có thể chĩa máy vào một QR bất kỳ.
+   */
+  async scanCccdQr(): Promise<string | null> {
+    const sdk = await loadSdk();
+    if (!sdk) {
+      await delay();
+      // Dữ liệu mẫu, KHÔNG phải người thật — số CCCD và địa chỉ đều bịa
+      return "001099012345|123456789|Nguyễn Văn An|01011990|Nam|Số 1, Thôn Đông, Xã Đại Thắng, Huyện Phú Xuyên, Thành phố Hà Nội|15062021";
+    }
+    // Thật: const { content } = await sdk.scanQRCode();
+    return null;
+  },
+
   /** Lấy vị trí hiện tại + địa chỉ (reverse geocode ở backend P3-26) */
   async getLocation(): Promise<LocationResult> {
     const sdk = await loadSdk();

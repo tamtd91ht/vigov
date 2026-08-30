@@ -166,6 +166,15 @@ export function ProfilePage() {
           subtitle="Xem lại các hồ sơ một cửa đã tra cứu"
           onClick={() => navigate("/lookup")}
         />
+        <RowDivider />
+        {/* Lối vào riêng cho bản trình diễn P5-11 — chưa nối vào luồng nghiệp vụ nào */}
+        <ToolRow
+          icon="badge"
+          color="var(--teal)"
+          title="Quét thẻ căn cước"
+          subtitle="Bản trình diễn cơ chế đọc QR trên CCCD"
+          onClick={() => navigate("/cccd")}
+        />
       </div>
 
       {/* Cỡ chữ — áp dụng toàn app qua CSS var --font-scale */}
