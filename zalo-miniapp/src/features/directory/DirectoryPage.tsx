@@ -24,10 +24,12 @@ const LEADER_SECTION = "Lãnh đạo UBND xã";
 const DEPARTMENT_SECTION = "Bộ phận chuyên môn";
 const SEARCH_PLACEHOLDER = "Tìm theo tên, chức danh, bộ phận…";
 const EMPTY_MESSAGE = "Không tìm thấy cán bộ hoặc bộ phận phù hợp.";
-const CHAT_TOAST = "Đang mở cửa sổ chat Zalo… (mô phỏng)";
+const CHAT_TOAST = "Đang mở cửa sổ chat Zalo…";
+/** Zalo chỉ cho chat qua ID người dùng hoặc ID Official Account, không nhận số điện thoại */
+const CHAT_BLOCKED_TOAST = "Chưa nhắn tin được — xã chưa có Zalo OA. Vui lòng gọi điện.";
 const HOTLINE_LABEL = "Tổng đài một cửa";
 
-const callToast = (phone: string) => `Đang gọi ${phone}… (mô phỏng)`;
+const callToast = (phone: string) => `Đang gọi ${phone}…`;
 
 /** Chữ cái đầu hiển thị trên avatar — lấy theo tên gọi (từ cuối), quy ước chung của app */
 function initial(name: string): string {
@@ -125,9 +127,9 @@ export function DirectoryPage() {
     showToast(callToast(phone));
   };
 
+  /** Báo thật khi không mở được chat, thay vì luôn báo thành công */
   const chat = (phone: string) => {
-    void zaloService.openChat(phone);
-    showToast(CHAT_TOAST);
+    void zaloService.openChat(phone).then((ok) => showToast(ok ? CHAT_TOAST : CHAT_BLOCKED_TOAST));
   };
 
   return (

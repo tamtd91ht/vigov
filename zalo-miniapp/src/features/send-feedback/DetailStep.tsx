@@ -61,15 +61,16 @@ export function DetailStep({
   const canAddImage = images.length < appConfig.maxFeedbackImages;
 
   /**
-   * Mock chọn ảnh: chỉ thêm một ô màu placeholder.
-   * chooseImage thật của Zalo SDK (sdk.chooseImage + upload lên server) thuộc hệ tích hợp ngoài.
+   * Mở trình chọn ảnh của Zalo. Ảnh chọn xong hiện tạm bằng một ô màu
+   * placeholder — hiển thị ảnh thật và tải lên máy chủ thuộc phần đính kèm
+   * phản ánh, chưa làm. Mảng rỗng nghĩa là người dùng huỷ.
    */
   async function handleAddImage() {
     if (adding || !canAddImage) return;
     setAdding(true);
-    const ok = await zaloService.chooseImage();
+    const picked = await zaloService.chooseImage();
     setAdding(false);
-    if (!ok) return;
+    if (picked.length === 0) return;
     onImagesChange([...images, IMAGE_COLORS[images.length % IMAGE_COLORS.length]]);
   }
 
