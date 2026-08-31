@@ -3,14 +3,19 @@ import { appConfig } from "@/config/app.config";
 /**
  * Adapter Zalo Mini App SDK.
  *
- * Hai chế độ chạy, quyết định bởi `appConfig.api.useMocks`:
+ * Hai chế độ chạy, quyết định bởi `appConfig.zalo.useMockSdk` (`VITE_USE_MOCK_SDK`):
  *
- * - MOCK (`VITE_USE_MOCKS=true`): trả dữ liệu mẫu, không đụng tới SDK. Dùng để
- *   phát triển và demo trên trình duyệt thường.
+ * - MOCK (`=true`): trả dữ liệu mẫu, không đụng tới SDK. Dùng khi phát triển
+ *   trên trình duyệt thường.
  * - THẬT (mặc định): gọi `zmp-sdk`. Ngoài ứng dụng Zalo — ví dụ bản nginx tĩnh
  *   ở cổng 8085 — SDK nạp được nhưng mọi lệnh đều ném lỗi, nên từng hàm đều bọc
  *   try/catch và rơi về giá trị trung tính. KHÔNG rơi về dữ liệu mẫu: giả vờ
  *   thành công ở môi trường thật che mất lỗi tích hợp.
+ *
+ * Cờ này KHÁC `api.useMocks`. Cái kia nói về dữ liệu nghiệp vụ lấy từ backend;
+ * cái này nói về API thiết bị của Zalo. Trước đây dùng chung một cờ, nên bản
+ * trình diễn offline vô tình tắt luôn camera thật — bấm quét chỉ quay một nhịp
+ * rồi trả chuỗi mẫu.
  *
  * Ghi chú về `import()`: `vite.config.ts` đặt `codeSplitting: false` nên zmp-sdk
  * được gộp thẳng vào bundle — lệnh import dưới đây không sinh chunk rời, và
@@ -52,7 +57,7 @@ let sdkPromise: Promise<ZmpSdk | null> | null = null;
 
 /** Nạp zmp-sdk một lần rồi dùng lại; null khi đang chạy mock hoặc nạp hỏng */
 function loadSdk(): Promise<ZmpSdk | null> {
-  if (appConfig.api.useMocks) return Promise.resolve(null);
+  if (appConfig.zalo.useMockSdk) return Promise.resolve(null);
   sdkPromise ??= import("zmp-sdk")
     .then((m) => m as ZmpSdk)
     .catch((err: unknown) => {
@@ -82,7 +87,7 @@ async function attempt<T>(label: string, run: (sdk: ZmpSdk) => Promise<T>, fallb
 export const zaloService = {
   /** Thông tin hiển thị của người dùng Zalo */
   async getUserProfile(): Promise<ZaloUserProfile | null> {
-    if (appConfig.api.useMocks) {
+    if (appConfig.zalo.useMockSdk) {
       await delay();
       return { id: "mock-user", name: "Người dùng Zalo" };
     }
@@ -106,7 +111,7 @@ export const zaloService = {
    * Trường `number` đã bị SDK đánh dấu deprecated, chỉ đọc phòng khi máy cũ còn trả.
    */
   async requestPhoneNumber(): Promise<string | null> {
-    if (appConfig.api.useMocks) {
+    if (appConfig.zalo.useMockSdk) {
       await delay();
       return "0987654321";
     }
@@ -120,13 +125,13 @@ export const zaloService = {
    * Trả null khi chạy ngoài Zalo — lúc đó SessionContext rơi về luồng OTP.
    */
   async requestPhoneToken(): Promise<string | null> {
-    if (appConfig.api.useMocks) return null;
+    if (appConfig.zalo.useMockSdk) return null;
     return attempt("getPhoneNumber(token)", async (sdk) => (await sdk.getPhoneNumber()).token ?? null, null);
   },
 
   /** Quét mã QR hồ sơ một cửa */
   async scanQrCode(): Promise<string | null> {
-    if (appConfig.api.useMocks) {
+    if (appConfig.zalo.useMockSdk) {
       await delay();
       return "HS-2026-04182";
     }
@@ -144,7 +149,7 @@ export const zaloService = {
    * Người dùng hoàn toàn có thể chĩa máy vào một QR bất kỳ.
    */
   async scanCccdQr(): Promise<string | null> {
-    if (appConfig.api.useMocks) {
+    if (appConfig.zalo.useMockSdk) {
       await delay();
       // Dữ liệu mẫu, KHÔNG phải người thật — số CCCD và địa chỉ đều bịa
       return "001099012345|123456789|Nguyễn Văn An|01011990|Nam|Số 1, Thôn Đông, Xã Đại Thắng, Huyện Phú Xuyên, Thành phố Hà Nội|15062021";
@@ -160,7 +165,7 @@ export const zaloService = {
    * Điền địa chỉ tự động được sau khi backend làm bước đổi token + reverse geocode (P3-26).
    */
   async getLocation(): Promise<LocationResult> {
-    if (appConfig.api.useMocks) {
+    if (appConfig.zalo.useMockSdk) {
       await delay();
       if (zaloMockFlags.denyLocation) return { granted: false };
       return {
@@ -191,7 +196,7 @@ export const zaloService = {
    * false và giao diện phải nói thật là chưa dùng được.
    */
   async openChat(phone: string): Promise<boolean> {
-    if (appConfig.api.useMocks) {
+    if (appConfig.zalo.useMockSdk) {
       await delay(120);
       return true;
     }
@@ -212,7 +217,7 @@ export const zaloService = {
 
   /** Gọi điện — trong Zalo dùng openPhone, ngoài Zalo rơi về liên kết tel: */
   async call(phone: string): Promise<boolean> {
-    if (appConfig.api.useMocks) {
+    if (appConfig.zalo.useMockSdk) {
       await delay(120);
       return true;
     }
@@ -237,7 +242,7 @@ export const zaloService = {
    * không gọi được. Tải ảnh lên máy chủ thuộc phần đính kèm phản ánh, chưa làm.
    */
   async chooseImage(): Promise<string[]> {
-    if (appConfig.api.useMocks) {
+    if (appConfig.zalo.useMockSdk) {
       await delay(200);
       return ["mock://anh-mau"];
     }
