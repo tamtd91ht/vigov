@@ -9,6 +9,7 @@ vận hành hệ thống.
 | 2 | [`02-ADMIN-WEB.md`](02-ADMIN-WEB.md) | Lập trình viên frontend | Next.js, 11 phân hệ, ba tầng, mẫu tải dữ liệu, phiên đăng nhập |
 | 3 | [`03-ZALO-MINIAPP.md`](03-ZALO-MINIAPP.md) | Lập trình viên frontend | React + Vite, 13 màn hình, adapter SDK Zalo |
 | 4 | [`04-TRIEN-KHAI.md`](04-TRIEN-KHAI.md) | Vận hành / DevOps | Runbook 12 bước từ máy chủ trống, rồi chuyển sang Jenkins |
+| 5 | [`05-ZALO-XIN-QUYEN-API.md`](05-ZALO-XIN-QUYEN-API.md) | Quản trị Mini App | Hồ sơ xin 4 quyền API Zalo: lý do dán vào Console, webhook xoá dữ liệu, bản nháp Điều khoản sử dụng |
 
 ---
 

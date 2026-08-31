@@ -17,6 +17,7 @@ import { UsersModule } from './modules/users/users.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { SearchModule } from './modules/search/search.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { ZaloWebhookModule } from './modules/zalo-webhook/zalo-webhook.module';
 import { FilesModule } from './modules/files/files.module';
 import { NotificationModule } from './modules/notification/notification.module';
 import { WorkflowModule } from './modules/workflow/workflow.module';
@@ -89,6 +90,7 @@ import { HealthController } from './health.controller';
     SettingsModule,
     SearchModule,
     AuditModule,
+    ZaloWebhookModule,
     FilesModule,
     NotificationModule,
     WorkflowModule,

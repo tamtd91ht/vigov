@@ -71,6 +71,15 @@ export class CitizenUser {
   /** Token nhận thông báo đẩy (FCM/APNs) */
   @Prop({ type: [String], default: [] })
   pushTokens: string[];
+
+  /**
+   * Thời điểm vô danh hoá theo yêu cầu rút đồng ý của chủ thể dữ liệu
+   * (NĐ 13/2023), nhận qua webhook Zalo. Có giá trị nghĩa là bản ghi đã bị bỏ
+   * hết trường nhận dạng — giữ lại vỏ để không phá tham chiếu từ hồ sơ và
+   * phản ánh mà xã có nghĩa vụ lưu trữ.
+   */
+  @Prop()
+  erasedAt?: Date;
 }
 export const CitizenUserSchema = SchemaFactory.createForClass(CitizenUser);
 

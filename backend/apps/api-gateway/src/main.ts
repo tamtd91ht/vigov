@@ -39,7 +39,19 @@ async function bootstrap() {
 
   // Giới hạn kích thước thân yêu cầu để chặn tấn công làm cạn bộ nhớ
   const bodyLimit = config.get<string>('security.bodyLimit') ?? DEFAULT_BODY_LIMIT;
-  app.use(json({ limit: bodyLimit }));
+  /*
+   * Giữ lại thân yêu cầu THÔ cho webhook Zalo. Chữ ký phải được tính trên đúng
+   * chuỗi byte Zalo đã gửi; `JSON.stringify(req.body)` sau khi parse có thể đổi
+   * thứ tự khoá hoặc cách escape, làm chữ ký lệch mà không rõ vì sao.
+   */
+  app.use(
+    json({
+      limit: bodyLimit,
+      verify: (req, _res, buf) => {
+        (req as unknown as { rawBody?: Buffer }).rawBody = buf;
+      },
+    }),
+  );
   app.use(urlencoded({ extended: true, limit: bodyLimit }));
 
   app.setGlobalPrefix(config.get<string>('API_PREFIX', 'api/v1'));
