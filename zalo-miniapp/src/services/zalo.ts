@@ -46,8 +46,39 @@ export const zaloMockFlags = { denyLocation: false };
 /** Phần API của zmp-sdk mà ứng dụng này dùng — khai hẹp để lỗi lộ ra lúc biên dịch */
 type ZmpSdk = Pick<
   typeof import("zmp-sdk"),
-  "getUserInfo" | "getPhoneNumber" | "scanQRCode" | "chooseImage" | "getLocation" | "openChat" | "openPhone"
+  | "getUserInfo"
+  | "getPhoneNumber"
+  | "scanQRCode"
+  | "chooseImage"
+  | "getLocation"
+  | "openChat"
+  | "openPhone"
+  | "requestCameraPermission"
+  | "checkZaloCameraPermission"
+  | "getSystemInfo"
 >;
+
+/** Kết quả quét — mang theo lỗi để màn hình nói được vì sao hỏng */
+export interface ScanResult {
+  content: string | null;
+  error?: string;
+}
+
+/**
+ * Đọc lỗi của zmp-sdk ra chuỗi người đọc được.
+ *
+ * SDK ném `AppError { code, message }`, trong đó `message` có thể là mảng.
+ * `String(err)` với vật thể đó ra "[object Object]" — vô dụng đúng lúc cần nhất.
+ */
+function errText(err: unknown): string {
+  if (err && typeof err === "object") {
+    const e = err as { code?: number; message?: unknown };
+    const raw = Array.isArray(e.message) ? e.message.join("; ") : e.message;
+    const msg = typeof raw === "string" && raw ? raw : JSON.stringify(err);
+    return e.code === undefined ? msg : `[${e.code}] ${msg}`;
+  }
+  return String(err);
+}
 
 function delay(ms: number = appConfig.api.mockDelayMs): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
@@ -82,6 +113,78 @@ async function attempt<T>(label: string, run: (sdk: ZmpSdk) => Promise<T>, fallb
     console.debug(`[zalo] ${label} thất bại`, err);
     return fallback;
   }
+}
+
+/**
+ * Quét QR thật.
+ *
+ * Xin quyền camera TRƯỚC khi gọi scanQRCode. Trên nhiều máy, scanQRCode hỏng
+ * lặng lẽ khi ứng dụng Zalo chưa được hệ điều hành cấp quyền camera — không
+ * ném lỗi rõ ràng, chỉ là màn quét không bao giờ mở. requestCameraPermission
+ * hỏng thì vẫn quét tiếp: có máy đã cấp sẵn nên lệnh này thừa.
+ *
+ * Lỗi được trả NGUYÊN VĂN lên giao diện. Nuốt lỗi ở đây đồng nghĩa người thử
+ * trên điện thoại không có cách nào biết vì sao camera không mở.
+ */
+async function runScan(): Promise<ScanResult> {
+  const sdk = await loadSdk();
+  if (!sdk) return { content: null, error: "Không nạp được zmp-sdk" };
+
+  let camNote = "";
+  try {
+    await sdk.requestCameraPermission();
+  } catch (err: unknown) {
+    camNote = ` · xin quyền camera: ${errText(err)}`;
+  }
+
+  try {
+    const { content } = await sdk.scanQRCode();
+    return { content };
+  } catch (err: unknown) {
+    return { content: null, error: errText(err) + camNote };
+  }
+}
+
+/**
+ * Ảnh chụp trạng thái tích hợp, hiển thị ngay trong app.
+ *
+ * Người thử cầm điện thoại không mở được console, nên mọi phán đoán về "vì sao
+ * camera không lên" đều là mò. Hàm này trả về đủ thứ cần để kết luận: SDK có
+ * nạp không, đang chạy trong Zalo hay trình duyệt, phiên bản Zalo, và quyền
+ * camera hiện ra sao.
+ */
+export async function zaloDiagnostics(): Promise<Array<[string, string]>> {
+  const rows: Array<[string, string]> = [["Cờ mock SDK", String(appConfig.zalo.useMockSdk)]];
+
+  const sdk = await loadSdk();
+  rows.push(["Nạp zmp-sdk", sdk ? "được" : "KHÔNG"]);
+  if (!sdk) return rows;
+
+  try {
+    const info = sdk.getSystemInfo();
+    rows.push(["Nền tảng", info.platform || "(rỗng)"]);
+    rows.push(["Phiên bản Zalo", info.zaloVersion || "(rỗng)"]);
+    rows.push(["Phiên bản SDK", info.apiVersion || "(rỗng)"]);
+    rows.push(["Phiên bản Mini App", info.version || "(rỗng)"]);
+  } catch (err: unknown) {
+    rows.push(["getSystemInfo", `lỗi — ${errText(err)}`]);
+  }
+
+  try {
+    const cam = await sdk.checkZaloCameraPermission();
+    rows.push(["Quyền camera của Zalo", JSON.stringify(cam)]);
+  } catch (err: unknown) {
+    rows.push(["Quyền camera của Zalo", `lỗi — ${errText(err)}`]);
+  }
+
+  try {
+    const asked = await sdk.requestCameraPermission();
+    rows.push(["Xin quyền camera", JSON.stringify(asked)]);
+  } catch (err: unknown) {
+    rows.push(["Xin quyền camera", `lỗi — ${errText(err)}`]);
+  }
+
+  return rows;
 }
 
 export const zaloService = {
@@ -130,12 +233,12 @@ export const zaloService = {
   },
 
   /** Quét mã QR hồ sơ một cửa */
-  async scanQrCode(): Promise<string | null> {
+  async scanQrCode(): Promise<ScanResult> {
     if (appConfig.zalo.useMockSdk) {
       await delay();
-      return "HS-2026-04182";
+      return { content: "HS-2026-04182" };
     }
-    return attempt("scanQRCode", async (sdk) => (await sdk.scanQRCode()).content, null);
+    return runScan();
   },
 
   /**
@@ -148,13 +251,16 @@ export const zaloService = {
    * Chuỗi trả về CHƯA được kiểm tra — nơi gọi phải đưa qua parseCccdQr().
    * Người dùng hoàn toàn có thể chĩa máy vào một QR bất kỳ.
    */
-  async scanCccdQr(): Promise<string | null> {
+  async scanCccdQr(): Promise<ScanResult> {
     if (appConfig.zalo.useMockSdk) {
       await delay();
       // Dữ liệu mẫu, KHÔNG phải người thật — số CCCD và địa chỉ đều bịa
-      return "001099012345|123456789|Nguyễn Văn An|01011990|Nam|Số 1, Thôn Đông, Xã Đại Thắng, Huyện Phú Xuyên, Thành phố Hà Nội|15062021";
+      return {
+        content:
+          "001099012345|123456789|Nguyễn Văn An|01011990|Nam|Số 1, Thôn Đông, Xã Đại Thắng, Huyện Phú Xuyên, Thành phố Hà Nội|15062021",
+      };
     }
-    return attempt("scanQRCode(cccd)", async (sdk) => (await sdk.scanQRCode()).content, null);
+    return runScan();
   },
 
   /**

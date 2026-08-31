@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Icon } from "@/components/Icon";
 import { Note, SectionHead, SubHeader, tint } from "@/components/common";
-import { zaloService } from "@/services/zalo";
+import { zaloDiagnostics, zaloService } from "@/services/zalo";
 import { useToast } from "@/state/ToastContext";
 import { CCCD_FIELD_ORDER, maskCccd, parseCccdQr, type CccdParseResult } from "./cccd";
 
@@ -21,18 +21,28 @@ export function CccdScanPage() {
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<CccdParseResult | null>(null);
   const [manual, setManual] = useState("");
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [diag, setDiag] = useState<Array<[string, string]> | null>(null);
 
   async function handleScan() {
     if (scanning) return;
     setScanning(true);
-    const content = await zaloService.scanCccdQr();
+    setScanError(null);
+    const { content, error } = await zaloService.scanCccdQr();
     setScanning(false);
 
     if (!content) {
-      showToast("Không đọc được mã QR, vui lòng thử lại");
+      // Hiện nguyên văn lỗi của SDK: người thử cầm điện thoại không mở được console
+      setScanError(error ?? "Người dùng đã huỷ hoặc không đọc được mã");
+      showToast("Chưa quét được — xem chi tiết bên dưới");
       return;
     }
     setResult(parseCccdQr(content));
+  }
+
+  async function handleDiagnose() {
+    setDiag([["Đang đọc…", ""]]);
+    setDiag(await zaloDiagnostics());
   }
 
   function handleParseManual() {
@@ -74,6 +84,35 @@ export function CccdScanPage() {
             </>
           )}
         </button>
+
+        {/* ----- Lỗi quét: nói thẳng SDK trả về gì ----- */}
+        {scanError && (
+          <div className="card card-b" style={{ marginTop: 12, borderLeft: "3px solid var(--orange)" }}>
+            <div style={{ fontWeight: 700, marginBottom: 6, color: "var(--orange)" }}>Không mở được màn quét</div>
+            <code style={{ display: "block", fontSize: ".76rem", lineHeight: 1.6, wordBreak: "break-word" }}>
+              {scanError}
+            </code>
+            <button className="btn sm" style={{ marginTop: 10 }} onClick={() => void handleDiagnose()}>
+              <Icon name="shield" size={16} />
+              Chẩn đoán tích hợp
+            </button>
+          </div>
+        )}
+
+        {/* ----- Bảng chẩn đoán: thay cho console mà điện thoại không có ----- */}
+        {diag && (
+          <div className="card card-b" style={{ marginTop: 12 }}>
+            {diag.map(([label, value]) => (
+              <div
+                key={label}
+                style={{ display: "flex", gap: 10, padding: "7px 0", borderBottom: "1px solid var(--line)" }}
+              >
+                <span style={{ minWidth: 132, fontSize: ".78rem", color: "var(--slate)" }}>{label}</span>
+                <code style={{ fontSize: ".76rem", wordBreak: "break-all" }}>{value}</code>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* ----- Dán chuỗi thủ công: kiểm chứng định dạng không cần thiết bị ----- */}
         <SectionHead title="Hoặc dán chuỗi để thử" />

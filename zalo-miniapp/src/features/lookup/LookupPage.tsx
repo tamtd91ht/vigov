@@ -86,13 +86,13 @@ export function LookupPage() {
   async function handleScan() {
     if (scanning || loading) return;
     setScanning(true);
-    const scanned = await zaloService.scanQrCode();
+    const { content, error } = await zaloService.scanQrCode();
     setScanning(false);
-    if (!scanned) {
-      showToast("Không đọc được mã QR, vui lòng thử lại");
+    if (!content) {
+      showToast(error ? `Chưa quét được — ${error}` : "Không đọc được mã QR, vui lòng thử lại");
       return;
     }
-    await runLookup(scanned.toUpperCase());
+    await runLookup(content.toUpperCase());
   }
 
   function handleClearHistory() {
