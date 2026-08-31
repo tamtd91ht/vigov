@@ -70,6 +70,27 @@ export interface ScanResult {
  * SDK ném `AppError { code, message }`, trong đó `message` có thể là mảng.
  * `String(err)` với vật thể đó ra "[object Object]" — vô dụng đúng lúc cần nhất.
  */
+/**
+ * Chặn treo. Lệnh zmp-sdk không được hỗ trợ có thể KHÔNG resolve mà cũng không
+ * reject — lúc đó `await` đứng mãi, nút chỉ quay, và không lỗi nào hiện ra để
+ * lần. Mọi lệnh SDK phải đi qua đây.
+ */
+function withTimeout<T>(label: string, ms: number, work: Promise<T>): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} không phản hồi sau ${ms / 1000}s`)), ms);
+    work.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err: unknown) => {
+        clearTimeout(timer);
+        reject(err instanceof Error ? err : new Error(errText(err)));
+      },
+    );
+  });
+}
+
 function errText(err: unknown): string {
   if (err && typeof err === "object") {
     const e = err as { code?: number; message?: unknown };
@@ -130,15 +151,18 @@ async function runScan(): Promise<ScanResult> {
   const sdk = await loadSdk();
   if (!sdk) return { content: null, error: "Không nạp được zmp-sdk" };
 
+  // Xin quyền là bước phụ: hỏng hay treo cũng KHÔNG được chặn việc quét, vì
+  // nhiều máy đã cấp sẵn quyền và lệnh này chỉ là thừa.
   let camNote = "";
   try {
-    await sdk.requestCameraPermission();
+    await withTimeout("xin quyền camera", 6000, sdk.requestCameraPermission());
   } catch (err: unknown) {
     camNote = ` · xin quyền camera: ${errText(err)}`;
   }
 
   try {
-    const { content } = await sdk.scanQRCode();
+    // 60s: người dùng cần thời gian chĩa máy vào mã, nhưng không để treo mãi
+    const { content } = await withTimeout("scanQRCode", 60000, sdk.scanQRCode());
     return { content };
   } catch (err: unknown) {
     return { content: null, error: errText(err) + camNote };
@@ -160,6 +184,11 @@ export async function zaloDiagnostics(): Promise<Array<[string, string]>> {
   rows.push(["Nạp zmp-sdk", sdk ? "được" : "KHÔNG"]);
   if (!sdk) return rows;
 
+  // Chứng minh module đúng hình dạng, không phải bản vỏ bị tree-shake
+  rows.push(["scanQRCode là", typeof sdk.scanQRCode]);
+  rows.push(["Số API xuất ra", String(Object.keys(sdk).length)]);
+  rows.push(["Cầu native", typeof (window as { ZaloJavaScriptInterface?: unknown }).ZaloJavaScriptInterface]);
+
   try {
     const info = sdk.getSystemInfo();
     rows.push(["Nền tảng", info.platform || "(rỗng)"]);
@@ -170,18 +199,28 @@ export async function zaloDiagnostics(): Promise<Array<[string, string]>> {
     rows.push(["getSystemInfo", `lỗi — ${errText(err)}`]);
   }
 
+  // Timeout ở đây quan trọng không kém: bảng chẩn đoán mà treo thì cũng vô dụng
   try {
-    const cam = await sdk.checkZaloCameraPermission();
+    const cam = await withTimeout("checkZaloCameraPermission", 6000, sdk.checkZaloCameraPermission());
     rows.push(["Quyền camera của Zalo", JSON.stringify(cam)]);
   } catch (err: unknown) {
     rows.push(["Quyền camera của Zalo", `lỗi — ${errText(err)}`]);
   }
 
   try {
-    const asked = await sdk.requestCameraPermission();
+    const asked = await withTimeout("requestCameraPermission", 6000, sdk.requestCameraPermission());
     rows.push(["Xin quyền camera", JSON.stringify(asked)]);
   } catch (err: unknown) {
     rows.push(["Xin quyền camera", `lỗi — ${errText(err)}`]);
+  }
+
+  // Gọi thẳng scanQRCode với thời gian chờ ngắn: nếu quyền API bị Zalo chặn thì
+  // đây là chỗ lỗi đó lộ ra nguyên văn, kèm mã lỗi.
+  try {
+    await withTimeout("scanQRCode (thử 8s)", 8000, sdk.scanQRCode());
+    rows.push(["Gọi scanQRCode", "mở được"]);
+  } catch (err: unknown) {
+    rows.push(["Gọi scanQRCode", errText(err)]);
   }
 
   return rows;

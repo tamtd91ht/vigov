@@ -92,12 +92,17 @@ export function CccdScanPage() {
             <code style={{ display: "block", fontSize: ".76rem", lineHeight: 1.6, wordBreak: "break-word" }}>
               {scanError}
             </code>
-            <button className="btn sm" style={{ marginTop: 10 }} onClick={() => void handleDiagnose()}>
-              <Icon name="shield" size={16} />
-              Chẩn đoán tích hợp
-            </button>
           </div>
         )}
+
+        {/*
+          Nút chẩn đoán LUÔN hiện, không gài sau lỗi. Nếu lệnh SDK treo thì
+          không có lỗi nào để gài vào, mà đó đúng là lúc cần chẩn đoán nhất.
+        */}
+        <button className="btn sm" style={{ marginTop: 12 }} onClick={() => void handleDiagnose()}>
+          <Icon name="shield" size={16} />
+          Chẩn đoán tích hợp
+        </button>
 
         {/* ----- Bảng chẩn đoán: thay cho console mà điện thoại không có ----- */}
         {diag && (
