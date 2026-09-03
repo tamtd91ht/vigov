@@ -82,10 +82,17 @@ export const authService = {
     const token = await zaloService.requestPhoneToken();
     if (!token) return { kind: "otp", reason: REASON_NO_TOKEN };
 
-    const profile = await zaloService.getUserProfile();
+    /* Zalo đòi CẢ mã dùng một lần lẫn phiên đăng nhập của người dùng mới chịu
+       trả số điện thoại. Lấy song song cho đỡ một nhịp chờ ở màn onboarding. */
+    const [accessToken, profile] = await Promise.all([
+      zaloService.getAccessToken(),
+      zaloService.getUserProfile(),
+    ]);
+
     try {
       const res = await apiClient.post<CitizenAuthResponse>("/auth/citizen/zalo/identify", {
         token,
+        accessToken,
         zaloUserId: profile?.id,
         displayName: profile?.name,
       });

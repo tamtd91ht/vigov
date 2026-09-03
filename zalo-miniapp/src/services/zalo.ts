@@ -48,6 +48,7 @@ type ZmpSdk = Pick<
   typeof import("zmp-sdk"),
   | "getUserInfo"
   | "getPhoneNumber"
+  | "getAccessToken"
   | "scanQRCode"
   | "chooseImage"
   | "getLocation"
@@ -284,6 +285,18 @@ export const zaloService = {
   async requestPhoneToken(): Promise<string | null> {
     if (appConfig.zalo.useMockSdk) return null;
     return attempt("getPhoneNumber(token)", async (sdk) => (await sdk.getPhoneNumber()).token ?? null, null);
+  },
+
+  /**
+   * Phiên đăng nhập Zalo của người dùng.
+   *
+   * Máy chủ cần token này ĐỒNG THỜI với mã của getPhoneNumber để đổi lấy số
+   * điện thoại — Zalo bắt gửi cả hai, thiếu một là từ chối. Bản thân nó không
+   * phải số điện thoại và không dùng được một mình.
+   */
+  async getAccessToken(): Promise<string | null> {
+    if (appConfig.zalo.useMockSdk) return null;
+    return attempt("getAccessToken", async (sdk) => (await sdk.getAccessToken()) ?? null, null);
   },
 
   /** Quét mã QR hồ sơ một cửa */

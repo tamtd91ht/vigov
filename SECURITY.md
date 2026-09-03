@@ -118,6 +118,13 @@ Lệnh chạy: `npm audit --production` (chỉ đọc kết quả, **không** ch
 
 ## 4. Việc BẮT BUỘC làm trước khi lên production
 
+0. **Xoá `CITIZEN_OTP_BYPASS_CODE`** khỏi `.env` (để trống). Đây là mã cố định cho phép định danh
+   **bất kỳ số điện thoại nào** ở màn OTP, dựng tạm cho giai đoạn Zalo chưa cấp quyền
+   `getPhoneNumber` và mã OTP thật còn chưa gửi được qua SMS/ZNS. Còn giá trị là còn một lối vào
+   không qua xác thực thật. Backend cảnh báo mỗi lần khởi động và ghi `warn` kèm số điện thoại +
+   IP mỗi lần mã được dùng — rà `docker compose logs backend | grep "mã tạm thời"` để biết đã có
+   ai dùng chưa. *Điều kiện để xoá được: quyền `getPhoneNumber` đã cấp và luồng đổi token Zalo
+   chạy thật, HOẶC đã nối SMS/ZNS cho OTP.*
 1. **Đổi `JWT_SECRET`.** Sinh chuỗi ngẫu nhiên ≥ 32 ký tự (`openssl rand -base64 48`), lưu trong
    trình quản lý bí mật, không commit. Khoá này ký cả token đăng nhập lẫn link tệp riêng tư.
    *API Gateway đã được chặn khởi động nếu `NODE_ENV=production` mà khoá còn là giá trị mẫu.*

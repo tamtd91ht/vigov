@@ -39,6 +39,11 @@ export class ZaloIdentifyDto {
   @IsNotEmpty({ message: 'Thiếu token định danh Zalo' })
   token: string;
 
+  /** Phiên đăng nhập Zalo của người dùng — Zalo bắt buộc có để đổi mã */
+  @IsOptional()
+  @IsString()
+  accessToken?: string;
+
   @IsOptional()
   @IsString()
   zaloUserId?: string;

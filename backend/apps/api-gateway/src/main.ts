@@ -72,6 +72,18 @@ async function bootstrap() {
   assertProductionSecrets(config.get<string>('auth.jwtSecret'), isProduction);
 
   // CORS theo whitelist đọc từ cấu hình (CORS_ORIGINS)
+  /*
+   * Mã định danh tạm thời đang bật thì phải hét lên mỗi lần khởi động. Nó mở
+   * được mọi số điện thoại, và thứ nguy hiểm nhất là loại cấu hình tạm mà mọi
+   * người quên mất là nó còn đó.
+   */
+  if ((config.get<string>('auth.otpBypassCode') ?? '').trim()) {
+    logger.warn(
+      'CITIZEN_OTP_BYPASS_CODE đang BẬT — mã tạm thời này định danh được mọi số ' +
+        'điện thoại. Chỉ dùng khi Zalo chưa cấp quyền getPhoneNumber; xoá khỏi .env ngay sau đó.',
+    );
+  }
+
   const cors = buildCorsOptions(config.get<string>('security.corsOrigins'), isProduction);
   app.enableCors(cors);
   logger.log(

@@ -21,6 +21,11 @@ export default () => ({
     jwtSecret: process.env.JWT_SECRET ?? 'change-me-in-production',
     jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? '8h',
     refreshExpiresIn: process.env.REFRESH_EXPIRES_IN ?? '7d',
+    /**
+     * Mã OTP dự phòng cho giai đoạn CHƯA có quyền getPhoneNumber của Zalo.
+     * Để TRỐNG là tắt hẳn. Xem SECURITY.md — phải xoá trước khi mở cho dân.
+     */
+    otpBypassCode: process.env.CITIZEN_OTP_BYPASS_CODE ?? '',
   },
 
   security: {

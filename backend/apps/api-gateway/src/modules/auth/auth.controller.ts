@@ -57,7 +57,7 @@ export class AuthController {
   @Post('citizen/zalo/identify')
   identifyZalo(@Body() dto: ZaloIdentifyDto, @Req() req: Request) {
     const { ip } = clientInfo(req);
-    return this.auth.identifyZalo(dto.token, dto.zaloUserId, dto.displayName, ip);
+    return this.auth.identifyZalo(dto.token, dto.accessToken, dto.zaloUserId, dto.displayName, ip);
   }
 
   /** Thông tin phiên hiện tại */
