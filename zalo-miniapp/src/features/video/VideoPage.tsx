@@ -4,7 +4,7 @@ import { Icon } from "@/components/Icon";
 import { SubHeader, formatNumber } from "@/components/common";
 import { DataState } from "@/components/DataState";
 import { useApiResource } from "@/hooks/useApiResource";
-import { contentService, distinctBy } from "@/services/content.service";
+import { contentService, distinctBy, youtubeId } from "@/services/content.service";
 import type { VideoItem } from "@/types";
 
 /** Chip lọc "tất cả chủ đề" */
@@ -14,6 +14,18 @@ export const ALL_TOPICS = "Tất cả";
 export const VIDEO_RATIO = "16 / 9";
 
 /** Nền thumbnail: gradient từ màu video sang chính màu đó pha 25% đen */
+/**
+ * Ảnh đại diện lấy thẳng từ YouTube khi video là link YouTube.
+ * hqdefault có ở MỌI video (maxresdefault thì không — video cũ hoặc chất lượng
+ * thấp sẽ trả ảnh 404 và ô thumbnail thành khoảng trắng).
+ * Video tự host chưa có ảnh bìa nên trả null và dùng gradient như cũ.
+ */
+export function videoThumb(video: VideoItem): string | null {
+  if (video.source !== "youtube") return null;
+  const id = youtubeId(video.youtubeUrl);
+  return id ? `https://i.ytimg.com/vi/${id}/hqdefault.jpg` : null;
+}
+
 export function videoGradient(color: string): string {
   return `linear-gradient(135deg, ${color}, color-mix(in srgb, #000 25%, ${color}))`;
 }
@@ -72,6 +84,7 @@ export function VideoPage() {
 /** Ô video trong lưới — thumbnail 16:9 + tiêu đề + chủ đề */
 function VideoCard({ video }: { video: VideoItem }) {
   const navigate = useNavigate();
+  const thumb = videoThumb(video);
 
   return (
     <div className="card tap" role="button" style={{ overflow: "hidden" }} onClick={() => navigate(`/video/${video.id}`)}>
@@ -82,8 +95,22 @@ function VideoCard({ video }: { video: VideoItem }) {
           background: videoGradient(video.coverColor),
           display: "grid",
           placeItems: "center",
+          overflow: "hidden",
         }}
       >
+        {thumb && (
+          <img
+            src={thumb}
+            alt=""
+            loading="lazy"
+            /* Ảnh hỏng (video bị gỡ, mất mạng) thì ẩn hẳn để lộ gradient bên
+               dưới, thay vì để trình duyệt vẽ khung ảnh vỡ. */
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          />
+        )}
         <Icon name="playFill" size={30} color="#fff" fill />
         <span
           style={{

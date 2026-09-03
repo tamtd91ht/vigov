@@ -44,6 +44,9 @@ export interface Article {
 }
 
 /** Video tuyên truyền */
+/** Nguồn phát video: nhúng YouTube hay tệp do xã tự tải lên */
+export type VideoSource = "youtube" | "hosted";
+
 export interface VideoItem {
   id: string;
   title: string;
@@ -53,6 +56,12 @@ export interface VideoItem {
   publishedAt: string;
   coverColor: string;
   description: string;
+  /** Cán bộ chọn ở CMS Web Quản trị (Nội dung Mobile → Video) */
+  source: VideoSource;
+  /** Đường dẫn YouTube khi source = "youtube" */
+  youtubeUrl?: string;
+  /** Id tệp trong kho tệp khi source = "hosted"; đọc qua GET /files/:id */
+  videoFileId?: string;
 }
 
 /** Bản tin truyền thanh */

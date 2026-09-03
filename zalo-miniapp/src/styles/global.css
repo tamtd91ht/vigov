@@ -217,3 +217,14 @@ textarea.finp{resize:vertical;min-height:110px;line-height:1.6}
   .map-sheet{animation:none}
   .map-pin{transition:none}
 }
+
+/* ---------- TRÌNH PHÁT VIDEO (WBS #18) ---------- */
+/* Khung 16:9 nền đen: cả iframe YouTube lẫn thẻ <video> đều lấp đầy khung này,
+   nên đổi nguồn phát không làm trang nhảy chiều cao. */
+.vplayer{position:relative;aspect-ratio:16/9;background:#000;overflow:hidden;flex:none}
+.vplayer-fill{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
+/* object-fit chỉ có tác dụng trên <video>; video dọc sẽ có viền đen hai bên
+   thay vì bị cắt mất hình. */
+video.vplayer-fill{object-fit:contain;background:#000}
+.vplayer-msg{position:absolute;inset:0;display:grid;place-items:center;padding:0 28px;
+  text-align:center;font-size:.82rem;line-height:1.5;color:rgba(255,255,255,.78)}

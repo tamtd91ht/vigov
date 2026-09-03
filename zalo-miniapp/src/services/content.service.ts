@@ -7,6 +7,36 @@ import { mockGovContacts } from "@/mocks/directory.mock";
 import type { Article, ArticleType, GovContact, RadioBulletin, VideoItem } from "@/types";
 
 /**
+ * Đường dẫn phát tệp video do xã tự tải lên.
+ * Tệp video CMS đăng lên là công khai (isPrivate=false) nên GET /files/:id trả
+ * thẳng nội dung, không cần token và không cần link ký sẵn.
+ */
+export function hostedVideoUrl(fileId: string): string {
+  return `${appConfig.api.baseUrl}/files/${encodeURIComponent(fileId)}`;
+}
+
+/**
+ * Bóc mã video từ mọi dạng link YouTube cán bộ có thể dán vào CMS:
+ * watch?v=, youtu.be/, /embed/, /shorts/, /live/. Trả null nếu không nhận ra —
+ * khi đó màn chi tiết hiện nút mở ngoài thay vì nhúng khung trắng.
+ */
+export function youtubeId(url: string | undefined): string | null {
+  if (!url) return null;
+  const patterns = [
+    /[?&]v=([A-Za-z0-9_-]{11})/,
+    /youtu\.be\/([A-Za-z0-9_-]{11})/,
+    /\/embed\/([A-Za-z0-9_-]{11})/,
+    /\/shorts\/([A-Za-z0-9_-]{11})/,
+    /\/live\/([A-Za-z0-9_-]{11})/,
+  ];
+  for (const re of patterns) {
+    const m = url.match(re);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+/**
  * Nội dung công khai của xã — tin tức, video tuyên truyền, bản tin truyền thanh.
  * Nguồn: nhóm endpoint /content/public/* của backend (KHÔNG cần token).
  *
@@ -43,6 +73,10 @@ interface ApiVideo {
   publishedAt?: string;
   coverColor?: string;
   description?: string;
+  /** 'youtube' | 'hosted' — cán bộ chọn khi đăng ở CMS Web Quản trị */
+  source?: string;
+  youtubeUrl?: string;
+  videoFileId?: string;
 }
 
 interface ApiRadio {
@@ -84,6 +118,11 @@ function toVideo(raw: ApiVideo): VideoItem {
     publishedAt: raw.publishedAt ?? "",
     coverColor: raw.coverColor || FALLBACK_COVER,
     description: raw.description ?? "",
+    /* Bản ghi cũ chưa có trường này thì coi như YouTube — đó là giá trị mặc
+       định của schema backend, và cũng là nhánh không cần tệp đính kèm. */
+    source: raw.source === "hosted" ? "hosted" : "youtube",
+    youtubeUrl: raw.youtubeUrl,
+    videoFileId: raw.videoFileId,
   };
 }
 
