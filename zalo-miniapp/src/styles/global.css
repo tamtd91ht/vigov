@@ -221,7 +221,14 @@ textarea.finp{resize:vertical;min-height:110px;line-height:1.6}
 /* ---------- TRÌNH PHÁT VIDEO (WBS #18) ---------- */
 /* Khung 16:9 nền đen: cả iframe YouTube lẫn thẻ <video> đều lấp đầy khung này,
    nên đổi nguồn phát không làm trang nhảy chiều cao. */
-.vplayer{position:relative;aspect-ratio:16/9;background:#000;overflow:hidden;flex:none}
+/* Dải đen phủ vùng thanh trạng thái rồi mới tới khung hình — app đặt
+   statusBar:"transparent" nên nội dung tràn lên dưới thanh trạng thái; để
+   nguyên là mép trên video dính sát viền máy và bị thanh trạng thái đè.
+   Cùng quy ước với .subhead và .hero: cộng var(--sat) vào padding trên. */
+.vplayer{position:relative;background:#000;overflow:hidden;flex:none;
+  padding-top:calc(10px + var(--sat))}
+/* Tách khung 16:9 ra lớp riêng để phần đệm phía trên không bóp tỉ lệ khung hình */
+.vplayer-box{position:relative;aspect-ratio:16/9}
 .vplayer-fill{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
 /* object-fit chỉ có tác dụng trên <video>; video dọc sẽ có viền đen hai bên
    thay vì bị cắt mất hình. */
