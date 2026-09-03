@@ -32,6 +32,9 @@ WORKDIR /app
 ARG VITE_API_BASE_URL=http://localhost:3001/api/v1
 # Production PHẢI để false để mini app gọi API thật
 ARG VITE_USE_MOCKS=false
+# Cờ mock API THIẾT BỊ của Zalo (camera, vị trí, SĐT) — tách khỏi VITE_USE_MOCKS.
+# Bản chạy trong Zalo PHẢI để false, không thì nút quét chỉ trả chuỗi mẫu.
+ARG VITE_USE_MOCK_SDK=false
 ARG VITE_ORG_NAME=
 ARG VITE_ORG_PARENT=
 ARG VITE_ORG_SHORT=VG
@@ -44,6 +47,7 @@ ARG VITE_APP_VERSION=0.0.0
 
 ENV VITE_API_BASE_URL=${VITE_API_BASE_URL} \
     VITE_USE_MOCKS=${VITE_USE_MOCKS} \
+    VITE_USE_MOCK_SDK=${VITE_USE_MOCK_SDK} \
     VITE_ORG_NAME=${VITE_ORG_NAME} \
     VITE_ORG_PARENT=${VITE_ORG_PARENT} \
     VITE_ORG_SHORT=${VITE_ORG_SHORT} \

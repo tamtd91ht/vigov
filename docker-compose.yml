@@ -237,6 +237,7 @@ services:
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL}
         VITE_USE_MOCKS: ${VITE_USE_MOCKS:-false}
+        VITE_USE_MOCK_SDK: ${VITE_USE_MOCK_SDK:-false}
         VITE_ORG_NAME: ${VITE_ORG_NAME:-}
         VITE_ORG_PARENT: ${VITE_ORG_PARENT:-}
         VITE_ORG_SHORT: ${VITE_ORG_SHORT:-VG}
