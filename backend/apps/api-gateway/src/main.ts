@@ -81,6 +81,23 @@ async function bootstrap() {
   );
 
   await app.listen(config.get<number>('PORT', 3001));
+
+  /*
+   * Đứng sau nginx: keepAliveTimeout của Node PHẢI lớn hơn keepalive timeout
+   * mà proxy giữ, nếu không sẽ 502 ngẫu nhiên.
+   *
+   * Node mặc định đóng socket rảnh sau 5s, còn nginx KHÔNG tự hết hạn
+   * connection trong upstream keepalive pool — nó chỉ bỏ khi upstream chủ động
+   * đóng, hoặc khi pool đầy phải evict. Traffic thưa là gặp đúng cửa sổ: nginx
+   * lấy lại một socket Node vừa đóng, ghi request vào đó và nhận RST → trả 502
+   * gần như tức thì (không phải timeout, nên không ra 504).
+   *
+   * headersTimeout phải LỚN HƠN keepAliveTimeout, nếu không Node cắt kết nối
+   * sai thời điểm trong lúc đang đọc header của request kế tiếp.
+   */
+  const server = app.getHttpServer();
+  server.keepAliveTimeout = 65_000;
+  server.headersTimeout = 66_000;
 }
 
 void bootstrap();

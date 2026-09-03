@@ -213,6 +213,10 @@ services:
       TZ: ${TZ:-Asia/Ho_Chi_Minh}
       PORT: "3000"
       HOSTNAME: 0.0.0.0
+      # Đứng sau nginx: phải lớn hơn keepalive timeout của proxy, nếu không
+      # nginx tái dùng socket Node vừa đóng (mặc định 5s) và trả 502 ngẫu
+      # nhiên khi traffic thưa. server.js của Next standalone đọc biến này.
+      KEEP_ALIVE_TIMEOUT: "65000"
     ports:
       - "${PUBLIC_BIND_IP:-127.0.0.1}:${ADMIN_WEB_PORT:-3000}:3000"
     depends_on:
