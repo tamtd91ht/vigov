@@ -155,3 +155,47 @@ textarea.finp{resize:vertical;min-height:110px;line-height:1.6}
 .mini .t b{display:block;font-size:.78rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .mini .bar{height:3px;border-radius:2px;background:rgba(255,255,255,.25);margin-top:5px;overflow:hidden}
 .mini .bar>i{display:block;height:100%;background:var(--pink);border-radius:2px}
+
+/* ---------- BẢN ĐỒ KINH TẾ SỐ (WBS #7 — nhánh công dân) ---------- */
+/* Khung bản đồ mô phỏng. aspect-ratio giữ tỉ lệ ổn định trên mọi cỡ máy —
+   toạ độ ghim là % nên khung méo là ghim lệch so với nền địa hình. */
+.mapwrap{position:relative;width:100%;aspect-ratio:1/1.05;border-radius:var(--radius);
+  border:1px solid var(--bd);background:#EDF2F5;overflow:hidden;box-shadow:var(--sh)}
+.map-block{position:absolute;background:#E1E8ED;border-radius:6px}
+.map-road{position:absolute;background:#FFFFFF;box-shadow:0 0 0 1px #DDE4E9}
+.map-river{position:absolute;left:-4%;top:8%;width:110%;height:14px;
+  background:#CFE3EF;transform:rotate(-4deg)}
+.map-place{position:absolute;transform:translate(-50%,-50%);font-size:.58rem;font-weight:700;
+  letter-spacing:.4px;color:#8FA0B0;white-space:nowrap;pointer-events:none}
+
+/* 30px là ngưỡng chạm tối thiểu dễ trúng bằng ngón tay; nhỏ hơn thì trên máy
+   nhỏ người dùng phải bấm nhiều lần mới trúng ghim. */
+.map-pin{position:absolute;width:30px;height:30px;margin:-15px 0 0 -15px;border-radius:50%;
+  border:3px solid #fff;box-shadow:0 2px 6px rgba(27,58,92,.3);transition:transform .14s}
+.map-pin.on{transform:scale(1.3);z-index:5;box-shadow:0 4px 12px rgba(27,58,92,.45)}
+.map-none{position:absolute;inset:0;display:grid;place-items:center;
+  font-size:.82rem;color:var(--mut);text-align:center;padding:0 24px}
+
+.map-dot{width:8px;height:8px;border-radius:50%;flex:none}
+.map-stat{font-size:1.5rem;font-weight:800;color:var(--navy);letter-spacing:-.5px;line-height:1.2}
+
+/* Bảng chi tiết ghim, trượt từ đáy. Popup trong khung như bản Web Quản trị sẽ
+   che gần hết bản đồ trên màn hình điện thoại. */
+.map-scrim{position:fixed;inset:0;background:rgba(15,30,45,.34);z-index:50}
+.map-sheet{position:fixed;left:0;right:0;bottom:0;z-index:51;background:#fff;
+  border-radius:18px 18px 0 0;padding:18px var(--pad) calc(18px + env(safe-area-inset-bottom));
+  box-shadow:0 -8px 28px rgba(27,58,92,.2);animation:map-sheet-up .22s ease-out}
+@keyframes map-sheet-up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+/* .back chỉ có style trong phạm vi .subhead nên nút đóng của bảng cần lớp riêng */
+.map-close{flex:none;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;
+  color:var(--mut)}
+.map-close:active{background:var(--bg2)}
+.map-rows{display:flex;flex-direction:column;gap:10px;margin-top:14px;
+  padding-top:14px;border-top:1px solid var(--bd)}
+.map-row{display:flex;align-items:flex-start;gap:10px;font-size:.86rem;color:var(--tx)}
+.map-row svg{flex:none;margin-top:2px;color:var(--mut)}
+
+@media (prefers-reduced-motion:reduce){
+  .map-sheet{animation:none}
+  .map-pin{transition:none}
+}

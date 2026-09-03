@@ -35,7 +35,7 @@ zalo-miniapp/src/
 
 ---
 
-## 2. Mười ba màn hình
+## 2. Mười bốn màn hình
 
 | Đường dẫn | Màn hình | Cần định danh |
 |---|---|---|
@@ -49,6 +49,7 @@ zalo-miniapp/src/
 | `/radio` | Bản tin truyền thanh | ✓ |
 | `/video`, `/video/:id` | Video tuyên truyền | ✓ |
 | `/directory` | Danh bạ chính quyền | ✓ |
+| `/map` | Bản đồ kinh tế số | ✓ |
 | `/profile` | Hồ sơ cá nhân | ✓ |
 
 `RequireIdentity` bọc toàn bộ nhóm cần định danh; `RedirectIfIdentified` đẩy
@@ -123,6 +124,8 @@ Nhóm công khai, **không cần token**:
 - `GET /content/public/articles`, `/public/articles/:id`
 - `GET /content/public/videos`, `/public/radio`
 - `GET /catalogs/public/directory` — danh bạ chính quyền
+- `GET /map/public/economy` — lớp và ghim bản đồ kinh tế, đã lược bỏ họ tên
+  đại diện và số điện thoại chủ cơ sở (dữ liệu cá nhân theo NĐ 13/2023)
 
 Nhóm cần token công dân:
 

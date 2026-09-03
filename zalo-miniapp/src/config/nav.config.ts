@@ -30,5 +30,7 @@ export const homeQuickActions: QuickAction[] = [
   { label: "Truyền thanh", icon: "radio", color: "var(--orange)", path: "/radio" },
   { label: "Video", icon: "play", color: "var(--purple)", path: "/video" },
   { label: "Danh bạ", icon: "phone", color: "var(--teal)", path: "/directory" },
-  { label: "Tin tức", icon: "news", color: "var(--green)", path: "/news" },
+  /* Chỗ này trước là "Tin tức" — bỏ vì đã có sẵn một tab ở thanh dưới, giữ
+     lưới 3 cột đủ 6 ô không bị lẻ hàng. */
+  { label: "Bản đồ kinh tế", icon: "map", color: "var(--green)", path: "/map" },
 ];

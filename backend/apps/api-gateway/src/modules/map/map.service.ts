@@ -118,6 +118,55 @@ export class MapService {
   // ------------------------------------------------------------------ Ghim
 
   /** Danh sách ghim, lọc theo lớp và từ khoá */
+  /**
+   * Bản đồ công khai cho Zalo Mini App (WBS #7 — nhánh công dân).
+   *
+   * KHÁC listLayers/listPins ở hai điểm, đều có chủ ý:
+   *   · BỎ `representative` và `phone` — đó là họ tên và số máy của chủ cơ
+   *     sở, tức dữ liệu cá nhân theo NĐ 13/2023. Cán bộ có nhu cầu nghiệp vụ
+   *     nên xem được ở Web Quản trị; mở cho toàn dân thì không.
+   *   · Trả cả lớp và ghim trong MỘT lần gọi — máy công dân thường dùng 3G/4G,
+   *     hai vòng request làm màn hình chớp hai nhịp tải.
+   *
+   * Quy mô cấp xã (8 lớp, vài chục ghim) nên trả hết, không phân trang.
+   */
+  async publicEconomy() {
+    const [layers, pins] = await Promise.all([
+      this.layerModel.find().sort({ order: 1, key: 1 }).lean().exec(),
+      this.pinModel
+        .find()
+        .select('layerKey name industry address workers x y lat lng')
+        .sort({ layerKey: 1, name: 1 })
+        .lean()
+        .exec(),
+    ]);
+
+    const countByKey = new Map<string, number>();
+    for (const pin of pins) countByKey.set(pin.layerKey, (countByKey.get(pin.layerKey) ?? 0) + 1);
+
+    return {
+      layers: layers.map((layer) => ({
+        key: layer.key,
+        label: layer.label,
+        color: layer.color,
+        defaultOn: layer.defaultOn,
+        count: countByKey.get(layer.key) ?? 0,
+      })),
+      pins: pins.map((pin) => ({
+        id: String(pin._id),
+        layerKey: pin.layerKey,
+        name: pin.name,
+        industry: pin.industry,
+        address: pin.address,
+        workers: pin.workers,
+        x: pin.x,
+        y: pin.y,
+        lat: pin.lat,
+        lng: pin.lng,
+      })),
+    };
+  }
+
   async listPins(query: ListPinQueryDto) {
     const filter: Record<string, unknown> = {};
     if (query.layerKey) filter.layerKey = query.layerKey;

@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query } from '@nestjs/common';
-import { RequirePermission } from '@vigov/shared';
+import { Public, RequirePermission } from '@vigov/shared';
 import { MapService } from './map.service';
 import { CreateLayerDto, CreatePinDto, ListPinQueryDto, UpdateLayerDto, UpdatePinDto } from './dto/map.dto';
 
@@ -16,6 +16,22 @@ export class MapController {
   @RequirePermission('map', 'view')
   overview() {
     return this.map.overview();
+  }
+
+  /**
+   * Bản đồ kinh tế công khai cho Zalo Mini App — lớp + ghim trong một lần gọi.
+   *
+   * @Public vì công dân xem bản đồ xã mà không cần đăng nhập cán bộ. Dữ liệu
+   * đã lược bỏ họ tên đại diện và số điện thoại của chủ cơ sở (xem
+   * MapService.publicEconomy).
+   *
+   * Đặt TRƯỚC 'layers'/'pins' để đường dẫn 'public/economy' không bị nuốt bởi
+   * route có tham số nào khác thêm về sau.
+   */
+  @Public()
+  @Get('public/economy')
+  publicEconomy() {
+    return this.map.publicEconomy();
   }
 
   /** Danh sách lớp dữ liệu kèm số ghim thuộc lớp */

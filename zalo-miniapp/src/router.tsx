@@ -15,6 +15,7 @@ import { VideoDetailPage } from "@/features/video/VideoDetailPage";
 import { DirectoryPage } from "@/features/directory/DirectoryPage";
 import { ProfilePage } from "@/features/profile/ProfilePage";
 import { CccdScanPage } from "@/features/idcard/CccdScanPage";
+import { MapPage } from "@/features/map/MapPage";
 
 /** Chưa định danh SĐT Zalo thì đưa về màn onboarding */
 function RequireIdentity() {
@@ -51,6 +52,7 @@ export const router = createBrowserRouter([
       { path: "/video/:id", element: <VideoDetailPage /> },
       { path: "/directory", element: <DirectoryPage /> },
       { path: "/cccd", element: <CccdScanPage /> },
+      { path: "/map", element: <MapPage /> },
     ],
   },
   { path: "*", element: <Navigate to="/" replace /> },

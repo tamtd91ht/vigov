@@ -101,3 +101,42 @@ export interface CitizenSession {
   /** JWT gọi API — nhánh demo offline (useMocks) không có token */
   accessToken?: string;
 }
+
+/** Một lớp dữ liệu bật/tắt trên bản đồ kinh tế (doanh nghiệp, chợ, y tế…) */
+export interface MapLayer {
+  /** Khoá tự nhiên, nối ghim với lớp — khớp MapLayer.key của backend */
+  key: string;
+  label: string;
+  color: string;
+  /** Lớp có bật sẵn khi mở màn bản đồ hay không */
+  defaultOn: boolean;
+  count: number;
+}
+
+/**
+ * Một ghim cơ sở trên bản đồ kinh tế.
+ *
+ * KHÔNG có họ tên đại diện và số điện thoại chủ cơ sở: endpoint công khai
+ * (/map/public/economy) đã lược bỏ vì đó là dữ liệu cá nhân theo NĐ 13/2023.
+ */
+export interface MapPin {
+  id: string;
+  layerKey: string;
+  name: string;
+  industry: string;
+  address: string;
+  /** Số lao động; 0 với công trình chưa vận hành */
+  workers: number;
+  /** Toạ độ % trong khung bản đồ mô phỏng — dùng cho adapter "mock" */
+  x: number;
+  y: number;
+  /** Toạ độ địa lý thật, để dành cho adapter bản đồ provider thật */
+  lat?: number;
+  lng?: number;
+}
+
+/** Dữ liệu một lần gọi của màn Bản đồ kinh tế */
+export interface EconomyMap {
+  layers: MapLayer[];
+  pins: MapPin[];
+}
