@@ -29,6 +29,27 @@ const VIDEO_PAGE_SIZE = 60;
 
 const ACTION_BTN_STYLE = { width: 28, height: 28, borderRadius: 8 } as const;
 
+/**
+ * Bóc mã video từ mọi dạng link YouTube cán bộ có thể dán vào form.
+ * Cùng bộ mẫu với zalo-miniapp/src/services/content.service.ts — hai front-end
+ * phải nhận diện y hệt nhau, nếu không CMS xem được mà Mini App lại báo hỏng.
+ */
+function youtubeId(url: string | undefined): string | null {
+  if (!url) return null;
+  const patterns = [
+    /[?&]v=([A-Za-z0-9_-]{11})/,
+    /youtu\.be\/([A-Za-z0-9_-]{11})/,
+    /\/embed\/([A-Za-z0-9_-]{11})/,
+    /\/shorts\/([A-Za-z0-9_-]{11})/,
+    /\/live\/([A-Za-z0-9_-]{11})/,
+  ];
+  for (const re of patterns) {
+    const m = url.match(re);
+    if (m) return m[1];
+  }
+  return null;
+}
+
 interface VideoFormState {
   title: string;
   topic: string;
@@ -49,6 +70,10 @@ export function VideoGrid() {
   const videoTopics = useCatalog(fetchVideoTopics);
   const videos = useApiResource(() => listVideos({ page: 1, limit: VIDEO_PAGE_SIZE }), []);
   const [formOpen, setFormOpen] = useState(false);
+  /** Video đang xem trong khung phát; null = đóng khung */
+  const [playing, setPlaying] = useState<CmsVideo | null>(null);
+  /** Link đọc tệp cho video tự host — chỉ lấy khi thật sự mở khung phát */
+  const [playUrl, setPlayUrl] = useState<string | null>(null);
   const [form, setForm] = useState<VideoFormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<{ title?: string; link?: string; file?: string }>({});
   const [saving, setSaving] = useState(false);
@@ -68,14 +93,20 @@ export function VideoGrid() {
     setFormOpen(true);
   };
 
-  /** Mở video tự host trong tab mới bằng link đọc tệp */
+  /**
+   * Xem video ngay trong trang quản trị.
+   *
+   * Trước đây mở tab mới — cán bộ mất ngữ cảnh danh sách và phải bấm qua lại
+   * mỗi lần muốn duyệt vài video liên tiếp.
+   */
   const play = async (video: CmsVideo) => {
     if (video.source === "youtube") {
-      if (!video.youtubeUrl) {
-        showToast("Video chưa có link YouTube");
+      if (!youtubeId(video.youtubeUrl)) {
+        showToast(video.youtubeUrl ? "Link YouTube không hợp lệ" : "Video chưa có link YouTube");
         return;
       }
-      window.open(video.youtubeUrl, "_blank", "noopener,noreferrer");
+      setPlayUrl(null);
+      setPlaying(video);
       return;
     }
     if (!video.videoFileId) {
@@ -84,13 +115,23 @@ export function VideoGrid() {
     }
     setOpeningId(video.id);
     try {
+      /* Link ký sẵn dùng được cho cả tệp công khai lẫn riêng tư nên không phải
+         phân nhánh theo isPrivate ở đây. */
       const signed = await getSignedUrl(video.videoFileId);
-      window.open(signed.url, "_blank", "noopener,noreferrer");
+      setPlayUrl(signed.url);
+      setPlaying(video);
     } catch (err) {
       failed(err, "Không mở được tệp video");
     } finally {
       setOpeningId(null);
     }
+  };
+
+  const closePlayer = () => {
+    setPlaying(null);
+    /* Xoá src để iframe/thẻ video ngừng phát ngay; giữ lại là YouTube vẫn chạy
+       tiếp tiếng dưới nền sau khi đóng khung. */
+    setPlayUrl(null);
   };
 
   const submit = async () => {
@@ -357,6 +398,43 @@ export function VideoGrid() {
             nền tảng.
           </span>
         </div>
+      </Drawer>
+
+      {/* Khung xem video ngay trong trang, thay cho việc mở tab mới */}
+      <Drawer
+        open={!!playing}
+        onClose={closePlayer}
+        title={playing?.title ?? "Xem video"}
+        meta={playing ? `${VIDEO_SOURCES[playing.source]?.label ?? playing.source} · ${playing.topic}` : undefined}
+      >
+        {playing && (
+          <>
+            <div className="vplay">
+              {playing.source === "youtube" ? (
+                /* youtube-nocookie: không gắn cookie theo dõi lên máy cán bộ khi
+                   họ chỉ duyệt nội dung. autoplay=1 vì cán bộ vừa chủ động bấm
+                   nút xem — không phải video tự chạy khi mở trang. */
+                <iframe
+                  className="vplay-fill"
+                  src={`https://www.youtube-nocookie.com/embed/${youtubeId(playing.youtubeUrl)}?rel=0&autoplay=1`}
+                  title={playing.title}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              ) : playUrl ? (
+                <video className="vplay-fill" src={playUrl} controls autoPlay preload="metadata" />
+              ) : (
+                <div className="vplay-msg">Đang mở tệp…</div>
+              )}
+            </div>
+
+            {playing.source === "youtube" && playing.youtubeUrl && (
+              <div className="fhint" style={{ marginTop: 12, wordBreak: "break-all" }}>
+                Nguồn: {playing.youtubeUrl}
+              </div>
+            )}
+          </>
+        )}
       </Drawer>
     </>
   );

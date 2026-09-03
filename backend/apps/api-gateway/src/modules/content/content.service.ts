@@ -31,6 +31,19 @@ const STATUS_PUBLISHED = 'published';
 /** Số bản ghi tối đa trả về cho app công dân trong một lần gọi */
 const PUBLIC_MAX_PAGE_SIZE = 50;
 
+/**
+ * Thứ tự hiển thị nội dung công khai: MỚI NHẤT LÊN ĐẦU.
+ *
+ * KHÔNG sắp theo `publishedAt`: trường đó là chuỗi hiển thị dạng
+ * "DD/MM/YYYY HH:mm", nên MongoDB so sánh theo từng ký tự — "28/07/2026" đứng
+ * trên "20/08/2026" vì '8' > '0'. Bài đăng hôm nay có ngày bắt đầu bằng "0"
+ * rơi xuống gần cuối danh sách, cán bộ tưởng đăng hỏng.
+ *
+ * `updatedAt` do Mongoose tự quản (timestamps: true) và được cập nhật đúng lúc
+ * bấm Đăng, nên phản ánh chính xác thứ tự phát hành.
+ */
+const PUBLIC_SORT = { updatedAt: -1, createdAt: -1 } as const;
+
 @Injectable()
 export class ContentService {
   constructor(
@@ -207,7 +220,7 @@ export class ContentService {
       this.articleModel,
       filter,
       this.clampPublic(query),
-      { publishedAt: -1, createdAt: -1 },
+      PUBLIC_SORT,
       '-content',
     );
   }
@@ -232,7 +245,7 @@ export class ContentService {
       this.videoModel,
       { status: STATUS_PUBLISHED },
       this.clampPublic(query),
-      { publishedAt: -1, createdAt: -1 },
+      PUBLIC_SORT,
     );
   }
 

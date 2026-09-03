@@ -372,3 +372,13 @@ textarea.finp{resize:vertical;min-height:88px}
   .grid4{grid-template-columns:repeat(4,1fr)}
   .split{grid-template-columns:minmax(0,1fr) 560px}
 }
+
+/* ---------- KHUNG XEM VIDEO TRONG CMS ---------- */
+/* Khung 16:9 nền đen: iframe YouTube và thẻ <video> đều lấp đầy khung này nên
+   đổi nguồn phát không làm drawer nhảy chiều cao. */
+.vplay{position:relative;aspect-ratio:16/9;background:#000;border-radius:10px;overflow:hidden}
+.vplay-fill{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
+/* object-fit chỉ tác dụng trên <video>; video dọc có viền đen hai bên thay vì bị cắt hình */
+video.vplay-fill{object-fit:contain;background:#000}
+.vplay-msg{position:absolute;inset:0;display:grid;place-items:center;
+  color:rgba(255,255,255,.72);font-size:13px}
