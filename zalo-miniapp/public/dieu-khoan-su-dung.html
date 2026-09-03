@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Điều khoản sử dụng — ViGov</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    width: 100%;
+    padding: clamp(16px, 3vw, 40px) clamp(16px, 4vw, 56px) 64px;
+    font: clamp(15px, 0.35vw + 14px, 17px)/1.65 -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    color: #1f2937; background: #fff;
+    overflow-wrap: break-word;
+  }
+  /* Dùng hết chiều ngang khung chứa ở mọi cỡ màn hình: không giới hạn
+     bằng px cố định nên không bị khoảng trống một bên khi cửa sổ rộng. */
+  .wrap { max-width: 100%; margin: 0 auto; }
+  h1 { font-size: clamp(20px, 1.4vw + 14px, 26px); color: #1B3A5C; margin: 0 0 4px; line-height: 1.3; }
+  h2 { font-size: clamp(16px, 0.6vw + 14px, 19px); color: #1B3A5C; margin: 28px 0 8px; line-height: 1.35; }
+  p { margin: 0 0 12px; }
+  .meta { color: #6b7280; font-size: 0.875em; margin: 0 0 24px; }
+  ul { padding-left: 20px; margin: 0 0 12px; }
+  li { margin: 6px 0; }
+  footer { margin-top: 36px; padding-top: 16px; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 0.875em; }
+
+  /* Man hinh rong: chia cot tu dong theo column-width nen so cot tu tang
+     theo be rong (2 cot tu ~1000px, 3 cot tu ~1600px, 4 cot tu ~2200px...). Vua dung
+     het chieu ngang, vua khong de dong chu dai qua muc, vua lap khoang trong
+     phia duoi o cac man hinh ti le 3:1. */
+  @media (min-width: 1000px) {
+    .wrap {
+      column-width: 26em;
+      column-gap: clamp(32px, 3vw, 64px);
+      column-rule: 1px solid #eef1f4;
+      column-fill: balance;
+      orphans: 3;
+      widows: 3;
+    }
+    .wrap > h1,
+    .wrap > .meta,
+    .wrap > footer { column-span: all; }
+    .wrap > h2 { break-after: avoid; break-inside: avoid; }
+    /* Cot 2 tro di bi cat margin-top dau cot, bo margin cua h2 dau tien
+       de dinh cac cot thang hang nhau. */
+    .wrap > h2:first-of-type { margin-top: 0; }
+    .wrap > p,
+    .wrap > ul,
+    .wrap > ul > li { break-inside: avoid; }
+  }
+
+</style>
+</head>
+<body>
+
+<div class="wrap">
+<h1>Điều khoản sử dụng ứng dụng ViGov</h1>
+<p class="meta">Hiệu lực từ ngày 03/09/2026</p>
+
+<h2>1. Phạm vi</h2>
+<p>
+  ViGov là Zalo Mini App do UBND xã Đại Thắng, huyện Phú Xuyên, thành phố Hà Nội cung cấp,
+  giúp công dân trên địa bàn tra cứu thông tin, theo dõi hồ sơ hành chính, gửi phản ánh —
+  kiến nghị và nhận thông báo từ chính quyền. Khi sử dụng ứng dụng, bạn đồng ý với các
+  điều khoản dưới đây.
+</p>
+
+<h2>2. Dữ liệu cá nhân được thu thập</h2>
+<ul>
+  <li><b>Số điện thoại Zalo</b> — định danh công dân, liên kết hồ sơ và phản ánh, gửi thông báo khi hồ sơ đổi trạng thái.</li>
+  <li><b>Tên hiển thị, ảnh đại diện Zalo</b> — hiển thị trong ứng dụng và trên phiếu phản ánh gửi tới cán bộ xử lý.</li>
+  <li><b>Vị trí hiện tại</b> — xác định địa điểm sự việc để phân công đúng bộ phận, chỉ lấy khi bạn gửi phản ánh.</li>
+  <li><b>Ảnh bạn đính kèm</b> — làm chứng cứ hiện trường cho phản ánh, kiến nghị.</li>
+  <li><b>Thông tin đọc từ mã QR trên thẻ Căn cước</b> — điền sẵn tờ khai thủ tục hành chính, do bạn chủ động quét.</li>
+</ul>
+<p>
+  Ứng dụng <b>không</b> lưu ảnh thẻ Căn cước, <b>không</b> lưu token do Zalo cấp và
+  <b>không</b> chia sẻ dữ liệu cá nhân cho bên thứ ba ngoài mục đích giải quyết thủ tục
+  hành chính theo quy định pháp luật.
+</p>
+
+<h2>3. Quyền truy cập thiết bị</h2>
+<p>
+  Ứng dụng xin quyền camera / quét mã QR, vị trí, thư viện ảnh và số điện thoại. Mỗi quyền
+  chỉ được gọi khi bạn chủ động thao tác và chỉ dùng đúng mục đích nêu ở mục 2. Nếu bạn từ
+  chối một quyền, ứng dụng vẫn dùng được, riêng chức năng tương ứng bị hạn chế; từ chối
+  cung cấp số điện thoại thì chỉ xem được thông tin công khai.
+</p>
+
+<h2>4. Trách nhiệm của người dùng</h2>
+<ul>
+  <li>Cung cấp thông tin trung thực, chịu trách nhiệm về nội dung phản ánh và ảnh đính kèm.</li>
+  <li>Không sử dụng ứng dụng để đăng nội dung vi phạm pháp luật, xúc phạm tổ chức, cá nhân hoặc gửi phản ánh sai sự thật.</li>
+  <li>Tự bảo quản tài khoản Zalo của mình; mọi thao tác thực hiện từ tài khoản được xem là do bạn thực hiện.</li>
+</ul>
+
+<h2>5. Lưu trữ và quyền của bạn</h2>
+<p>
+  Dữ liệu cá nhân được lưu trong thời gian bạn còn sử dụng ứng dụng và theo thời hạn lưu
+  trữ hồ sơ hành chính mà pháp luật quy định. Theo Nghị định 13/2023/NĐ-CP, bạn có quyền
+  được biết, xem, sửa, rút lại sự đồng ý, yêu cầu xoá, hạn chế và phản đối việc xử lý dữ
+  liệu cá nhân của mình. Khi bạn rút lại sự đồng ý qua Zalo, hệ thống tự động bỏ toàn bộ
+  thông tin nhận dạng khỏi bản ghi công dân và thu hồi mọi phiên đăng nhập; hồ sơ và phản
+  ánh đã gửi được giữ lại ở dạng không còn gắn với danh tính.
+</p>
+
+<h2>6. Thay đổi điều khoản</h2>
+<p>
+  Điều khoản có thể được cập nhật khi chức năng ứng dụng thay đổi. Bản mới nhất luôn được
+  công bố tại trang này; việc tiếp tục sử dụng ứng dụng sau khi cập nhật được hiểu là bạn
+  đồng ý với bản đã cập nhật.
+</p>
+
+<h2>7. Liên hệ</h2>
+<p>
+  UBND xã Đại Thắng, huyện Phú Xuyên, thành phố Hà Nội —
+  điện thoại một cửa <b>024 3378 2200</b>.
+</p>
+
+<footer>ViGov — Nền tảng Điều hành số cấp Xã/Phường.</footer>
+</div>
+
+</body>
+</html>
