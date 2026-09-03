@@ -10,6 +10,11 @@
   --sh:0 1px 3px rgba(0,0,0,.07);
   --radius:14px; --radius-sm:10px;
   --nav-h:60px; --pad:16px;
+  /* Chiều cao vùng an toàn trên đỉnh máy. app-config.json đặt
+     statusBar:"transparent" + actionBarHidden:true nên nội dung tràn lên dưới
+     thanh trạng thái; mọi thứ bấm được ở đỉnh màn hình phải cộng thêm biến này,
+     không thì cú bấm bị thanh trạng thái của hệ thống ăn mất. */
+  --sat:env(safe-area-inset-top, 0px);
   /* Cỡ chữ toàn app — màn Cá nhân thay đổi (WBS #20) */
   --font-scale:1;
 }
@@ -37,14 +42,15 @@ h1{font-size:1.35rem} h2{font-size:1.12rem} h3{font-size:1rem}
 
 /* Header trang con */
 .subhead{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;
-  background:var(--bg);border-bottom:1px solid var(--bd);padding:12px var(--pad)}
+  background:var(--bg);border-bottom:1px solid var(--bd);
+  padding:calc(12px + var(--sat)) var(--pad) 12px}
 .subhead h2{flex:1;font-size:1.02rem;line-height:1.3}
 .subhead .back{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;color:var(--navy)}
 .subhead .back:active{background:var(--bg2)}
 
 /* Header trang chủ (navy bo đáy) */
 .hero{background:linear-gradient(135deg,#16314e,var(--navy));color:#fff;
-  padding:20px var(--pad) 26px;border-radius:0 0 22px 22px}
+  padding:calc(20px + var(--sat)) var(--pad) 26px;border-radius:0 0 22px 22px}
 .hero .row{display:flex;align-items:center;gap:12px}
 .hero .greet{font-size:.78rem;color:rgba(255,255,255,.7)}
 .hero .name{font-size:1.06rem;font-weight:700;letter-spacing:.2px}
@@ -136,6 +142,18 @@ textarea.finp{resize:vertical;min-height:110px;line-height:1.6}
 .grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 .thumb{border-radius:var(--radius-sm);display:grid;place-items:center;color:rgba(255,255,255,.9);flex:none}
+
+/* Nút tròn đè lên ảnh bìa / khối phát video (trang chi tiết không dùng .subhead).
+   Vùng bấm 40px và lùi xuống dưới thanh trạng thái — đây là lối duy nhất để
+   thoát khỏi hai màn hình đó. */
+.overlay-btn{position:absolute;top:calc(12px + var(--sat));left:12px;
+  width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.42);
+  display:grid;place-items:center;z-index:3;backdrop-filter:blur(2px)}
+.overlay-btn:active{background:rgba(0,0,0,.62)}
+.overlay-btn.right{left:auto;right:12px}
+
+/* Ảnh đính kèm trong ô thumb — phủ kín ô, không bóp méo tỉ lệ */
+.thumb>img{width:100%;height:100%;object-fit:cover;display:block;border-radius:inherit}
 .spin{width:20px;height:20px;border:2.4px solid rgba(255,255,255,.35);border-top-color:#fff;
   border-radius:50%;animation:spin .7s linear infinite}
 .spin.dark{border-color:rgba(27,58,92,.2);border-top-color:var(--navy)}

@@ -48,6 +48,15 @@ export const appConfig = {
   /** Số ảnh tối đa đính kèm một phản ánh */
   maxFeedbackImages: 3,
 
+  /**
+   * Ô màu giữ chỗ cho ảnh hiện trường, xoay vòng theo số ảnh.
+   *
+   * Dùng ở hai chỗ: phiếu đã gửi (backend chỉ trả mã tệp, module Files chưa mở
+   * cho Mini App — WBS #24) và nền ô thumbnail khi đường dẫn ảnh Zalo trả về
+   * không tải được. Theo quy ước dự án, màu không rải rác trong component.
+   */
+  imagePlaceholderColors: ["var(--blue)", "var(--green)", "var(--purple)", "var(--orange)", "var(--teal)"],
+
   /** Số tin tức hiển thị ở Trang chủ */
   homeNewsCount: 3,
 

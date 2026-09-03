@@ -15,9 +15,6 @@ import type { FeedbackTicket, TicketStatus, TimelineStep } from "@/types";
 /** Số phiếu lấy về màn "Phản ánh của tôi" */
 const LIST_LIMIT = 50;
 
-/** Màu placeholder cho ảnh hiện trường — xoay vòng theo số ảnh đính kèm */
-const IMAGE_COLORS = ["var(--blue)", "var(--green)", "var(--purple)", "var(--orange)", "var(--teal)"];
-
 const STATUSES: TicketStatus[] = ["received", "processing", "resolved"];
 
 /** Bản ghi phiếu như backend trả cho công dân (CITIZEN_PROJECTION + slaHoursLeft) */
@@ -43,7 +40,11 @@ export interface CreateFeedbackInput {
   location: string;
   lat?: number;
   lng?: number;
-  /** Ô màu placeholder người dùng đã thêm ở bước 2 */
+  /**
+   * Ô màu giữ chỗ cho ảnh đã đính kèm ở bước 2 — KHÔNG phải đường dẫn ảnh.
+   * Ảnh thật chỉ xem trước được trong lúc soạn (đường dẫn tạm của Zalo);
+   * gửi lên máy chủ phải qua module Files, chưa mở cho Mini App (WBS #24).
+   */
   imageColors: string[];
 }
 
@@ -61,7 +62,8 @@ function toTimeline(steps: ApiFeedback["timeline"]): TimelineStep[] {
  * Phase 1 vẫn hiển thị bằng ô màu — đúng số ảnh đã đính kèm.
  */
 function toImageColors(fileIds: string[] | undefined): string[] {
-  return (fileIds ?? []).map((_, i) => IMAGE_COLORS[i % IMAGE_COLORS.length]);
+  const palette = appConfig.imagePlaceholderColors;
+  return (fileIds ?? []).map((_, i) => palette[i % palette.length]);
 }
 
 function toTicket(raw: ApiFeedback): FeedbackTicket {

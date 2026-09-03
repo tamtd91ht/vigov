@@ -58,6 +58,21 @@ type ZmpSdk = Pick<
   | "getSystemInfo"
 >;
 
+/**
+ * Ảnh mẫu cho nhánh mock SDK — SVG nội tuyến dạng data-URI nên hiện được ảnh
+ * thật lúc phát triển trên trình duyệt, không cần tệp trong thư mục public.
+ */
+const MOCK_IMAGE_URI =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240">' +
+      '<rect width="240" height="240" fill="#3B82C4"/>' +
+      '<circle cx="88" cy="84" r="26" fill="#ffffff" opacity=".85"/>' +
+      '<path d="M0 240 L86 128 L152 200 L196 160 L240 210 L240 240Z" fill="#1B3A5C" opacity=".55"/>' +
+      '<text x="120" y="228" font-family="Arial" font-size="18" fill="#ffffff" text-anchor="middle">Ảnh mẫu</text>' +
+      "</svg>",
+  );
+
 /** Kết quả quét — mang theo lỗi để màn hình nói được vì sao hỏng */
 export interface ScanResult {
   content: string | null;
@@ -386,14 +401,24 @@ export const zaloService = {
    * Trả về đường dẫn các tệp đã chọn, mảng rỗng nghĩa là người dùng huỷ hoặc
    * không gọi được. Tải ảnh lên máy chủ thuộc phần đính kèm phản ánh, chưa làm.
    */
-  async chooseImage(): Promise<string[]> {
+  /**
+   * Mở trình chọn ảnh của Zalo, trả về đường dẫn các tệp đã chọn.
+   *
+   * `filePaths` của zmp-sdk dùng được trực tiếp làm `src` của thẻ `<img>` —
+   * đó là cách duy nhất hiện có để xem trước ảnh, vì module Files chưa mở cho
+   * Mini App (WBS #24) nên không upload rồi lấy URL về được.
+   *
+   * Nhánh mock trả về một data-URI SVG thật, không phải chuỗi giả: chuỗi giả
+   * làm thẻ img hỏng ảnh khi phát triển trên trình duyệt thường.
+   */
+  async chooseImage(count = 1): Promise<string[]> {
     if (appConfig.zalo.useMockSdk) {
       await delay(200);
-      return ["mock://anh-mau"];
+      return [MOCK_IMAGE_URI];
     }
     return attempt(
       "chooseImage",
-      async (sdk) => (await sdk.chooseImage({ count: 1, sourceType: ["album", "camera"] })).filePaths,
+      async (sdk) => (await sdk.chooseImage({ count, sourceType: ["album", "camera"] })).filePaths,
       [],
     );
   },

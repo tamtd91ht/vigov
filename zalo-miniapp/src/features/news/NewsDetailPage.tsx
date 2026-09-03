@@ -1,9 +1,9 @@
-import type { CSSProperties } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Icon } from "@/components/Icon";
 import { Chip, SectionHead, formatNumber } from "@/components/common";
 import { DataState } from "@/components/DataState";
 import { useApiResource } from "@/hooks/useApiResource";
+import { useGoBack } from "@/hooks/useGoBack";
 import { ApiError } from "@/services/api";
 import { contentService } from "@/services/content.service";
 import { useToast } from "@/state/ToastContext";
@@ -24,23 +24,10 @@ const NOT_FOUND = "Không tìm thấy bài viết";
 /** Màu cover khi chưa biết bài viết (đang tải hoặc lỗi) */
 const NEUTRAL_COVER = "var(--navy)";
 
-/** Nút tròn nền đen mờ đè lên cover */
-const overlayBtn: CSSProperties = {
-  position: "absolute",
-  left: 12,
-  top: 12,
-  width: 34,
-  height: 34,
-  borderRadius: "50%",
-  background: "rgba(0,0,0,.34)",
-  display: "grid",
-  placeItems: "center",
-};
-
 /** Chi tiết bài viết (WBS #16) — GET /content/public/articles/:id (tăng lượt xem) */
 export function NewsDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const goBack = useGoBack("/news");
   const { showToast } = useToast();
 
   const detail = useApiResource(
@@ -74,11 +61,12 @@ export function NewsDetailPage() {
         <span style={{ position: "absolute", right: -14, bottom: -18, color: "rgba(255,255,255,.2)" }}>
           <Icon name={typeIcon} size={132} strokeWidth={1.2} />
         </span>
-        <button style={overlayBtn} onClick={() => navigate(-1)} aria-label="Quay lại">
-          <Icon name="back" size={19} color="#fff" />
+        <button type="button" className="overlay-btn" onClick={goBack} aria-label="Quay lại">
+          <Icon name="back" size={20} color="#fff" />
         </button>
         <button
-          style={{ ...overlayBtn, left: "auto", right: 12 }}
+          type="button"
+          className="overlay-btn right"
           onClick={() => showToast(SHARE_TOAST)}
           aria-label="Chia sẻ"
         >

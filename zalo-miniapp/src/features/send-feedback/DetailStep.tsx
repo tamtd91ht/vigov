@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type CSSProperties, type ReactNode } from "react";
 import { Icon } from "@/components/Icon";
 import { Note } from "@/components/common";
 import { appConfig } from "@/config/app.config";
@@ -7,9 +7,6 @@ import { zaloService } from "@/services/zalo";
 /** Giới hạn nhập liệu — thống nhất với Web Quản trị */
 export const MAX_TITLE_LEN = 120;
 export const MAX_DESC_LEN = 1000;
-
-/** Màu placeholder cho ảnh mock, dùng xoay vòng theo số ảnh đã thêm */
-const IMAGE_COLORS = ["var(--blue)", "var(--green)", "var(--purple)", "var(--orange)", "var(--teal)"];
 
 const THUMB_RATIO = "1 / 1";
 const COORD_DIGITS = 5;
@@ -61,17 +58,20 @@ export function DetailStep({
   const canAddImage = images.length < appConfig.maxFeedbackImages;
 
   /**
-   * Mở trình chọn ảnh của Zalo. Ảnh chọn xong hiện tạm bằng một ô màu
-   * placeholder — hiển thị ảnh thật và tải lên máy chủ thuộc phần đính kèm
-   * phản ánh, chưa làm. Mảng rỗng nghĩa là người dùng huỷ.
+   * Mở trình chọn ảnh của Zalo và giữ đúng đường dẫn tệp trả về, để ô thumbnail
+   * hiện ảnh thật thay vì một ô màu. Mảng rỗng nghĩa là người dùng huỷ.
+   *
+   * Số lượng xin đúng bằng số ô còn trống, nên chọn một lượt được nhiều ảnh.
+   * Cắt lại bằng `slice` vì trình chọn của Zalo có thể trả nhiều hơn `count`.
    */
   async function handleAddImage() {
     if (adding || !canAddImage) return;
+    const room = appConfig.maxFeedbackImages - images.length;
     setAdding(true);
-    const picked = await zaloService.chooseImage();
+    const picked = await zaloService.chooseImage(room);
     setAdding(false);
     if (picked.length === 0) return;
-    onImagesChange([...images, IMAGE_COLORS[images.length % IMAGE_COLORS.length]]);
+    onImagesChange([...images, ...picked.slice(0, room)]);
   }
 
   return (
@@ -112,13 +112,13 @@ export function DetailStep({
       <div className="fgroup">
         <label>Ảnh hiện trường</label>
         <div className="grid3">
-          {images.map((color, i) => (
-            <div
-              key={`${color}-${i}`}
-              className="thumb"
-              style={{ aspectRatio: THUMB_RATIO, background: color, position: "relative" }}
+          {images.map((uri, i) => (
+            <AttachmentThumb
+              key={`${uri}-${i}`}
+              uri={uri}
+              index={i}
+              style={{ aspectRatio: THUMB_RATIO, position: "relative" }}
             >
-              <Icon name="image" size={24} color="rgba(255,255,255,.85)" />
               <button
                 type="button"
                 aria-label={`Xoá ảnh ${i + 1}`}
@@ -127,18 +127,19 @@ export function DetailStep({
                   position: "absolute",
                   top: 5,
                   right: 5,
-                  width: 24,
-                  height: 24,
+                  width: 26,
+                  height: 26,
                   borderRadius: "50%",
-                  background: "rgba(0,0,0,.45)",
+                  background: "rgba(0,0,0,.5)",
                   color: "#fff",
                   display: "grid",
                   placeItems: "center",
+                  zIndex: 2,
                 }}
               >
                 <Icon name="close" size={14} strokeWidth={2.4} />
               </button>
-            </div>
+            </AttachmentThumb>
           ))}
 
           {canAddImage && (
@@ -237,5 +238,39 @@ export function DetailStep({
         )}
       </div>
     </>
+  );
+}
+
+/**
+ * Ô ảnh đính kèm — hiện ảnh thật từ đường dẫn Zalo trả về.
+ *
+ * Đường dẫn tạm của Zalo có thể hết hiệu lực (người dùng xoá ảnh gốc, phiên
+ * webview mới), lúc đó thẻ img báo lỗi tải. Bắt `onError` để rơi về ô màu giữ
+ * chỗ kèm icon, thay vì để lại một ô ảnh vỡ trên màn hình.
+ */
+export function AttachmentThumb({
+  uri,
+  index,
+  style,
+  children,
+}: {
+  uri: string;
+  index: number;
+  style?: CSSProperties;
+  children?: ReactNode;
+}) {
+  const [broken, setBroken] = useState(false);
+  const palette = appConfig.imagePlaceholderColors;
+  const fallback = palette[index % palette.length];
+
+  return (
+    <div className="thumb" style={{ background: fallback, overflow: "hidden", ...style }}>
+      {broken ? (
+        <Icon name="image" size={24} color="rgba(255,255,255,.85)" />
+      ) : (
+        <img src={uri} alt={`Ảnh hiện trường ${index + 1}`} onError={() => setBroken(true)} loading="lazy" />
+      )}
+      {children}
+    </div>
   );
 }

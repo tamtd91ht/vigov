@@ -2,11 +2,12 @@ import type { ReactNode } from "react";
 import { Chip, Note } from "@/components/common";
 import { slaText, type FeedbackCategory } from "@/config/categories";
 import { appConfig } from "@/config/app.config";
-import type { LocationState } from "./DetailStep";
+import { AttachmentThumb, type LocationState } from "./DetailStep";
 
 /** Số ký tự mô tả hiển thị rút gọn ở màn xác nhận */
 const DESC_PREVIEW_LEN = 180;
-const SWATCH_SIZE = 34;
+/** Cạnh ô ảnh xem lại — to hơn ô màu cũ để nhìn ra nội dung ảnh */
+const SWATCH_SIZE = 52;
 
 function shorten(text: string): string {
   return text.length > DESC_PREVIEW_LEN ? `${text.slice(0, DESC_PREVIEW_LEN).trimEnd()}…` : text;
@@ -61,11 +62,12 @@ export function ConfirmStep({
             <div className="sm muted">Không đính kèm ảnh</div>
           ) : (
             <div style={{ display: "flex", gap: 8 }}>
-              {images.map((color, i) => (
-                <span
-                  key={`${color}-${i}`}
-                  className="thumb"
-                  style={{ width: SWATCH_SIZE, height: SWATCH_SIZE, background: color }}
+              {images.map((uri, i) => (
+                <AttachmentThumb
+                  key={`${uri}-${i}`}
+                  uri={uri}
+                  index={i}
+                  style={{ width: SWATCH_SIZE, height: SWATCH_SIZE }}
                 />
               ))}
             </div>

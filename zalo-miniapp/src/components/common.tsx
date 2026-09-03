@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
+import { useGoBack } from "@/hooks/useGoBack";
 import { Icon, type IconName } from "./Icon";
 import type { TicketStatus, TimelineStep } from "@/types";
 
@@ -23,10 +23,10 @@ export const ticketStatusColors: Record<TicketStatus, string> = {
 
 /** Header của các trang con (có nút quay lại) */
 export function SubHeader({ title, action }: { title: string; action?: ReactNode }) {
-  const navigate = useNavigate();
+  const goBack = useGoBack();
   return (
     <div className="subhead">
-      <button className="back" onClick={() => navigate(-1)} aria-label="Quay lại">
+      <button type="button" className="back" onClick={goBack} aria-label="Quay lại">
         <Icon name="back" size={20} />
       </button>
       <h2>{title}</h2>

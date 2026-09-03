@@ -1,9 +1,10 @@
-import { useState, type CSSProperties } from "react";
+import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Icon } from "@/components/Icon";
 import { Chip, SectionHead, formatNumber } from "@/components/common";
 import { DataState } from "@/components/DataState";
 import { useApiResource } from "@/hooks/useApiResource";
+import { useGoBack } from "@/hooks/useGoBack";
 import { contentService } from "@/services/content.service";
 import type { VideoItem } from "@/types";
 import { VIDEO_RATIO, clampLines, videoGradient } from "./VideoPage";
@@ -20,20 +21,6 @@ const PLAYING_PROGRESS = "35%";
 /** Màu khối phát khi chưa biết video (đang tải hoặc không tìm thấy) */
 const NEUTRAL_COVER = "var(--navy)";
 
-/** Nút tròn nền đen mờ đè lên khối phát */
-const overlayBtn: CSSProperties = {
-  position: "absolute",
-  left: 12,
-  top: 12,
-  width: 34,
-  height: 34,
-  borderRadius: "50%",
-  background: "rgba(0,0,0,.4)",
-  display: "grid",
-  placeItems: "center",
-  zIndex: 2,
-};
-
 /**
  * Chi tiết video tuyên truyền (WBS #18).
  * Backend chỉ mở endpoint danh sách /content/public/videos (chưa có
@@ -42,7 +29,7 @@ const overlayBtn: CSSProperties = {
  */
 export function VideoDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
+  const goBack = useGoBack("/video");
   const [playing, setPlaying] = useState(false);
 
   const resource = useApiResource(() => contentService.listVideos(), []);
@@ -72,8 +59,8 @@ export function VideoDetailPage() {
             opacity: 0.42,
           }}
         />
-        <button style={overlayBtn} onClick={() => navigate(-1)} aria-label="Quay lại">
-          <Icon name="back" size={19} color="#fff" />
+        <button type="button" className="overlay-btn" onClick={goBack} aria-label="Quay lại">
+          <Icon name="back" size={20} color="#fff" />
         </button>
 
         <button

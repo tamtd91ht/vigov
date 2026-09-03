@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { Icon } from "@/components/Icon";
+import { appConfig } from "@/config/app.config";
+import { useGoBack } from "@/hooks/useGoBack";
 import { slaText, type FeedbackCategory } from "@/config/categories";
 import { ApiError } from "@/services/api";
 import { zaloService } from "@/services/zalo";
@@ -23,7 +24,7 @@ const TOAST_FAILED = "Gửi phản ánh không thành công, vui lòng thử l�
 
 /** Màn "Gửi phản ánh" 3 bước: Danh mục → Nội dung → Xác nhận (WBS #13) */
 export function SendFeedbackPage() {
-  const navigate = useNavigate();
+  const goBack = useGoBack();
   const { create } = useFeedback();
   const { showToast } = useToast();
 
@@ -67,7 +68,7 @@ export function SendFeedbackPage() {
 
   function handleBack() {
     if (dirty) setAskLeave(true);
-    else navigate(-1);
+    else goBack();
   }
 
   function validateDetail(): boolean {
@@ -111,7 +112,13 @@ export function SendFeedbackPage() {
         location: location.address.trim() || FALLBACK_LOCATION,
         lat: location.lat,
         lng: location.lng,
-        imageColors: images,
+        // Đường dẫn ảnh của Zalo chỉ sống trong lúc soạn phiếu: là tệp tạm của
+        // webview, không gửi được lên máy chủ (module Files chưa mở cho Mini
+        // App — WBS #24) và hết hiệu lực khi mở lại app. Nên phiếu đã gửi giữ
+        // đúng SỐ ảnh dưới dạng ô màu, khớp cách backend trả về imageFileIds.
+        imageColors: images.map(
+          (_, i) => appConfig.imagePlaceholderColors[i % appConfig.imagePlaceholderColors.length],
+        ),
       });
       setTicket(created);
       showToast(TOAST_SENT);
@@ -242,7 +249,7 @@ export function SendFeedbackPage() {
               <button className="btn" onClick={() => setAskLeave(false)}>
                 Tiếp tục nhập
               </button>
-              <button className="btn danger" onClick={() => navigate(-1)}>
+              <button className="btn danger" onClick={goBack}>
                 Huỷ bỏ
               </button>
             </div>
