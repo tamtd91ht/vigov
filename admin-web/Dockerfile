@@ -31,7 +31,12 @@ WORKDIR /app
 
 # --- Cấu hình công khai, nhúng lúc build (khớp admin-web/.env.example) --------
 # API backend (NestJS gateway)
-ARG NEXT_PUBLIC_API_BASE_URL=http://localhost:3001/api/v1
+# Trình duyệt gọi API qua chính tên miền admin (same-origin), Next chuyển tiếp
+# sang backend — xem next.config.ts. Để tương đối là bỏ hẳn CORS khỏi bài toán.
+ARG NEXT_PUBLIC_API_BASE_URL=/api/v1
+# Đích chuyển tiếp phía MÁY CHỦ. Next nạp giá trị này lúc build (routes-manifest),
+# đổi xong phải build lại image chứ không chỉ đổi biến rồi `up`.
+ARG API_PROXY_TARGET=http://backend:3001
 # Bật dữ liệu giả lập khi chưa đấu nối backend — production PHẢI để false
 ARG NEXT_PUBLIC_USE_MOCKS=false
 # Thông tin đơn vị hành chính hiển thị trên shell
@@ -48,6 +53,7 @@ ARG NEXT_PUBLIC_MAP_PROVIDER=mock
 ARG NEXT_PUBLIC_MAP_API_KEY=
 
 ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL} \
+    API_PROXY_TARGET=${API_PROXY_TARGET} \
     NEXT_PUBLIC_USE_MOCKS=${NEXT_PUBLIC_USE_MOCKS} \
     NEXT_PUBLIC_ORG_NAME=${NEXT_PUBLIC_ORG_NAME} \
     NEXT_PUBLIC_ORG_PARENT=${NEXT_PUBLIC_ORG_PARENT} \

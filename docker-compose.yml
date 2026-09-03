@@ -195,7 +195,8 @@ services:
       dockerfile: Dockerfile
       args:
         PORT: "3000"
-        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+        NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL:-/api/v1}
+        API_PROXY_TARGET: ${API_PROXY_TARGET:-http://backend:3001}
         NEXT_PUBLIC_USE_MOCKS: ${NEXT_PUBLIC_USE_MOCKS:-false}
         NEXT_PUBLIC_ORG_NAME: ${NEXT_PUBLIC_ORG_NAME:-}
         NEXT_PUBLIC_ORG_PARENT: ${NEXT_PUBLIC_ORG_PARENT:-}
