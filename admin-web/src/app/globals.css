@@ -55,7 +55,9 @@ h1,h2,h3,h4{color:var(--navy);font-weight:700;line-height:1.3}
 .usermenu button:hover{background:var(--bg2)}
 
 /* ---------- PAGE ---------- */
-.pg{padding:28px;max-width:1420px}
+/* margin-inline:auto là bắt buộc: có max-width mà không căn giữa thì trên màn
+   hình rộng toàn bộ khoảng thừa dồn hết sang phải, nội dung dính mép trái. */
+.pg{padding:28px;max-width:1720px;margin-inline:auto}
 .pg-head{display:flex;align-items:flex-end;gap:18px;margin-bottom:22px;flex-wrap:wrap}
 .pg-head h1{font-size:22px}
 .pg-head p{font-size:13px;color:var(--mut);margin-top:3px}
@@ -334,6 +336,19 @@ textarea.finp{resize:vertical;min-height:88px}
 @media (max-width:1080px){
   .grid2{grid-template-columns:1fr}
   .mpanel.r{display:none}
+}
+
+/* ---------- MÀN HÌNH RỘNG ----------
+   Phần còn lại của tệp viết theo lối desktop-first (chỉ có breakpoint thu nhỏ),
+   nên màn rộng không có luật nào và mọi thứ đứng yên ở bố cục 1420px.
+
+   Chỉ nới những lưới mà số phần tử chia hết cho số cột mới — bằng không sẽ
+   thừa ô trống hoặc để một thẻ đứng lẻ một hàng. Vì thế 6 cột chỉ áp cho
+   .kpis.kpis-6 (trang Tổng quan, đúng 6 thẻ), không áp cho .kpis chung
+   (trang Người dùng chỉ có 3 thẻ). */
+@media (min-width:1760px){
+  .kpis.kpis-6{grid-template-columns:repeat(6,1fr)}
+  .grid4{grid-template-columns:repeat(4,1fr)}
 }
 
 /* ---------- TRẠNG THÁI TẢI DỮ LIỆU ---------- */

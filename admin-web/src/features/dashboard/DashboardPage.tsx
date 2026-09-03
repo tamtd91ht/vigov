@@ -131,8 +131,10 @@ export function DashboardPage() {
       <DataState loading={loading} error={error} onRetry={reload}>
         {data && kpiText && (
           <>
-            {/* 6 thẻ KPI — bấm thẻ điều hướng sang phân hệ tương ứng */}
-            <div className="kpis">
+            {/* 6 thẻ KPI — bấm thẻ điều hướng sang phân hệ tương ứng.
+                kpis-6 cho phép trải thành 6 cột một hàng từ 1760px trở lên;
+                lưới chung .kpis giữ 3 cột vì trang khác chỉ có 3 thẻ. */}
+            <div className="kpis kpis-6">
               {KPI_CARDS.map((card) => (
                 <KpiCard
                   key={card.id}
