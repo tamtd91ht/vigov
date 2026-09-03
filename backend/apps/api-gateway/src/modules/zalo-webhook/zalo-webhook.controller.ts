@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Headers, HttpCode, Post, Req } from '@nestjs/common';
+import { Body, Controller, Headers, HttpCode, Logger, Post, Req } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { Public } from '@vigov/shared';
@@ -24,6 +24,8 @@ import { ZaloWebhookService } from './zalo-webhook.service';
  */
 @Controller('webhooks/zalo')
 export class ZaloWebhookController {
+  private readonly logger = new Logger(ZaloWebhookController.name);
+
   constructor(private readonly webhook: ZaloWebhookService) {}
 
   /**
@@ -48,11 +50,26 @@ export class ZaloWebhookController {
 
     const rawBody = (req as unknown as { rawBody?: Buffer }).rawBody;
 
+    const ip = req.ip ?? req.socket.remoteAddress ?? '';
+
+    /*
+     * LUÔN trả 200, kể cả khi chữ ký sai — nhưng KHÔNG xử lý payload.
+     *
+     * Zalo chỉ chấp nhận thiết lập webhook khi URL trả 200; yêu cầu kiểm tra
+     * lúc thiết lập không mang chữ ký nên 403 làm hỏng bước đăng ký. Mã lỗi
+     * cũng khiến Zalo coi là gửi thất bại và gửi lại nhiều lần.
+     *
+     * Tách mã HTTP khỏi quyết định xử lý: webhook này kích hoạt XOÁ DỮ LIỆU
+     * người dùng, nên payload không chứng minh được nguồn gốc thì bỏ qua.
+     * Trả 200 mà vẫn xử lý là ai biết URL cũng xoá được dữ liệu công dân.
+     */
     if (!this.webhook.verifySignature(rawBody, signature)) {
-      throw new ForbiddenException('Chữ ký không hợp lệ');
+      this.logger.warn(
+        `Bỏ qua webhook Zalo không có chữ ký hợp lệ từ ${ip} — trả 200 để không chặn bước thiết lập trên Console`,
+      );
+      return { received: true, handled: false };
     }
 
-    const ip = req.ip ?? req.socket.remoteAddress ?? '';
     const outcome = await this.webhook.handle(payload, ip);
 
     return { received: true, handled: outcome.handled };
