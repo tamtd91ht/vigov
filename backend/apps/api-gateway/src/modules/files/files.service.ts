@@ -11,11 +11,12 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import * as path from 'node:path';
+import type { Readable } from 'node:stream';
 import { Model, isValidObjectId } from 'mongoose';
 import { StoredFile, type StoredFileDocument } from '@vigov/shared';
 import { LocalStorageDriver } from './drivers/local.driver';
 import { S3StorageDriver } from './drivers/s3.driver';
-import { DEFAULT_LOCAL_DIR, type StorageDriver } from './drivers/storage.driver';
+import { DEFAULT_LOCAL_DIR, type ByteRange, type StorageDriver } from './drivers/storage.driver';
 
 /** Mục đích sử dụng tệp — khớp enum StoredFile.purpose trong misc.schema */
 export const FILE_PURPOSES = ['scan', 'feedback', 'audio', 'video', 'cover', 'other'] as const;
@@ -247,6 +248,33 @@ export class FilesService {
     }
     const buffer = await this.driver.read(file.storageKey);
     return { file, buffer };
+  }
+
+  /**
+   * Mở tệp để phát theo luồng — dùng cho video và mọi tệp lớn.
+   *
+   * Trả kích thước THẬT trên ổ lưu trữ (không lấy `file.size` trong Mongo) vì
+   * mọi con số trong header Content-Range phải khớp đúng tệp đang phục vụ.
+   *
+   * Chữ ký của tệp riêng tư được kiểm ở đây, TRƯỚC khi chạm ổ lưu trữ — giống
+   * openForDownload, để không mở luồng cho yêu cầu không hợp lệ.
+   */
+  async openForStream(
+    id: string,
+    exp: string | number | undefined,
+    sig: string | undefined,
+  ): Promise<{ file: StoredFileDocument; size: number }> {
+    const file = await this.findById(id);
+    if (file.isPrivate) {
+      this.verifySignature(String(file._id), exp, sig);
+    }
+    const size = await this.driver.size(file.storageKey);
+    return { file, size };
+  }
+
+  /** Luồng đọc nội dung tệp; có `range` thì chỉ đọc đúng khoảng byte đó */
+  readStream(file: StoredFileDocument, range?: ByteRange): Readable {
+    return this.driver.createReadStream(file.storageKey, range);
   }
 
   /** Xoá cả bản ghi lẫn tệp vật lý */

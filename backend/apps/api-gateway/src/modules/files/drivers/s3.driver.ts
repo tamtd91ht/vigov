@@ -1,6 +1,7 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import type { StorageDriver } from './storage.driver';
+import type { Readable } from 'node:stream';
+import type { ByteRange, StorageDriver } from './storage.driver';
 
 /** Thông báo khi cụm S3/MinIO chưa được khai báo trong biến môi trường */
 const MSG_NOT_CONFIGURED = 'Chưa cấu hình S3 storage';
@@ -33,6 +34,15 @@ export class S3StorageDriver implements StorageDriver {
     this.ensureReady(key);
     // Không bao giờ tới đây — ensureReady luôn ném lỗi ở giai đoạn hiện tại
     return Buffer.alloc(0);
+  }
+
+  async size(key: string): Promise<number> {
+    this.ensureReady(key);
+  }
+
+  createReadStream(key: string, range?: ByteRange): Readable {
+    void range;
+    this.ensureReady(key);
   }
 
   async delete(key: string): Promise<void> {

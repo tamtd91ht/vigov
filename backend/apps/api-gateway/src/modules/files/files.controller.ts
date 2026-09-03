@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Logger,
   Param,
   Post,
   Query,
@@ -12,9 +13,10 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { Public, RequirePermission, type AuthedRequest } from '@vigov/shared';
 import { FilesService, DEFAULT_SIGNED_URL_TTL_SECONDS, type FileRequester } from './files.service';
+import type { ByteRange } from './drivers/storage.driver';
 import { FileAccessQueryDto, SignedUrlQueryDto, UploadFileDto } from './dto/file.dto';
 
 /** Tên field multipart chứa tệp */
@@ -47,6 +49,8 @@ function requesterOf(req: AuthedRequest): FileRequester | undefined {
  */
 @Controller('files')
 export class FilesController {
+  private readonly logger = new Logger(FilesController.name);
+
   constructor(private readonly files: FilesService) {}
 
   /** Tải tệp lên (multipart/form-data: file + purpose + isPrivate) */
@@ -82,13 +86,13 @@ export class FilesController {
   async download(
     @Param('id') id: string,
     @Query() query: FileAccessQueryDto,
+    @Req() req: Request,
     @Res() res: Response,
   ): Promise<void> {
-    // Chữ ký được kiểm tra bên trong openForDownload, TRƯỚC khi đọc ổ lưu trữ
-    const { file, buffer } = await this.files.openForDownload(id, query.exp, query.sig);
+    // Chữ ký được kiểm tra bên trong openForStream, TRƯỚC khi chạm ổ lưu trữ
+    const { file, size } = await this.files.openForStream(id, query.exp, query.sig);
 
     res.setHeader('Content-Type', file.mimeType || 'application/octet-stream');
-    res.setHeader('Content-Length', buffer.length);
     // Không cho trình duyệt tự đoán kiểu nội dung của tệp do người dùng tải lên
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Content-Disposition', contentDisposition(file.originalName, file.mimeType));
@@ -96,7 +100,68 @@ export class FilesController {
       'Cache-Control',
       file.isPrivate ? 'private, no-store' : `public, max-age=${PUBLIC_CACHE_SECONDS}`,
     );
-    res.end(buffer);
+    /*
+     * Ghi đè Cross-Origin-Resource-Policy mà securityHeaders đặt mặc định là
+     * 'same-site' cho toàn bộ API.
+     *
+     * Zalo Mini App chạy trong webview ở h5.zdn.vn, khác site với tên miền API,
+     * nên với 'same-site' trình duyệt CHẶN mọi thẻ <video>/<img> trỏ về đây —
+     * ảnh và video im lặng không hiện, không báo lỗi gì trong ứng dụng.
+     *
+     * Chỉ nới cho tệp CÔNG KHAI; tệp riêng tư giữ 'same-site' để không bị trang
+     * ngoài nhúng vào ngay cả khi lộ link ký sẵn.
+     */
+    if (!file.isPrivate) {
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    }
+    /*
+     * Báo cho trình phát biết có thể tua. Thiếu header này thì thẻ <video> của
+     * trình duyệt vô hiệu hoá thanh tua, dù máy chủ có phục vụ Range đi nữa.
+     */
+    res.setHeader('Accept-Ranges', 'bytes');
+
+    const range = parseRange(req.headers.range, size);
+
+    if (range === 'invalid') {
+      /*
+       * Khoảng nằm ngoài tệp. RFC 9110 bắt trả 416, kèm Content-Range chỉ mang
+       * tổng kích thước tệp (không có khoảng cụ thể) để phía kia biết độ dài
+       * thật mà xin lại cho đúng.
+       */
+      res.status(416);
+      res.setHeader('Content-Range', `bytes */${size}`);
+      res.end();
+      return;
+    }
+
+    if (range) {
+      const length = range.end - range.start + 1;
+      res.status(206);
+      res.setHeader('Content-Range', `bytes ${range.start}-${range.end}/${size}`);
+      res.setHeader('Content-Length', length);
+    } else {
+      res.setHeader('Content-Length', size);
+    }
+
+    const stream = this.files.readStream(file, range ?? undefined);
+
+    /*
+     * Tệp biến mất giữa chừng (bị xoá song song) phát lỗi qua sự kiện này. Header
+     * đã gửi rồi nên không đổi được mã trạng thái — chỉ còn cách ngắt kết nối để
+     * phía kia biết dữ liệu dở dang, thay vì treo chờ hết Content-Length.
+     */
+    stream.on('error', (err) => {
+      this.logger.error(`Lỗi đọc luồng tệp ${id}: ${err.message}`);
+      res.destroy(err);
+    });
+
+    /*
+     * Người xem tua hoặc thoát giữa chừng thì Express đóng kết nối; phải huỷ
+     * luồng đọc, không thì mỗi lần tua để lại một handle tệp mở.
+     */
+    res.on('close', () => stream.destroy());
+
+    stream.pipe(res);
   }
 
   /** Xoá tệp (bản ghi + tệp vật lý) — chỉ quản trị hệ thống */
@@ -105,6 +170,52 @@ export class FilesController {
   remove(@Param('id') id: string) {
     return this.files.remove(id);
   }
+}
+
+/**
+ * Đọc header `Range` thành khoảng byte cụ thể.
+ *
+ * Trả về:
+ *   · `null`      — không có Range, hoặc dạng ta không phục vụ ⇒ trả nguyên tệp
+ *   · `'invalid'` — có Range nhưng nằm ngoài tệp ⇒ phải trả 416
+ *   · ByteRange   — khoảng hợp lệ, tính cả hai đầu
+ *
+ * Chỉ nhận đơn vị `bytes` và MỘT khoảng. Nhiều khoảng (`bytes=0-9,20-29`) phải
+ * trả multipart/byteranges — trình phát video không dùng tới, nên bỏ qua và trả
+ * nguyên tệp; đó là hành vi hợp lệ theo RFC 9110 (máy chủ được phép làm ngơ Range).
+ */
+export function parseRange(header: string | undefined, size: number): ByteRange | null | 'invalid' {
+  if (!header || size <= 0) return null;
+
+  const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
+  if (!match) return null;
+
+  const [, rawStart, rawEnd] = match;
+  if (rawStart === '' && rawEnd === '') return null;
+
+  let start: number;
+  let end: number;
+
+  if (rawStart === '') {
+    /*
+     * Dạng hậu tố `bytes=-500`: xin 500 byte CUỐI tệp. Trình phát dùng dạng này
+     * để đọc chỉ mục moov nằm cuối tệp MP4 trước khi phát.
+     */
+    const suffix = Number(rawEnd);
+    if (!Number.isFinite(suffix) || suffix <= 0) return 'invalid';
+    start = Math.max(0, size - suffix);
+    end = size - 1;
+  } else {
+    start = Number(rawStart);
+    // `bytes=1000-` nghĩa là từ 1000 tới hết tệp
+    end = rawEnd === '' ? size - 1 : Number(rawEnd);
+    if (!Number.isFinite(start) || !Number.isFinite(end)) return 'invalid';
+    // Xin quá đuôi tệp thì cắt về byte cuối, không phải lỗi
+    if (end > size - 1) end = size - 1;
+  }
+
+  if (start > end || start >= size) return 'invalid';
+  return { start, end };
 }
 
 /**

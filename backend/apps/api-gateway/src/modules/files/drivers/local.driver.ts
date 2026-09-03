@@ -1,10 +1,13 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { createReadStream } from 'node:fs';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
+import type { Readable } from 'node:stream';
 import {
   DEFAULT_LOCAL_DIR,
   SAFE_STORAGE_KEY_PATTERN,
+  type ByteRange,
   type StorageDriver,
 } from './storage.driver';
 
@@ -63,6 +66,31 @@ export class LocalStorageDriver implements StorageDriver {
       }
       throw error;
     }
+  }
+
+  async size(key: string): Promise<number> {
+    const fullPath = this.resolveKey(key);
+    try {
+      const info = await fs.stat(fullPath);
+      return info.size;
+    } catch (error) {
+      if (isNotFound(error)) {
+        throw new NotFoundException('Không tìm thấy tệp trên ổ lưu trữ');
+      }
+      throw error;
+    }
+  }
+
+  createReadStream(key: string, range?: ByteRange): Readable {
+    const fullPath = this.resolveKey(key);
+    /*
+     * fs.createReadStream nhận start/end tính CẢ HAI ĐẦU, trùng đúng quy ước
+     * của header Range nên truyền thẳng, không phải cộng trừ gì.
+     *
+     * Lỗi mở tệp (đã bị xoá giữa chừng) phát ra qua sự kiện 'error' của luồng
+     * chứ không ném ở đây — controller phải bắt sự kiện đó.
+     */
+    return createReadStream(fullPath, range);
   }
 
   async delete(key: string): Promise<void> {
