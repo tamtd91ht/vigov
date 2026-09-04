@@ -35,6 +35,26 @@ export class StaffUser {
   @Prop({ default: 'active', enum: ['active', 'locked'] })
   status: string;
 
+  /**
+   * Số lần đăng nhập sai LIÊN TIẾP. Về 0 ngay khi đăng nhập đúng.
+   *
+   * Khác `status: 'locked'` — đó là khoá vĩnh viễn do quản trị viên đặt tay.
+   * Bộ đếm này phục vụ khoá TẠM tự mở, chống dò mật khẩu.
+   */
+  @Prop({ default: 0 })
+  failedLoginAttempts: number;
+
+  /**
+   * Thời điểm hết khoá tạm; `null` là không bị khoá.
+   *
+   * Chặn theo tài khoản chứ không theo IP: hạn mức của ThrottlerGuard đếm theo
+   * IP nên kẻ dò mật khẩu chỉ cần đổi IP là thoát, còn tài khoản thì không đổi.
+   */
+  /* Phải khai `type: Date` tay: @nestjs/mongoose đọc kiểu qua reflect-metadata,
+     mà union `Date | null` thì metadata trả về Object nên nó không đoán được. */
+  @Prop({ type: Date, default: null })
+  lockedUntil?: Date | null;
+
   @Prop()
   lastLoginAt?: Date;
 }

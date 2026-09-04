@@ -53,6 +53,53 @@ const BCRYPT_ROUNDS = 10;
  */
 const OTP_MAX_ATTEMPTS = 5;
 
+/**
+ * Khoá tạm tài khoản cán bộ sau các lần đăng nhập sai liên tiếp (P4-36 bổ sung).
+ *
+ * VÌ SAO CẦN, dù đã có ThrottlerGuard: hạn mức 5 lượt/phút của nhóm auth đếm
+ * theo ĐỊA CHỈ IP. Kẻ dò mật khẩu chỉ cần đổi IP là hạn mức reset, trong khi
+ * tài khoản đích thì không đổi được — nên rải mật khẩu phổ biến lên toàn bộ
+ * danh sách cán bộ vẫn chạy được. Bộ đếm theo tài khoản bịt đúng khe đó.
+ *
+ * 15 phút: đủ dài để phá tan tốc độ dò (5 lần / 15 phút ≈ 480 lần/ngày), đủ
+ * ngắn để cán bộ gõ nhầm mật khẩu không phải gọi quản trị viên mở khoá.
+ */
+const LOGIN_MAX_FAILED_ATTEMPTS = 5;
+const LOGIN_LOCK_MS = 15 * 60 * 1000;
+
+/**
+ * Thông điệp DUY NHẤT cho mọi nhánh đăng nhập hỏng: sai tên, sai mật khẩu,
+ * tài khoản bị khoá vĩnh viễn, hay đang khoá tạm.
+ *
+ * Nếu tách riêng câu "tài khoản đang bị khoá" thì chính nó thành công cụ dò
+ * danh sách tài khoản: gõ sai 5 lần, thấy đổi thông điệp là biết tên đó có
+ * thật. Đánh đổi: cán bộ bị khoá tạm không biết vì sao — bù lại khoá tự mở
+ * sau 15 phút và máy chủ có ghi nhật ký mức warn để quản trị viên tra được.
+ */
+const LOGIN_FAILED_MESSAGE = 'Tài khoản hoặc mật khẩu không đúng';
+
+/** Tài khoản có đang trong thời gian khoá tạm không */
+export function isTemporarilyLocked(lockedUntil: Date | null | undefined, now = Date.now()): boolean {
+  return !!lockedUntil && lockedUntil.getTime() > now;
+}
+
+/**
+ * Trạng thái khoá sau MỘT lần đăng nhập sai.
+ *
+ * `attempts` là số lần sai liên tiếp ĐÃ TÍNH cả lần vừa rồi. Chạm ngưỡng thì
+ * đặt hạn khoá và đưa bộ đếm về 0 — hết 15 phút, người dùng lại có trọn 5 lượt
+ * chứ không phải bị khoá lại ngay ở lần sai kế tiếp.
+ */
+export function nextLockState(
+  attempts: number,
+  now = Date.now(),
+): { failedLoginAttempts: number; lockedUntil: Date | null } {
+  if (attempts >= LOGIN_MAX_FAILED_ATTEMPTS) {
+    return { failedLoginAttempts: 0, lockedUntil: new Date(now + LOGIN_LOCK_MS) };
+  }
+  return { failedLoginAttempts: attempts, lockedUntil: null };
+}
+
 interface OtpEntry {
   code: string;
   expiresAt: number;
@@ -82,11 +129,22 @@ export class AuthService {
   async staffLogin(username: string, password: string, ip: string, device: string) {
     const user = await this.staffModel.findOne({ username }).select('+passwordHash').exec();
     if (!user || user.status === 'locked') {
-      throw new UnauthorizedException('Tài khoản hoặc mật khẩu không đúng');
+      throw new UnauthorizedException(LOGIN_FAILED_MESSAGE);
     }
+
+    /* Kiểm tra khoá TRƯỚC khi so mật khẩu: đang khoá thì mật khẩu đúng cũng
+       không vào được, và không tốn một lượt bcrypt cho mỗi request dò. */
+    if (isTemporarilyLocked(user.lockedUntil)) {
+      this.logger.warn(
+        `Từ chối đăng nhập ${username} từ ${ip}: tài khoản đang khoá tạm tới ${user.lockedUntil?.toISOString()}`,
+      );
+      throw new UnauthorizedException(LOGIN_FAILED_MESSAGE);
+    }
+
     const matched = await bcrypt.compare(password, user.passwordHash);
     if (!matched) {
-      throw new UnauthorizedException('Tài khoản hoặc mật khẩu không đúng');
+      await this.registerFailedLogin(user, ip);
+      throw new UnauthorizedException(LOGIN_FAILED_MESSAGE);
     }
 
     // Tạo phiên trước để lấy mã phiên nhúng vào token — nhờ đó thu hồi được trước hạn
@@ -101,7 +159,10 @@ export class AuthService {
       sid: sessionId,
     };
 
+    // Vào được rồi thì xoá dấu vết các lần sai trước — 5 lượt lại đầy
     user.lastLoginAt = new Date();
+    user.failedLoginAttempts = 0;
+    user.lockedUntil = null;
     await user.save();
 
     return {
@@ -115,6 +176,28 @@ export class AuthService {
         roleKey: user.roleKey,
       },
     };
+  }
+
+  /**
+   * Ghi nhận một lần đăng nhập sai, khoá tạm tài khoản khi chạm ngưỡng.
+   *
+   * Tăng bộ đếm bằng `$inc` ngay dưới Mongo chứ không đọc-rồi-ghi: nhiều
+   * request dò song song mà cộng trên bản sao trong bộ nhớ thì chúng ghi đè
+   * lẫn nhau, 5 lần sai cùng lúc chỉ đếm thành 1 và khoá không bao giờ đóng.
+   */
+  private async registerFailedLogin(user: StaffUserDocument, ip: string): Promise<void> {
+    const updated = await this.staffModel
+      .findOneAndUpdate({ _id: user._id }, { $inc: { failedLoginAttempts: 1 } }, { new: true })
+      .exec();
+
+    const state = nextLockState(updated?.failedLoginAttempts ?? 1);
+    if (!state.lockedUntil) return;
+
+    await this.staffModel.updateOne({ _id: user._id }, { $set: state }).exec();
+    this.logger.warn(
+      `Khoá tạm tài khoản ${user.username} tới ${state.lockedUntil.toISOString()} — ` +
+        `sai mật khẩu ${LOGIN_MAX_FAILED_ATTEMPTS} lần liên tiếp, lần cuối từ ${ip}`,
+    );
   }
 
   /**
