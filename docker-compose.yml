@@ -125,6 +125,9 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-8h}
       REFRESH_EXPIRES_IN: ${REFRESH_EXPIRES_IN:-7d}
+      # Mã định danh tạm cho giai đoạn Zalo chưa cấp quyền getPhoneNumber.
+      # Mặc định RỖNG = tắt; xem SECURITY.md trước khi đặt giá trị.
+      CITIZEN_OTP_BYPASS_CODE: ${CITIZEN_OTP_BYPASS_CODE:-}
 
       # Rate limit / chống spam (P3-31)
       THROTTLE_TTL_SECONDS: ${THROTTLE_TTL_SECONDS:-60}
@@ -155,6 +158,8 @@ services:
       # Tích hợp bên thứ 3 — provider chốt sau (câu hỏi mở #1, #2, #3)
       OCR_PROVIDER: ${OCR_PROVIDER:-mock}
       OCR_API_KEY: ${OCR_API_KEY:-}
+      IDCARD_PROVIDER: ${IDCARD_PROVIDER:-mock}
+      IDCARD_API_KEY: ${IDCARD_API_KEY:-}
       GEO_PROVIDER: ${GEO_PROVIDER:-mock}
       GEO_API_KEY: ${GEO_API_KEY:-}
       ZALO_OA_ID: ${ZALO_OA_ID:-}
