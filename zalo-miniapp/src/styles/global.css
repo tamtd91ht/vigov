@@ -15,6 +15,14 @@
      thanh trạng thái; mọi thứ bấm được ở đỉnh màn hình phải cộng thêm biến này,
      không thì cú bấm bị thanh trạng thái của hệ thống ăn mất. */
   --sat:env(safe-area-inset-top, 0px);
+  /* Vùng an toàn đỉnh màn DÙNG THỰC TẾ.
+     Webview Zalo trên nhiều máy Android trả env(safe-area-inset-top) = 0 trong
+     khi thanh trạng thái VẪN phủ lên nội dung (app đặt statusBar:"transparent").
+     Chỉ tin con số hệ điều hành báo thì nội dung tràn sát viền máy, giờ và cột
+     sóng đè lên khung hình — đã gặp đúng lỗi này ở màn chi tiết video.
+     Lấy giá trị LỚN HƠN giữa số hệ báo và một sàn cứng đủ cho thanh trạng thái
+     cao nhất thường gặp. Máy có tai thỏ báo 44-59px thì vẫn dùng số thật. */
+  --sat-safe:max(env(safe-area-inset-top, 0px), 48px);
   /* Cỡ chữ toàn app — màn Cá nhân thay đổi (WBS #20) */
   --font-scale:1;
 }
@@ -146,7 +154,10 @@ textarea.finp{resize:vertical;min-height:110px;line-height:1.6}
 /* Nút tròn đè lên ảnh bìa / khối phát video (trang chi tiết không dùng .subhead).
    Vùng bấm 40px và lùi xuống dưới thanh trạng thái — đây là lối duy nhất để
    thoát khỏi hai màn hình đó. */
-.overlay-btn{position:absolute;top:calc(12px + var(--sat));left:12px;
+/* Nút nổi trên ảnh/video tràn viền — phải nằm DƯỚI thanh trạng thái, không thì
+   cú bấm bị hệ điều hành ăn mất. Dùng --sat-safe vì đây là nội dung tràn sát
+   đỉnh màn, nơi env(safe-area-inset-top)=0 gây hậu quả thấy được ngay. */
+.overlay-btn{position:absolute;top:calc(8px + var(--sat-safe));left:12px;
   width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.42);
   display:grid;place-items:center;z-index:3;backdrop-filter:blur(2px)}
 .overlay-btn:active{background:rgba(0,0,0,.62)}
@@ -224,9 +235,11 @@ textarea.finp{resize:vertical;min-height:110px;line-height:1.6}
 /* Dải đen phủ vùng thanh trạng thái rồi mới tới khung hình — app đặt
    statusBar:"transparent" nên nội dung tràn lên dưới thanh trạng thái; để
    nguyên là mép trên video dính sát viền máy và bị thanh trạng thái đè.
-   Cùng quy ước với .subhead và .hero: cộng var(--sat) vào padding trên. */
+   Dùng --sat-safe chứ KHÔNG dùng --sat: webview Zalo trả 0 cho safe-area trên
+   nhiều máy Android, và khi đó video dính sát viền, giờ với cột sóng đè lên
+   khung hình. */
 .vplayer{position:relative;background:#000;overflow:hidden;flex:none;
-  padding-top:calc(10px + var(--sat))}
+  padding-top:var(--sat-safe)}
 /* Tách khung 16:9 ra lớp riêng để phần đệm phía trên không bóp tỉ lệ khung hình */
 .vplayer-box{position:relative;aspect-ratio:16/9}
 .vplayer-fill{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
