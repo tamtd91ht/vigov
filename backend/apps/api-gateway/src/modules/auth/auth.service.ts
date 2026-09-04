@@ -52,11 +52,6 @@ const BCRYPT_ROUNDS = 10;
  * buộc yêu cầu mã mới.
  */
 const OTP_MAX_ATTEMPTS = 5;
-/**
- * Độ dài tối thiểu của mã tạm thời khai trong CITIZEN_OTP_BYPASS_CODE.
- * Mã này mở được mọi số điện thoại nên không cho phép đặt ngắn kiểu "123456".
- */
-const OTP_FALLBACK_MIN_LENGTH = 8;
 
 interface OtpEntry {
   code: string;
@@ -143,10 +138,15 @@ export class AuthService {
    *
    * So sánh bằng timingSafeEqual để thời gian đáp ứng không hé lộ dần từng ký
    * tự. Để trống biến môi trường là tắt hẳn — mặc định của cấu hình.
+   *
+   * KHÔNG ép độ dài tối thiểu: ô nhập OTP của Mini App cố định 6 chữ số
+   * (maxLength=6, inputMode="numeric", lọc bỏ ký tự không phải số), nên mã dài
+   * hơn thì không gõ vào đâu được. Thứ chặn dò mã ở đây là hạn mức 5 lượt/phút
+   * mỗi IP của AUTH_THROTTLE, không phải độ dài.
    */
   private matchesFallbackCode(otp: string): boolean {
     const configured = (this.config.get<string>('auth.otpBypassCode') ?? '').trim();
-    if (configured.length < OTP_FALLBACK_MIN_LENGTH) return false;
+    if (!configured) return false;
 
     const a = Buffer.from(configured);
     const b = Buffer.from(otp);

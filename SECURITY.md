@@ -125,6 +125,10 @@ Lệnh chạy: `npm audit --production` (chỉ đọc kết quả, **không** ch
    IP mỗi lần mã được dùng — rà `docker compose logs backend | grep "mã tạm thời"` để biết đã có
    ai dùng chưa. *Điều kiện để xoá được: quyền `getPhoneNumber` đã cấp và luồng đổi token Zalo
    chạy thật, HOẶC đã nối SMS/ZNS cho OTP.*
+   **Lưu ý về sức mạnh mã:** mã buộc phải là 6 chữ số vì ô nhập OTP của Mini App cố định 6 ký tự
+   số — không thể đặt dài hơn. Nghĩa là không gian chỉ 10⁶ và thứ duy nhất chặn dò là hạn mức
+   `AUTH_THROTTLE` 5 lượt/phút mỗi IP. **Đừng nới hạn mức đó chừng nào biến này còn bật**, và
+   đừng chọn dãy dễ đoán (`123456`, `000000`, `112233`).
 1. **Đổi `JWT_SECRET`.** Sinh chuỗi ngẫu nhiên ≥ 32 ký tự (`openssl rand -base64 48`), lưu trong
    trình quản lý bí mật, không commit. Khoá này ký cả token đăng nhập lẫn link tệp riêng tư.
    *API Gateway đã được chặn khởi động nếu `NODE_ENV=production` mà khoá còn là giá trị mẫu.*
