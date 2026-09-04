@@ -1,7 +1,7 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
 import { InjectConnection } from '@nestjs/mongoose';
 import { Connection } from 'mongoose';
-import { Public } from '@vigov/shared';
+import { Public, SessionRegistry } from '@vigov/shared';
 import { MessagingService } from './modules/messaging/messaging.service';
 
 /** Mã trạng thái kết nối Mongoose: 1 = đã kết nối */
@@ -16,6 +16,7 @@ export class HealthController {
   constructor(
     @InjectConnection() private readonly mongo: Connection,
     private readonly messaging: MessagingService,
+    private readonly sessions: SessionRegistry,
   ) {}
 
   /** Tiến trình còn sống (liveness) — không chạm cơ sở dữ liệu */
@@ -40,15 +41,20 @@ export class HealthController {
   ready() {
     const dbConnected = this.mongo.readyState === MONGO_CONNECTED;
     const messaging = this.messaging.getStatus();
+    /* Cơ chế thu hồi phiên fail-open khi hỏng: hỏng rồi thì phiên đã thu hồi và
+       tài khoản đã khoá vẫn đi lọt. Báo ra đây để hệ giám sát thấy — cũng như
+       messaging, KHÔNG cho nó làm endpoint trả 503, vì hệ vẫn phục vụ được. */
+    const sessionRevocation = this.sessions.getStatus();
 
     if (!dbConnected) {
       throw new ServiceUnavailableException({
         status: 'unavailable',
         database: 'disconnected',
         messaging,
+        sessionRevocation,
       });
     }
 
-    return { status: 'ok', database: 'connected', messaging };
+    return { status: 'ok', database: 'connected', messaging, sessionRevocation };
   }
 }

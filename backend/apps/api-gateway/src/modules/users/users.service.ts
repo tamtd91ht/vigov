@@ -469,7 +469,20 @@ export class UsersService {
     return { ...this.toStaffView(doc), tempPassword };
   }
 
-  /** Cập nhật vai trò / đơn vị / trạng thái tài khoản cán bộ */
+  /**
+   * Cập nhật vai trò / đơn vị / trạng thái tài khoản cán bộ.
+   *
+   * Đổi xong PHẢI thu hồi phiên đang mở của người đó.
+   *
+   * VÌ SAO: JwtAuthGuard đọc `roleKey` thẳng từ payload JWT, không tra lại cơ
+   * sở dữ liệu — chỉ có `revoked` và `subjectLocked` được kiểm qua
+   * SessionRegistry, còn vai trò thì không. Nếu chỉ ghi vai trò mới xuống
+   * Mongo, token đang lưu vẫn mang vai trò CŨ cho tới khi hết hạn 8 giờ. Hạ
+   * quyền một tài khoản nghi bị chiếm mà quyền cũ còn sống nguyên 8 tiếng thì
+   * thao tác đó gần như vô nghĩa.
+   *
+   * `deleteStaff` bên dưới đã làm đúng việc này từ đầu; ở đây trước là bỏ sót.
+   */
   async updateStaff(username: string, dto: UpdateStaffDto) {
     const patch: Record<string, unknown> = {};
     if (dto.roleKey) patch.roleKey = dto.roleKey;
@@ -481,7 +494,26 @@ export class UsersService {
 
     const doc = await this.staffModel.findOneAndUpdate({ username }, { $set: patch }, { new: true }).exec();
     if (!doc) throw new NotFoundException('Không tìm thấy tài khoản cán bộ');
+
+    await this.revokeAllSessionsOf(username);
     return this.toStaffView(doc);
+  }
+
+  /**
+   * Thu hồi mọi phiên còn hiệu lực của một tài khoản và xoá bộ nhớ đệm phiên.
+   *
+   * Phải xoá cache: SessionRegistry nhớ kết quả tra cứu 10 giây, không xoá thì
+   * trong 10 giây đó token vừa bị thu hồi vẫn đi lọt.
+   *
+   * Người bị thu hồi sẽ phải đăng nhập lại — đây là cái giá có chủ ý, đổi lấy
+   * việc thay đổi quyền có hiệu lực tức thì.
+   */
+  private async revokeAllSessionsOf(subject: string): Promise<number> {
+    const result = await this.sessionModel
+      .updateMany({ subject, revoked: false }, { $set: { revoked: true } })
+      .exec();
+    this.sessions.invalidateAll();
+    return result.modifiedCount;
   }
 
   /**
@@ -508,16 +540,24 @@ export class UsersService {
 
     await this.staffModel.deleteOne({ _id: doc._id }).exec();
     // Thu hồi luôn phiên đăng nhập còn hiệu lực để tài khoản đã xoá không dùng tiếp token cũ
-    await this.sessionModel.updateMany({ subject: username, revoked: false }, { $set: { revoked: true } }).exec();
+    await this.revokeAllSessionsOf(username);
 
     return { username, deleted: true };
   }
 
-  /** Đặt lại mật khẩu cán bộ — chỉ trả về kết quả, không kèm mật khẩu/hash */
+  /**
+   * Đặt lại mật khẩu cán bộ — chỉ trả về kết quả, không kèm mật khẩu/hash.
+   *
+   * Thu hồi phiên đi kèm: lý do người ta đặt lại mật khẩu thường là NGHI BỊ LỘ.
+   * Đổi mật khẩu mà để nguyên phiên đang mở thì kẻ đang giữ token vẫn dùng tiếp
+   * được tới 8 giờ — đúng thứ mà thao tác này định cắt.
+   */
   async changeStaffPassword(username: string, dto: ChangeStaffPasswordDto) {
     const passwordHash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
     const doc = await this.staffModel.findOneAndUpdate({ username }, { $set: { passwordHash } }, { new: true }).exec();
     if (!doc) throw new NotFoundException('Không tìm thấy tài khoản cán bộ');
-    return { username: doc.username, updated: true };
+
+    const revoked = await this.revokeAllSessionsOf(username);
+    return { username: doc.username, updated: true, revokedSessions: revoked };
   }
 }
