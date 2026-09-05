@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { DataState } from "@/components/DataState";
-import { IconBubble, SubHeader, formatNumber, tint } from "@/components/common";
+import { DemoNote, formatNumber, IconBubble, SubHeader, tint } from "@/components/common";
 import { appConfig } from "@/config/app.config";
+import { demoConfig } from "@/config/demo.config";
 import { useApiResource } from "@/hooks/useApiResource";
 import { mapService } from "@/services/map.service";
 import type { MapPin } from "@/types";
@@ -61,6 +62,7 @@ export function MapPage() {
       <SubHeader title={PAGE_TITLE} />
 
       <div className="page plain">
+        <DemoNote>{demoConfig.notes.map}</DemoNote>
         <div className="tiny muted" style={{ marginBottom: 12 }}>
           {appConfig.org.name} · {appConfig.org.parent}
         </div>

@@ -1,7 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon, type IconName } from "@/components/Icon";
-import { Chip, IconBubble, SectionHead } from "@/components/common";
+import { Chip, DemoBadge, IconBubble, SectionHead } from "@/components/common";
 import { appConfig } from "@/config/app.config";
 import { useFeedback } from "@/state/FeedbackContext";
 import { maskPhone, useSession } from "@/state/SessionContext";
@@ -119,6 +119,7 @@ export function ProfilePage() {
         }}
       >
         <h2>Cá nhân</h2>
+        <DemoBadge />
       </div>
 
       {/* Hồ sơ công dân */}

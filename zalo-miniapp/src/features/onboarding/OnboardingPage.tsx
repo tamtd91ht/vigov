@@ -1,7 +1,8 @@
 import { useState, type CSSProperties } from "react";
 import { appConfig } from "@/config/app.config";
+import { demoConfig } from "@/config/demo.config";
 import { Icon, type IconName } from "@/components/Icon";
-import { Note } from "@/components/common";
+import { DemoBadge, DemoNote, Note } from "@/components/common";
 import { ApiError } from "@/services/api";
 import { OTP_LENGTH, isValidPhone } from "@/services/auth.service";
 import { useSession } from "@/state/SessionContext";
@@ -136,6 +137,9 @@ export function OnboardingPage() {
             <div style={{ fontSize: ".86rem", color: "rgba(255,255,255,.74)", marginTop: 4 }}>
               {appConfig.appTagline}
             </div>
+            <div style={{ marginTop: 10 }}>
+              <DemoBadge />
+            </div>
           </div>
           <div
             style={{
@@ -153,6 +157,7 @@ export function OnboardingPage() {
 
         {/* Thẻ nội dung định danh */}
         <div className="card card-b" style={{ padding: 18, color: "var(--tx)" }}>
+          <DemoNote>{demoConfig.notes.onboarding}</DemoNote>
           <h2 style={{ fontSize: "1.06rem" }}>Định danh tài khoản</h2>
           <p className="sm muted" style={{ marginTop: 6 }}>
             {step === "zalo"

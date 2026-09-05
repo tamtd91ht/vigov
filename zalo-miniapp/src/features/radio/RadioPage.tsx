@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Note, SectionHead, SubHeader } from "@/components/common";
+import { DemoNote, Note, SectionHead, SubHeader } from "@/components/common";
+import { demoConfig } from "@/config/demo.config";
 import { DataState } from "@/components/DataState";
 import { useApiResource } from "@/hooks/useApiResource";
 import { contentService, distinctBy } from "@/services/content.service";
@@ -56,6 +57,7 @@ export function RadioPage() {
     <div className="app">
       <SubHeader title={PAGE_TITLE} />
       <div className="page plain">
+        <DemoNote>{demoConfig.notes.radio}</DemoNote>
         <PlayerCard />
 
         <div className="chips-row" style={{ margin: "16px 0 4px" }}>

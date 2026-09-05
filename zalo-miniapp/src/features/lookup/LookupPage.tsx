@@ -1,7 +1,8 @@
 import { useCallback, useRef, useState } from "react";
 import { Icon } from "@/components/Icon";
-import { EmptyState, Note, SectionHead, SubHeader, tint } from "@/components/common";
+import { DemoNote, EmptyState, Note, SectionHead, SubHeader, tint } from "@/components/common";
 import { appConfig } from "@/config/app.config";
+import { demoConfig } from "@/config/demo.config";
 import { lookupDossier } from "@/mocks/dossier.mock";
 import { zaloService } from "@/services/zalo";
 import { useToast } from "@/state/ToastContext";
@@ -109,6 +110,7 @@ export function LookupPage() {
     <div className="app">
       <SubHeader title="Tra cứu hồ sơ" />
       <div className="page plain">
+        <DemoNote>{demoConfig.notes.lookup}</DemoNote>
         {/* ----- Ô nhập mã / quét QR ----- */}
         <form
           className="card card-b"

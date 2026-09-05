@@ -6,6 +6,9 @@
   --navy:#1B3A5C; --blue:#3B82C4; --pink:#E91E8C; --green:#27AE60;
   --orange:#E67E22; --purple:#8E44AD; --red:#E74C3C; --teal:#17A2A2;
   --slate:#5B6C8F;
+  /* Vàng của nhãn DEMO — lấy đúng màu băng DEMO trên logo bản demo
+     (public/icon-demo-512.png) để app và icon nhìn ra cùng một bộ */
+  --amber:#FFB020;
   --bg:#FFFFFF; --bg2:#F5F7F9; --bd:#E5E8EB; --tx:#4A5568; --mut:#8896A6;
   --sh:0 1px 3px rgba(0,0,0,.07);
   --radius:14px; --radius-sm:10px;
@@ -176,6 +179,29 @@ textarea.finp{resize:vertical;min-height:110px;line-height:1.6}
   box-shadow:0 8px 26px rgba(27,58,92,.32);opacity:0;pointer-events:none;transition:.22s;z-index:90;
   display:flex;gap:8px;align-items:center;max-width:88vw}
 .toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- BẢN DEMO (VITE_DEMO_MODE) ---------- */
+/* Nhãn cạnh tiêu đề màn. flex:none để tiêu đề dài không bóp bẹp nhãn — nhãn này
+   là thứ bên xét duyệt tìm, méo một chữ là mất tác dụng. */
+.demo-badge{flex:none;background:var(--amber);color:var(--navy);
+  font-size:.62rem;font-weight:800;letter-spacing:.9px;line-height:1;
+  padding:4px 7px;border-radius:5px}
+
+/* Pop-up bắt buộc khi mở app. z-index trên cả toast (90) và bảng bản đồ (51):
+   không màn nào được phép đè lên lời cảnh báo này. */
+.demo-ov{position:fixed;inset:0;z-index:100;background:rgba(15,30,45,.55);
+  display:grid;place-items:center;padding:var(--pad);
+  padding-top:calc(var(--pad) + var(--sat-safe));animation:demo-fade .18s ease-out}
+.demo-dlg{width:100%;max-width:400px;max-height:100%;overflow-y:auto;
+  background:var(--bg);border-radius:18px;padding:22px 20px;
+  box-shadow:0 18px 44px rgba(15,30,45,.34)}
+.demo-dlg-ic{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;
+  background:color-mix(in srgb,var(--orange) 14%,transparent);margin-bottom:14px}
+.demo-dlg h2{font-size:1.12rem}
+.demo-dlg p{font-size:.86rem;line-height:1.6;color:var(--tx);margin-top:10px}
+.demo-dlg .btn{margin-top:18px}
+@keyframes demo-fade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.demo-ov{animation:none}}
 
 /* ---------- MINI PLAYER ---------- */
 .mini{position:fixed;left:0;right:0;bottom:calc(var(--nav-h) + env(safe-area-inset-bottom));

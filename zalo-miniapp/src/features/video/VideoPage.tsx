@@ -1,7 +1,8 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@/components/Icon";
-import { SubHeader, formatNumber } from "@/components/common";
+import { DemoNote, formatNumber, SubHeader } from "@/components/common";
+import { demoConfig } from "@/config/demo.config";
 import { DataState } from "@/components/DataState";
 import { useApiResource } from "@/hooks/useApiResource";
 import { contentService, distinctBy, youtubeId } from "@/services/content.service";
@@ -52,6 +53,7 @@ export function VideoPage() {
     <div className="app">
       <SubHeader title="Video tuyên truyền" />
       <div className="page plain">
+        <DemoNote>{demoConfig.notes.video}</DemoNote>
         <div className="chips-row" style={{ marginBottom: 14 }}>
           {[ALL_TOPICS, ...topics].map((t) => (
             <button key={t} className={`fchip ${t === topic ? "on" : ""}`} onClick={() => setTopic(t)}>

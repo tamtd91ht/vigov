@@ -111,6 +111,19 @@ có nhánh mô phỏng khi `appConfig.api.useMocks = true`.
 | `VITE_API_BASE_URL` | Phải là **domain công khai** của API — bên gọi là điện thoại người dân |
 | `VITE_USE_MOCKS` | Mặc định `false`. `true` để trình diễn offline |
 | `VITE_ZALO_APP_ID`, `VITE_ZALO_OA_ID` | Điền sau khi khách đăng ký Zalo OA |
+| `VITE_DEMO_MODE` | Mặc định `true` — bản demo. Xem mục 5b |
+
+### 5b. Chế độ demo
+
+`VITE_DEMO_MODE=true` (mặc định, kể cả khi quên khai biến) bật bốn thứ: pop-up
+"Đây là ứng dụng DEMO" khi mở app, nhãn `DEMO` cạnh tiêu đề mọi màn, dòng ghi
+chú "dữ liệu mô phỏng" ở đầu các màn nghiệp vụ, và tên app thành "ViGov Demo"
+(cả trong app lẫn `app-config.json`, do `scripts/zmp-prepare.mjs` đọc lại biến
+này). Lời văn nằm ở `src/config/demo.config.ts`.
+
+Đặt `false` để có bản chính thức — nhớ trỏ luôn `VITE_ORG_NAME` /
+`VITE_ORG_PARENT` về tên đơn vị thật, giá trị mặc định trong mã nguồn cố ý là
+tên hư cấu. Bối cảnh và các bước nộp: `06-ZALO-MO-TA-BAN-DEMO.md`.
 
 **CORS:** backend phải cho phép `https://h5.zdn.vn` — mọi Mini App chạy trong
 webview mang origin này.

@@ -1,7 +1,8 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { Icon } from "@/components/Icon";
-import { Chip, SectionHead, formatNumber } from "@/components/common";
+import { Chip, DemoNote, SectionHead, formatNumber } from "@/components/common";
 import { DataState } from "@/components/DataState";
+import { demoConfig } from "@/config/demo.config";
 import { useApiResource } from "@/hooks/useApiResource";
 import { useGoBack } from "@/hooks/useGoBack";
 import {
@@ -99,6 +100,7 @@ export function VideoDetailPage() {
       </div>
 
       <div className="page plain">
+        <DemoNote>{demoConfig.notes.video}</DemoNote>
         <DataState
           loading={resource.loading}
           error={resource.error}

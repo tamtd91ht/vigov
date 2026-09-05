@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/Icon";
+import { DemoBadge, DemoNote } from "@/components/common";
 import { appConfig } from "@/config/app.config";
+import { demoConfig } from "@/config/demo.config";
 import { useGoBack } from "@/hooks/useGoBack";
 import { slaText, type FeedbackCategory } from "@/config/categories";
 import { ApiError } from "@/services/api";
@@ -144,6 +146,7 @@ export function SendFeedbackPage() {
           <Icon name="back" size={20} />
         </button>
         <h2>Gửi phản ánh</h2>
+        <DemoBadge />
         <span className="tiny muted" style={{ fontWeight: 600 }}>
           Bước {step}/{TOTAL_STEPS}
         </span>
@@ -152,6 +155,7 @@ export function SendFeedbackPage() {
       <StepProgress current={step} />
 
       <div className="page plain">
+        <DemoNote>{demoConfig.notes.sendFeedback}</DemoNote>
         {step === 1 && <CategoryStep selected={category} onSelect={setCategory} />}
 
         {step === 2 && (

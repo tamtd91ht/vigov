@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "ViGov — Điều hành số cấp xã",
+    "title": "ViGov Demo — Điều hành số cấp xã",
     "headerColor": "#1B3A5C",
     "textColor": "white",
     "leftButton": "back",
@@ -10,11 +10,11 @@
     "hideAndroidBottomNavigationBar": false
   },
   "listCSS": [
-    "./assets/index-BgBmDUE7.css"
+    "./assets/index-BneSohPk.css"
   ],
   "listSyncJS": [
     "inline.js",
-    "./assets/index-tZ1eU3pU.js"
+    "./assets/index-Ac7ZHhpU.js"
   ],
   "listAsyncJS": []
 }

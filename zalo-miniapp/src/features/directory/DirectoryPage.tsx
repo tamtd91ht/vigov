@@ -1,7 +1,8 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import { Icon } from "@/components/Icon";
-import { EmptyState, IconBubble, SectionHead, SubHeader, tint } from "@/components/common";
+import { DemoNote, EmptyState, IconBubble, SectionHead, SubHeader, tint } from "@/components/common";
 import { appConfig } from "@/config/app.config";
+import { demoConfig } from "@/config/demo.config";
 import { useApiResource } from "@/hooks/useApiResource";
 import { contentService } from "@/services/content.service";
 import { zaloService } from "@/services/zalo";
@@ -136,6 +137,7 @@ export function DirectoryPage() {
     <div className="app">
       <SubHeader title="Danh bạ chính quyền" />
       <div className="page plain">
+        <DemoNote>{demoConfig.notes.directory}</DemoNote>
         <div className="tiny muted" style={{ marginBottom: 12 }}>
           {appConfig.org.name}
         </div>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="288" viewBox="0 0 1024 288">
+  <!-- Wordmark ngang "ViGov DEMO" — dung cho header, pop-up canh bao ban demo, tai lieu. -->
+  <g font-family="Segoe UI Black, Segoe UI, Arial Black, Inter, sans-serif" font-weight="900">
+    <rect x="28.8" y="28.8" width="230.4" height="230.4" rx="50.7" fill="#1B3A5C"/>
+    <text x="146" y="144" fill="#FFFFFF" font-size="106" letter-spacing="4.6"
+          text-anchor="middle" dominant-baseline="central">VG</text>
+    <text x="317" y="144" fill="#1B3A5C" font-size="121" dominant-baseline="central">ViGov</text>
+    <rect x="710" y="80.6" width="285" height="126.7" rx="35.5" fill="#FFB020"/>
+    <text x="856" y="144" fill="#1B3A5C" font-size="75" letter-spacing="8.6"
+          text-anchor="middle" dominant-baseline="central">DEMO</text>
+  </g>
+</svg>

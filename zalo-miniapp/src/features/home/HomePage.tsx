@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Icon } from "@/components/Icon";
-import { SectionHead } from "@/components/common";
+import { DemoBadge, SectionHead } from "@/components/common";
 import { DataState } from "@/components/DataState";
 import { appConfig } from "@/config/app.config";
 import { homeQuickActions } from "@/config/nav.config";
@@ -58,8 +58,11 @@ export function HomePage() {
             <span className="badge">{UNREAD_NOTIFICATIONS}</span>
           </button>
         </div>
-        <div className="org">
-          {appConfig.org.name} · {appConfig.org.parent}
+        <div className="org" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <DemoBadge />
+          <span>
+            {appConfig.org.name} · {appConfig.org.parent}
+          </span>
         </div>
       </div>
 

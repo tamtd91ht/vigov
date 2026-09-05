@@ -1,4 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
+import { appConfig } from "@/config/app.config";
+import { demoConfig } from "@/config/demo.config";
 import { useGoBack } from "@/hooks/useGoBack";
 import { Icon, type IconName } from "./Icon";
 import type { TicketStatus, TimelineStep } from "@/types";
@@ -30,6 +32,7 @@ export function SubHeader({ title, action }: { title: string; action?: ReactNode
         <Icon name="back" size={20} />
       </button>
       <h2>{title}</h2>
+      <DemoBadge />
       {action}
     </div>
   );
@@ -126,6 +129,28 @@ export function Note({ children, color = "var(--blue)", icon = "info" }: { child
     <div className="note" style={{ background: tint(color, 0.08), border: `1px solid ${tint(color, 0.3)}`, color: "var(--tx)" }}>
       <Icon name={icon} size={17} color={color} />
       <div style={{ flex: 1 }}>{children}</div>
+    </div>
+  );
+}
+
+/**
+ * Nhãn "DEMO" cạnh tiêu đề màn. Tự ẩn ở bản chính thức, nên các màn cứ đặt vào
+ * mà không cần bọc điều kiện — SubHeader đã có sẵn một cái, chỉ những màn tự
+ * dựng header riêng mới phải thêm tay.
+ */
+export function DemoBadge() {
+  if (!appConfig.demoMode) return null;
+  return <span className="demo-badge">{demoConfig.badge}</span>;
+}
+
+/** Ghi chú "đây là dữ liệu mô phỏng" ở đầu màn. Tự ẩn ở bản chính thức. */
+export function DemoNote({ children }: { children: ReactNode }) {
+  if (!appConfig.demoMode) return null;
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <Note icon="alert" color="var(--orange)">
+        {children}
+      </Note>
     </div>
   );
 }

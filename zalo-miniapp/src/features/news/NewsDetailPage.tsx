@@ -1,7 +1,8 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { Icon } from "@/components/Icon";
-import { Chip, SectionHead, formatNumber } from "@/components/common";
+import { Chip, DemoNote, SectionHead, formatNumber } from "@/components/common";
 import { DataState } from "@/components/DataState";
+import { demoConfig } from "@/config/demo.config";
 import { useApiResource } from "@/hooks/useApiResource";
 import { useGoBack } from "@/hooks/useGoBack";
 import { ApiError } from "@/services/api";
@@ -75,6 +76,7 @@ export function NewsDetailPage() {
       </div>
 
       <div className="page plain">
+        <DemoNote>{demoConfig.notes.news}</DemoNote>
         <DataState
           loading={detail.loading}
           error={detail.error}

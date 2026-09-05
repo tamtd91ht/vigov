@@ -1,8 +1,9 @@
 import { useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import { Icon, type IconName } from "@/components/Icon";
-import { formatNumber } from "@/components/common";
+import { DemoBadge, DemoNote, formatNumber } from "@/components/common";
 import { DataState } from "@/components/DataState";
+import { demoConfig } from "@/config/demo.config";
 import { useApiResource } from "@/hooks/useApiResource";
 import { contentService } from "@/services/content.service";
 import type { Article, ArticleType } from "@/types";
@@ -55,8 +56,10 @@ export function NewsPage() {
     <>
       <div className="subhead">
         <h2>Tin tức xã</h2>
+        <DemoBadge />
       </div>
       <div className="page">
+        <DemoNote>{demoConfig.notes.news}</DemoNote>
         <div className="chips-row" style={{ marginBottom: 14 }}>
           {ARTICLE_TYPES.map((t) => (
             <button key={t} className={`fchip ${t === type ? "on" : ""}`} onClick={() => setType(t)}>

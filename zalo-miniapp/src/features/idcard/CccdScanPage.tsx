@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Icon } from "@/components/Icon";
-import { Note, SectionHead, SubHeader, tint } from "@/components/common";
+import { DemoNote, Note, SectionHead, SubHeader, tint } from "@/components/common";
+import { demoConfig } from "@/config/demo.config";
 import { zaloDiagnostics, zaloService } from "@/services/zalo";
 import { useToast } from "@/state/ToastContext";
 import { CCCD_FIELD_ORDER, maskCccd, parseCccdQr, type CccdParseResult } from "./cccd";
@@ -62,6 +63,7 @@ export function CccdScanPage() {
     <div className="app">
       <SubHeader title="Quét thẻ căn cước" />
       <div className="page plain">
+        <DemoNote>{demoConfig.notes.cccd}</DemoNote>
         {/* ----- Nói rõ giới hạn TRƯỚC khi người dùng quét ----- */}
         <Note color="var(--orange)" icon="shield">
           Mã QR trên thẻ <b>không được ký số</b>. Cơ chế này chống được lỗi nhập liệu, nhưng{" "}

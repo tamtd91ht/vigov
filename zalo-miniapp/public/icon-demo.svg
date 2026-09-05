@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <!-- Logo ViGov DEMO — dung cho ban thu nghiem tren Zalo Mini App.
+       Cố y khac logo that (nen hong #E91E8C) de khong xung dot khi phat hanh ban chinh. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1B3A5C"/>
+      <stop offset="1" stop-color="#122841"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <rect y="381.4" width="512" height="130.6" fill="#FFB020"/>
+  <g font-family="Segoe UI Black, Segoe UI, Arial Black, Inter, sans-serif" font-weight="900"
+     text-anchor="middle" dominant-baseline="central">
+    <text x="259" y="191" fill="#FFFFFF" font-size="205" letter-spacing="6.1">VG</text>
+    <text x="264" y="447" fill="#1B3A5C" font-size="65" letter-spacing="15.4">DEMO</text>
+  </g>
+</svg>

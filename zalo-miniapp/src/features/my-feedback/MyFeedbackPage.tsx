@@ -2,6 +2,8 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Chip,
+  DemoBadge,
+  DemoNote,
   IconBubble,
   StarRating,
   slaLabel,
@@ -10,6 +12,7 @@ import {
 } from "@/components/common";
 import { DataState } from "@/components/DataState";
 import { categoryOf } from "@/config/categories";
+import { demoConfig } from "@/config/demo.config";
 import { useFeedback } from "@/state/FeedbackContext";
 import type { FeedbackTicket, TicketStatus } from "@/types";
 
@@ -67,9 +70,11 @@ export function MyFeedbackPage() {
     <>
       <div className="subhead">
         <h2>{PAGE_TITLE}</h2>
+        <DemoBadge />
       </div>
 
       <div className="page">
+        <DemoNote>{demoConfig.notes.myFeedback}</DemoNote>
         <div className="chips-row">
           <FilterChip
             label={ALL_LABEL}

@@ -2,13 +2,36 @@
  * Cấu hình cấp ứng dụng — điểm tập trung duy nhất đọc biến môi trường (VITE_*).
  * Mọi nơi khác trong mã nguồn KHÔNG đọc import.meta.env trực tiếp.
  */
+
+/**
+ * true = bản DEMO: app hiện pop-up cảnh báo khi mở, gắn nhãn "Demo" ở các màn
+ * mô phỏng, và tên app thành "ViGov Demo".
+ *
+ * MẶC ĐỊNH BẬT. Zalo từ chối xét duyệt ngày 05/09/2026 vì app mô phỏng thông
+ * tin cơ quan nhà nước mà không nói rõ là bản demo, nên bản đang phát hành là
+ * bản demo. Quên khai biến này mà app hiện thừa nhãn "Demo" thì chỉ xấu chứ
+ * không sai; ngược lại — bản demo mất nhãn — là đúng cái khiến hồ sơ bị từ
+ * chối, nên chọn mặc định nghiêng về phía an toàn.
+ *
+ * Chuyển sang bản chính thức: đặt VITE_DEMO_MODE=false (và trỏ VITE_ORG_NAME /
+ * VITE_ORG_PARENT về tên đơn vị thật). Nội dung hiển thị nằm ở
+ * src/config/demo.config.ts.
+ */
+const demoMode = (import.meta.env.VITE_DEMO_MODE ?? "true") === "true";
+
 export const appConfig = {
-  appName: "ViGov",
+  demoMode,
+  appName: demoMode ? "ViGov Demo" : "ViGov",
   appTagline: "Điều hành số cấp xã",
 
+  /**
+   * Giá trị dự phòng cố ý là tên hư cấu: bản demo hiển thị tên một xã có thật
+   * kèm tin tức và hồ sơ bịa ra chính là điều Zalo nêu khi từ chối hồ sơ.
+   * Tên đơn vị thật khai qua biến môi trường ở bản chính thức.
+   */
   org: {
-    name: import.meta.env.VITE_ORG_NAME ?? "Xã Đại Thắng",
-    parent: import.meta.env.VITE_ORG_PARENT ?? "Huyện Phú Xuyên · Thành phố Hà Nội",
+    name: import.meta.env.VITE_ORG_NAME ?? "Xã Demo",
+    parent: import.meta.env.VITE_ORG_PARENT ?? "Huyện Demo · Tỉnh Demo",
     short: import.meta.env.VITE_ORG_SHORT ?? "VG",
   },
 

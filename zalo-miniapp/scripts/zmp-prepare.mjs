@@ -32,6 +32,26 @@ const DIST = path.join(ROOT, 'dist');
 const CONFIG = path.join(ROOT, 'app-config.json');
 const INLINE = path.join(DIST, 'inline.js');
 
+/**
+ * Bản demo hay bản chính thức — đọc đúng thứ tự Vite nạp cấu hình:
+ * biến môi trường sẵn có (CI, Docker) > .env.local > .env.
+ *
+ * Cần ở đây vì app.title trong app-config.json là tiêu đề Zalo dựng, nằm ngoài
+ * bundle nên `import.meta.env` không với tới. Không có mảnh này thì đổi
+ * VITE_DEMO_MODE vẫn còn sót một chỗ mang tên bản kia, và đó là loại sai sót
+ * chỉ lộ ra khi hồ sơ đã nằm trên bàn xét duyệt.
+ */
+function isDemoBuild() {
+  if (process.env.VITE_DEMO_MODE !== undefined) return process.env.VITE_DEMO_MODE !== 'false';
+  for (const name of ['.env.local', '.env']) {
+    const file = path.join(ROOT, name);
+    if (!existsSync(file)) continue;
+    const hit = readFileSync(file, 'utf8').match(/^\s*VITE_DEMO_MODE\s*=\s*(\S*)/m);
+    if (hit) return hit[1] !== 'false';
+  }
+  return true; // mặc định giống src/config/app.config.ts
+}
+
 /** Mã băm trong tên tệp đổi theo mỗi lần build nên phải dò lại, không hardcode */
 function findAsset(extension) {
   const dir = path.join(DIST, 'assets');
@@ -91,6 +111,11 @@ const config = JSON.parse(readFileSync(CONFIG, 'utf8'));
 config.listSyncJS = ['inline.js', findAsset('.js')];
 config.listCSS = [findAsset('.css')];
 config.listAsyncJS = config.listAsyncJS ?? [];
+
+// 3b. Tiêu đề Zalo dựng phải nói đúng bản đang phát hành. Chỉ thêm/bớt chữ
+//     "Demo" vào tên có sẵn để không phải chép tên app vào hai chỗ.
+const baseTitle = config.app.title.replace(/^ViGov Demo\b/, 'ViGov');
+config.app.title = isDemoBuild() ? baseTitle.replace(/^ViGov\b/, 'ViGov Demo') : baseTitle;
 
 writeFileSync(CONFIG, `${JSON.stringify(config, null, 2)}\n`, 'utf8');
 

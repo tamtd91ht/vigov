@@ -1,6 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router-dom";
+import { DemoIntroDialog } from "./components/DemoIntroDialog";
 import { router } from "./router";
 import { SessionProvider } from "./state/SessionContext";
 import { SettingsProvider } from "./state/SettingsContext";
@@ -17,6 +18,8 @@ createRoot(document.getElementById("root")!).render(
           <RadioProvider>
             <ToastProvider>
               <RouterProvider router={router} />
+              {/* Pop-up cảnh báo bản demo — tự ẩn khi VITE_DEMO_MODE=false */}
+              <DemoIntroDialog />
             </ToastProvider>
           </RadioProvider>
         </FeedbackProvider>
