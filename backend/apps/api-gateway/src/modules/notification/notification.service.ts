@@ -310,7 +310,8 @@ export class NotificationService {
       return staff.map((s) => s.username);
     }
     const citizens = await this.citizenModel
-      .find({ status: 'active' })
+      // Không gửi cho tài khoản đã xoá mềm
+      .find({ status: 'active', deletedAt: null })
       .select('phone')
       .limit(BROADCAST_MAX_RECIPIENTS)
       .lean()

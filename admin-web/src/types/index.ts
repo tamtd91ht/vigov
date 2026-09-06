@@ -225,6 +225,10 @@ export interface CitizenUser {
   registeredAt: string;
   status: "active" | "locked";
   lockReason?: string;
+  /** Có giá trị nghĩa là đã xoá mềm: ẩn khỏi danh sách, dữ liệu vẫn còn */
+  deletedAt?: string;
+  deletedBy?: string;
+  deleteReason?: string;
 }
 
 /** Phiên đăng nhập */

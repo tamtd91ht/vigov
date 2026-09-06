@@ -138,3 +138,117 @@ describe('UsersService.changeStaffPassword', () => {
     expect(sessionUpdateMany).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Xoá tài khoản công dân là xoá MỀM.
+ *
+ * VÌ SAO ĐÁNG TEST RIÊNG: số điện thoại công dân là khoá liên kết tới hồ sơ một
+ * cửa và phản ánh đã gửi. Nếu một ngày ai đó đổi hai hàm dưới đây sang
+ * `deleteOne`/`findByIdAndDelete` thì dữ liệu xoá đi không lấy lại được, mà
+ * giao diện vẫn chạy y hệt — hỏng lặng lẽ. Hai điểm còn lại phải giữ: bản ghi
+ * đã xoá bị thu hồi phiên ngay, và chỉ tìm trong nhóm CHƯA xoá.
+ */
+describe('UsersService.deleteCitizenById', () => {
+  const CITIZEN_ID = '507f1f77bcf86cd799439011';
+
+  /** Tài liệu công dân giả — `get()` phục vụ các trường timestamps của Mongoose */
+  const citizenDoc = {
+    _id: CITIZEN_ID,
+    phone: '0987654321',
+    displayName: 'Trần Thị Hoa',
+    area: 'Thôn 1',
+    channel: 'zalo',
+    feedbackCount: 3,
+    status: 'active',
+    deletedAt: new Date('2026-09-06T00:00:00Z'),
+    deletedBy: 'admin',
+    get: () => undefined,
+  };
+
+  function makeCitizenService(doc: Record<string, unknown> | null = citizenDoc) {
+    // Khai kiểu jest.Mock để đọc được `mock.calls[i]` — jest.fn(() => …) suy ra danh sách tham số rỗng
+    const citizenFindOneAndUpdate: jest.Mock = jest.fn(() => queryChain(doc));
+    const sessionUpdateMany: jest.Mock = jest.fn(() => queryChain({ modifiedCount: 2 }));
+    const invalidateAll = jest.fn();
+
+    const service = new UsersService(
+      { findOneAndUpdate: citizenFindOneAndUpdate } as unknown as Model<CitizenUserDocument>,
+      {} as unknown as Model<StaffUserDocument>,
+      { updateMany: sessionUpdateMany } as unknown as Model<LoginSessionDocument>,
+      {} as unknown as Model<BlacklistRecordDocument>,
+      { get: () => undefined } as unknown as ConfigService,
+      { invalidateAll } as unknown as SessionRegistry,
+    );
+
+    return { service, citizenFindOneAndUpdate, sessionUpdateMany, invalidateAll };
+  }
+
+  it('đánh dấu deletedAt chứ không xoá tài liệu khỏi CSDL', async () => {
+    const { service, citizenFindOneAndUpdate } = makeCitizenService();
+
+    await service.deleteCitizenById(CITIZEN_ID, 'admin', ' Tài khoản kiểm thử ');
+
+    const [filter, update] = citizenFindOneAndUpdate.mock.calls[0] as [
+      Record<string, unknown>,
+      { $set: Record<string, unknown> },
+    ];
+    // Chỉ xoá được bản ghi CHƯA xoá — gọi lại lần hai phải ra 404 chứ không ghi đè mốc xoá
+    expect(filter).toMatchObject({ deletedAt: null });
+    expect(update.$set.deletedAt).toBeInstanceOf(Date);
+    expect(update.$set.deletedBy).toBe('admin');
+    // Lý do được cắt khoảng trắng thừa trước khi lưu
+    expect(update.$set.deleteReason).toBe('Tài khoản kiểm thử');
+  });
+
+  it('không nhập lý do thì không ghi trường rỗng vào bản ghi', async () => {
+    const { service, citizenFindOneAndUpdate } = makeCitizenService();
+
+    await service.deleteCitizenById(CITIZEN_ID, 'admin', '   ');
+
+    const update = citizenFindOneAndUpdate.mock.calls[0][1] as { $set: Record<string, unknown> };
+    expect(update.$set).not.toHaveProperty('deleteReason');
+  });
+
+  it('thu hồi mọi phiên đang mở của công dân đó và xoá bộ nhớ đệm phiên', async () => {
+    const { service, sessionUpdateMany, invalidateAll } = makeCitizenService();
+
+    const result = await service.deleteCitizenById(CITIZEN_ID, 'admin');
+
+    expect(sessionUpdateMany.mock.calls[0][0]).toEqual({ subject: '0987654321', revoked: false });
+    expect(invalidateAll).toHaveBeenCalledTimes(1);
+    expect(result.revokedSessions).toBe(2);
+  });
+
+  it('không tìm thấy (hoặc đã xoá rồi) thì báo lỗi và không đụng tới phiên', async () => {
+    const { service, sessionUpdateMany } = makeCitizenService(null);
+
+    await expect(service.deleteCitizenById(CITIZEN_ID, 'admin')).rejects.toThrow(
+      'Không tìm thấy tài khoản công dân',
+    );
+    expect(sessionUpdateMany).not.toHaveBeenCalled();
+  });
+
+  it('mã bản ghi sai định dạng thì chặn ngay, không truy vấn', async () => {
+    const { service, citizenFindOneAndUpdate } = makeCitizenService();
+
+    await expect(service.deleteCitizenById('khong-phai-objectid', 'admin')).rejects.toThrow(
+      'Mã bản ghi không hợp lệ',
+    );
+    expect(citizenFindOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it('khôi phục chỉ bỏ cờ xoá, dữ liệu công dân giữ nguyên', async () => {
+    const { service, citizenFindOneAndUpdate } = makeCitizenService();
+
+    const restored = await service.restoreCitizenById(CITIZEN_ID, 'admin');
+
+    const [filter, update] = citizenFindOneAndUpdate.mock.calls[0] as [
+      Record<string, unknown>,
+      { $set: Record<string, unknown>; $unset: Record<string, unknown> },
+    ];
+    expect(filter).toMatchObject({ deletedAt: { $ne: null } });
+    expect(update.$set).toEqual({ deletedAt: null });
+    expect(update.$unset).toEqual({ deletedBy: '', deleteReason: '' });
+    expect(restored.displayName).toBe('Trần Thị Hoa');
+  });
+});

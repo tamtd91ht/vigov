@@ -57,7 +57,8 @@ export class SessionRegistryProvider implements OnModuleInit {
   }
 
   private async isCitizenLocked(phone: string): Promise<boolean> {
-    const citizen = await this.citizenModel.findOne({ phone }).select('status').lean().exec();
-    return !!citizen && citizen.status === 'locked';
+    const citizen = await this.citizenModel.findOne({ phone }).select('status deletedAt').lean().exec();
+    // Tài khoản đã xoá mềm cũng phải mất hiệu lực ngay như tài khoản bị khoá
+    return !!citizen && (citizen.status === 'locked' || !!citizen.deletedAt);
   }
 }

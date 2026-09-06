@@ -38,7 +38,11 @@ export class PushProvider implements NotificationProvider {
       return { ok: false, detail: 'Chưa cấu hình dịch vụ thông báo đẩy' };
     }
 
-    const citizen = await this.citizenModel.findOne({ phone: msg.recipient }).select('pushTokens').exec();
+    // `deletedAt: null` — tài khoản đã xoá mềm thì không đẩy thông báo nữa
+    const citizen = await this.citizenModel
+      .findOne({ phone: msg.recipient, deletedAt: null })
+      .select('pushTokens')
+      .exec();
     const tokens = citizen?.pushTokens ?? [];
     if (tokens.length === 0) {
       return { ok: false, detail: 'Người nhận chưa đăng ký thiết bị nhận thông báo' };

@@ -164,7 +164,7 @@ export class CatalogsService {
 
   /** Thôn / tổ dân phố — lấy từ hồ sơ công dân Mini App */
   async areas(): Promise<{ items: string[] }> {
-    const rows = await this.citizenModel.distinct('area').exec();
+    const rows = await this.citizenModel.distinct('area', { deletedAt: null }).exec();
     return { items: this.uniqueStrings(rows) };
   }
 

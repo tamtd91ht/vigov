@@ -48,6 +48,14 @@ export class ListCitizensQueryDto extends PaginationQueryDto {
   @IsOptional()
   @IsIn(['active', 'locked'], { message: 'Trạng thái chỉ nhận: active, locked' })
   status?: string;
+
+  /**
+   * `true` thì CHỈ trả tài khoản đã xoá mềm (bộ lọc "Đã xoá" của Web Quản trị);
+   * không truyền thì danh sách chỉ có tài khoản chưa xoá.
+   */
+  @IsOptional()
+  @IsIn(['true', 'false'], { message: 'Tham số deleted chỉ nhận: true, false' })
+  deleted?: string;
 }
 
 /** Khoá tài khoản công dân — bắt buộc nêu lý do để lưu vết */
@@ -55,6 +63,13 @@ export class LockCitizenDto {
   @IsString()
   @IsNotEmpty({ message: 'Vui lòng nhập lý do khoá tài khoản' })
   reason: string;
+}
+
+/** Xoá mềm tài khoản công dân — lý do không bắt buộc, có thì lưu để truy vết */
+export class DeleteCitizenDto {
+  @IsOptional()
+  @IsString({ message: 'Lý do xoá không hợp lệ' })
+  reason?: string;
 }
 
 /** Lọc danh sách phiên đăng nhập theo kênh */

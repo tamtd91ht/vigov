@@ -25,12 +25,21 @@ export interface CitizenAccount {
   feedbackCount: number;
   status: AccountStatus;
   lockReason?: string;
+  /**
+   * Chỉ có giá trị với tài khoản đã xoá mềm — danh sách mặc định không trả bản
+   * ghi nào như vậy, chỉ bộ lọc "Đã xoá" mới thấy.
+   */
+  deletedAt?: string;
+  deletedBy?: string;
+  deleteReason?: string;
 }
 
 export interface CitizenQuery {
   q?: string;
   area?: string;
   status?: AccountStatus;
+  /** `true` để xem riêng danh sách tài khoản ĐÃ xoá mềm */
+  deleted?: boolean;
   page?: number;
   limit?: number;
 }
@@ -108,25 +117,37 @@ function mockDelay<T>(value: T): Promise<T> {
 
 // ─── Công dân ──────────────────────────────────────────────────────────────
 
+/** Chuyển bản ghi mock sang đúng hình dạng backend trả về */
+function toMockCitizen(c: (typeof citizenUsers)[number]): CitizenAccount {
+  return {
+    id: c.id,
+    phone: c.phoneMasked,
+    displayName: c.zaloName,
+    area: c.area,
+    channel: "zalo",
+    feedbackCount: c.feedbackCount,
+    status: c.status,
+    lockReason: c.lockReason,
+    deletedAt: c.deletedAt,
+    deletedBy: c.deletedBy,
+    deleteReason: c.deleteReason,
+  };
+}
+
 /** GET /users/citizens */
 export async function listCitizens(query: CitizenQuery = {}): Promise<Paged<CitizenAccount>> {
   if (appConfig.api.useMocks) {
     const items = citizenUsers
+      // Mặc định ẩn tài khoản đã xoá mềm, giống hành vi của backend
+      .filter((c) => (query.deleted ? !!c.deletedAt : !c.deletedAt))
       .filter((c) => (!query.area || c.area === query.area) && (!query.status || c.status === query.status))
       .filter((c) => !query.q || c.zaloName.toLowerCase().includes(query.q.toLowerCase()))
-      .map<CitizenAccount>((c) => ({
-        id: c.id,
-        phone: c.phoneMasked,
-        displayName: c.zaloName,
-        area: c.area,
-        channel: "zalo",
-        feedbackCount: c.feedbackCount,
-        status: c.status,
-        lockReason: c.lockReason,
-      }));
+      .map(toMockCitizen);
     return mockDelay({ items, total: items.length, page: query.page ?? 1, limit: query.limit ?? items.length });
   }
-  return apiClient.get<Paged<CitizenAccount>>(`/users/citizens${buildQuery({ ...query })}`);
+  return apiClient.get<Paged<CitizenAccount>>(
+    `/users/citizens${buildQuery({ ...query, deleted: query.deleted ? "true" : undefined })}`,
+  );
 }
 
 /** Thống kê tài khoản công dân cho 3 thẻ KPI đầu trang */
@@ -190,6 +211,43 @@ export async function unlockCitizen(id: string): Promise<CitizenAccount> {
     });
   }
   return apiClient.patch<CitizenAccount>(`/users/citizens/id/${encodeURIComponent(id)}/unlock`);
+}
+
+/**
+ * PATCH /users/citizens/id/:id/delete — XOÁ MỀM.
+ *
+ * Chỉ đánh dấu bản ghi là đã xoá: tài khoản biến mất khỏi danh sách và không
+ * đăng nhập lại được, nhưng dữ liệu vẫn nguyên trong CSDL vì số điện thoại còn
+ * là khoá liên kết tới hồ sơ một cửa và phản ánh đã gửi. Khôi phục lại được ở
+ * bộ lọc "Đã xoá". Yêu cầu quyền `users:admin`.
+ */
+export async function deleteCitizen(id: string, reason?: string): Promise<CitizenAccount> {
+  if (appConfig.api.useMocks) {
+    const found = citizenUsers.find((c) => c.id === id);
+    if (found) {
+      found.deletedAt = new Date().toISOString();
+      found.deletedBy = "admin";
+      found.deleteReason = reason?.trim() || undefined;
+    }
+    return mockDelay(found ? toMockCitizen(found) : ({ id } as CitizenAccount));
+  }
+  return apiClient.patch<CitizenAccount>(`/users/citizens/id/${encodeURIComponent(id)}/delete`, {
+    reason: reason?.trim() || undefined,
+  });
+}
+
+/** PATCH /users/citizens/id/:id/restore — đưa tài khoản đã xoá trở lại danh sách */
+export async function restoreCitizen(id: string): Promise<CitizenAccount> {
+  if (appConfig.api.useMocks) {
+    const found = citizenUsers.find((c) => c.id === id);
+    if (found) {
+      found.deletedAt = undefined;
+      found.deletedBy = undefined;
+      found.deleteReason = undefined;
+    }
+    return mockDelay(found ? toMockCitizen(found) : ({ id } as CitizenAccount));
+  }
+  return apiClient.patch<CitizenAccount>(`/users/citizens/id/${encodeURIComponent(id)}/restore`);
 }
 
 // ─── Phiên đăng nhập ───────────────────────────────────────────────────────

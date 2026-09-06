@@ -152,6 +152,32 @@ và số người gửi trong phiếu phản ánh.
 > Đây từng là lỗi thật: giao diện gửi số đã che lên route theo số thật và nhận
 > 404 ở mọi lần khoá tài khoản.
 
+### 5.1 Xoá tài khoản công dân là xoá MỀM
+
+`PATCH /users/citizens/id/:id/delete` (quyền `users:admin`) chỉ đặt `deletedAt`
+trên `citizen_users`, **không xoá tài liệu**: số điện thoại là khoá liên kết tới
+hồ sơ một cửa và phản ánh đã gửi — những dữ liệu xã có nghĩa vụ lưu trữ.
+
+Hệ quả của cờ `deletedAt`:
+
+| Nơi | Hành vi khi `deletedAt` có giá trị |
+|---|---|
+| `GET /users/citizens` | Ẩn khỏi danh sách; `?deleted=true` mới xem được |
+| `GET /users/citizens/stats` | Không tính vào cả ba con số |
+| Khoá / mở khoá | 404 — không thao tác trên bản ghi đã xoá |
+| Đăng nhập app / Zalo | Bị từ chối ngay ở `issueCitizenToken` |
+| Phiên đang mở | Bị thu hồi ngay lúc xoá, `SessionRegistry` trả 401 |
+| Thông báo ZNS / push | Không nằm trong danh sách người nhận |
+| Danh mục thôn/tổ (`/catalogs/areas`) | Không đóng góp giá trị |
+
+`PATCH /users/citizens/id/:id/restore` gỡ cờ và đưa tài khoản trở lại. Vì
+`issueCitizenToken` dùng `upsert` theo số điện thoại, nếu KHÔNG chặn đăng nhập
+thì người bị xoá vẫn dùng app bình thường mà quản trị viên không thấy họ ở đâu.
+
+Khác `erasedAt` (webhook Zalo, NĐ 13/2023): `erasedAt` là **vô danh hoá** — xoá
+thật các trường nhận dạng theo yêu cầu của chính chủ thể dữ liệu; `deletedAt` là
+quyết định hành chính của xã và đảo ngược được.
+
 ---
 
 ## 6. Quy ước bắt buộc

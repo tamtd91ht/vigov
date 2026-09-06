@@ -5,6 +5,7 @@ import {
   ChangeStaffPasswordDto,
   CreateBlacklistDto,
   CreateStaffDto,
+  DeleteCitizenDto,
   ListBlacklistQueryDto,
   ListCitizensQueryDto,
   ListSessionsQueryDto,
@@ -68,6 +69,27 @@ export class UsersController {
   @RequirePermission('users', 'edit')
   unlockCitizenById(@Param('id') id: string, @Req() req: AuthedRequest) {
     return this.users.unlockCitizenById(id, actorOf(req));
+  }
+
+  /**
+   * Xoá MỀM tài khoản công dân: ẩn khỏi danh sách và chặn đăng nhập, dữ liệu
+   * vẫn nằm nguyên trong CSDL. Dùng PATCH chứ không phải DELETE để nói đúng
+   * việc đang làm (đổi trạng thái bản ghi) và để mang được lý do xoá trong body.
+   *
+   * Quyền `users:admin` — nặng hơn khoá/mở khoá (`users:edit`), giống xoá tài
+   * khoản cán bộ, vì tài khoản đã xoá biến mất khỏi mọi danh sách.
+   */
+  @Patch('citizens/id/:id/delete')
+  @RequirePermission('users', 'admin')
+  deleteCitizenById(@Param('id') id: string, @Body() dto: DeleteCitizenDto, @Req() req: AuthedRequest) {
+    return this.users.deleteCitizenById(id, actorOf(req), dto.reason);
+  }
+
+  /** Khôi phục tài khoản đã xoá mềm */
+  @Patch('citizens/id/:id/restore')
+  @RequirePermission('users', 'admin')
+  restoreCitizenById(@Param('id') id: string, @Req() req: AuthedRequest) {
+    return this.users.restoreCitizenById(id, actorOf(req));
   }
 
   /** Chi tiết công dân theo số điện thoại (tương thích ngược) */

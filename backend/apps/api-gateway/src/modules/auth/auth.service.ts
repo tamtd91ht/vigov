@@ -357,6 +357,12 @@ export class AuthService {
       )
       .exec();
 
+    // Tài khoản bị quản trị viên xoá mềm coi như không còn tồn tại: bản ghi vẫn
+    // nằm trong CSDL (upsert ở trên tìm thấy nó) nhưng không được cấp token mới
+    if (citizen.deletedAt) {
+      throw new UnauthorizedException('Tài khoản đã bị xoá. Vui lòng liên hệ UBND xã.');
+    }
+
     if (citizen.status === 'locked') {
       throw new UnauthorizedException('Tài khoản đã bị khoá. Vui lòng liên hệ UBND xã.');
     }

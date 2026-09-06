@@ -11,7 +11,7 @@
  * - Ai được xem tab Blacklist (hiện mở cho mọi người truy cập phân hệ)?
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { PageHead } from "@/components/ui/PageHead";
 import { Tabs } from "@/components/ui/Tabs";
@@ -19,10 +19,14 @@ import { useToast } from "@/components/ui/Toast";
 import { formatNumber } from "@/lib/format";
 import { useApiResource } from "@/hooks/useApiResource";
 import { ApiError } from "@/services/api";
+import { authService, getServerSession } from "@/services/auth";
+import { findRole } from "@/config/roles.config";
 import {
+  deleteCitizen,
   fetchCitizenStats,
   listCitizens,
   lockCitizen,
+  restoreCitizen,
   unlockCitizen,
   type CitizenAccount,
 } from "@/services/users.service";
@@ -51,6 +55,8 @@ export function UsersPage() {
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [areaKey, setAreaKey] = useState("all");
+  /** Đang xem thùng tài khoản đã xoá mềm thay vì danh sách đang dùng */
+  const [deletedView, setDeletedView] = useState(false);
   const [page, setPage] = useState(1);
   /** Id công dân đang khoá/mở khoá — dùng id chứ không dùng SĐT vì SĐT trả ra đã bị che */
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -68,11 +74,19 @@ export function UsersPage() {
       listCitizens({
         q: debouncedSearch || undefined,
         area: areaKey === "all" ? undefined : areaKey,
+        deleted: deletedView || undefined,
         page,
         limit: CITIZEN_PAGE_SIZE,
       }),
-    [debouncedSearch, areaKey, page],
+    [debouncedSearch, areaKey, deletedView, page],
   );
+
+  /**
+   * Xoá / khôi phục tài khoản công dân yêu cầu quyền `users:admin` ở backend.
+   * Ẩn hẳn nút với vai trò không đủ quyền thay vì để bấm rồi nhận 403.
+   */
+  const session = useSyncExternalStore(authService.subscribe, authService.getSession, getServerSession);
+  const canDelete = findRole(session?.roleKey ?? "")?.modules.users === "admin";
 
   /** Ba thẻ thống kê đầu trang — máy chủ đếm sẵn trong một lượt gọi */
   const stats = useApiResource(fetchCitizenStats, []);
@@ -92,6 +106,32 @@ export function UsersPage() {
       refreshCitizens();
     } catch (err) {
       failed(err, "Không khoá được tài khoản công dân");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleDelete = async (user: CitizenAccount, reason: string) => {
+    setBusyId(user.id);
+    try {
+      await deleteCitizen(user.id, reason);
+      showToast(`Đã xoá tài khoản ${user.displayName}. Dữ liệu vẫn được giữ, khôi phục ở bộ lọc "Đã xoá".`);
+      refreshCitizens();
+    } catch (err) {
+      failed(err, "Không xoá được tài khoản công dân");
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleRestore = async (user: CitizenAccount) => {
+    setBusyId(user.id);
+    try {
+      await restoreCitizen(user.id);
+      showToast(`Đã khôi phục tài khoản ${user.displayName}`);
+      refreshCitizens();
+    } catch (err) {
+      failed(err, "Không khôi phục được tài khoản công dân");
     } finally {
       setBusyId(null);
     }
@@ -166,6 +206,14 @@ export function UsersPage() {
           busyId={busyId}
           onLock={handleLock}
           onUnlock={handleUnlock}
+          deletedView={deletedView}
+          onDeletedViewChange={(deleted) => {
+            setDeletedView(deleted);
+            setPage(1);
+          }}
+          canDelete={canDelete}
+          onDelete={handleDelete}
+          onRestore={handleRestore}
         />
       )}
       {tab === "sessions" && <SessionTables />}

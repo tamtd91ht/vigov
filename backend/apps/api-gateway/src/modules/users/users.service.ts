@@ -55,6 +55,15 @@ const EMBEDDED_PHONE_PATTERN = /(?<!\d)0\d{9}(?!\d)/g;
 const CITIZEN_SESSION_KINDS = ['app', 'zalo'];
 
 /**
+ * Điều kiện "chưa bị xoá mềm". `deletedAt: null` khớp CẢ tài liệu thiếu hẳn
+ * trường này (dữ liệu tạo trước khi có tính năng xoá) lẫn tài liệu đã khôi phục.
+ */
+const NOT_DELETED: FilterQuery<CitizenUserDocument> = { deletedAt: null };
+
+/** Điều kiện "đã bị xoá mềm" — dùng cho bộ lọc "Đã xoá" của Web Quản trị */
+const IS_DELETED: FilterQuery<CitizenUserDocument> = { deletedAt: { $ne: null } };
+
+/**
  * Cửa sổ tính "công dân hoạt động gần đây" cho thẻ thống kê.
  * Mặc định 30 ngày, có thể chỉnh bằng biến môi trường CITIZEN_ACTIVE_WINDOW_DAYS.
  */
@@ -137,6 +146,10 @@ export class UsersService {
       createdAt: doc.get('createdAt') as Date | undefined,
       // Lần hoạt động gần nhất — suy từ phiên đăng nhập, chỉ có khi tra được
       lastActiveAt: lastActiveAt ?? (doc.get('lastActiveAt') as Date | undefined),
+      // Chỉ có giá trị với bản ghi đã xoá mềm; danh sách mặc định không trả bản ghi nào như vậy
+      deletedAt: doc.deletedAt ?? undefined,
+      deletedBy: doc.deletedBy,
+      deleteReason: doc.deleteReason,
     };
   }
 
@@ -207,7 +220,8 @@ export class UsersService {
     const page = query.page ?? DEFAULT_PAGE;
     const limit = query.limit ?? DEFAULT_PAGE_SIZE;
 
-    const filter: FilterQuery<CitizenUserDocument> = {};
+    // Mặc định ẩn tài khoản đã xoá mềm; `deleted=true` là bộ lọc xem riêng thùng đã xoá
+    const filter: FilterQuery<CitizenUserDocument> = { ...(query.deleted === 'true' ? IS_DELETED : NOT_DELETED) };
     if (query.area) filter.area = query.area;
     if (query.status) filter.status = query.status;
     if (query.q) {
@@ -242,16 +256,23 @@ export class UsersService {
    */
   async citizenStats() {
     const since = new Date(Date.now() - this.activeWindowDays * MS_PER_DAY);
+    // Ba con số đều KHÔNG tính tài khoản đã xoá mềm, khớp với danh sách bên dưới
     const [total, locked, activeSubjects] = await Promise.all([
-      this.citizenModel.countDocuments().exec(),
-      this.citizenModel.countDocuments({ status: 'locked' }).exec(),
+      this.citizenModel.countDocuments(NOT_DELETED).exec(),
+      this.citizenModel.countDocuments({ ...NOT_DELETED, status: 'locked' }).exec(),
       this.sessionModel
         .distinct('subject', { kind: { $in: CITIZEN_SESSION_KINDS }, lastActiveAt: { $gte: since } })
         .exec(),
     ]);
+    // Lọc lại qua bảng công dân: chủ nhân của phiên có thể đã bị xoá mềm,
+    // và `subject` cũ có thể không còn ứng với tài khoản nào
+    const activeCount = await this.citizenModel
+      .countDocuments({ ...NOT_DELETED, phone: { $in: activeSubjects } })
+      .exec();
+
     return {
       total,
-      activeLast30Days: activeSubjects.length,
+      activeLast30Days: activeCount,
       locked,
       /** Trả kèm cửa sổ thực tế đang áp dụng để giao diện hiển thị đúng nhãn */
       windowDays: this.activeWindowDays,
@@ -296,6 +317,50 @@ export class UsersService {
     return this.lockCitizenBy({ _id: new Types.ObjectId(id) }, reason, actor);
   }
 
+  /**
+   * Xoá mềm tài khoản công dân theo `id`: đánh dấu `deletedAt` chứ KHÔNG xoá
+   * tài liệu — số điện thoại còn là khoá liên kết tới hồ sơ và phản ánh đã gửi.
+   *
+   * Kèm theo là thu hồi mọi phiên đang mở: tài khoản đã xoá không được dùng
+   * tiếp bằng token còn hiệu lực, và cũng không đăng nhập lại được
+   * (AuthService chặn ở `issueCitizenToken`).
+   */
+  async deleteCitizenById(id: string, actor: string, reason?: string) {
+    this.assertObjectId(id);
+    const trimmed = reason?.trim();
+    const doc = await this.citizenModel
+      .findOneAndUpdate(
+        { _id: new Types.ObjectId(id), ...NOT_DELETED },
+        { $set: { deletedAt: new Date(), deletedBy: actor, ...(trimmed ? { deleteReason: trimmed } : {}) } },
+        { new: true },
+      )
+      .exec();
+    if (!doc) throw new NotFoundException('Không tìm thấy tài khoản công dân');
+
+    const sessions = await this.sessionModel
+      .updateMany({ subject: doc.phone, revoked: false }, { $set: { revoked: true } })
+      .exec();
+    // Xoá bộ nhớ đệm của sổ phiên, nếu không token vừa thu hồi còn sống thêm 10 giây
+    this.sessions.invalidateAll();
+
+    return { ...this.toCitizenView(doc), revokedSessions: sessions.modifiedCount };
+  }
+
+  /** Khôi phục tài khoản đã xoá mềm — dữ liệu vẫn nguyên nên chỉ cần bỏ cờ xoá */
+  async restoreCitizenById(id: string, actor: string) {
+    this.assertObjectId(id);
+    void actor; // người thực hiện đã được AuditInterceptor ghi vết
+    const doc = await this.citizenModel
+      .findOneAndUpdate(
+        { _id: new Types.ObjectId(id), ...IS_DELETED },
+        { $set: { deletedAt: null }, $unset: { deletedBy: '', deleteReason: '' } },
+        { new: true },
+      )
+      .exec();
+    if (!doc) throw new NotFoundException('Không tìm thấy tài khoản công dân đã xoá');
+    return this.toCitizenView(doc);
+  }
+
   /** Mở khoá công dân: bỏ trạng thái khoá và gỡ hiệu lực các bản ghi chặn tương ứng */
   async unlockCitizen(phone: string, actor: string) {
     return this.unlockCitizenBy({ phone }, actor);
@@ -312,7 +377,7 @@ export class UsersService {
     // Khoá tài khoản phải làm token đang lưu mất hiệu lực ngay (P5-08)
     this.sessions.invalidateAll();
     const doc = await this.citizenModel
-      .findOneAndUpdate(filter, { $set: { status: 'locked', lockReason: reason } }, { new: true })
+      .findOneAndUpdate({ ...filter, ...NOT_DELETED }, { $set: { status: 'locked', lockReason: reason } }, { new: true })
       .exec();
     if (!doc) throw new NotFoundException('Không tìm thấy tài khoản công dân');
 
@@ -324,7 +389,7 @@ export class UsersService {
   /** Thân chung của mở khoá tài khoản */
   private async unlockCitizenBy(filter: FilterQuery<CitizenUserDocument>, actor: string) {
     const doc = await this.citizenModel
-      .findOneAndUpdate(filter, { $set: { status: 'active' }, $unset: { lockReason: '' } }, { new: true })
+      .findOneAndUpdate({ ...filter, ...NOT_DELETED }, { $set: { status: 'active' }, $unset: { lockReason: '' } }, { new: true })
       .exec();
     if (!doc) throw new NotFoundException('Không tìm thấy tài khoản công dân');
 

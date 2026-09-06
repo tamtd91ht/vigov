@@ -49,7 +49,7 @@ admin-web/src/
 | `/reports` | Báo cáo | Kết xuất Excel; PDF/PPTX trả 501 ở Phase 1 |
 | `/settings` | Cấu hình | SLA, cây tổ chức, lĩnh vực phản ánh, tài khoản cán bộ |
 | `/cms` | Nội dung | Bài viết, video, truyền thanh, gửi thông báo hàng loạt |
-| `/users` | Người dùng Mini App | Công dân, phiên đăng nhập, danh sách chặn |
+| `/users` | Người dùng Mini App | Công dân, phiên đăng nhập, danh sách chặn; xoá mềm tài khoản công dân (chỉ vai trò quản trị, khôi phục ở bộ lọc "Đã xoá") |
 | `/login` | Đăng nhập | Ngoài nhóm dashboard |
 
 ---
