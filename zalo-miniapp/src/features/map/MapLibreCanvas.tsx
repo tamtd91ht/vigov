@@ -26,6 +26,9 @@ import type { MapCanvasProps } from "./MapCanvas";
 /** Ghim to hơn bản web: 15px là quá nhỏ cho ngón tay */
 const PIN_SIZE = 20;
 
+/** Quá thời gian này mà style chưa nạp xong thì coi là hỏng (mạng 3G ở xã có thể chậm) */
+const STYLE_LOAD_TIMEOUT_MS = 15_000;
+
 export function MapLibreCanvas({
   layers,
   pins,
@@ -37,6 +40,13 @@ export function MapLibreCanvas({
   const mapRef = useRef<MapLibreMap | null>(null);
   const markersRef = useRef<Marker[]>([]);
   const [failed, setFailed] = useState(false);
+
+  /**
+   * Bản đồ đã dựng xong chưa. Cần một STATE chứ không chỉ `mapRef`: việc dựng
+   * là bất đồng bộ, nếu dữ liệu ghim về trước thì effect vẽ ghim thoát sớm một
+   * lần rồi không bao giờ chạy lại — bản đồ có nền mà không có ghim nào.
+   */
+  const [mapReady, setMapReady] = useState(false);
 
   const colorByLayer = new Map(layers.map((l) => [l.key, l.color]));
   const visible = pins.filter((p) => activeLayerKeys.includes(p.layerKey));
@@ -66,6 +76,14 @@ export function MapLibreCanvas({
         created.on("click", () => onPinSelect(null));
         created.on("error", () => setFailed(true));
         mapRef.current = created;
+        setMapReady(true);
+
+        /* Lưới an toàn: worker của MapLibre chết thì style đứng chờ vĩnh viễn mà
+           KHÔNG phát `error` — người dùng chỉ thấy khung trắng. Đã gặp thật. */
+        const guard = window.setTimeout(() => {
+          if (mapRef.current && !mapRef.current.isStyleLoaded()) setFailed(true);
+        }, STYLE_LOAD_TIMEOUT_MS);
+        created.once("styledata", () => window.clearTimeout(guard));
       } catch {
         setFailed(true);
       }
@@ -125,15 +143,17 @@ export function MapLibreCanvas({
     return () => {
       cancelled = true;
     };
+    /* `mapReady` phải có: dữ liệu ghim thường về TRƯỚC khi bản đồ dựng xong,
+       thiếu nó thì effect thoát sớm một lần rồi không bao giờ chạy lại. */
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pins, activeLayerKeys, selectedPin]);
+  }, [pins, activeLayerKeys, selectedPin, mapReady]);
 
   /** Ghim vừa chọn nằm ngoài khung thì đưa vào giữa — bảng chi tiết che mất nửa dưới */
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !selectedPin || typeof selectedPin.lat !== "number" || typeof selectedPin.lng !== "number") return;
     map.easeTo({ center: [selectedPin.lng, selectedPin.lat], duration: 350 });
-  }, [selectedPin]);
+  }, [selectedPin, mapReady]);
 
   return (
     <div className="mapwrap">

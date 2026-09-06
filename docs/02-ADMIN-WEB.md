@@ -175,6 +175,16 @@ Ba thứ dễ vấp:
 3. **Ghim thiếu `lat/lng`** không đặt được lên nền thật. Dữ liệu seed đã sinh
    toạ độ tất định từ x/y; ghim thêm sau mà thiếu toạ độ thì adapter hiện đếm số
    lượng ở góc màn hình thay vì đặt sai chỗ.
+4. **`maplibre-gl` ghim CHÍNH XÁC ở `5.24.0`, không dùng `^`.** Bản 6 tách worker
+   ra tệp riêng và nạp nó bằng `new URL("maplibre-gl-worker.mjs", import.meta.url)`.
+   Qua bundler của Next, đường dẫn đó trỏ vào `/_next/static/chunks/` — nơi tệp
+   worker KHÔNG được phát hành, nên trả 404. Hậu quả: worker chết, style đứng chờ
+   vĩnh viễn, **không có tile nào được tải và KHÔNG có lỗi nào hiện ra** — người
+   dùng chỉ thấy khung trắng có nút thu phóng và dòng ghi công. Bản 5 nhúng worker
+   thẳng vào bundle nên không có vấn đề này. Nâng lên v6 thì phải tự phát hành tệp
+   worker và gọi `maplibregl.setWorkerUrl()`.
+5. **Lưới an toàn**: quá 12 giây mà `isStyleLoaded()` vẫn false thì adapter hiện
+   thông báo hỏng. Có nó vì kiểu hỏng ở mục 4 không phát sự kiện `error` nào.
 
 > **Pháp lý khi chốt nhà cung cấp:** nền dựng từ OpenStreetMap thể hiện Hoàng Sa
 > – Trường Sa theo cách trung lập của cộng đồng quốc tế, không theo cách chính

@@ -34,6 +34,13 @@ const FOCUS_ZOOM = 16;
 /** Đường kính ghim (px) — khớp `.pin` trong globals.css */
 const PIN_SIZE = 15;
 
+/**
+ * Quá thời gian này mà style chưa nạp xong thì coi là hỏng.
+ * 12 giây: đủ rộng cho mạng chậm ở xã, đủ ngắn để người dùng không ngồi chờ
+ * một khung trắng vô vọng.
+ */
+const STYLE_LOAD_TIMEOUT_MS = 12_000;
+
 export function MapLibreCanvas({
   layers,
   pins,
@@ -50,6 +57,18 @@ export function MapLibreCanvas({
   /** Vị trí pixel của popup, chiếu lại mỗi khi bản đồ di chuyển */
   const [popupAt, setPopupAt] = useState<{ x: number; y: number } | null>(null);
   const [failed, setFailed] = useState(false);
+
+  /**
+   * Bản đồ đã dựng xong chưa.
+   *
+   * VÌ SAO CẦN MỘT STATE, KHÔNG CHỈ `mapRef`: việc dựng bản đồ là bất đồng bộ
+   * (nạp động thư viện rồi mới tạo Map), nên `mapRef.current` còn null trong
+   * vài trăm ms đầu. Effect vẽ ghim bên dưới chạy theo `pins`; nếu dữ liệu về
+   * TRƯỚC khi bản đồ dựng xong thì nó thoát sớm, và vì sau đó không dependency
+   * nào đổi nữa nên **ghim không bao giờ được vẽ**. Đây là lỗi thật đã gặp:
+   * bản đồ hiện nền nhưng không có một ghim nào.
+   */
+  const [mapReady, setMapReady] = useState(false);
 
   const layerById = new Map(layers.map((l) => [l.id, l]));
   const selectedLayer = selectedPin ? layerById.get(selectedPin.layerId) : undefined;
@@ -90,6 +109,20 @@ export function MapLibreCanvas({
         created.on("click", () => onPinSelect(null));
         created.on("error", () => setFailed(true));
         mapRef.current = created;
+        setMapReady(true);
+
+        /*
+         * LƯỚI AN TOÀN cho kiểu hỏng "trắng mà không báo gì".
+         *
+         * Đã gặp thật: worker của MapLibre không nạp được, style đứng chờ vĩnh
+         * viễn, `error` KHÔNG hề phát ra — người dùng chỉ thấy khung trắng có
+         * nút thu phóng. Sau ngưỡng dưới đây mà style vẫn chưa xong thì coi như
+         * hỏng và hiện thông báo, thay vì để người dùng ngồi đoán.
+         */
+        const guard = window.setTimeout(() => {
+          if (mapRef.current && !mapRef.current.isStyleLoaded()) setFailed(true);
+        }, STYLE_LOAD_TIMEOUT_MS);
+        created.once("styledata", () => window.clearTimeout(guard));
       } catch {
         // Không tải được thư viện (mạng chặn CDN nội bộ, chunk lỗi) — báo dịu, không làm trắng trang
         setFailed(true);
@@ -143,8 +176,11 @@ export function MapLibreCanvas({
     return () => {
       cancelled = true;
     };
+    /* `mapReady` PHẢI nằm trong danh sách: dữ liệu ghim thường về trước khi bản
+       đồ dựng xong, không có nó thì effect thoát sớm một lần rồi không bao giờ
+       chạy lại — bản đồ có nền mà không có ghim nào. */
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pins, activeLayerIds, selectedPin]);
+  }, [pins, activeLayerIds, selectedPin, mapReady]);
 
   // ─── Bám popup theo ghim đang chọn ─────────────────────────────────────────
   useEffect(() => {
@@ -167,7 +203,8 @@ export function MapLibreCanvas({
     return () => {
       map.off("move", reproject);
     };
-  }, [selectedPin]);
+    // `mapReady` cùng lý do như effect vẽ ghim ở trên
+  }, [selectedPin, mapReady]);
 
   return (
     <div className="mapwrap" onClick={() => onPinSelect(null)}>

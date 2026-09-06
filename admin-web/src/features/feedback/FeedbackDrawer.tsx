@@ -21,6 +21,8 @@ import { Tabs } from "@/components/ui/Tabs";
 import { Timeline } from "@/components/ui/Timeline";
 import { useToast } from "@/components/ui/Toast";
 import { categoryCover } from "./FeedbackGrid";
+import { appConfig } from "@/config/app.config";
+import { LocationMap } from "@/components/ui/LocationMap";
 import { MiniMap } from "./MiniMap";
 
 type PanelMode = "assign" | "transfer" | "resolve" | null;
@@ -99,6 +101,8 @@ export function FeedbackDrawer({
   saving = false,
 }: FeedbackDrawerProps) {
   const { showToast } = useToast();
+  /** Đã chốt provider bản đồ chưa — `mock` là dùng khối mô phỏng */
+  const useRealMap = appConfig.map.provider !== "mock";
   const [tab, setTab] = useState("progress");
   const [panel, setPanel] = useState<PanelMode>(null);
   // Danh mục dùng chung lấy từ API (GET /catalogs/staff, /catalogs/departments)
@@ -436,13 +440,28 @@ export function FeedbackDrawer({
 
           <div className="gsec">
             <h4>Vị trí phản ánh</h4>
-            <MiniMap
-              color={cat.color}
-              label={item.location}
-              x={pin.x}
-              y={pin.y}
-              onClick={() => showToast(`Đã mở bản đồ chi tiết vị trí ${item.location}`)}
-            />
+            {/*
+              Có toạ độ thật và đã chọn provider bản đồ → hiện bản đồ nền thật.
+              Thiếu một trong hai thì quay về khối mô phỏng: thà vẽ sơ đồ ước lệ
+              còn hơn một khung trống hoặc một điểm đặt sai chỗ.
+            */}
+            {useRealMap && typeof item.lat === "number" && typeof item.lng === "number" ? (
+              <LocationMap
+                key={item.code}
+                lat={item.lat}
+                lng={item.lng}
+                color={cat.color}
+                label={item.location}
+              />
+            ) : (
+              <MiniMap
+                color={cat.color}
+                label={item.location}
+                x={pin.x}
+                y={pin.y}
+                onClick={() => showToast(`Đã mở bản đồ chi tiết vị trí ${item.location}`)}
+              />
+            )}
           </div>
 
           <div className="gsec">

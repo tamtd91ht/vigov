@@ -3,6 +3,7 @@ import { Icon } from "@/components/Icon";
 import { Note } from "@/components/common";
 import { appConfig } from "@/config/app.config";
 import { zaloService } from "@/services/zalo";
+import { LocationPreviewMap } from "@/components/LocationPreviewMap";
 
 /** Giới hạn nhập liệu — thống nhất với Web Quản trị */
 export const MAX_TITLE_LEN = 120;
@@ -218,6 +219,9 @@ export function DetailStep({
                 {editingAddress ? "Xong" : "Sửa"}
               </button>
             </div>
+            {/* Người dân phải THẤY điểm mình đang báo — một dòng toạ độ thì không ai
+                kiểm tra được. GPS lệch vài trăm mét là cán bộ tới nhầm nơi. */}
+            <LocationPreviewMap lat={location.lat} lng={location.lng} />
           </div>
         )}
 
