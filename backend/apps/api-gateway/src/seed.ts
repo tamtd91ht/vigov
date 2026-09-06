@@ -14,6 +14,7 @@ import { Logger } from '@nestjs/common';
 import { getModelToken } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
+import { checkPasswordPolicy } from '@vigov/shared';
 import {
   Article,
   type ArticleDocument,
@@ -214,6 +215,23 @@ async function seed() {
   logger.log(`  • ${ADMIN_USERNAME} / ${ADMIN_PASSWORD}  (Quản trị hệ thống — dùng để đăng nhập nhanh)`);
   logger.log(`  • 9 tài khoản cán bộ theo danh bạ xã, mật khẩu: ${DEFAULT_PASSWORD}`);
   logger.warn('Đổi mật khẩu ngay trước khi đưa lên môi trường thật.');
+
+  /*
+   * Seed ghi thẳng passwordHash nên KHÔNG đi qua chính sách mật khẩu (T-10) —
+   * cố tình, để bản demo giữ được tài khoản đăng nhập nhanh. Nhưng phải nói rõ
+   * khi mật khẩu seed không đạt chuẩn, nếu không người triển khai sẽ tưởng
+   * mình đã có một tài khoản hợp lệ, rồi tới lúc chính chủ đổi mật khẩu mới
+   * phát hiện mật khẩu hiện tại không thể đặt lại được.
+   */
+  for (const [label, password] of [
+    [`tài khoản quản trị ${ADMIN_USERNAME}`, ADMIN_PASSWORD],
+    ['9 tài khoản cán bộ', DEFAULT_PASSWORD],
+  ] as const) {
+    const problem = checkPasswordPolicy(password);
+    if (problem) {
+      logger.warn(`Mật khẩu seed của ${label} KHÔNG đạt chính sách hiện hành: ${problem}`);
+    }
+  }
 
   /* ── Cấu hình SLA ─────────────────────────────────────────────────────── */
 

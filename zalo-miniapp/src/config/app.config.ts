@@ -17,7 +17,34 @@
  * VITE_ORG_PARENT về tên đơn vị thật). Nội dung hiển thị nằm ở
  * src/config/demo.config.ts.
  */
-const demoMode = (import.meta.env.VITE_DEMO_MODE ?? "true") === "true";
+/**
+ * Đọc biến môi trường, coi **chuỗi rỗng là CHƯA ĐẶT**.
+ *
+ * VÌ SAO KHÔNG DÙNG `??` TRỰC TIẾP: `??` chỉ rơi về mặc định khi giá trị là
+ * `undefined`, còn chuỗi rỗng thì nó nhận. Mà đường triển khai thật sinh ra
+ * đúng chuỗi rỗng: `docker-compose.yml` truyền `${BIẾN:-}` cho mọi biến không
+ * khai trong `.env`, Dockerfile gán tiếp thành `ENV BIẾN=`, rồi Vite nhúng
+ * chuỗi rỗng đó vào bundle. Hậu quả: tên xã hiện thành chuỗi trống, tâm bản đồ
+ * thành `Number("") = 0` (giữa Vịnh Guinea), style bản đồ thành URL rỗng — tất
+ * cả đều KHÔNG báo lỗi.
+ */
+function envText(value: string | undefined, fallback: string): string {
+  const trimmed = (value ?? "").trim();
+  return trimmed === "" ? fallback : trimmed;
+}
+
+/** Như `envText` nhưng cho số; giá trị không phải số cũng rơi về mặc định */
+function envNumber(value: string | undefined, fallback: number): number {
+  const parsed = Number(envText(value, String(fallback)));
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+/** Cờ bật/tắt: chỉ đúng chữ "true" là bật; rỗng ⇒ dùng mặc định */
+function envFlag(value: string | undefined, fallback: boolean): boolean {
+  return envText(value, fallback ? "true" : "false") === "true";
+}
+
+const demoMode = envFlag(import.meta.env.VITE_DEMO_MODE, true);
 
 export const appConfig = {
   demoMode,
@@ -30,26 +57,26 @@ export const appConfig = {
    * Tên đơn vị thật khai qua biến môi trường ở bản chính thức.
    */
   org: {
-    name: import.meta.env.VITE_ORG_NAME ?? "Xã Demo",
-    parent: import.meta.env.VITE_ORG_PARENT ?? "Huyện Demo · Tỉnh Demo",
-    short: import.meta.env.VITE_ORG_SHORT ?? "VG",
+    name: envText(import.meta.env.VITE_ORG_NAME, "Xã Demo"),
+    parent: envText(import.meta.env.VITE_ORG_PARENT, "Huyện Demo · Tỉnh Demo"),
+    short: envText(import.meta.env.VITE_ORG_SHORT, "VG"),
   },
 
   api: {
-    baseUrl: import.meta.env.VITE_API_BASE_URL ?? "http://localhost:3001/api/v1",
+    baseUrl: envText(import.meta.env.VITE_API_BASE_URL, "http://localhost:3001/api/v1"),
     /**
      * true = dùng dữ liệu mẫu trong src/mocks thay vì gọi backend.
      * Mặc định TẮT: từ P5-03 các màn đã nối API thật; bật lại khi cần
      * trình diễn offline (không có máy chủ). Nhánh rẽ nằm trong các service.
      */
-    useMocks: (import.meta.env.VITE_USE_MOCKS ?? "false") === "true",
+    useMocks: envFlag(import.meta.env.VITE_USE_MOCKS, false),
     /** Độ trễ giả lập khi dùng mock */
     mockDelayMs: 320,
   },
 
   zalo: {
-    appId: import.meta.env.VITE_ZALO_APP_ID ?? "",
-    oaId: import.meta.env.VITE_ZALO_OA_ID ?? "",
+    appId: envText(import.meta.env.VITE_ZALO_APP_ID, ""),
+    oaId: envText(import.meta.env.VITE_ZALO_OA_ID, ""),
     /**
      * true = zaloService trả dữ liệu mẫu thay vì gọi zmp-sdk.
      *
@@ -62,7 +89,7 @@ export const appConfig = {
      * Mặc định TẮT: bản chạy trong Zalo phải dùng SDK thật. Chỉ bật khi phát
      * triển trên trình duyệt thường và muốn có dữ liệu mẫu cho luồng quét.
      */
-    useMockSdk: (import.meta.env.VITE_USE_MOCK_SDK ?? "false") === "true",
+    useMockSdk: envFlag(import.meta.env.VITE_USE_MOCK_SDK, false),
   },
 
   /**
@@ -78,17 +105,17 @@ export const appConfig = {
    * Zalo Developers. Chưa khai thì tile im lặng không tải được.
    */
   map: {
-    provider: import.meta.env.VITE_MAP_PROVIDER ?? "mock",
-    styleUrl: import.meta.env.VITE_MAP_STYLE_URL ?? "https://tiles.openfreemap.org/styles/positron",
+    provider: envText(import.meta.env.VITE_MAP_PROVIDER, "mock"),
+    styleUrl: envText(import.meta.env.VITE_MAP_STYLE_URL, "https://tiles.openfreemap.org/styles/positron"),
     center: {
-      lat: Number(import.meta.env.VITE_MAP_CENTER_LAT ?? 20.6935),
-      lng: Number(import.meta.env.VITE_MAP_CENTER_LNG ?? 105.9285),
+      lat: envNumber(import.meta.env.VITE_MAP_CENTER_LAT, 20.6935),
+      lng: envNumber(import.meta.env.VITE_MAP_CENTER_LNG, 105.9285),
     },
-    zoom: Number(import.meta.env.VITE_MAP_ZOOM ?? 14),
+    zoom: envNumber(import.meta.env.VITE_MAP_ZOOM, 14),
   },
 
   /** Tổng đài hỗ trợ một cửa */
-  hotline: import.meta.env.VITE_HOTLINE ?? "024 3378 2200",
+  hotline: envText(import.meta.env.VITE_HOTLINE, "024 3378 2200"),
 
   /** Số ảnh tối đa đính kèm một phản ánh */
   maxFeedbackImages: 3,
@@ -105,7 +132,7 @@ export const appConfig = {
   /** Số tin tức hiển thị ở Trang chủ */
   homeNewsCount: 3,
 
-  version: import.meta.env.VITE_APP_VERSION ?? "1.0.0-beta",
+  version: envText(import.meta.env.VITE_APP_VERSION, "1.0.0-beta"),
 
   storageKeys: {
     session: "vigov.zma.session",

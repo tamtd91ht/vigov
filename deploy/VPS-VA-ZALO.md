@@ -66,9 +66,28 @@ openssl rand -base64 24    # dùng cho mật khẩu MongoDB / RabbitMQ
 | `NEXT_PUBLIC_USE_MOCKS` / `VITE_USE_MOCKS` | Đặt `false` |
 | `NEXT_PUBLIC_DEMO_USERNAME` / `..._PASSWORD` | **Để trống** ở production |
 | `TRUST_PROXY` | `1` (có đúng một lớp nginx phía trước) |
+| `SEED_ADMIN_PASSWORD`, `SEED_DEFAULT_PASSWORD` | Phải đạt chính sách mật khẩu (≥10 ký tự, có chữ và số, không chứa tên đăng nhập). Seed ghi thẳng nên KHÔNG bị chặn, chỉ ghi cảnh báo vào log — mật khẩu không đạt thì chính chủ không đặt lại được đúng mật khẩu đó |
+| `OTP_STORE` | `memory` là đủ với **một** instance backend. Nhân bản service backend thì **bắt buộc** `mongo`, nếu không mã OTP sinh ở instance này không xác thực được ở instance kia |
+| `NEXT_PUBLIC_SUPPORT_EMAIL` · `..._PHONE` · `..._HOURS` | Đầu mối hỗ trợ hiện ở trang Trợ giúp. Để trống thì trang nói "chưa cấu hình" |
+| `NEXT_PUBLIC_REALTIME_ENABLED` | `true` (mặc định). Đặt `false` nếu chưa cấu hình proxy chuyển tiếp `/socket.io/` — xem mục A3 |
+| `NEXT_PUBLIC_MAP_PROVIDER` / `VITE_MAP_PROVIDER` | `mock` = bản đồ mô phỏng, không gọi mạng. `openfreemap` = bản đồ nền thật, không cần khoá API |
+| `NEXT_PUBLIC_MAP_STYLE_URL` / `VITE_MAP_STYLE_URL` | Chỉ dùng khi provider khác `mock`. Tên miền trong URL này tự được mở trong CSP của Web Quản trị |
+| `NEXT_PUBLIC_MAP_CENTER_LAT/LNG`, `..._ZOOM` (và `VITE_*` tương ứng) | Tâm bản đồ của đơn vị. **Bỏ trống là dùng mặc định trong mã** (xã Đại Thắng), không phải toạ độ 0,0 |
 
 > `NEXT_PUBLIC_*` và `VITE_*` được **nhúng vào bundle lúc build**. Sửa xong phải
 > `docker compose build` lại — chỉ `up` lại không có tác dụng.
+
+> **Biến bỏ trống là an toàn.** `docker-compose.yml` truyền `${BIẾN:-}` cho mọi
+> biến không khai trong `.env`, nghĩa là ứng dụng nhận **chuỗi rỗng** chứ không
+> phải "chưa đặt". Cả hai tệp `app.config.ts` đã coi chuỗi rỗng là chưa đặt và
+> rơi về giá trị mặc định trong mã — trước bản này thì không, và hệ quả là thiếu
+> một biến sẽ ra tên xã trống, tâm bản đồ ở toạ độ 0,0, hoặc URL style rỗng, tất
+> cả đều không báo lỗi.
+
+**Zalo Mini App muốn dùng bản đồ nền thật** còn phải khai tên miền tile
+(`tiles.openfreemap.org` nếu dùng mặc định) vào danh sách domain của ứng dụng
+trên Zalo Developers. Chưa khai thì tile im lặng không tải; để
+`VITE_MAP_PROVIDER=mock` cho tới khi khai xong.
 
 ### A3. Cấu hình reverse proxy
 
@@ -82,6 +101,13 @@ sudo nginx -t && sudo systemctl reload nginx
 Cấu hình này đã xử lý sẵn: ép HTTP→HTTPS, chuyển tiếp `X-Forwarded-*` để backend
 ghi đúng IP người dùng, nâng cấp WebSocket cho Socket.IO, và giới hạn kích thước
 tệp tải lên khớp với backend.
+
+> **Nếu đã cài nginx từ bản trước ngày 06/09/2026 thì phải cài lại tệp này.**
+> Bản cũ khai `location /realtime/` cho Socket.IO, nhưng `/realtime` chỉ là TÊN
+> NAMESPACE trong giao thức — mọi yêu cầu thật đi qua `/socket.io/`. Khai sai thì
+> bắt tay không tới được backend và realtime im lặng không hoạt động, giao diện
+> không báo lỗi gì. Kiểm nhanh:
+> `grep -c 'location /socket.io/' /etc/nginx/sites-available/vigov` phải ra `1`.
 
 ### A4. Khởi chạy
 
