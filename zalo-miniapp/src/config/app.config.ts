@@ -65,6 +65,28 @@ export const appConfig = {
     useMockSdk: (import.meta.env.VITE_USE_MOCK_SDK ?? "false") === "true",
   },
 
+  /**
+   * Bản đồ kinh tế số của Mini App.
+   *
+   * `mock` là bản mô phỏng bằng CSS, không gọi mạng — an toàn khi chưa khai
+   * tên miền tile trong danh sách domain cho phép của Mini App. Giá trị khác
+   * dùng MapLibre với style ở `styleUrl` (mặc định OpenFreeMap: dữ liệu
+   * OpenStreetMap, không cần khoá API).
+   *
+   * LƯU Ý RIÊNG CỦA ZALO: Mini App chạy trong webview của Zalo, mọi tên miền
+   * bên ngoài phải được khai trong phần cấu hình domain của ứng dụng trên
+   * Zalo Developers. Chưa khai thì tile im lặng không tải được.
+   */
+  map: {
+    provider: import.meta.env.VITE_MAP_PROVIDER ?? "mock",
+    styleUrl: import.meta.env.VITE_MAP_STYLE_URL ?? "https://tiles.openfreemap.org/styles/positron",
+    center: {
+      lat: Number(import.meta.env.VITE_MAP_CENTER_LAT ?? 20.6935),
+      lng: Number(import.meta.env.VITE_MAP_CENTER_LNG ?? 105.9285),
+    },
+    zoom: Number(import.meta.env.VITE_MAP_ZOOM ?? 14),
+  },
+
   /** Tổng đài hỗ trợ một cửa */
   hotline: import.meta.env.VITE_HOTLINE ?? "024 3378 2200",
 

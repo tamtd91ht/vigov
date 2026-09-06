@@ -1,4 +1,10 @@
-import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { JwtService } from '@nestjs/jwt';
@@ -13,9 +19,11 @@ import {
   SessionRegistry,
   StaffUser,
   type StaffUserDocument,
+  checkPasswordPolicy,
   type JwtPayload,
 } from '@vigov/shared';
 import { UsersService } from '../users/users.service';
+import { OtpStore } from './otp.store';
 
 /** Điểm cuối Zalo Open API đổi mã dùng một lần lấy số điện thoại */
 const ZALO_GRAPH_ME_INFO_URL = 'https://graph.zalo.me/v2.0/me/info';
@@ -145,22 +153,9 @@ export function parseDurationSeconds(value: string | undefined, fallback: number
   return Number.isFinite(amount) && amount > 0 ? amount * unit : fallback;
 }
 
-interface OtpEntry {
-  code: string;
-  expiresAt: number;
-  /** Số lần đã nhập sai */
-  attempts: number;
-}
-
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
-
-  /**
-   * Kho OTP tạm trong bộ nhớ — đủ cho Phase 1 (1 tiến trình).
-   * Khi chạy nhiều instance: chuyển sang Redis.
-   */
-  private readonly otpStore = new Map<string, OtpEntry>();
 
   constructor(
     @InjectModel(StaffUser.name) private readonly staffModel: Model<StaffUserDocument>,
@@ -169,6 +164,7 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly sessions: SessionRegistry,
+    private readonly otpStore: OtpStore,
     private readonly users: UsersService,
   ) {}
 
@@ -214,6 +210,8 @@ export class AuthService {
       roleKey: user.roleKey,
       department: user.department,
       sid: sessionId,
+      // Còn mật khẩu tạm thì token chỉ dùng được để đổi mật khẩu (JwtAuthGuard chặn phần còn lại)
+      mustChangePassword: user.mustChangePassword || undefined,
     };
 
     // Vào được rồi thì xoá dấu vết các lần sai trước — 5 lượt lại đầy
@@ -232,6 +230,9 @@ export class AuthService {
         color: user.color,
         department: user.department,
         roleKey: user.roleKey,
+        /* Giao diện đọc cờ này để mở ngay ô đổi mật khẩu; việc CHẶN thì do
+           JwtAuthGuard làm, không phụ thuộc giao diện có tử tế hay không. */
+        mustChangePassword: user.mustChangePassword,
       },
     };
   }
@@ -265,7 +266,7 @@ export class AuthService {
   async requestOtp(phone: string) {
     // randomInt của node:crypto — Math.random() không đủ khó đoán cho mã xác thực
     const code = String(randomInt(10 ** OTP_LENGTH)).padStart(OTP_LENGTH, '0');
-    this.otpStore.set(phone, { code, expiresAt: Date.now() + OTP_TTL_MS, attempts: 0 });
+    await this.otpStore.put(phone, code, OTP_TTL_MS);
     this.logger.log(`Mã OTP cho ${phone}: ${code} (Phase 1 chưa gửi SMS/ZNS thật)`);
     return { sent: true, expiresInSeconds: OTP_TTL_MS / 1000 };
   }
@@ -305,18 +306,17 @@ export class AuthService {
       return this.issueCitizenToken(phone, 'app', ip, device);
     }
 
-    const entry = this.otpStore.get(phone);
-    if (!entry || entry.expiresAt < Date.now()) {
-      this.otpStore.delete(phone);
+    /* Một thông báo duy nhất cho mọi nhánh sai (không có mã / hết hạn / sai /
+       hết lượt): phân biệt là chỉ điểm cho người dò biết số nào đang có mã sống. */
+    const result = await this.otpStore.verify(phone, otp, OTP_MAX_ATTEMPTS);
+    if (result !== 'ok') {
+      if (result === 'exhausted') {
+        this.logger.warn(
+          `Huỷ mã OTP của ${phone} sau ${OTP_MAX_ATTEMPTS} lần nhập sai (IP ${ip || 'không rõ'})`,
+        );
+      }
       throw new UnauthorizedException('Mã xác thực không đúng hoặc đã hết hạn');
     }
-    if (entry.code !== otp) {
-      entry.attempts += 1;
-      // Sai quá ngưỡng thì huỷ mã, buộc công dân yêu cầu mã mới
-      if (entry.attempts >= OTP_MAX_ATTEMPTS) this.otpStore.delete(phone);
-      throw new UnauthorizedException('Mã xác thực không đúng hoặc đã hết hạn');
-    }
-    this.otpStore.delete(phone);
     return this.issueCitizenToken(phone, 'app', ip, device);
   }
 
@@ -501,6 +501,59 @@ export class AuthService {
   }
 
   /**
+   * Phiên đăng nhập của chính người đang gọi.
+   *
+   * Trả cả phiên đã thu hồi? KHÔNG — người dùng chỉ quan tâm thiết bị nào đang
+   * đăng nhập được; phiên đã thu hồi là rác lịch sử, để lại chỉ gây hoang mang
+   * ("sao tôi thấy 12 thiết bị?"). Nhật ký đầy đủ nằm ở trang Bảo mật của quản trị.
+   */
+  async listOwnSessions(username: string, currentSid?: string) {
+    if (!username) return { items: [], total: 0 };
+    const docs = await this.sessionModel
+      .find({ subject: username, revoked: false })
+      .sort({ lastActiveAt: -1 })
+      .exec();
+    return {
+      items: docs.map((doc) => ({
+        id: String(doc._id),
+        kind: doc.kind,
+        device: doc.device,
+        ip: doc.ip,
+        startedAt: doc.startedAt,
+        lastActiveAt: doc.lastActiveAt,
+        /* Phiên đang dùng để gọi chính lời gọi này — giao diện gắn nhãn
+           "Thiết bị này" và không cho tự thu hồi. Suy theo `sid` trong token
+           chứ không theo thời điểm, nên chính xác kể cả khi đăng nhập hai máy
+           gần nhau. */
+        current: currentSid !== undefined && String(doc._id) === currentSid,
+      })),
+      total: docs.length,
+    };
+  }
+
+  /**
+   * Đăng xuất một thiết bị cụ thể của chính mình.
+   *
+   * Chặn tự thu hồi phiên đang dùng: bấm vào sẽ tự đăng xuất chính mình giữa
+   * lúc đang thao tác, mà nút "Đăng xuất" ở thanh trên cùng làm việc đó rõ ràng
+   * hơn nhiều.
+   */
+  async revokeOwnSession(username: string, sessionId: string) {
+    if (!username || !isValidObjectId(sessionId)) {
+      throw new NotFoundException('Không tìm thấy phiên đăng nhập');
+    }
+    const doc = await this.sessionModel.findOne({ _id: sessionId, subject: username }).exec();
+    // Phiên của người khác trả 404 y như phiên không tồn tại — không tiết lộ mã phiên có thật
+    if (!doc) throw new NotFoundException('Không tìm thấy phiên đăng nhập');
+
+    doc.revoked = true;
+    await doc.save();
+    // Xoá bộ nhớ đệm 10 giây, nếu không token của phiên vừa cắt còn sống thêm 10 giây
+    this.sessions.invalidate(sessionId);
+    return { id: sessionId, revoked: true };
+  }
+
+  /**
    * Cán bộ tự đổi mật khẩu của CHÍNH MÌNH.
    *
    * Thu hồi các phiên KHÁC (giữ lại phiên đang thao tác qua `exceptSessionId`)
@@ -533,11 +586,42 @@ export class AuthService {
       throw new BadRequestException('Mật khẩu hiện tại không đúng');
     }
 
+    /*
+     * Luật "không chứa tên đăng nhập" chỉ kiểm được ở đây: DTO không mang
+     * username. Các luật còn lại đã chạy ở tầng DTO qua @IsStrongPassword.
+     */
+    const problem = checkPasswordPolicy(newPassword, { username });
+    if (problem) throw new BadRequestException(problem);
+
+    if (await bcrypt.compare(newPassword, user.passwordHash)) {
+      throw new BadRequestException('Mật khẩu mới phải khác mật khẩu hiện tại');
+    }
+
     user.passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    // Tự đặt mật khẩu xong thì tài khoản hết trạng thái "đang giữ mật khẩu tạm"
+    const wasPending = user.mustChangePassword;
+    user.mustChangePassword = false;
     await user.save();
 
     const { revoked } = await this.users.revokeOtherSessions(username, exceptSessionId);
-    return { updated: true, revokedSessions: revoked };
+
+    /*
+     * Vừa thoát trạng thái mật khẩu tạm thì token đang cầm VẪN mang cờ cũ, mà
+     * cờ đó nằm trong chữ ký JWT nên không sửa được — người dùng sẽ tiếp tục bị
+     * guard chặn cho tới khi token hết hạn. Cấp luôn cặp token mới để họ dùng
+     * được ngay; các trường hợp khác không cần nên không cấp, tránh đổi phiên
+     * một cách vô ích.
+     */
+    if (!wasPending || !exceptSessionId) {
+      return { updated: true, revokedSessions: revoked };
+    }
+    const payload = await this.buildPayloadForSession(username, 'web', exceptSessionId);
+    return {
+      updated: true,
+      revokedSessions: revoked,
+      accessToken: await this.jwt.signAsync(payload),
+      refreshToken: await this.issueRefreshToken(exceptSessionId),
+    };
   }
 
   /**
@@ -593,6 +677,7 @@ export class AuthService {
         roleKey: staff.roleKey,
         department: staff.department,
         sid,
+        mustChangePassword: staff.mustChangePassword || undefined,
       };
     }
 

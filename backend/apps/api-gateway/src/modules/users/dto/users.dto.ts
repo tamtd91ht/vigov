@@ -7,14 +7,16 @@ import {
   IsString,
   Max,
   Min,
-  MinLength,
 } from 'class-validator';
-import { ROLES } from '@vigov/shared';
+import { IsStrongPassword, ROLES } from '@vigov/shared';
 
 /** Giới hạn phân trang dùng chung cho các endpoint danh sách của phân hệ Người dùng */
 export const MAX_PAGE_SIZE = 100;
-/** Độ dài tối thiểu của mật khẩu cán bộ */
-export const MIN_PASSWORD_LENGTH = 8;
+/*
+ * Độ dài và độ mạnh mật khẩu KHÔNG khai ở đây nữa: chính sách nằm ở
+ * `libs/shared/src/auth/password-policy.ts` để đường tạo tài khoản, đường quản
+ * trị viên đặt lại và đường người dùng tự đổi không thể lệch nhau.
+ */
 
 /** Danh sách khoá vai trò hợp lệ — lấy trực tiếp từ ROLES của libs/shared */
 const ROLE_KEYS = ROLES.map((r) => r.key);
@@ -149,8 +151,6 @@ export class UpdateStaffDto {
 /** Đặt lại mật khẩu cán bộ */
 export class ChangeStaffPasswordDto {
   @IsString()
-  @MinLength(MIN_PASSWORD_LENGTH, {
-    message: `Mật khẩu phải có tối thiểu ${MIN_PASSWORD_LENGTH} ký tự`,
-  })
+  @IsStrongPassword()
   newPassword: string;
 }

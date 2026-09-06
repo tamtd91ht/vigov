@@ -489,6 +489,7 @@ interface AttachmentHarness {
   service: TasksService;
   task: ReturnType<typeof fakeDoc>;
   findById: jest.Mock;
+  findPrivateById: jest.Mock;
 }
 
 function attachmentHarness(
@@ -509,13 +510,26 @@ function attachmentHarness(
     return found;
   });
 
+  /* TasksService gọi `findPrivateById` — hàm này của FilesService gộp việc tra
+     tệp và việc đòi tệp phải riêng tư (TB-09), nên giả lập luôn cả hai ở đây. */
+  const findPrivateById = jest.fn(async (id: string, label: string) => {
+    const found = await findById(id);
+    if (!found.isPrivate) {
+      throw new BadRequestException(
+        `${label} "${found.originalName}" đang ở chế độ công khai. ` +
+          'Tài liệu nghiệp vụ phải được tải lên với isPrivate = true.',
+      );
+    }
+    return found;
+  });
+
   const service = new TasksService(
     { findOne: jest.fn(() => queryChain(task)) } as unknown as Model<TaskDocument>,
     realtimeMock(),
-    { findById } as unknown as FilesService,
+    { findById, findPrivateById } as unknown as FilesService,
   );
 
-  return { service, task, findById };
+  return { service, task, findById, findPrivateById };
 }
 
 describe('TasksService.addAttachments', () => {

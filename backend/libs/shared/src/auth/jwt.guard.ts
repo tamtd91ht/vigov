@@ -14,6 +14,11 @@ export interface JwtPayload {
   department?: string;
   /** Mã phiên đăng nhập — dùng để thu hồi token trước hạn (P5-08) */
   sid?: string;
+  /**
+   * Còn đang giữ mật khẩu tạm. Token vẫn hợp lệ nhưng chỉ dùng được đúng một
+   * việc: tự đổi mật khẩu (xem `AllowPendingPassword`).
+   */
+  mustChangePassword?: boolean;
 }
 
 export interface AuthedRequest extends Request {
@@ -23,6 +28,15 @@ export interface AuthedRequest extends Request {
 /** Đánh dấu endpoint không cần đăng nhập */
 export const IS_PUBLIC_KEY = 'vigov:isPublic';
 export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
+
+/**
+ * Cho phép endpoint chạy dù người gọi còn đang giữ mật khẩu tạm.
+ *
+ * Chỉ gắn cho những đường TỐI THIỂU để thoát khỏi trạng thái đó: đọc thông tin
+ * chính mình và đổi mật khẩu. Gắn rộng hơn là vô hiệu hoá luôn chốt chặn.
+ */
+export const ALLOW_PENDING_PASSWORD_KEY = 'vigov:allowPendingPassword';
+export const AllowPendingPassword = () => SetMetadata(ALLOW_PENDING_PASSWORD_KEY, true);
 
 /** Yêu cầu quyền tối thiểu trên một phân hệ */
 export const REQUIRE_PERMISSION_KEY = 'vigov:requirePermission';
@@ -64,6 +78,22 @@ export class JwtAuthGuard implements CanActivate {
      */
     if (payload.sid && !(await this.sessions.isActive(payload.sid))) {
       throw new UnauthorizedException('Phiên đăng nhập đã bị thu hồi hoặc tài khoản đã bị khoá');
+    }
+
+    /*
+     * Mật khẩu tạm chưa đổi thì tài khoản coi như CHƯA sẵn sàng dùng: chỉ cho
+     * qua các endpoint đã gắn @AllowPendingPassword. Chặn ở guard chứ không chỉ
+     * hiện cảnh báo trên giao diện — nếu chỉ dựa vào giao diện thì ai gọi thẳng
+     * API vẫn dùng được tài khoản bằng mật khẩu mà người khác đã biết.
+     */
+    if (payload.mustChangePassword) {
+      const allowed = this.reflector.getAllAndOverride<boolean>(ALLOW_PENDING_PASSWORD_KEY, [
+        context.getHandler(),
+        context.getClass(),
+      ]);
+      if (!allowed) {
+        throw new ForbiddenException('Bạn phải đổi mật khẩu tạm trước khi sử dụng hệ thống');
+      }
     }
 
     const required = this.reflector.getAllAndOverride<{ module: ModuleKey; permission: Permission }>(

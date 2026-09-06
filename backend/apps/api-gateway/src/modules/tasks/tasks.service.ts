@@ -224,13 +224,7 @@ export class TasksService {
     const names: string[] = [];
     const added: string[] = [];
     for (const fileId of fileIds) {
-      const file = await this.files.findById(fileId);
-      if (!file.isPrivate) {
-        throw new BadRequestException(
-          `Tệp "${file.originalName}" đang ở chế độ công khai. ` +
-            'Tệp minh chứng nhiệm vụ là tài liệu nội bộ, phải tải lên với isPrivate = true.',
-        );
-      }
+      const file = await this.files.findPrivateById(fileId, 'Tệp minh chứng nhiệm vụ');
       if (task.attachmentFileIds.includes(fileId)) continue;
       task.attachmentFileIds.push(fileId);
       added.push(fileId);

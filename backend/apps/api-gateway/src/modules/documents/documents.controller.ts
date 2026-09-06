@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req } from '@
 import { RequirePermission, type AuthedRequest } from '@vigov/shared';
 import { DocumentsService } from './documents.service';
 import {
+  AttachDocumentFilesDto,
   ConfirmOcrFieldDto,
   CreateDocumentDto,
   QueryDocumentsDto,
@@ -68,6 +69,31 @@ export class DocumentsController {
   @Post(':arrivalNo/confirm-all-ocr')
   confirmAllOcr(@Param('arrivalNo') arrivalNo: string) {
     return this.documents.confirmAllOcr(arrivalNo);
+  }
+
+  /**
+   * Gắn tệp đính kèm (phụ lục, biên bản) vào văn bản.
+   * Tệp phải được tải lên ở chế độ riêng tư — service từ chối 400 nếu không.
+   */
+  @RequirePermission('documents', 'edit')
+  @Post(':arrivalNo/attachments')
+  addAttachments(
+    @Param('arrivalNo') arrivalNo: string,
+    @Body() dto: AttachDocumentFilesDto,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.documents.addAttachments(arrivalNo, dto.fileIds, req.user);
+  }
+
+  /** Gỡ một tệp đính kèm khỏi văn bản — tệp vẫn còn trong kho tệp */
+  @RequirePermission('documents', 'edit')
+  @Delete(':arrivalNo/attachments/:fileId')
+  removeAttachment(
+    @Param('arrivalNo') arrivalNo: string,
+    @Param('fileId') fileId: string,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.documents.removeAttachment(arrivalNo, fileId, req.user);
   }
 
   /** Xoá văn bản khỏi sổ — chỉ quản trị hệ thống */

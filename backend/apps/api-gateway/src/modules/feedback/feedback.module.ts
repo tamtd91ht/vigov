@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Feedback, FeedbackSchema, SlaRule, SlaRuleSchema } from '@vigov/shared';
+import { FilesModule } from '../files/files.module';
 import { NotificationModule } from '../notification/notification.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { FeedbackController } from './feedback.controller';
@@ -21,6 +22,8 @@ import { FeedbackService } from './feedback.service';
     NotificationModule,
     // P5-05: phát feedback.changed khi phiếu được tạo / phân công / xử lý xong
     RealtimeModule,
+    // TB-09: ảnh hiện trường và ảnh nghiệm thu phải là tệp riêng tư — kiểm bằng FilesService
+    FilesModule,
   ],
   controllers: [FeedbackController],
   providers: [FeedbackService],

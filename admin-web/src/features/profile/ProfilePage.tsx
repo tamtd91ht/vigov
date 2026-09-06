@@ -12,19 +12,14 @@ import { Icon } from "@/lib/icons";
 import { formatNumber } from "@/lib/format";
 import { ApiError } from "@/services/api";
 import { authService, getServerSession } from "@/services/auth";
-import { changeOwnPassword, listOwnSessions, MIN_PASSWORD_LENGTH } from "@/services/profile.service";
+import { listOwnSessions, revokeOwnSession } from "@/services/profile.service";
+import { ChangePasswordForm } from "./ChangePasswordForm";
 import { revokeOtherSessions } from "@/services/users.service";
 
 const PAGE_SUB = "Thông tin tài khoản, thiết bị đang đăng nhập và đổi mật khẩu của chính bạn";
 
 const REVOKE_CONFIRM =
   "Đăng xuất mọi thiết bị khác đang dùng tài khoản của bạn? Thiết bị này vẫn giữ nguyên phiên.";
-
-interface PasswordErrors {
-  current?: string;
-  next?: string;
-  confirm?: string;
-}
 
 /** Ô thông tin chỉ đọc — dùng lại lối trình bày của các ngăn chi tiết */
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -47,63 +42,28 @@ export function ProfilePage() {
   const session = useSyncExternalStore(authService.subscribe, authService.getSession, getServerSession);
   const role = findRole(session?.roleKey ?? "");
 
-  const [current, setCurrent] = useState("");
-  const [next, setNext] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [errors, setErrors] = useState<PasswordErrors>({});
-  const [changing, setChanging] = useState(false);
-  const [revoking, setRevoking] = useState(false);
-
-  const sessions = useApiResource(
-    async () => (session ? listOwnSessions(session.username) : []),
-    [session?.username],
-  );
+  const sessions = useApiResource(async () => (session ? listOwnSessions() : []), [session?.username]);
   const rows = sessions.data ?? [];
 
   const failed = (err: unknown, fallback: string) =>
     showToast(err instanceof ApiError ? err.message : fallback);
 
-  function validate(): PasswordErrors {
-    const problems: PasswordErrors = {};
-    if (!current.trim()) problems.current = "Vui lòng nhập mật khẩu hiện tại";
-    if (!next) problems.next = "Vui lòng nhập mật khẩu mới";
-    else if (next.length < MIN_PASSWORD_LENGTH) {
-      problems.next = `Mật khẩu mới phải có ít nhất ${MIN_PASSWORD_LENGTH} ký tự`;
-    } else if (next === current) problems.next = "Mật khẩu mới phải khác mật khẩu hiện tại";
-    if (confirm !== next) problems.confirm = "Hai lần nhập mật khẩu mới không giống nhau";
-    return problems;
-  }
+  /** Đang thu hồi TẤT CẢ thiết bị khác */
+  const [revoking, setRevoking] = useState(false);
+  /** Id phiên đang thu hồi — khoá đúng dòng đó, các dòng khác vẫn bấm được */
+  const [revokingId, setRevokingId] = useState<string | null>(null);
 
-  const submitPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (changing) return;
-    const problems = validate();
-    setErrors(problems);
-    if (Object.keys(problems).length > 0) return;
-
-    setChanging(true);
+  const revokeOne = async (id: string, device: string) => {
+    if (!window.confirm(`Đăng xuất thiết bị "${device}"? Thiết bị đó sẽ phải đăng nhập lại.`)) return;
+    setRevokingId(id);
     try {
-      const result = await changeOwnPassword(current, next);
-      setCurrent("");
-      setNext("");
-      setConfirm("");
-      showToast(
-        result.revokedSessions > 0
-          ? `Đã đổi mật khẩu · đã đăng xuất ${formatNumber(result.revokedSessions)} thiết bị khác`
-          : "Đã đổi mật khẩu thành công",
-      );
+      await revokeOwnSession(id);
+      showToast("Đã đăng xuất thiết bị đó");
       sessions.reload();
     } catch (err) {
-      /* Máy chủ trả 400 riêng cho "mật khẩu hiện tại sai" (401 dành cho phiên hết
-         hạn, và apiClient tự đăng xuất khi gặp 401). Báo ngay tại ô nhập để cán
-         bộ sửa mà không mất nội dung đã gõ. */
-      if (err instanceof ApiError && err.status === 400) {
-        setErrors({ current: err.message });
-        return;
-      }
-      failed(err, "Không đổi được mật khẩu");
+      failed(err, "Không đăng xuất được thiết bị");
     } finally {
-      setChanging(false);
+      setRevokingId(null);
     }
   };
 
@@ -160,61 +120,7 @@ export function ProfilePage() {
         <Card>
           <CardHeader title="Đổi mật khẩu" />
           <CardBody>
-            <form onSubmit={submitPassword} noValidate className={changing ? "saving" : undefined}>
-              <div className="fgroup">
-                <label htmlFor="pf-current">
-                  Mật khẩu hiện tại <span className="req">*</span>
-                </label>
-                <input
-                  id="pf-current"
-                  type="password"
-                  autoComplete="current-password"
-                  className={errors.current ? "finp err" : "finp"}
-                  value={current}
-                  onChange={(e) => setCurrent(e.target.value)}
-                />
-                {errors.current && <div className="ferr">{errors.current}</div>}
-              </div>
-              <div className="fgroup">
-                <label htmlFor="pf-next">
-                  Mật khẩu mới <span className="req">*</span>
-                </label>
-                <input
-                  id="pf-next"
-                  type="password"
-                  autoComplete="new-password"
-                  className={errors.next ? "finp err" : "finp"}
-                  value={next}
-                  onChange={(e) => setNext(e.target.value)}
-                />
-                {errors.next ? (
-                  <div className="ferr">{errors.next}</div>
-                ) : (
-                  <div className="fhint">Ít nhất {MIN_PASSWORD_LENGTH} ký tự, nên có cả chữ và số.</div>
-                )}
-              </div>
-              <div className="fgroup">
-                <label htmlFor="pf-confirm">
-                  Nhập lại mật khẩu mới <span className="req">*</span>
-                </label>
-                <input
-                  id="pf-confirm"
-                  type="password"
-                  autoComplete="new-password"
-                  className={errors.confirm ? "finp err" : "finp"}
-                  value={confirm}
-                  onChange={(e) => setConfirm(e.target.value)}
-                />
-                {errors.confirm && <div className="ferr">{errors.confirm}</div>}
-              </div>
-              <button className="btn pri" type="submit" disabled={changing}>
-                <Icon name="lock" size={15} />
-                {changing ? "Đang lưu…" : "Đổi mật khẩu"}
-              </button>
-              <div className="fhint">
-                Đổi mật khẩu xong, các thiết bị khác đang dùng tài khoản này sẽ bị đăng xuất.
-              </div>
-            </form>
+            <ChangePasswordForm onDone={() => sessions.reload()} />
           </CardBody>
         </Card>
       </div>
@@ -252,6 +158,7 @@ export function ProfilePage() {
                   <th>Địa chỉ IP</th>
                   <th>Bắt đầu</th>
                   <th>Hoạt động cuối</th>
+                  <th style={{ textAlign: "right" }}>Thao tác</th>
                 </tr>
               </thead>
               <tbody>
@@ -268,6 +175,24 @@ export function ProfilePage() {
                     <td>{s.ip}</td>
                     <td style={{ whiteSpace: "nowrap" }}>{formatStamp(s.startedAt)}</td>
                     <td style={{ whiteSpace: "nowrap" }}>{formatStamp(s.lastActiveAt)}</td>
+                    <td style={{ textAlign: "right" }}>
+                      {s.current ? (
+                        /* Không cho tự thu hồi phiên đang dùng: bấm vào là tự đăng xuất
+                           giữa lúc đang thao tác, mà nút Đăng xuất ở thanh trên cùng
+                           làm đúng việc đó một cách rõ ràng hơn. */
+                        <span className="tiny muted">Đang dùng</span>
+                      ) : (
+                        <button
+                          type="button"
+                          className="btn sm danger"
+                          disabled={revokingId === s.id}
+                          onClick={() => void revokeOne(s.id, s.device)}
+                        >
+                          <Icon name="logout" size={13} />
+                          Đăng xuất
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -276,8 +201,8 @@ export function ProfilePage() {
         </DataState>
         <CardBody>
           <div className="fhint">
-            Thu hồi một phiên cụ thể của người khác là việc của quản trị viên, làm ở trang Người dùng Mini
-            App · tab Phiên đăng nhập.
+            Danh sách chỉ gồm phiên của chính bạn. Thu hồi phiên của người khác là việc của quản trị viên,
+            làm ở trang Người dùng Mini App · tab Phiên đăng nhập.
           </div>
         </CardBody>
       </Card>

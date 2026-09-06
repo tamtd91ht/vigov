@@ -36,8 +36,26 @@ export const appConfig = {
   },
 
   map: {
+    /**
+     * Adapter bản đồ đang dùng: `mock` (bản mô phỏng CSS) hoặc bất kỳ nguồn
+     * style theo chuẩn MapLibre (`openfreemap`, `vietmap`, `goong`, tự dựng…).
+     * MapPage chọn component theo giá trị này, không hardcode ở component nào.
+     */
     provider: process.env.NEXT_PUBLIC_MAP_PROVIDER ?? "mock",
     apiKey: process.env.NEXT_PUBLIC_MAP_API_KEY ?? "",
+    /**
+     * URL style MapLibre. Mặc định là OpenFreeMap (dữ liệu OpenStreetMap,
+     * không cần khoá API, không giới hạn lượt xem) — bản `positron` nhạt màu
+     * để ghim và popup nổi lên trên.
+     */
+    styleUrl:
+      process.env.NEXT_PUBLIC_MAP_STYLE_URL ?? "https://tiles.openfreemap.org/styles/positron",
+    /** Tâm bản đồ lúc mở trang — mỗi đơn vị hành chính một toạ độ khác nhau */
+    center: {
+      lat: Number(process.env.NEXT_PUBLIC_MAP_CENTER_LAT ?? 20.6935),
+      lng: Number(process.env.NEXT_PUBLIC_MAP_CENTER_LNG ?? 105.9285),
+    },
+    zoom: Number(process.env.NEXT_PUBLIC_MAP_ZOOM ?? 14),
   },
 
   /**

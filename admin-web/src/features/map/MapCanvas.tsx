@@ -2,7 +2,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import type { MapLayer, MapPin } from "@/types";
-import { Icon } from "@/lib/icons";
+import { PinPopupContent } from "./PinPopupContent";
 
 /**
  * ADAPTER PATTERN — bản đồ mô phỏng (provider "mock").
@@ -107,48 +107,12 @@ export function MapCanvas({ layers, pins, activeLayerIds, onPinSelect, selectedP
           style={{ left: `${selectedPin.x}%`, top: `${selectedPin.y}%` }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="h">
-            <span className="dot" style={{ background: selectedLayer.color, marginTop: 5 }} />
-            <div>
-              <b>{selectedPin.name}</b>
-              <div className="tiny muted">{selectedLayer.label}</div>
-            </div>
-            <button
-              type="button"
-              className="icbtn"
-              aria-label="Đóng"
-              style={{ width: 26, height: 26, marginLeft: "auto", border: "none" }}
-              onClick={() => onPinSelect(null)}
-            >
-              <Icon name="close" size={14} />
-            </button>
-          </div>
-          <div className="b">
-            <div className="r">
-              <span className="k">Ngành nghề</span>
-              <span>{selectedPin.industry}</span>
-            </div>
-            <div className="r">
-              <span className="k">Địa chỉ</span>
-              <span>{selectedPin.address}</span>
-            </div>
-            <div className="r">
-              <span className="k">Số lao động</span>
-              <span>{selectedPin.workers > 0 ? `${selectedPin.workers} người` : "Không áp dụng"}</span>
-            </div>
-            <div className="r">
-              <span className="k">Đại diện</span>
-              <span>{selectedPin.representative}</span>
-            </div>
-            <div className="r">
-              <span className="k">Điện thoại</span>
-              <span>{selectedPin.phone}</span>
-            </div>
-            <button type="button" className="btn sm" style={{ marginTop: 4, justifyContent: "center" }} onClick={() => onCall?.(selectedPin)}>
-              <Icon name="phone" size={14} />
-              Gọi {selectedPin.phone}
-            </button>
-          </div>
+          <PinPopupContent
+            pin={selectedPin}
+            layer={selectedLayer}
+            onClose={() => onPinSelect(null)}
+            onCall={onCall}
+          />
         </div>
       )}
 

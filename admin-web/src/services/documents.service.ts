@@ -1,7 +1,7 @@
 import type { IncomingDocument, TimelineItem } from "@/types";
 import { appConfig } from "@/config/app.config";
 import { ApiError, apiClient, buildQuery, type Paged } from "@/services/api";
-import { buildOcrFields, citizenPetitions, documentAttachments, incomingDocuments } from "@/mocks/documents";
+import { buildOcrFields, citizenPetitions, incomingDocuments } from "@/mocks/documents";
 
 /**
  * Lớp dịch vụ phân hệ Văn bản & Đơn thư — bọc các endpoint /documents và
@@ -36,6 +36,16 @@ export interface DocumentDetail extends IncomingDocument {
   /** Mã nhiệm vụ đã sinh ra từ văn bản này (nếu có) */
   linkedTaskCode?: string;
   scanFileId?: string;
+  /** Tệp đính kèm thật (phụ lục, biên bản) — tải lên/tải về qua module Files */
+  attachmentFiles?: DocumentAttachment[];
+}
+
+/** Một tệp đính kèm của văn bản, đủ thông tin để hiện tên và xin link tải */
+export interface DocumentAttachment {
+  fileId: string;
+  name: string;
+  size: number;
+  contentType: string;
 }
 
 /** Bộ lọc + phân trang cho GET /documents (lọc phía máy chủ) */
@@ -92,6 +102,8 @@ interface RawDocument extends IncomingDocument {
   ocrFields?: OcrField[];
   linkedTaskCode?: string;
   scanFileId?: string;
+  /** Chỉ có ở phản hồi chi tiết; danh sách không kèm để tránh N+1 truy vấn */
+  attachmentFiles?: DocumentAttachment[];
 }
 
 /** Phản hồi của các endpoint OCR — chỉ trả phần OCR, không trả cả văn bản */
@@ -363,5 +375,48 @@ export async function createTaskFromDocument(input: DocumentToTaskInput): Promis
   return apiClient.post<{ code: string }>("/workflow/document-to-task", input);
 }
 
-/** Tệp đính kèm hiển thị trong drawer — kho tệp văn thư thật tích hợp sau (WBS #26) */
-export const documentAttachmentNames = documentAttachments;
+/**
+ * POST /documents/:arrivalNo/attachments — gắn phụ lục, biên bản vào văn bản.
+ *
+ * Tệp phải được tải lên ở chế độ RIÊNG TƯ; máy chủ từ chối 400 nếu không
+ * (SECURITY.md TB-09 — `GET /files/:id` để công khai nên tệp không riêng tư là
+ * ai có mã tệp cũng đọc được).
+ */
+export async function addDocumentAttachments(
+  arrivalNo: string,
+  fileIds: string[],
+): Promise<DocumentDetail> {
+  if (appConfig.api.useMocks) {
+    await mockDelay();
+    const doc = store().find((d) => d.arrivalNo === arrivalNo);
+    const added = fileIds.map((fileId) => ({
+      fileId,
+      name: `tep-${fileId.slice(-6)}`,
+      size: 0,
+      contentType: "",
+    }));
+    if (doc) doc.attachmentFiles = [...(doc.attachmentFiles ?? []), ...added];
+    return (doc ?? ({ arrivalNo } as DocumentDetail)) as DocumentDetail;
+  }
+  return toDocumentDetail(
+    await apiClient.post<RawDocument>(`/documents/${encodeURIComponent(arrivalNo)}/attachments`, { fileIds }),
+  );
+}
+
+/** DELETE /documents/:arrivalNo/attachments/:fileId — gỡ tệp khỏi văn bản, tệp vẫn còn trong kho */
+export async function removeDocumentAttachment(
+  arrivalNo: string,
+  fileId: string,
+): Promise<DocumentDetail> {
+  if (appConfig.api.useMocks) {
+    await mockDelay();
+    const doc = store().find((d) => d.arrivalNo === arrivalNo);
+    if (doc) doc.attachmentFiles = (doc.attachmentFiles ?? []).filter((f) => f.fileId !== fileId);
+    return (doc ?? ({ arrivalNo } as DocumentDetail)) as DocumentDetail;
+  }
+  return toDocumentDetail(
+    await apiClient.delete<RawDocument>(
+      `/documents/${encodeURIComponent(arrivalNo)}/attachments/${encodeURIComponent(fileId)}`,
+    ),
+  );
+}

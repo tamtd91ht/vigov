@@ -225,6 +225,32 @@ export class FilesService {
     return found;
   }
 
+  /**
+   * Tra tệp và ĐÒI tệp đó phải là tệp riêng tư.
+   *
+   * VÌ SAO CẦN: `GET /files/:id` để `@Public()`, nên tệp `isPrivate = false`
+   * chỉ được che bằng độ khó đoán của ObjectId — mà ObjectId chứa dấu thời gian
+   * và bộ đếm nên đoán được một phần (phát hiện **TB-09** trong SECURITY.md).
+   * Bản scan văn bản, ảnh phản ánh, tệp minh chứng nhiệm vụ đều là tài liệu
+   * nghiệp vụ, không được đọc mà không qua kiểm tra chữ ký.
+   *
+   * Trước đây đây chỉ là QUY ƯỚC ghi trong tài liệu, nên chỉ cần một chỗ trong
+   * giao diện quên đặt `isPrivate` là tệp lọt ra ngoài mà không ai biết. Nay
+   * mọi đường gắn tệp vào bản ghi nghiệp vụ đều đi qua hàm này.
+   *
+   * @param label Tên loại tệp trong thông báo lỗi, ví dụ "Bản scan văn bản"
+   */
+  async findPrivateById(id: string, label: string): Promise<StoredFileDocument> {
+    const file = await this.findById(id);
+    if (!file.isPrivate) {
+      throw new BadRequestException(
+        `${label} "${file.originalName}" đang ở chế độ công khai. ` +
+          'Tài liệu nghiệp vụ phải được tải lên với isPrivate = true.',
+      );
+    }
+    return file;
+  }
+
   /** Đọc nội dung tệp kèm siêu dữ liệu — controller dùng để trả về cho client */
   async getContent(id: string): Promise<{ file: StoredFileDocument; buffer: Buffer }> {
     const file = await this.findById(id);

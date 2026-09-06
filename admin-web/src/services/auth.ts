@@ -12,6 +12,14 @@ export interface Session {
   loginAt: string;
   /** JWT gửi kèm mọi lời gọi API; rỗng khi chạy chế độ mock */
   accessToken: string;
+  /**
+   * Đang giữ mật khẩu tạm do quản trị viên đặt.
+   *
+   * Máy chủ CHẶN mọi endpoint khác cho tới khi người dùng tự đổi mật khẩu
+   * (JwtAuthGuard), nên giao diện phải dẫn họ tới đó ngay thay vì để họ bấm
+   * quanh và nhận 403 ở mọi trang.
+   */
+  mustChangePassword?: boolean;
 }
 
 /** Kết quả trả về từ POST /auth/staff/login */
@@ -24,6 +32,7 @@ interface StaffLoginResponse {
     color: string;
     department: string;
     roleKey: string;
+    mustChangePassword?: boolean;
   };
 }
 
@@ -94,6 +103,7 @@ export const authService = {
         roleKey: data.user.roleKey,
         loginAt: new Date().toISOString(),
         accessToken: data.accessToken,
+        mustChangePassword: data.user.mustChangePassword,
       });
       return { ok: true, session: cachedSession as Session };
     } catch {
@@ -124,6 +134,23 @@ export const authService = {
   subscribe(listener: () => void): () => void {
     listeners.add(listener);
     return () => listeners.delete(listener);
+  },
+
+  /**
+   * Cập nhật phiên sau khi người dùng tự đổi mật khẩu tạm.
+   *
+   * Máy chủ cấp cặp token MỚI vì cờ `mustChangePassword` nằm trong chữ ký JWT —
+   * token cũ vẫn mang cờ cũ nên vẫn bị guard chặn. Không có token mới (đổi mật
+   * khẩu ở trạng thái bình thường) thì chỉ xoá cờ.
+   */
+  clearPasswordChangeRequirement(accessToken?: string) {
+    const current = this.getSession();
+    if (!current) return;
+    persist({
+      ...current,
+      accessToken: accessToken || current.accessToken,
+      mustChangePassword: false,
+    });
   },
 
   logout() {

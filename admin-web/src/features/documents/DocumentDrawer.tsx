@@ -7,13 +7,12 @@ import { Drawer } from "@/components/ui/Drawer";
 import { FileUpload } from "@/components/ui/FileUpload";
 import { Tabs } from "@/components/ui/Tabs";
 import { Timeline } from "@/components/ui/Timeline";
-import { FileList } from "@/components/ui/FileList";
 import { deadlineLabel } from "@/lib/format";
 import { ApiError } from "@/services/api";
 import { fetchDepartments } from "@/services/catalogs.service";
 import { getSignedUrl } from "@/services/files.service";
 import { useCatalog } from "@/hooks/useCatalog";
-import { documentAttachmentNames, type DocumentDetail, type OcrField } from "@/services/documents.service";
+import { type DocumentDetail, type OcrField } from "@/services/documents.service";
 
 const DRAWER_TABS = [
   { key: "info", label: "Thông tin & OCR" },
@@ -86,6 +85,8 @@ export function DocumentDrawer({
   onConfirmField,
   onConfirmAll,
   onAttachScan,
+  onAttachFiles,
+  onRemoveFile,
 }: {
   doc: DocumentDetail | null;
   loading: boolean;
@@ -95,6 +96,10 @@ export function DocumentDrawer({
   onClose: () => void;
   /** Bấm "Chuyển thành công việc" — gọi POST /workflow/document-to-task */
   onCreateTask: (doc: DocumentDetail) => Promise<void>;
+  /** Gắn tệp đính kèm vừa tải lên (phụ lục, biên bản) */
+  onAttachFiles: (fileIds: string[]) => Promise<void>;
+  /** Gỡ một tệp đính kèm — tệp vẫn còn trong kho tệp */
+  onRemoveFile: (fileId: string) => Promise<void>;
   onMoveDepartment: (department: string) => Promise<void>;
   onRunOcr: () => Promise<void>;
   onConfirmField: (key: string) => Promise<void>;
@@ -127,6 +132,35 @@ export function DocumentDrawer({
    * Mở bản scan trong tab mới. Tệp lưu riêng tư nên phải xin link ký sẵn —
    * thẻ <a> không gửi được header Authorization.
    */
+  /** Tệp đính kèm đang thao tác (tải về / gỡ) — khoá đúng thẻ đó */
+  const [busyFileId, setBusyFileId] = useState<string | null>(null);
+
+  /** Tệp đính kèm thật của văn bản (rỗng khi văn bản chưa gắn tệp nào) */
+  const attachments = doc?.attachmentFiles ?? [];
+
+  /** Mở một tệp đính kèm: tệp riêng tư nên phải xin link ký sẵn như bản scan */
+  const openAttachment = async (fileId: string) => {
+    setBusyFileId(fileId);
+    try {
+      const signed = await getSignedUrl(fileId);
+      window.open(signed.url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      setScanError(err instanceof ApiError ? err.message : "Không mở được tệp đính kèm");
+    } finally {
+      setBusyFileId(null);
+    }
+  };
+
+  const removeFile = async (fileId: string, name: string) => {
+    if (!window.confirm(`Gỡ tệp "${name}" khỏi văn bản này?`)) return;
+    setBusyFileId(fileId);
+    try {
+      await onRemoveFile(fileId);
+    } finally {
+      setBusyFileId(null);
+    }
+  };
+
   const openScan = async (scanFileId: string) => {
     setOpeningScan(true);
     setScanError("");
@@ -359,9 +393,56 @@ export function DocumentDrawer({
             {tab === "files" && (
               <div>
                 <h4 style={{ fontSize: 12.5, marginBottom: 12 }}>Tệp đính kèm</h4>
-                <FileList names={documentAttachmentNames} />
+                {attachments.length > 0 ? (
+                  <div className="files" style={{ marginBottom: 12 }}>
+                    {attachments.map((file) => (
+                      <div key={file.fileId} className="file">
+                        <div className="ph">
+                          <Icon name="clip" size={20} />
+                        </div>
+                        <div className="nm" title={file.name}>
+                          {file.name}
+                        </div>
+                        <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+                          <button
+                            type="button"
+                            className="btn sm"
+                            disabled={busyFileId === file.fileId}
+                            onClick={() => void openAttachment(file.fileId)}
+                          >
+                            <Icon name="down" size={12} />
+                            Tải về
+                          </button>
+                          <button
+                            type="button"
+                            className="btn sm danger"
+                            disabled={busyFileId === file.fileId}
+                            onClick={() => void removeFile(file.fileId, file.name)}
+                          >
+                            <Icon name="trash" size={12} />
+                            Gỡ
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="tiny muted" style={{ marginBottom: 12 }}>
+                    Văn bản chưa có tệp đính kèm nào ngoài bản scan gốc.
+                  </div>
+                )}
+                <FileUpload
+                  key={`att-${attachments.length}`}
+                  purpose="other"
+                  isPrivate
+                  height={92}
+                  placeholder="Kéo-thả phụ lục, biên bản vào đây hoặc bấm để chọn"
+                  onUploaded={(fileId) => run(() => onAttachFiles([fileId]))}
+                  disabled={saving}
+                />
                 <div className="fhint" style={{ marginTop: 10 }}>
-                  Danh sách tệp tạm — kho tệp văn thư thật tích hợp cùng API tệp đính kèm (WBS #26).
+                  Tệp văn thư là tài liệu nội bộ nên được tải lên ở chế độ riêng tư — mở xem phải qua link
+                  ký sẵn, không ai đọc được chỉ bằng mã tệp.
                 </div>
               </div>
             )}

@@ -1,3 +1,4 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/app_config.dart';
@@ -38,12 +39,45 @@ class IdentityService {
 
   final ApiClient _api;
 
+  /*
+   * KHO LƯU AN TOÀN — Keychain (iOS) / EncryptedSharedPreferences (Android).
+   *
+   * VÌ SAO KHÔNG DÙNG shared_preferences NỮA (SECURITY.md T-06): dữ liệu ở đó
+   * nằm dạng RÕ trong sandbox ứng dụng. Trên máy đã root/jailbreak, hoặc qua
+   * bản sao lưu thiết bị, ai đọc được tệp đó là lấy nguyên access token và
+   * refresh token — đủ để dùng tài khoản công dân trong 8 giờ (và làm mới tiếp
+   * bằng refresh token). Số điện thoại lưu kèm cũng là dữ liệu cá nhân theo
+   * NĐ 13/2023.
+   *
+   * Dữ liệu phiên của bản cũ vẫn còn trong shared_preferences nên `restore()`
+   * chuyển một lần sang kho mới rồi xoá sạch bản cũ — người dùng đang đăng nhập
+   * không bị đá ra khi cập nhật app.
+   */
+  static const _secure = FlutterSecureStorage(
+    /* Android: bản 11 của gói LUÔN mã hoá (AES/GCM, khoá trong KeyStore) nên
+       không còn cờ `encryptedSharedPreferences` như các bản trước — để mặc định.
+       iOS: `first_unlock` cho phép đọc sau lần mở khoá đầu tiên kể từ khi khởi
+       động máy; chặt hơn (`unlocked`) sẽ làm app không khôi phục được phiên khi
+       chạy nền. */
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+  );
+
   static const _kPhone = 'vigov.session.phone';
   static const _kName = 'vigov.session.name';
   static const _kAt = 'vigov.session.at';
   static const _kArea = 'vigov.session.area';
   static const _kToken = 'vigov.session.token';
   static const _kRefreshToken = 'vigov.session.refreshToken';
+
+  /// Toàn bộ khoá của một phiên — dùng chung cho di trú và xoá, để không sót khoá nào
+  static const _sessionKeys = <String>[
+    _kPhone,
+    _kName,
+    _kAt,
+    _kArea,
+    _kToken,
+    _kRefreshToken,
+  ];
 
   /// Yêu cầu backend gửi mã OTP; trả về số giây mã còn hiệu lực.
   ///
@@ -114,40 +148,56 @@ class IdentityService {
 
   /// Khôi phục phiên đã lưu khi mở lại app; đồng thời nạp token vào [ApiClient].
   Future<CitizenSession?> restore() async {
-    final prefs = await SharedPreferences.getInstance();
-    final phone = prefs.getString(_kPhone);
+    await _migrateLegacySession();
+
+    final phone = await _secure.read(key: _kPhone);
     if (phone == null) return null;
 
     // Bản thật bắt buộc có token; thiếu token nghĩa là phiên hỏng → coi như chưa định danh
-    final token = prefs.getString(_kToken);
+    final token = await _secure.read(key: _kToken);
     if (!AppConfig.useMocks && (token == null || token.isEmpty)) {
       await clear();
       return null;
     }
     _api.accessToken = token;
-    _api.refreshToken = prefs.getString(_kRefreshToken);
+    _api.refreshToken = await _secure.read(key: _kRefreshToken);
 
     return CitizenSession(
       phone: phone,
-      displayName: prefs.getString(_kName) ?? 'Công dân',
-      identifiedAt: prefs.getString(_kAt) ?? '',
-      area: prefs.getString(_kArea) ?? '',
+      displayName: await _secure.read(key: _kName) ?? 'Công dân',
+      identifiedAt: await _secure.read(key: _kAt) ?? '',
+      area: await _secure.read(key: _kArea) ?? '',
     );
+  }
+
+  /// Chuyển phiên của bản cũ từ shared_preferences sang kho an toàn, một lần.
+  ///
+  /// Chạy trước mọi lần đọc: người đang đăng nhập bằng bản cũ cập nhật app lên
+  /// bản này thì phiên đi theo, không bị đá về màn định danh. Sau khi chuyển,
+  /// bản ghi cũ bị XOÁ — để lại thì token vẫn nằm dạng rõ trên máy.
+  Future<void> _migrateLegacySession() async {
+    final prefs = await SharedPreferences.getInstance();
+    final legacyPhone = prefs.getString(_kPhone);
+    if (legacyPhone == null) return;
+
+    for (final key in _sessionKeys) {
+      final value = prefs.getString(key);
+      if (value != null && value.isNotEmpty) {
+        await _secure.write(key: key, value: value);
+      }
+      await prefs.remove(key);
+    }
   }
 
   Future<void> clear() async {
     _api.accessToken = null;
     _api.refreshToken = null;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_kPhone);
-    await prefs.remove(_kName);
-    await prefs.remove(_kAt);
-    await prefs.remove(_kArea);
-    await prefs.remove(_kToken);
-    await prefs.remove(_kRefreshToken);
+    for (final key in _sessionKeys) {
+      await _secure.delete(key: key);
+    }
   }
 
-  /// Lưu phiên xuống shared_preferences và gắn token vào client HTTP
+  /// Lưu phiên vào kho an toàn của hệ điều hành và gắn token vào client HTTP
   Future<CitizenSession> _persist(
     CitizenSession session, {
     required String? token,
@@ -155,21 +205,21 @@ class IdentityService {
   }) async {
     _api.accessToken = token;
     _api.refreshToken = refreshToken;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_kPhone, session.phone);
-    await prefs.setString(_kName, session.displayName);
-    await prefs.setString(_kAt, session.identifiedAt);
-    await prefs.setString(_kArea, session.area);
-    if (token == null) {
-      await prefs.remove(_kToken);
-    } else {
-      await prefs.setString(_kToken, token);
-    }
-    if (refreshToken == null) {
-      await prefs.remove(_kRefreshToken);
-    } else {
-      await prefs.setString(_kRefreshToken, refreshToken);
-    }
+    await _secure.write(key: _kPhone, value: session.phone);
+    await _secure.write(key: _kName, value: session.displayName);
+    await _secure.write(key: _kAt, value: session.identifiedAt);
+    await _secure.write(key: _kArea, value: session.area);
+    await _writeOrDelete(_kToken, token);
+    await _writeOrDelete(_kRefreshToken, refreshToken);
     return session;
+  }
+
+  /// Ghi giá trị, hoặc XOÁ hẳn khoá khi giá trị rỗng — không để lại token cũ
+  Future<void> _writeOrDelete(String key, String? value) async {
+    if (value == null || value.isEmpty) {
+      await _secure.delete(key: key);
+    } else {
+      await _secure.write(key: key, value: value);
+    }
   }
 }

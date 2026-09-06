@@ -86,6 +86,16 @@ export class IncomingDocument {
   @Prop()
   scanFileId?: string;
 
+  /**
+   * Tệp đính kèm khác ngoài bản scan chính (phụ lục, biên bản, tờ trình).
+   *
+   * Tách khỏi `scanFileId` vì bản scan là văn bản gốc dùng cho OCR, còn đây là
+   * tài liệu kèm theo — cùng bộ với `Task.attachmentFileIds`, và cũng bắt buộc
+   * là tệp riêng tư (SECURITY.md TB-09).
+   */
+  @Prop({ type: [String], default: [] })
+  attachmentFileIds: string[];
+
   @Prop({ type: [OcrFieldSchema], default: [] })
   ocrFields: OcrField[];
 

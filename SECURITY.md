@@ -72,8 +72,8 @@ Kiểm chứng sau khi sửa: `npx tsc --noEmit -p apps/api-gateway/tsconfig.app
 | **TB-05** | **Không giới hạn kích thước thân yêu cầu JSON.** Mặc định của Express là 100KB nhưng dự án chưa khai báo tường minh; các trường mô tả cho phép tới 5.000 ký tự. | ✅ **ĐÃ SỬA** (`BODY_LIMIT`) |
 | **TB-06** | **CORS mở cho mọi nguồn** (`app.enableCors()` không tham số). | ✅ **ĐÃ SỬA** (whitelist `CORS_ORIGINS`) |
 | **TB-07** | **Thiếu toàn bộ security header** (nosniff, X-Frame-Options, HSTS, Referrer-Policy, Permissions-Policy, CSP) và vẫn để lộ `X-Powered-By: Express`. | ✅ **ĐÃ SỬA** |
-| **TB-08** | **Kho OTP nằm trong bộ nhớ tiến trình** (`Map` trong `AuthService`). Khi chạy nhiều instance sau load balancer, mã sinh ở instance A không xác thực được ở instance B; đồng thời hạn mức chống dò cũng không dùng chung. | ⚠️ Còn tồn đọng — chuyển sang Redis khi mở rộng nhiều instance (đã ghi chú sẵn trong mã) |
-| **TB-09** | **Tệp công khai đọc được không cần đăng nhập.** `GET /files/:id` để `@Public()`; tệp `isPrivate = false` chỉ được bảo vệ bằng độ khó đoán của ObjectId — mà ObjectId chứa dấu thời gian và bộ đếm nên đoán được một phần. | ⚠️ Còn tồn đọng — quy ước: mọi tệp nghiệp vụ (scan văn bản, ảnh phản ánh) phải tải lên với `isPrivate = true`. Với **tệp đính kèm nhiệm vụ** quy ước này nay được **cưỡng chế bằng mã**: `POST /tasks/:code/attachments` từ chối 400 nếu tệp không phải tệp riêng tư. Các luồng tải tệp còn lại vẫn dựa vào quy ước |
+| **TB-08** | **Kho OTP nằm trong bộ nhớ tiến trình.** Khi chạy nhiều instance sau load balancer, mã sinh ở instance A không xác thực được ở instance B; đồng thời bộ đếm nhập sai cũng không dùng chung. | ✅ **ĐÃ SỬA** — `OtpStore` có hai driver chọn bằng `OTP_STORE`: `memory` (mặc định, một instance) và `mongo` (bảng `otp_codes` có TTL index). Dùng Mongo chứ không Redis để không thêm một dịch vụ phải dựng/bảo mật/sao lưu. Cả hai driver chỉ lưu **HMAC** của mã, không lưu mã dạng rõ. **Chạy nhiều instance thì BẮT BUỘC đặt `OTP_STORE=mongo`** |
+| **TB-09** | **Tệp công khai đọc được không cần đăng nhập.** `GET /files/:id` để `@Public()`; tệp `isPrivate = false` chỉ được bảo vệ bằng độ khó đoán của ObjectId — mà ObjectId chứa dấu thời gian và bộ đếm nên đoán được một phần. | ⚠️ Còn tồn đọng — quy ước: mọi tệp nghiệp vụ (scan văn bản, ảnh phản ánh) phải tải lên với `isPrivate = true`. Quy ước này nay được **cưỡng chế bằng mã** ở MỌI đường gắn tệp vào bản ghi nghiệp vụ, qua `FilesService.findPrivateById`: tệp đính kèm nhiệm vụ, ảnh hiện trường và ảnh nghiệm thu của phản ánh, bản scan và tệp đính kèm văn bản — tệp công khai bị từ chối 400. Tệp nội dung CMS (ảnh bìa, audio truyền thanh, video) vẫn công khai **có chủ ý**: đó là nội dung đăng cho công dân xem |
 | **TB-10** | **Dò tài khoản qua thời gian phản hồi.** `staffLogin` chỉ chạy `bcrypt.compare` khi tìm thấy tài khoản, nên sai tên đăng nhập trả lời nhanh hơn hẳn sai mật khẩu. | ⚠️ Còn tồn đọng — mức rủi ro thấp sau khi đã siết 5 lượt/phút; xử lý bằng cách luôn so sánh với một hash giả |
 
 ### Mức THẤP
@@ -84,12 +84,12 @@ Kiểm chứng sau khi sửa: `npx tsc --noEmit -p apps/api-gateway/tsconfig.app
 | **T-02** | Tệp riêng tư được đọc khỏi ổ lưu trữ **trước** khi kiểm tra chữ ký — yêu cầu không hợp lệ vẫn khiến máy chủ đọc đĩa/S3 (lãng phí, dễ bị lạm dụng để gây tải). | ✅ **ĐÃ SỬA** (`openForDownload`) |
 | **T-03** | `POST /users/staff` trả mật khẩu tạm trong phản hồi HTTP. Chấp nhận được ở Phase 1 (hiển thị một lần cho quản trị viên) nhưng mật khẩu sẽ nằm trong log/proxy nếu chưa bật HTTPS. | ⚠️ Chấp nhận rủi ro có điều kiện — bắt buộc bật HTTPS trước khi dùng thật |
 | **T-04** | Quyền `users:edit` cho phép cả vai trò *Tiếp nhận một cửa* khoá tài khoản công dân và xem danh sách chặn. | ⚠️ Chờ khách chốt — câu hỏi mở #15 |
-| **T-05** | `admin-web` đọc mật khẩu demo từ `NEXT_PUBLIC_DEMO_PASSWORD`; biến `NEXT_PUBLIC_*` được nhúng thẳng vào gói JavaScript gửi cho trình duyệt. | ⚠️ Còn tồn đọng — gỡ bỏ khi nối backend thật |
-| **T-06** | Mobile lưu phiên trong `SharedPreferences` (không mã hoá). Khi có JWT thật phải chuyển sang `flutter_secure_storage` (Keychain/Keystore). | ⚠️ Còn tồn đọng |
+| **T-05** | `admin-web` đọc mật khẩu demo từ `NEXT_PUBLIC_DEMO_PASSWORD`; biến `NEXT_PUBLIC_*` được nhúng thẳng vào gói JavaScript gửi cho trình duyệt. | ⚠️ Giảm nhẹ — `.env.example` nay để `NEXT_PUBLIC_USE_MOCKS=false` và **bỏ trống** hai biến demo, nên bản sao y mẫu không mang mật khẩu nào. Chỉ còn rủi ro khi ai đó tự điền lại; cách dứt điểm là gỡ hẳn nhánh mock khỏi `services/auth.ts` khi không cần trình diễn offline nữa |
+| **T-06** | Mobile lưu phiên trong `SharedPreferences` (không mã hoá). | ✅ **ĐÃ SỬA** — chuyển sang `flutter_secure_storage` (Keychain trên iOS, AES/GCM với khoá trong KeyStore trên Android). `restore()` di trú một lần phiên của bản cũ rồi xoá sạch bản ghi cũ, nên cập nhật app không đá người đang đăng nhập ra ngoài |
 | **T-07** | Zalo Mini App lưu phiên trong `localStorage` — chấp nhận được với môi trường Zalo nhưng không được lưu token dài hạn ở đây. | ⚠️ Còn tồn đọng |
 | **T-08** | Luồng định danh Zalo chưa kiểm chứng được đầu-cuối với Zalo Open API. | ⚠️ Chờ bên ngoài — `exchangeZaloToken()` đã gọi Zalo Graph API thật, nhưng Zalo **chưa cấp quyền** `getPhoneNumber` nên hiện phải dùng `CITIZEN_OTP_BYPASS_CODE`; xoá biến này ngay khi được cấp quyền |
 | **T-09** | Chưa có refresh token / xoay vòng token dù đã khai báo `REFRESH_EXPIRES_IN`. Token sống 8 giờ, mất token là mất phiên trong 8 giờ. | ✅ **ĐÃ SỬA** — `POST /auth/refresh` có xoay vòng và phát hiện dùng lại token cũ (dùng lại thì thu hồi cả phiên). Đánh đổi đã nhận: ai biết `sid` có thể cố tình đóng phiên đó |
-| **T-10** | Chưa có chính sách độ mạnh mật khẩu cán bộ và chưa buộc đổi mật khẩu tạm ở lần đăng nhập đầu. | ⚠️ Còn tồn đọng |
+| **T-10** | Chưa có chính sách độ mạnh mật khẩu cán bộ và chưa buộc đổi mật khẩu tạm ở lần đăng nhập đầu. | ✅ **ĐÃ SỬA** — chính sách dùng chung ở `libs/shared/src/auth/password-policy.ts` (≥10 ký tự, có chữ và số, không phải mật khẩu phổ biến, không chứa tên đăng nhập) áp cho cả ba đường đổi mật khẩu. Cờ `mustChangePassword` bật khi tạo tài khoản và khi quản trị viên đặt lại; `JwtAuthGuard` chặn MỌI endpoint trừ đường đổi mật khẩu cho tới khi chủ tài khoản tự đặt lại |
 
 ---
 
@@ -140,17 +140,20 @@ Lệnh chạy: `npm audit --production` (chỉ đọc kết quả, **không** ch
    nhầm IP của nginx cho mọi người dùng.
 5. **Bật xác thực MongoDB**: tạo user riêng cho ViGov với quyền `readWrite` trên đúng một database,
    `MONGO_URI=mongodb://vigov:<mật-khẩu>@host:27017/vigov?authSource=admin`, chặn cổng 27017 khỏi Internet.
-6. **Bật xác thực RabbitMQ**: xoá tài khoản `guest/guest` mặc định trong `RABBITMQ_URI`, tạo vhost và
+6. **Đặt `OTP_STORE=mongo` nếu chạy nhiều hơn một instance backend.** Mặc định `memory` giữ mã OTP
+   trong bộ nhớ tiến trình: sau bộ cân bằng tải, mã sinh ở instance A không xác thực được ở instance B,
+   và bộ đếm nhập sai không dùng chung nên người dò chỉ cần đổi instance là được thêm lượt.
+7. **Bật xác thực RabbitMQ**: xoá tài khoản `guest/guest` mặc định trong `RABBITMQ_URI`, tạo vhost và
    user riêng, giới hạn quyền theo queue.
-7. **Sao lưu MongoDB**: lịch `mongodump` hằng ngày + giữ tối thiểu 30 bản, kiểm thử khôi phục định kỳ,
+8. **Sao lưu MongoDB**: lịch `mongodump` hằng ngày + giữ tối thiểu 30 bản, kiểm thử khôi phục định kỳ,
    lưu bản sao ở nơi khác máy chủ ứng dụng. Dữ liệu phản ánh của công dân là dữ liệu cá nhân.
-8. **Rà quyền truy cập thư mục `uploads`**: đặt ngoài thư mục mã nguồn, quyền `0750`, chủ sở hữu là
+9. **Rà quyền truy cập thư mục `uploads`**: đặt ngoài thư mục mã nguồn, quyền `0750`, chủ sở hữu là
    user chạy tiến trình Node, **không** để nginx phục vụ tĩnh thư mục này (mọi truy cập phải đi qua
    API để được kiểm tra chữ ký). Cân nhắc chuyển hẳn sang S3/MinIO với bucket private.
-9. **Hoàn tất xác thực thật ở 3 client** (phát hiện **C-03**): admin-web gọi `/auth/staff/login` và
+10. **Hoàn tất xác thực thật ở 3 client** (phát hiện **C-03**): admin-web gọi `/auth/staff/login` và
    bảo vệ route bằng middleware phía máy chủ; mobile chuyển token sang `flutter_secure_storage`;
    gỡ toàn bộ `NEXT_PUBLIC_DEMO_*`.
-10. **Bổ sung thu hồi phiên** (phát hiện **TB-01**) trước khi phát hành cho người dùng thật —
+11. **Bổ sung thu hồi phiên** (phát hiện **TB-01**) trước khi phát hành cho người dùng thật —
     nếu không, thao tác "khoá tài khoản" trên Web Quản trị chỉ có tác dụng sau tối đa 8 giờ.
 11. **Quy ước tệp riêng tư**: mọi bản scan văn bản, ảnh phản ánh tải lên phải đặt `isPrivate = true`
     (phát hiện **TB-09**).

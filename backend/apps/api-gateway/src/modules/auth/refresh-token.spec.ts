@@ -7,6 +7,7 @@ import type { CitizenUserDocument, LoginSessionDocument, SessionRegistry, StaffU
 import { fakeDoc, queryChain } from '../../../../../test/support/mongoose-mock';
 import type { UsersService } from '../users/users.service';
 import { AuthService, parseDurationSeconds } from './auth.service';
+import type { OtpStore } from './otp.store';
 
 /**
  * Xoay vòng refresh token (T-09) — VÌ SAO ĐÁNG MỘT BỘ TEST RIÊNG.
@@ -98,6 +99,7 @@ function makeService(options: HarnessOptions = {}): Harness {
   const isActive = jest.fn(async () => active);
   const invalidate = jest.fn();
   const revokeOtherSessions = jest.fn(async () => ({ revoked: 3 }));
+  const otpStore = { put: jest.fn(), verify: jest.fn(), clear: jest.fn() };
 
   const service = new AuthService(
     staffModel,
@@ -108,6 +110,8 @@ function makeService(options: HarnessOptions = {}): Harness {
       get: (key: string) => (key === 'auth.jwtExpiresIn' ? '8h' : key === 'auth.refreshExpiresIn' ? '7d' : undefined),
     } as unknown as ConfigService,
     { isActive, invalidate } as unknown as SessionRegistry,
+    // Kho OTP không liên quan tới refresh token / đổi mật khẩu — có bộ test riêng
+    otpStore as unknown as OtpStore,
     { revokeOtherSessions } as unknown as UsersService,
   );
 

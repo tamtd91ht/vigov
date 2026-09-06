@@ -7,6 +7,7 @@ export { default as configuration } from './config/configuration';
 
 export * from './auth/roles';
 export * from './auth/jwt.guard';
+export * from './auth/password-policy';
 export * from './auth/session-registry';
 export * from './auth/session-registry.module';
 export * from './events/events';

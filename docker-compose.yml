@@ -128,6 +128,8 @@ services:
       # Mã định danh tạm cho giai đoạn Zalo chưa cấp quyền getPhoneNumber.
       # Mặc định RỖNG = tắt; xem SECURITY.md trước khi đặt giá trị.
       CITIZEN_OTP_BYPASS_CODE: ${CITIZEN_OTP_BYPASS_CODE:-}
+      # memory | mongo — phải là `mongo` nếu nhân bản service backend (SECURITY.md TB-08)
+      OTP_STORE: ${OTP_STORE:-memory}
 
       # Rate limit / chống spam (P3-31)
       THROTTLE_TTL_SECONDS: ${THROTTLE_TTL_SECONDS:-60}
@@ -211,6 +213,10 @@ services:
         NEXT_PUBLIC_DEMO_PASSWORD: ${NEXT_PUBLIC_DEMO_PASSWORD:-}
         NEXT_PUBLIC_MAP_PROVIDER: ${NEXT_PUBLIC_MAP_PROVIDER:-mock}
         NEXT_PUBLIC_MAP_API_KEY: ${NEXT_PUBLIC_MAP_API_KEY:-}
+        NEXT_PUBLIC_MAP_STYLE_URL: ${NEXT_PUBLIC_MAP_STYLE_URL:-}
+        NEXT_PUBLIC_MAP_CENTER_LAT: ${NEXT_PUBLIC_MAP_CENTER_LAT:-}
+        NEXT_PUBLIC_MAP_CENTER_LNG: ${NEXT_PUBLIC_MAP_CENTER_LNG:-}
+        NEXT_PUBLIC_MAP_ZOOM: ${NEXT_PUBLIC_MAP_ZOOM:-}
         NEXT_PUBLIC_REALTIME_ENABLED: ${NEXT_PUBLIC_REALTIME_ENABLED:-true}
         NEXT_PUBLIC_SUPPORT_EMAIL: ${NEXT_PUBLIC_SUPPORT_EMAIL:-}
         NEXT_PUBLIC_SUPPORT_PHONE: ${NEXT_PUBLIC_SUPPORT_PHONE:-}
@@ -255,6 +261,11 @@ services:
         VITE_ZALO_APP_ID: ${VITE_ZALO_APP_ID:-}
         VITE_ZALO_OA_ID: ${VITE_ZALO_OA_ID:-}
         VITE_HOTLINE: ${VITE_HOTLINE:-}
+        VITE_MAP_PROVIDER: ${VITE_MAP_PROVIDER:-mock}
+        VITE_MAP_STYLE_URL: ${VITE_MAP_STYLE_URL:-}
+        VITE_MAP_CENTER_LAT: ${VITE_MAP_CENTER_LAT:-}
+        VITE_MAP_CENTER_LNG: ${VITE_MAP_CENTER_LNG:-}
+        VITE_MAP_ZOOM: ${VITE_MAP_ZOOM:-}
         VITE_APP_VERSION: ${VITE_APP_VERSION:-0.0.0}
     container_name: ${COMPOSE_PROJECT_NAME:-vigov}-zalo-miniapp
     <<: *default-restart

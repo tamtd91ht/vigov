@@ -57,6 +57,17 @@ export class StaffUser {
 
   @Prop()
   lastLoginAt?: Date;
+
+  /**
+   * Đang giữ mật khẩu do hệ thống/quản trị viên đặt, PHẢI tự đổi trước khi dùng.
+   *
+   * Bật khi tạo tài khoản (mật khẩu tạm) và khi quản trị viên đặt lại mật khẩu —
+   * hai trường hợp mà mật khẩu đã đi qua tay người khác (đọc trên màn hình, gửi
+   * qua tin nhắn). Cờ này vào payload JWT, và `JwtAuthGuard` chặn mọi endpoint
+   * trừ đường đổi mật khẩu cho tới khi người dùng tự đặt mật khẩu mới.
+   */
+  @Prop({ default: false })
+  mustChangePassword: boolean;
 }
 export const StaffUserSchema = SchemaFactory.createForClass(StaffUser);
 

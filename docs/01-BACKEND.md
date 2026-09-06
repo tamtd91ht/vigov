@@ -43,7 +43,7 @@ vào `shared` sẽ làm ranh giới module nhoè đi.
 
 ---
 
-## 2. Hai mươi module
+## 2. Hai mươi mốt module
 
 | Module | Route | Vai trò |
 |---|---|---|
@@ -81,6 +81,34 @@ vào `shared` sẽ làm ranh giới module nhoè đi.
 | Công dân qua Zalo | `POST /auth/citizen/zalo/identify` | Token định danh của Zalo |
 
 Cả ba endpoint trên trả về `{ accessToken, refreshToken, user }`.
+
+**Mã OTP** không lưu dạng rõ ở bất kỳ đâu — `OtpStore` chỉ giữ HMAC-SHA256 của
+mã. Nơi lưu chọn bằng `OTP_STORE`: `memory` (mặc định, đủ cho một instance) hoặc
+`mongo` (bảng `otp_codes`, có TTL index nên Mongo tự dọn mã hết hạn).
+**Chạy nhiều instance thì bắt buộc `mongo`**: mã sinh ở instance A không xác
+thực được ở instance B, và bộ đếm nhập sai không dùng chung nên người dò chỉ cần
+đổi instance là được thêm lượt.
+
+**Phiên của chính mình** (trang Hồ sơ cá nhân): `GET /auth/me/sessions` và
+`DELETE /auth/me/sessions/:id`. Tách khỏi `GET /users/sessions` — đường đó là màn
+hình bảo mật của quản trị, đòi `users:view` và trả phiên của cả cơ quan, nghĩa là
+vai trò không có quyền đó thì không xem được cả phiên của chính họ. Thu hồi phiên
+không thuộc về mình trả **404** y như phiên không tồn tại, để không tiết lộ mã
+phiên nào có thật.
+
+### 3.1a Mật khẩu tạm và chính sách mật khẩu
+
+Chính sách nằm ở **một chỗ duy nhất** — `libs/shared/src/auth/password-policy.ts`
+— và áp cho cả ba đường: tạo tài khoản (sinh mật khẩu tạm), quản trị viên đặt
+lại, và người dùng tự đổi. Yêu cầu: tối thiểu 10 ký tự, có chữ và có số, không
+phải mật khẩu phổ biến, không chứa tên đăng nhập, không dấu cách ở đầu/cuối.
+
+Cờ `StaffUser.mustChangePassword` bật khi **tạo tài khoản** và khi **quản trị
+viên đặt lại mật khẩu** — hai trường hợp mật khẩu đã đi qua tay người khác. Cờ đi
+vào payload JWT và `JwtAuthGuard` **chặn mọi endpoint** trừ những endpoint gắn
+`@AllowPendingPassword()` (`GET /auth/me`, `PATCH /auth/me/password`). Đổi mật
+khẩu xong, máy chủ cấp **cặp token mới** vì cờ nằm trong chữ ký JWT — token cũ
+vẫn mang cờ cũ nên vẫn bị chặn.
 
 Cán bộ tự đổi mật khẩu của mình: `PATCH /auth/me/password` với
 `{ currentPassword, newPassword }` → `{ updated: true, revokedSessions: n }`.
@@ -319,6 +347,26 @@ song có chủ ý:
   Gắn tệp công khai bị từ chối bằng 400.
 - Mã tệp không tra được (tệp đã bị dọn khỏi kho) bị **bỏ qua** khi dựng
   `attachmentFiles` thay vì làm cả lời gọi thất bại — nhiệm vụ vẫn phải mở xem được.
+
+**Tệp đính kèm văn bản (WBS #4).** Cùng khuôn với nhiệm vụ, thêm vào
+`IncomingDocument`:
+
+- `scanFileId` là **bản scan gốc**, thứ OCR đọc — một tệp duy nhất, không đổi.
+- `attachmentFileIds` là **phụ lục, biên bản, tờ trình** kèm theo, nhiều tệp.
+- `POST /documents/:arrivalNo/attachments` `{ fileIds }` và
+  `DELETE /documents/:arrivalNo/attachments/:fileId`, quyền `documents:edit`,
+  mỗi lần gắn/gỡ ghi một mốc vào dòng thời gian luân chuyển.
+- `GET /documents/:arrivalNo` trả thêm `attachmentFiles`; **danh sách
+  `GET /documents` KHÔNG kèm** — mỗi tệp là một lượt tra kho tệp, gắn vào danh
+  sách là N+1 truy vấn cho thông tin không hiện ở bảng.
+
+**Cưỡng chế tệp riêng tư.** `FilesService.findPrivateById(id, label)` là chỗ duy
+nhất kiểm quy ước TB-09, dùng ở tất cả các đường gắn tệp vào bản ghi nghiệp vụ:
+tệp nhiệm vụ, ảnh hiện trường và ảnh nghiệm thu phản ánh, bản scan và tệp đính
+kèm văn bản. Trước đây đó chỉ là quy ước ghi trong tài liệu, nên chỉ cần một chỗ
+trong giao diện quên đặt `isPrivate` là tệp lọt ra ngoài mà không ai biết. Tệp
+nội dung CMS (ảnh bìa, audio, video) vẫn công khai **có chủ ý** — đó là nội dung
+đăng cho công dân xem.
 
 **Tiếp nhận phản ánh trực tiếp tại xã (WBS #6).** `POST /feedback`
 (`feedback:edit`) cho cán bộ lập phiếu hộ người dân đến trình bày tại trụ sở;

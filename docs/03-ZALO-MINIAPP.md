@@ -110,6 +110,9 @@ có nhánh mô phỏng khi `appConfig.api.useMocks = true`.
 | Biến | Ghi chú |
 |---|---|
 | `VITE_API_BASE_URL` | Phải là **domain công khai** của API — bên gọi là điện thoại người dân |
+| `VITE_MAP_PROVIDER` | `mock` = bản đồ mô phỏng bằng CSS (không gọi mạng), giá trị khác = nền thật qua MapLibre |
+| `VITE_MAP_STYLE_URL` | Style theo chuẩn MapLibre; mặc định OpenFreeMap (dữ liệu OpenStreetMap, không cần khoá API) |
+| `VITE_MAP_CENTER_LAT` · `VITE_MAP_CENTER_LNG` · `VITE_MAP_ZOOM` | Tâm và mức thu phóng lúc mở màn Bản đồ |
 | `VITE_USE_MOCKS` | Mặc định `false`. `true` để trình diễn offline |
 | `VITE_ZALO_APP_ID`, `VITE_ZALO_OA_ID` | Điền sau khi khách đăng ký Zalo OA |
 | `VITE_DEMO_MODE` | Mặc định `true` — bản demo. Xem mục 5b |
@@ -201,6 +204,7 @@ Mini App nằm ở `app-config.json`.
 | Zalo OA / ZNS | Chưa có tài khoản thật; template ZNS chờ Zalo duyệt (1 ngày đến 1 tuần) |
 | `@sentry/browser` | Lỗ hổng mức trung bình, đến bắc cầu từ `zmp-sdk`. Không tự nâng được, phải chờ Zalo phát hành bản mới |
 | Lưu phiên | Đang dùng `localStorage`; chấp nhận được trong môi trường Zalo nhưng không nên giữ token dài hạn |
+| Bản đồ nền | Có adapter thật (`MapLibreCanvas`, mặc định OpenFreeMap) song song bản mô phỏng. **Điều kiện chạy được trong Zalo: tên miền tile phải được khai trong danh sách domain của Mini App trên Zalo Developers** — chưa khai thì tile im lặng không tải và màn hình chỉ có nền trống. Chưa khai xong thì để `VITE_MAP_PROVIDER=mock` |
 
 ---
 

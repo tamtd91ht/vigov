@@ -14,6 +14,7 @@ import { fetchDepartments } from "@/services/catalogs.service";
 import { useApiResource } from "@/hooks/useApiResource";
 import { useCatalog } from "@/hooks/useCatalog";
 import {
+  addDocumentAttachments,
   apiErrorMessage,
   confirmAllOcr,
   confirmOcrField,
@@ -21,6 +22,7 @@ import {
   createTaskFromDocument,
   getDocument,
   listDocuments,
+  removeDocumentAttachment,
   runDocumentOcr,
   updateDocument,
   type CreateDocumentInput,
@@ -167,6 +169,27 @@ export function DocumentsPage() {
     try {
       applyDoc(await updateDocument(selectedNo, { scanFileId }));
       showToast("Đã đính kèm bản scan — có thể chạy OCR bóc tách thông tin");
+    } catch (err) {
+      showToast(apiErrorMessage(err));
+    }
+  };
+
+  /** Gắn phụ lục / biên bản vào văn bản (khác bản scan gốc dùng cho OCR) */
+  const attachFiles = async (fileIds: string[]) => {
+    if (!selectedNo) return;
+    try {
+      applyDoc(await addDocumentAttachments(selectedNo, fileIds));
+      showToast(`Đã đính kèm ${fileIds.length} tệp vào văn bản ${selectedNo}`);
+    } catch (err) {
+      showToast(apiErrorMessage(err));
+    }
+  };
+
+  const removeFile = async (fileId: string) => {
+    if (!selectedNo) return;
+    try {
+      applyDoc(await removeDocumentAttachment(selectedNo, fileId));
+      showToast("Đã gỡ tệp khỏi văn bản");
     } catch (err) {
       showToast(apiErrorMessage(err));
     }
@@ -389,6 +412,8 @@ export function DocumentsPage() {
         onConfirmField={confirmField}
         onConfirmAll={confirmAll}
         onAttachScan={attachScan}
+        onAttachFiles={attachFiles}
+        onRemoveFile={removeFile}
       />
 
       <ReceiveDocForm open={formOpen} onClose={() => setFormOpen(false)} onSubmit={receiveDoc} />

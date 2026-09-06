@@ -6,6 +6,7 @@ import {
   type IncomingDocumentDocument,
   type JwtPayload,
 } from '@vigov/shared';
+import { FilesService } from '../files/files.service';
 import { OcrService } from '../integrations/ocr/ocr.service';
 import type {
   ConfirmOcrFieldDto,
@@ -55,7 +56,102 @@ export class DocumentsService {
     @InjectModel(IncomingDocument.name)
     private readonly docModel: Model<IncomingDocumentDocument>,
     private readonly ocr: OcrService,
+    private readonly files: FilesService,
   ) {}
+
+  /**
+   * Bản scan văn bản PHẢI là tệp riêng tư (TB-09).
+   *
+   * Văn bản đến và đơn thư công dân là tài liệu nội bộ, có thể mang độ mật.
+   * `GET /files/:id` để công khai nên tệp không đánh dấu riêng tư là ai có mã
+   * tệp cũng đọc được mà không cần đăng nhập.
+   */
+  private async assertScanPrivate(scanFileId?: string): Promise<void> {
+    if (!scanFileId) return;
+    await this.files.findPrivateById(scanFileId, 'Bản scan văn bản');
+  }
+
+  /**
+   * Gắn tệp đính kèm (phụ lục, biên bản) vào một văn bản.
+   *
+   * Cùng khuôn với `TasksService.addAttachments`: đòi tệp riêng tư, bỏ qua mã
+   * đã gắn rồi, và ghi một mốc vào dòng thời gian luân chuyển.
+   */
+  async addAttachments(arrivalNo: string, fileIds: string[], actor?: JwtPayload) {
+    // `findOne` trả bản lean (chỉ đọc) — ở đây cần bản ghi được để save()
+    const doc = await this.findWritable(arrivalNo);
+
+    const names: string[] = [];
+    const added: string[] = [];
+    for (const fileId of fileIds) {
+      const file = await this.files.findPrivateById(fileId, 'Tệp đính kèm văn bản');
+      if (doc.attachmentFileIds.includes(fileId)) continue;
+      doc.attachmentFileIds.push(fileId);
+      added.push(fileId);
+      names.push(file.originalName);
+    }
+
+    if (added.length > 0) {
+      doc.markModified('attachmentFileIds');
+      doc.timeline.push({
+        title: `Đính kèm ${added.length} tệp: ${names.join(', ')}`,
+        meta: timelineMeta(actor),
+        state: 'done',
+      });
+      await doc.save();
+    }
+    return this.withAttachmentFiles(doc);
+  }
+
+  /** Gỡ một tệp đính kèm khỏi văn bản — tệp vẫn còn trong kho tệp */
+  async removeAttachment(arrivalNo: string, fileId: string, actor?: JwtPayload) {
+    const doc = await this.findWritable(arrivalNo);
+    const index = doc.attachmentFileIds.indexOf(fileId);
+    if (index < 0) {
+      throw new NotFoundException(`Văn bản ${arrivalNo} không có tệp đính kèm ${fileId}`);
+    }
+
+    doc.attachmentFileIds.splice(index, 1);
+    doc.markModified('attachmentFileIds');
+    doc.timeline.push({
+      title: 'Gỡ một tệp đính kèm',
+      meta: timelineMeta(actor),
+      state: 'done',
+    });
+    await doc.save();
+    return this.withAttachmentFiles(doc);
+  }
+
+  /**
+   * Bổ sung `attachmentFiles` (tên, dung lượng, kiểu) vào phản hồi chi tiết.
+   * Mã tệp không tra được thì BỎ QUA — văn bản vẫn phải mở xem được khi một
+   * tệp cũ đã bị dọn khỏi kho.
+   */
+  private async withAttachmentFiles(doc: IncomingDocumentDocument): Promise<Record<string, unknown>> {
+    return {
+      ...doc.toObject(),
+      attachmentFiles: await this.attachmentFilesOf(doc.attachmentFileIds ?? []),
+    };
+  }
+
+  /** Tên, dung lượng, kiểu của từng mã tệp; mã chết bị bỏ qua kèm một dòng log */
+  private async attachmentFilesOf(fileIds: string[]) {
+    const files: { fileId: string; name: string; size: number; contentType: string }[] = [];
+    for (const fileId of fileIds) {
+      try {
+        const file = await this.files.findById(fileId);
+        files.push({
+          fileId: String(file._id),
+          name: file.originalName,
+          size: file.size,
+          contentType: file.mimeType,
+        });
+      } catch {
+        this.logger.warn(`Văn bản tham chiếu tệp ${fileId} không còn trong kho`);
+      }
+    }
+    return files;
+  }
 
   /** Danh sách văn bản đến / đơn thư có lọc + phân trang */
   async list(query: QueryDocumentsDto) {
@@ -89,15 +185,31 @@ export class DocumentsService {
     };
   }
 
-  /** Chi tiết một văn bản theo số đến */
-  async findOne(arrivalNo: string) {
+  /** Bản ghi ghi được (không lean) — dùng cho các thao tác cần save() */
+  private async findWritable(arrivalNo: string): Promise<IncomingDocumentDocument> {
+    const doc = await this.docModel.findOne({ arrivalNo }).exec();
+    if (!doc) throw new NotFoundException(`Không tìm thấy văn bản có số đến ${arrivalNo}`);
+    return doc;
+  }
+
+  /**
+   * Chi tiết một văn bản theo số đến, kèm siêu dữ liệu tệp đính kèm.
+   *
+   * Danh sách (`list`) KHÔNG kèm `attachmentFiles`: mỗi tệp là một lượt tra kho
+   * tệp, gắn vào danh sách là N+1 truy vấn cho một thông tin không hiện ở bảng.
+   */
+  /* Kiểu trả về khai TƯỜNG MINH: kiểu suy ra từ bản lean của Mongoose cộng
+     thêm trường mới vượt giới hạn TS7056 mà compiler chịu tuần tự hoá được. */
+  async findOne(arrivalNo: string): Promise<Record<string, unknown>> {
     const doc = await this.docModel.findOne({ arrivalNo }).lean().exec();
     if (!doc) throw new NotFoundException(`Không tìm thấy văn bản có số đến ${arrivalNo}`);
-    return this.withFreshDaysLeft(doc);
+    const fresh = this.withFreshDaysLeft(doc);
+    return { ...fresh, attachmentFiles: await this.attachmentFilesOf(doc.attachmentFileIds ?? []) };
   }
 
   /** Tiếp nhận văn bản: tự cấp số đến và khởi tạo timeline vào sổ */
   async create(dto: CreateDocumentDto, actor?: JwtPayload) {
+    await this.assertScanPrivate(dto.scanFileId);
     const kind = dto.kind ?? 'incoming';
     const arrivalNo = await this.nextArrivalNo(kind);
     const deadline = dto.deadline ?? '';
@@ -161,7 +273,10 @@ export class DocumentsService {
     if (dto.urgency !== undefined) doc.urgency = dto.urgency;
     if (dto.signer !== undefined) doc.signer = dto.signer;
     if (dto.pageCount !== undefined) doc.pageCount = dto.pageCount;
-    if (dto.scanFileId !== undefined) doc.scanFileId = dto.scanFileId;
+    if (dto.scanFileId !== undefined) {
+      await this.assertScanPrivate(dto.scanFileId);
+      doc.scanFileId = dto.scanFileId;
+    }
     if (dto.linkedTaskCode !== undefined) doc.linkedTaskCode = dto.linkedTaskCode;
     if (dto.deadline !== undefined) {
       doc.deadline = dto.deadline;

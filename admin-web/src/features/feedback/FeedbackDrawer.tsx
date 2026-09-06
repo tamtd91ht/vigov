@@ -223,6 +223,10 @@ export function FeedbackDrawer({
               <FileUpload
                 key={uploadKey}
                 purpose="feedback"
+                /* Ảnh hiện trường có thể có mặt người, biển số, cửa nhà — dữ liệu
+                   cá nhân theo NĐ 13/2023. Backend từ chối 400 nếu tệp không
+                   riêng tư (TB-09), nên cờ này là bắt buộc chứ không tuỳ chọn. */
+                isPrivate
                 height={84}
                 placeholder={
                   resultFileIds.length

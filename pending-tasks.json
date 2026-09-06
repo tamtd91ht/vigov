@@ -541,11 +541,20 @@
   },
   {
     "id": "P6-06",
-    "name": "Chốt nhà cung cấp bản đồ nền cho phân hệ Bản đồ Kinh tế số",
-    "description": "WBS #7/#26 và câu hỏi xác nhận #3: Google Maps không có giấy phép chính thức tại Việt Nam nên không khả thi. MapCanvas hiện là bản mô phỏng bằng CSS, adapter đã dựng sẵn theo appConfig.map.provider — thêm provider thật chỉ cần thêm một adapter. Chờ khách chốt (VietMap / Goong / MapLibre + nguồn tile miễn phí).",
+    "name": "Bản đồ nền thật cho phân hệ Bản đồ Kinh tế số",
+    "description": "WBS #7/#26. Đã xong phần mình làm được: adapter MapLibre cho cả Web Quản trị và Zalo Mini App, mặc định dùng OpenFreeMap (dữ liệu OpenStreetMap, không cần khoá API, không giới hạn lượt xem), CSP mở đúng một tên miền suy từ biến môi trường, bản mô phỏng giữ lại làm phương án không cần mạng. CÒN CHỜ KHÁCH: chốt nhà cung cấp chính thức (câu hỏi mở #3) — nền OpenStreetMap thể hiện Hoàng Sa – Trường Sa không theo cách chính thức của Việt Nam (Điều 11 NĐ 18/2020), khung nhìn cấp xã không tới đó nên demo dùng được, nhưng bàn giao chính thức nên chọn VietMap/Goong. Với Mini App còn cần khai tên miền tile trong danh sách domain trên Zalo Developers.",
     "planFilePath": null,
     "createdAt": "2026-09-06T00:00:00.000Z",
-    "updatedAt": "2026-09-06T13:40:00.000Z",
-    "status": "pending"
+    "updatedAt": "2026-09-06T15:20:00.000Z",
+    "status": "in-progress"
+  },
+  {
+    "id": "P6-07",
+    "name": "Đóng nhóm việc tự làm được sau rà soát WBS",
+    "description": "Bảy hạng mục không phụ thuộc bên ngoài: (1) bản đồ nền thật hai kênh; (2) app Flutter chuyển phiên sang flutter_secure_storage (T-06); (3) chính sách mật khẩu dùng chung + buộc đổi mật khẩu tạm, chặn ở JwtAuthGuard (T-10); (4) endpoint phiên của chính mình GET/DELETE /auth/me/sessions + thu hồi từng phiên trên trang Hồ sơ cá nhân; (5) cưỡng chế tệp riêng tư bằng mã ở mọi đường gắn tệp (TB-09); (6) tệp đính kèm văn bản tải lên/tải về/gỡ thật, thay danh sách tên tệp bịa; (7) kho OTP chọn được driver mongo có TTL index cho nhiều instance (TB-08).",
+    "planFilePath": null,
+    "createdAt": "2026-09-06T00:00:00.000Z",
+    "updatedAt": "2026-09-06T15:20:00.000Z",
+    "status": "done"
   }
 ]

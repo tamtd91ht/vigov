@@ -26,6 +26,12 @@ export default () => ({
      * Để TRỐNG là tắt hẳn. Xem SECURITY.md — phải xoá trước khi mở cho dân.
      */
     otpBypassCode: process.env.CITIZEN_OTP_BYPASS_CODE ?? '',
+    /**
+     * Nơi lưu mã OTP: `memory` (mặc định, một tiến trình) hoặc `mongo`.
+     * BẮT BUỘC đặt `mongo` khi chạy nhiều instance sau bộ cân bằng tải —
+     * xem SECURITY.md phát hiện TB-08.
+     */
+    otpStore: process.env.OTP_STORE ?? 'memory',
   },
 
   security: {

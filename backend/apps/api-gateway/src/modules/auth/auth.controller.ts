@@ -1,7 +1,7 @@
-import { Body, Controller, Get, Patch, Post, Req } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Req } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
-import { Public, type AuthedRequest } from '@vigov/shared';
+import { AllowPendingPassword, Public, type AuthedRequest } from '@vigov/shared';
 import { AuthService } from './auth.service';
 import {
   ChangeOwnPasswordDto,
@@ -87,8 +87,34 @@ export class AuthController {
 
   /** Thông tin phiên hiện tại */
   @Get('me')
+  @AllowPendingPassword()
   me(@Req() req: AuthedRequest) {
     return req.user;
+  }
+
+  /**
+   * Phiên đăng nhập của CHÍNH người đang gọi (trang Hồ sơ cá nhân).
+   *
+   * Khác `GET /users/sessions` ở hai điểm: đó là màn hình bảo mật của quản trị
+   * (đòi `users:view`, trả phiên của cả cơ quan), còn đây chỉ trả phiên của
+   * mình nên vai trò nào cũng gọi được. Trước khi có endpoint này, giao diện
+   * phải lấy toàn bộ phiên web rồi tự lọc — vai trò không có quyền xem danh
+   * sách phiên thì không thấy được cả phiên của chính họ.
+   */
+  @Get('me/sessions')
+  mySessions(@Req() req: AuthedRequest) {
+    return this.auth.listOwnSessions(req.user?.username ?? '', req.user?.sid);
+  }
+
+  /**
+   * Đăng xuất một thiết bị cụ thể của chính mình.
+   *
+   * Thu hồi phiên KHÔNG thuộc về mình thì trả 404 y như phiên không tồn tại —
+   * không nói cho người gọi biết mã phiên đó có thật hay không.
+   */
+  @Delete('me/sessions/:id')
+  revokeOwnSession(@Param('id') id: string, @Req() req: AuthedRequest) {
+    return this.auth.revokeOwnSession(req.user?.username ?? '', id);
   }
 
   /**
@@ -100,6 +126,7 @@ export class AuthController {
    * nên không ai đổi được mật khẩu của người khác qua đây.
    */
   @Patch('me/password')
+  @AllowPendingPassword()
   changeOwnPassword(@Body() dto: ChangeOwnPasswordDto, @Req() req: AuthedRequest) {
     return this.auth.changeOwnPassword(
       req.user?.username ?? '',

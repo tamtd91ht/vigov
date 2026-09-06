@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useApiResource } from "@/hooks/useApiResource";
 import { fetchMapOverview, fetchMapPins } from "@/services/map.service";
 import { MapCanvas } from "./MapCanvas";
+import { MapLibreCanvas } from "./MapLibreCanvas";
 
 /**
  * Trang Bản đồ kinh tế số (WBS #7).
@@ -20,11 +21,22 @@ import { MapCanvas } from "./MapCanvas";
  * tổng hợp) và GET /map/pins (ghim). Chỉ số nào backend chưa có nguồn dữ liệu
  * sẽ trả null — giao diện hiện dấu gạch kèm ghi chú, KHÔNG hiển thị số ước.
  *
- * Adapter bản đồ được chọn theo appConfig.map.provider (KHÔNG hardcode):
- * hiện mới có adapter "mock" (MapCanvas — bản đồ mô phỏng). Khi khách chốt
- * provider thật (câu hỏi mở #2: VietMap / Goong / MapLibre), thêm adapter
- * cùng props MapCanvasProps và bổ sung nhánh chọn dưới đây — panel lớp dữ
- * liệu và panel phân tích giữ nguyên.
+ * Adapter bản đồ chọn theo appConfig.map.provider (KHÔNG hardcode):
+ *   · `mock`      → MapCanvas, nền mô phỏng bằng CSS, không gọi mạng
+ *   · giá trị khác → MapLibreCanvas, nền thật từ style ở `map.styleUrl`
+ *                    (mặc định OpenFreeMap: dữ liệu OpenStreetMap, không cần
+ *                    khoá API, không giới hạn lượt xem)
+ *
+ * Đổi sang VietMap / Goong / nguồn tự dựng chỉ là đổi biến môi trường, miễn là
+ * style theo chuẩn MapLibre — không phải viết adapter mới. Hai panel phủ (lớp
+ * dữ liệu, phân tích ngành) dùng chung cho cả hai adapter.
+ *
+ * LƯU Ý PHÁP LÝ khi chọn nguồn: bản đồ nền dựng từ OpenStreetMap thể hiện Hoàng
+ * Sa – Trường Sa theo cách trung lập của cộng đồng quốc tế, không theo cách
+ * chính thức của Việt Nam (Điều 11 Nghị định 18/2020/NĐ-CP). Khung nhìn cấp xã
+ * không bao giờ tới hai quần đảo đó nên rủi ro thực tế gần như không có, nhưng
+ * khi bàn giao chính thức thì đây là câu cần khách xác nhận — chọn provider
+ * trong nước là hết vấn đề.
  */
 export function MapPage() {
   const { showToast } = useToast();
@@ -100,7 +112,12 @@ export function MapPage() {
     pins.reload();
   };
 
-  // Chọn adapter theo provider cấu hình (xem ghi chú đầu file)
+  /*
+   * Chọn adapter theo provider cấu hình (xem ghi chú đầu file).
+   * `mock` → bản mô phỏng CSS; mọi giá trị khác → bản đồ nền thật qua MapLibre
+   * với style ở `appConfig.map.styleUrl`. Nhờ vậy đổi sang VietMap/Goong sau
+   * này chỉ là đổi biến môi trường, không sửa mã.
+   */
   const isMockProvider = appConfig.map.provider === "mock";
 
   const layerPanel = (
@@ -187,9 +204,15 @@ export function MapPage() {
         sub="Cơ sở dữ liệu không gian về doanh nghiệp, hộ kinh doanh và hạ tầng trên địa bàn xã"
         actions={
           <>
-            <Chip color="var(--orange)" tint="rgba(230,126,34,.12)" dot>
-              Bản đồ mô phỏng — provider thật (VietMap/Goong/MapLibre) chờ khách chốt
-            </Chip>
+            {isMockProvider ? (
+              <Chip color="var(--orange)" tint="rgba(230,126,34,.12)" dot>
+                Bản đồ mô phỏng — đặt NEXT_PUBLIC_MAP_PROVIDER để dùng bản đồ nền thật
+              </Chip>
+            ) : (
+              <Chip color="var(--teal)" tint="rgba(23,162,162,.12)" dot>
+                Nền bản đồ: {appConfig.map.provider}
+              </Chip>
+            )}
             <button type="button" className="btn pri" onClick={handleExport}>
               <Icon name="down" size={15} />
               Xuất dữ liệu
@@ -217,14 +240,17 @@ export function MapPage() {
             {analysisPanel}
           </MapCanvas>
         ) : (
-          <div className="mapwrap" style={{ display: "grid", placeItems: "center" }}>
-            <div className="muted" style={{ fontSize: 13, textAlign: "center", padding: 20 }}>
-              <Icon name="map" size={28} />
-              <div style={{ marginTop: 8 }}>
-                Adapter cho provider “{appConfig.map.provider}” chưa được tích hợp — chờ chốt câu hỏi mở #2.
-              </div>
-            </div>
-          </div>
+          <MapLibreCanvas
+            layers={layers}
+            pins={pins.data ?? []}
+            activeLayerIds={visibleLayerIds}
+            onPinSelect={setSelectedPin}
+            selectedPin={selectedPin}
+            onCall={handleCall}
+          >
+            {layerPanel}
+            {analysisPanel}
+          </MapLibreCanvas>
         )}
       </DataState>
     </div>

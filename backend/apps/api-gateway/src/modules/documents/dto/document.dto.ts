@@ -1,5 +1,8 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  ArrayNotEmpty,
+  IsArray,
   IsIn,
   IsInt,
   IsNotEmpty,
@@ -187,4 +190,18 @@ export class ConfirmOcrFieldDto {
   @IsOptional()
   @IsString({ message: 'Giá trị trường OCR phải là chuỗi ký tự' })
   value?: string;
+}
+
+/** Số tệp đính kèm tối đa gắn một lần cho văn bản */
+export const MAX_DOCUMENT_ATTACHMENTS_PER_CALL = 10;
+
+/** Gắn tệp đính kèm vào văn bản (POST /documents/:arrivalNo/attachments) */
+export class AttachDocumentFilesDto {
+  @IsArray({ message: 'Danh sách tệp không hợp lệ' })
+  @ArrayNotEmpty({ message: 'Vui lòng chọn ít nhất một tệp cần gắn' })
+  @ArrayMaxSize(MAX_DOCUMENT_ATTACHMENTS_PER_CALL, {
+    message: `Chỉ được gắn tối đa ${MAX_DOCUMENT_ATTACHMENTS_PER_CALL} tệp mỗi lần`,
+  })
+  @IsString({ each: true, message: 'Mã tệp không hợp lệ' })
+  fileIds: string[];
 }

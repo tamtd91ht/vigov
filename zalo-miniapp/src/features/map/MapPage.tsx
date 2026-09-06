@@ -8,6 +8,7 @@ import { useApiResource } from "@/hooks/useApiResource";
 import { mapService } from "@/services/map.service";
 import type { MapPin } from "@/types";
 import { MapCanvas } from "./MapCanvas";
+import { MapLibreCanvas } from "./MapLibreCanvas";
 
 const PAGE_TITLE = "Bản đồ kinh tế số";
 const EMPTY_MESSAGE = "Xã chưa công bố dữ liệu bản đồ kinh tế.";
@@ -104,13 +105,24 @@ export function MapPage() {
                 })}
               </div>
 
-              <MapCanvas
-                layers={map.data.layers}
-                pins={map.data.pins}
-                activeLayerKeys={keys}
-                onPinSelect={setSelectedPin}
-                selectedPin={selectedPin}
-              />
+              {/* Bản mô phỏng khi provider = mock, còn lại là bản đồ nền thật */}
+              {appConfig.map.provider === "mock" ? (
+                <MapCanvas
+                  layers={map.data.layers}
+                  pins={map.data.pins}
+                  activeLayerKeys={keys}
+                  onPinSelect={setSelectedPin}
+                  selectedPin={selectedPin}
+                />
+              ) : (
+                <MapLibreCanvas
+                  layers={map.data.layers}
+                  pins={map.data.pins}
+                  activeLayerKeys={keys}
+                  onPinSelect={setSelectedPin}
+                  selectedPin={selectedPin}
+                />
+              )}
 
               {/* Hai chỉ số tổng hợp, tính theo đúng các lớp đang bật */}
               <div className="grid2" style={{ marginTop: 12 }}>

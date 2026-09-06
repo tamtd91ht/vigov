@@ -14,6 +14,7 @@ import {
   SessionRegistry,
   StaffUser,
   type StaffUserDocument,
+  checkPasswordPolicy,
   findRole,
 } from '@vigov/shared';
 import {
@@ -73,6 +74,8 @@ const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 /** Sinh mật khẩu tạm */
 const TEMP_PASSWORD_LENGTH = 12;
+/** Số lần sinh lại mật khẩu tạm trước khi bỏ cuộc (xem generateTempPassword) */
+const TEMP_PASSWORD_MAX_TRIES = 20;
 const TEMP_PASSWORD_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789';
 const BCRYPT_ROUNDS = 10;
 
@@ -181,6 +184,9 @@ export class UsersService {
       roleLabel: findRole(doc.roleKey)?.label ?? doc.roleKey,
       status: doc.status,
       lastLoginAt: doc.lastLoginAt,
+      /* Để trang Tài khoản & phân quyền hiện được "chưa đổi mật khẩu tạm" —
+         quản trị viên cần biết ai chưa từng đăng nhập đổi mật khẩu. */
+      mustChangePassword: doc.mustChangePassword,
     };
   }
 
@@ -206,11 +212,22 @@ export class UsersService {
 
   /** Mật khẩu tạm ngẫu nhiên — chỉ trả về đúng một lần lúc tạo tài khoản */
   private generateTempPassword(): string {
-    let out = '';
-    for (let i = 0; i < TEMP_PASSWORD_LENGTH; i += 1) {
-      out += TEMP_PASSWORD_ALPHABET[randomInt(TEMP_PASSWORD_ALPHABET.length)];
+    /*
+     * Sinh lại tới khi thoả chính sách mật khẩu: bộ chữ có cả chữ và số nhưng
+     * một dãy ngẫu nhiên vẫn có thể ra toàn chữ, mà chính sách đòi có ít nhất
+     * một chữ số. Đặt được mật khẩu tạm mà chính chủ không tự đổi lại theo cùng
+     * luật thì là bẫy.
+     */
+    for (let attempt = 0; attempt < TEMP_PASSWORD_MAX_TRIES; attempt += 1) {
+      let out = '';
+      for (let i = 0; i < TEMP_PASSWORD_LENGTH; i += 1) {
+        out += TEMP_PASSWORD_ALPHABET[randomInt(TEMP_PASSWORD_ALPHABET.length)];
+      }
+      if (checkPasswordPolicy(out) === null) return out;
     }
-    return out;
+    /* Không bao giờ tới đây với bộ chữ hiện tại (xác suất ~10⁻¹²); ném lỗi rõ
+       ràng thay vì trả một mật khẩu không thoả luật. */
+    throw new BadRequestException('Không sinh được mật khẩu tạm hợp lệ, vui lòng thử lại');
   }
 
   // ─── Công dân ────────────────────────────────────────────────────────────
@@ -529,6 +546,8 @@ export class UsersService {
       department: dto.department,
       roleKey: dto.roleKey,
       status: 'active',
+      // Mật khẩu tạm đi qua tay quản trị viên → chủ tài khoản phải tự đổi trước khi dùng
+      mustChangePassword: true,
     });
 
     return { ...this.toStaffView(doc), tempPassword };
@@ -618,8 +637,19 @@ export class UsersService {
    * được tới 8 giờ — đúng thứ mà thao tác này định cắt.
    */
   async changeStaffPassword(username: string, dto: ChangeStaffPasswordDto) {
+    // Luật "không chứa tên đăng nhập" cần username, DTO không mang nên kiểm ở đây
+    const problem = checkPasswordPolicy(dto.newPassword, { username });
+    if (problem) throw new BadRequestException(problem);
+
     const passwordHash = await bcrypt.hash(dto.newPassword, BCRYPT_ROUNDS);
-    const doc = await this.staffModel.findOneAndUpdate({ username }, { $set: { passwordHash } }, { new: true }).exec();
+    const doc = await this.staffModel
+      .findOneAndUpdate(
+        { username },
+        // Quản trị viên đặt mật khẩu ⇒ mật khẩu đã đi qua tay người khác, chủ tài khoản phải tự đổi
+        { $set: { passwordHash, mustChangePassword: true } },
+        { new: true },
+      )
+      .exec();
     if (!doc) throw new NotFoundException('Không tìm thấy tài khoản cán bộ');
 
     const revoked = await this.revokeAllSessionsOf(username);

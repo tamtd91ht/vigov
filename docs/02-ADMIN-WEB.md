@@ -42,10 +42,10 @@ admin-web/src/
 |---|---|---|
 | `/` | Bảng điều hành | Thẻ KPI, biểu đồ tổng hợp |
 | `/tasks` | Nhiệm vụ | Chuyển đổi Kanban ⇄ bảng, checklist, vướng mắc |
-| `/documents` | Văn bản & Đơn thư | OCR trích 7 trường, cán bộ xác nhận từng trường |
+| `/documents` | Văn bản & Đơn thư | OCR trích 7 trường, cán bộ xác nhận từng trường; đính kèm phụ lục tải lên/tải về thật |
 | `/disbursement` | Giải ngân | Đề nghị, vướng mắc, tiến độ theo hạng mục |
 | `/feedback` | Phản ánh | Đếm ngược SLA, ghim bản đồ, ảnh hiện trường |
-| `/map` | Bản đồ kinh tế số | Lớp dữ liệu và ghim cơ sở |
+| `/map` | Bản đồ kinh tế số | Lớp dữ liệu và ghim cơ sở; nền bản đồ thật hoặc bản mô phỏng, chọn bằng `NEXT_PUBLIC_MAP_PROVIDER` (mục 4.5) |
 | `/reports` | Báo cáo | Kết xuất Excel; PDF/PPTX trả 501 ở Phase 1 |
 | `/settings` | Cấu hình | SLA, cây tổ chức, lĩnh vực phản ánh, tài khoản cán bộ |
 | `/cms` | Nội dung | Bài viết, video, truyền thanh, gửi thông báo hàng loạt |
@@ -152,6 +152,39 @@ Ba điều dễ vấp:
 
 ---
 
+### 4.5 Bản đồ nền — hai adapter, chọn bằng cấu hình
+
+`MapPage` chọn component theo `appConfig.map.provider`:
+
+| Giá trị | Adapter | Ghi chú |
+|---|---|---|
+| `mock` | `MapCanvas` | Nền vẽ bằng CSS, ghim theo phần trăm khung. KHÔNG gọi mạng |
+| khác | `MapLibreCanvas` | Nền thật từ `map.styleUrl` (mặc định OpenFreeMap), ghim theo `lat/lng` |
+
+Hai adapter nhận **cùng một bộ props** nên hai panel phủ (lớp dữ liệu, phân tích
+ngành) và toàn bộ luồng dữ liệu không phải sửa gì. Nội dung popup tách ra
+`PinPopupContent` để hai bên không lệch nhau.
+
+Ba thứ dễ vấp:
+
+1. **CSP.** `next.config.ts` mở `img-src`/`connect-src` cho ĐÚNG tên miền suy ra
+   từ `NEXT_PUBLIC_MAP_STYLE_URL`, và thêm `worker-src blob:` (MapLibre giải mã
+   tile trong web worker). Đổi provider thì CSP đổi theo, không phải sửa tay.
+2. **`maplibre-gl` nạp động** — vài trăm KB, chỉ một phân hệ dùng; nạp tĩnh là
+   mọi trang khác tải theo.
+3. **Ghim thiếu `lat/lng`** không đặt được lên nền thật. Dữ liệu seed đã sinh
+   toạ độ tất định từ x/y; ghim thêm sau mà thiếu toạ độ thì adapter hiện đếm số
+   lượng ở góc màn hình thay vì đặt sai chỗ.
+
+> **Pháp lý khi chốt nhà cung cấp:** nền dựng từ OpenStreetMap thể hiện Hoàng Sa
+> – Trường Sa theo cách trung lập của cộng đồng quốc tế, không theo cách chính
+> thức của Việt Nam (Điều 11 Nghị định 18/2020/NĐ-CP). Khung nhìn cấp xã không
+> bao giờ tới hai quần đảo đó nên rủi ro thực tế gần như không có, nhưng khi bàn
+> giao chính thức thì đây là câu cần khách xác nhận — chọn nhà cung cấp trong
+> nước (VietMap/Goong) là hết vấn đề, và chỉ là đổi biến môi trường.
+
+---
+
 ## 5. Thanh trên cùng: tìm kiếm toàn cục và trung tâm thông báo
 
 ### 5.1 Tìm kiếm toàn cục
@@ -219,6 +252,23 @@ mật khẩu chỉ hiện lỗi tại ô nhập chứ không đá người dùng
 
 ---
 
+## 6a. Mật khẩu tạm: `PasswordChangeGate`
+
+Tài khoản mới tạo và tài khoản vừa được quản trị viên đặt lại mật khẩu mang cờ
+`mustChangePassword`. Backend **chặn mọi endpoint** trừ đường đổi mật khẩu, nên
+`(dashboard)/layout.tsx` bọc toàn bộ khu vực quản trị trong `PasswordChangeGate`:
+cờ còn bật thì phủ kín màn hình bằng ô đổi mật khẩu, kèm đường Đăng xuất.
+
+Đây là lớp **giải thích**, không phải lớp bảo mật — gỡ nó ra cũng không mở được
+gì, vì việc chặn do `JwtAuthGuard` làm. Đổi mật khẩu xong, máy chủ cấp cặp token
+mới (cờ nằm trong chữ ký JWT nên token cũ vẫn bị chặn) và
+`authService.clearPasswordChangeRequirement()` cập nhật phiên ngay tại đó.
+
+Biểu mẫu dùng chung `features/profile/ChangePasswordForm.tsx` với trang Hồ sơ cá
+nhân — hai bản sao của cùng một bộ luật kiểm tra sẽ lệch nhau sau vài lần sửa.
+
+---
+
 ## 7. Biến môi trường
 
 | Tệp | Vai trò |
@@ -239,6 +289,9 @@ Biến của hai tính năng mới:
 |---|---|
 | `NEXT_PUBLIC_REALTIME_ENABLED` | `false` để tắt hẳn kênh Socket.IO (mục 4.4) |
 | `NEXT_PUBLIC_SUPPORT_EMAIL` · `NEXT_PUBLIC_SUPPORT_PHONE` · `NEXT_PUBLIC_SUPPORT_HOURS` | Đầu mối hỗ trợ hiện ở trang Trợ giúp; để trống thì trang nói rõ "chưa cấu hình" thay vì hiện số của người khác |
+| `NEXT_PUBLIC_MAP_PROVIDER` | `mock` = bản mô phỏng, giá trị khác = nền thật qua MapLibre (mục 4.5) |
+| `NEXT_PUBLIC_MAP_STYLE_URL` | Style theo chuẩn MapLibre. Tên miền trong URL này **tự được mở trong CSP** |
+| `NEXT_PUBLIC_MAP_CENTER_LAT` · `NEXT_PUBLIC_MAP_CENTER_LNG` · `NEXT_PUBLIC_MAP_ZOOM` | Tâm và mức thu phóng lúc mở trang — mỗi đơn vị hành chính một giá trị |
 
 ---
 
@@ -286,11 +339,11 @@ của môi trường tương ứng.
 | Tìm kiếm toàn cục | Đã nối `/search` (mục 5.1). Phạm vi tìm (công dân, giải ngân, CMS) vẫn là câu hỏi mở #28 |
 | Trung tâm thông báo | Đã có khay thả xuống, đánh dấu đã đọc, điều hướng tới bản ghi (mục 5.2). Thiếu endpoint "đọc tất cả" ở backend nên phải gọi từng mã |
 | Realtime | Đã nối 3 sự kiện (mục 4.4). Phạm vi realtime đầy đủ là câu hỏi mở #7; proxy production cần chuyển tiếp `/socket.io/` |
-| Trang hồ sơ cá nhân | Đã xây (`/profile`). Thu hồi MỘT phiên cụ thể của chính mình chưa làm được: `DELETE /users/sessions/:id` đòi quyền `users:edit` mà không phải vai trò nào cũng có — hiện chỉ có "đăng xuất các thiết bị khác" |
+| Trang hồ sơ cá nhân | Xong. Backend đã mở `GET/DELETE /auth/me/sessions` nên mọi vai trò xem và thu hồi được TỪNG phiên của chính mình; phiên đang dùng cố tình không cho tự thu hồi (đã có nút Đăng xuất) |
 | Nhắc việc trong ngăn nhiệm vụ | Nút vẫn khoá — backend chưa có endpoint gửi nhắc cho người thực hiện |
-| Tệp đính kèm văn bản | Tab "Tệp đính kèm" của ngăn văn bản vẫn là danh sách tên tệp tạm (WBS #26); nhiệm vụ thì đã tải lên/tải về thật |
-| Bản đồ | Khung mô phỏng, ghim theo phần trăm — chờ khách chốt nhà cung cấp bản đồ |
-| Kết xuất PDF/PPTX | Backend trả 501 ở Phase 1, giao diện hiển thị đúng thông báo |
+| Tệp đính kèm văn bản | Xong — tải lên (riêng tư), tải về qua link ký sẵn, gỡ tệp; bản scan gốc dùng cho OCR vẫn là trường riêng |
+| Bản đồ | Có nền thật (OpenFreeMap, không cần khoá API) qua adapter MapLibre; bản mô phỏng vẫn giữ làm phương án chạy không cần mạng. Chốt nhà cung cấp CHÍNH THỨC vẫn là câu hỏi mở #3 — xem ghi chú pháp lý ở mục 4.5 |
+| Kết xuất PDF/PPTX | Xong ở backend (pdfmake + pptxgenjs); giao diện gọi như Excel |
 
 ---
 

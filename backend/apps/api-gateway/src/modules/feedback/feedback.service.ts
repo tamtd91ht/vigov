@@ -12,6 +12,7 @@ import {
   type FeedbackResolvedEvent,
   type SlaRuleDocument,
 } from '@vigov/shared';
+import { FilesService } from '../files/files.service';
 import { NotificationService } from '../notification/notification.service';
 import { REALTIME_EVENTS, RealtimeService } from '../realtime/realtime.service';
 import {
@@ -76,7 +77,21 @@ export class FeedbackService {
     private readonly notifications: NotificationService,
     private readonly config: ConfigService,
     private readonly realtime: RealtimeService,
+    private readonly files: FilesService,
   ) {}
+
+  /**
+   * Ảnh gắn vào phiếu phản ánh PHẢI là tệp riêng tư (TB-09).
+   *
+   * Ảnh hiện trường có thể chứa mặt người, biển số xe, cửa nhà — dữ liệu cá
+   * nhân theo NĐ 13/2023. `GET /files/:id` để `@Public()` nên tệp không đánh
+   * dấu riêng tư là ai có mã tệp cũng đọc được, không cần đăng nhập.
+   */
+  private async assertImagesPrivate(fileIds: string[] | undefined, label: string): Promise<void> {
+    for (const fileId of fileIds ?? []) {
+      await this.files.findPrivateById(fileId, label);
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // Nhóm nghiệp vụ CÁN BỘ (Web Quản trị)
@@ -302,6 +317,9 @@ export class FeedbackService {
    * dùng chung `createWithUniqueCode`, nên hai đường vào không thể lệch nhau.
    */
   async createByStaff(dto: CreateStaffFeedbackDto, actor: string) {
+    // Ảnh hiện trường do cán bộ chụp hộ dân cũng phải là tệp riêng tư (TB-09)
+    await this.assertImagesPrivate(dto.imageFileIds, 'Ảnh hiện trường');
+
     const { resolveDays, sentAt, slaDueAt } = await this.resolveSla(dto.categoryKey);
 
     const payload = buildNewFeedbackPayload({
@@ -352,6 +370,8 @@ export class FeedbackService {
   /** Công dân gửi phản ánh mới */
   async createByCitizen(dto: CreateCitizenFeedbackDto, citizenPhone: string, citizenName: string) {
     await this.assertNotSpamming(citizenPhone);
+    // Ảnh hiện trường công dân gửi kèm phải là tệp riêng tư (TB-09)
+    await this.assertImagesPrivate(dto.imageFileIds, 'Ảnh hiện trường');
 
     const { resolveDays, sentAt, slaDueAt } = await this.resolveSla(dto.categoryKey);
     const channel = dto.channel ?? 'app';

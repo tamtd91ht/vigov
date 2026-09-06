@@ -25,15 +25,40 @@ import type { NextConfig } from "next";
  *     (clickjacking); đây là bản CSP của X-Frame-Options bên dưới.
  *   · object-src 'none' + base-uri 'self' + form-action 'self' — bịt các lối
  *     chèn plugin, đổi gốc đường dẫn tương đối, và bẻ đích của form.
+ *   · nguồn bản đồ (`MAP_TILE_ORIGIN`) mở trong img-src và connect-src —
+ *     MapLibre tải style JSON, tile vector, font glyph và sprite từ đó. Đây là
+ *     ngoại lệ DUY NHẤT của luật "chỉ same-origin", và chỉ mở đúng một tên
+ *     miền lấy từ NEXT_PUBLIC_MAP_STYLE_URL: đặt provider khác thì tên miền
+ *     trong CSP đổi theo, không phải nhớ sửa tay ở hai nơi.
+ *   · worker-src blob: — MapLibre giải mã tile vector trong web worker dựng từ
+ *     blob. Thiếu chỉ thị này thì bản đồ trắng trơn mà không có lỗi rõ ràng.
  */
+
+/**
+ * Gốc của nguồn tile bản đồ, suy từ `NEXT_PUBLIC_MAP_STYLE_URL`.
+ * Trả chuỗi rỗng khi chạy bản đồ mô phỏng (provider `mock`) — lúc đó CSP không
+ * mở thêm nguồn nào.
+ */
+function mapTileOrigin(): string {
+  if ((process.env.NEXT_PUBLIC_MAP_PROVIDER ?? "mock") === "mock") return "";
+  const url = process.env.NEXT_PUBLIC_MAP_STYLE_URL ?? "https://tiles.openfreemap.org/styles/positron";
+  try {
+    return new URL(url).origin;
+  } catch {
+    return "";
+  }
+}
+
+const MAP_TILE_ORIGIN = mapTileOrigin();
 const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
+  `img-src 'self' data: blob:${MAP_TILE_ORIGIN ? ` ${MAP_TILE_ORIGIN}` : ""}`,
   "media-src 'self' blob:",
   "font-src 'self' data:",
-  "connect-src 'self'",
+  `connect-src 'self'${MAP_TILE_ORIGIN ? ` ${MAP_TILE_ORIGIN}` : ""}`,
+  "worker-src 'self' blob:",
   "frame-src https://www.youtube-nocookie.com",
   "frame-ancestors 'none'",
   "object-src 'none'",

@@ -5,6 +5,7 @@ import type { FeedbackDocument, SlaRuleDocument } from '@vigov/shared';
 import { duplicateKeyError, fakeDoc, queryChain } from '../../../../../test/support/mongoose-mock';
 import type { RealtimeService } from '../realtime/realtime.service';
 import type { NotificationService } from '../notification/notification.service';
+import type { FilesService } from '../files/files.service';
 import { FeedbackService } from './feedback.service';
 
 const MS_PER_HOUR = 3_600_000;
@@ -105,12 +106,17 @@ function buildHarness(options: HarnessOptions = {}): Harness {
 
   const realtime = { emitChange: jest.fn() };
 
+  /* Ảnh gắn vào phiếu phải là tệp riêng tư (TB-09). Ở test thì mọi mã tệp đều
+     coi như hợp lệ — luật đó có bộ test riêng ở tầng FilesService. */
+  const files = { findPrivateById: jest.fn(async () => ({ isPrivate: true })) };
+
   const service = new FeedbackService(
     feedbackModel,
     slaRuleModel,
     notifications as unknown as NotificationService,
     config,
     realtime as unknown as RealtimeService,
+    files as unknown as FilesService,
   );
 
   return { service, created, createMock, countMock, notifications, realtime };
