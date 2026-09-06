@@ -25,6 +25,13 @@ export interface CitizenAccount {
   feedbackCount: number;
   status: AccountStatus;
   lockReason?: string;
+  /** Ngày đăng ký tài khoản (ISO 8601) — backend lấy từ `timestamps` của bản ghi */
+  createdAt?: string;
+  /**
+   * Lần hoạt động gần nhất (ISO 8601). Backend suy từ phiên đăng nhập nên tài
+   * khoản chưa đăng nhập lần nào sẽ không có giá trị.
+   */
+  lastActiveAt?: string;
   /**
    * Chỉ có giá trị với tài khoản đã xoá mềm — danh sách mặc định không trả bản
    * ghi nào như vậy, chỉ bộ lọc "Đã xoá" mới thấy.
@@ -56,6 +63,8 @@ export interface SessionRecord {
   ip: string;
   startedAt: string;
   lastActiveAt: string;
+  /** true nếu đây là phiên của chính người đang gọi API (backend tự đánh dấu) */
+  current?: boolean;
 }
 
 export type BlacklistKind = "citizen" | "device" | "ip";

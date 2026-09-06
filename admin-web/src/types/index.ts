@@ -102,6 +102,12 @@ export interface BudgetItem {
 
 /** Phiếu phản ánh của người dân */
 export interface CitizenFeedback {
+  /**
+   * `_id` của bản ghi trong CSDL — BẮT BUỘC khi gọi /workflow/feedback-to-task
+   * (backend nhận mã Mongo, không nhận mã phiếu PA-xxxx). Chỉ có ở dữ liệu thật;
+   * dữ liệu mẫu không có nên khai tuỳ chọn.
+   */
+  id?: string;
   code: string;
   categoryLabel: string;
   title: string;
@@ -129,6 +135,8 @@ export interface CitizenFeedback {
   imageFileIds?: string[];
   /** Ảnh nghiệm thu cán bộ tải lên khi xác nhận đã xử lý */
   resultImageFileIds?: string[];
+  /** Mã nhiệm vụ đã sinh ra từ phiếu này (nếu đã bấm "Chuyển thành công việc") */
+  linkedTaskCode?: string;
 }
 
 /** Lớp bản đồ kinh tế số */

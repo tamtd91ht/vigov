@@ -4,6 +4,8 @@ import { useState } from "react";
 import Link from "next/link";
 import { findStatus, taskPriorities, taskSources, taskStatuses } from "@/config/status.config";
 import type { TaskDetail, UpdateTaskInput } from "@/services/tasks.service";
+import { ApiError } from "@/services/api";
+import { formatFileSize, getSignedUrl } from "@/services/files.service";
 import { Icon } from "@/lib/icons";
 import { Avatar } from "@/components/ui/Avatar";
 import { Chip } from "@/components/ui/Chip";
@@ -14,6 +16,7 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Timeline } from "@/components/ui/Timeline";
 import { CommentList } from "@/components/ui/CommentList";
 import { FileList } from "@/components/ui/FileList";
+import { FileUpload } from "@/components/ui/FileUpload";
 import { useToast } from "@/components/ui/Toast";
 
 const DRAWER_TABS = [
@@ -58,6 +61,8 @@ export function TaskDrawer({
   onToggleChecklist,
   onSendComment,
   onSave,
+  onAttachFile,
+  onRemoveFile,
 }: {
   task: TaskDetail | null;
   loading: boolean;
@@ -69,12 +74,21 @@ export function TaskDrawer({
   onToggleChecklist: (index: number, done: boolean) => Promise<void>;
   onSendComment: (content: string) => Promise<void>;
   onSave: (patch: UpdateTaskInput) => Promise<void>;
+  /** Đính kèm tệp minh chứng vừa tải lên — gọi POST /tasks/:code/attachments */
+  onAttachFile: (fileId: string) => Promise<void>;
+  /** Gỡ một tệp minh chứng khỏi nhiệm vụ */
+  onRemoveFile: (fileId: string) => Promise<void>;
 }) {
   const { showToast } = useToast();
   const [tab, setTab] = useState("detail");
   const [commentInput, setCommentInput] = useState("");
   const [statusDraft, setStatusDraft] = useState("moi");
   const [saving, setSaving] = useState(false);
+  /** Đổi khoá để dựng lại ô tải tệp sau mỗi lần tải xong, cho phép thêm tệp tiếp theo */
+  const [uploadKey, setUploadKey] = useState(0);
+  /** Mã tệp đang xin link ký sẵn để mở */
+  const [openingFileId, setOpeningFileId] = useState<string | null>(null);
+  const [fileError, setFileError] = useState("");
 
   // Nạp lại tab + ô nhập khi mở nhiệm vụ khác (điều chỉnh state ngay trong render)
   const [loadedTaskId, setLoadedTaskId] = useState<string | null>(null);
@@ -83,6 +97,7 @@ export function TaskDrawer({
     setTab("detail");
     setCommentInput("");
     setStatusDraft(task.status);
+    setFileError("");
   }
 
   const status = findStatus(taskStatuses, task?.status ?? "moi");
@@ -119,6 +134,23 @@ export function TaskDrawer({
       ? Math.round((task.checklist.filter((c) => c.done).length / task.checklist.length) * 100)
       : task.progress;
     void run(() => onSave({ status: statusDraft, progress }));
+  };
+
+  /**
+   * Mở một tệp minh chứng. Tệp lưu ở chế độ riêng tư nên phải xin link ký sẵn —
+   * thẻ <a> không gửi được header Authorization.
+   */
+  const openFile = async (fileId: string) => {
+    setOpeningFileId(fileId);
+    setFileError("");
+    try {
+      const signed = await getSignedUrl(fileId);
+      window.open(signed.url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      setFileError(err instanceof ApiError ? err.message : "Không mở được tệp đính kèm");
+    } finally {
+      setOpeningFileId(null);
+    }
   };
 
   return (
@@ -320,12 +352,71 @@ export function TaskDrawer({
                   )}
                 </div>
                 <div className="gsec">
-                  <h4>Tệp đính kèm minh chứng</h4>
-                  {task.attachments.length ? (
-                    <FileList names={task.attachments} />
-                  ) : (
-                    <div className="tiny muted">Chưa có tệp đính kèm</div>
+                  <h4>Tệp đính kèm minh chứng ({task.attachmentFiles.length})</h4>
+                  {task.attachmentFiles.length > 0 && (
+                    <div style={{ marginBottom: 12 }}>
+                      {task.attachmentFiles.map((file) => (
+                        <div className="upl-file" key={file.fileId} style={{ marginBottom: 8 }}>
+                          <span className="ph">
+                            <Icon name="clip" size={16} />
+                          </span>
+                          <span className="nm" title={file.name}>
+                            {file.name}
+                          </span>
+                          {file.size > 0 && <span className="sz">{formatFileSize(file.size)}</span>}
+                          <button
+                            className="btn sm"
+                            type="button"
+                            disabled={openingFileId === file.fileId}
+                            onClick={() => void openFile(file.fileId)}
+                          >
+                            <Icon name="down" size={13} />
+                            {openingFileId === file.fileId ? "Đang mở…" : "Tải về"}
+                          </button>
+                          <button
+                            className="btn sm"
+                            type="button"
+                            title="Gỡ tệp khỏi nhiệm vụ"
+                            style={{ color: "var(--red)" }}
+                            disabled={saving}
+                            onClick={() => void run(() => onRemoveFile(file.fileId))}
+                          >
+                            <Icon name="trash" size={13} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
+
+                  {/* Bản ghi cũ chỉ lưu TÊN tệp, không có mã tệp nên không tải về được */}
+                  {task.attachmentFiles.length === 0 && task.attachments.length > 0 && (
+                    <>
+                      <FileList names={task.attachments} />
+                      <div className="fhint" style={{ marginBottom: 10 }}>
+                        Danh sách tên tệp của bản ghi cũ — chưa gắn với kho tệp nên không tải về được.
+                      </div>
+                    </>
+                  )}
+
+                  {/* Minh chứng là tài liệu nội bộ nên tải lên ở chế độ riêng tư,
+                      giống bản scan văn bản: chỉ mở được bằng link có chữ ký. */}
+                  <FileUpload
+                    key={`${task.id}-${uploadKey}`}
+                    purpose="other"
+                    isPrivate
+                    height={84}
+                    placeholder={
+                      task.attachmentFiles.length
+                        ? "Thêm tệp minh chứng khác"
+                        : "Kéo-thả tệp minh chứng vào đây hoặc bấm để chọn"
+                    }
+                    disabled={saving}
+                    onUploaded={(fileId) => {
+                      setUploadKey((k) => k + 1);
+                      void run(() => onAttachFile(fileId));
+                    }}
+                  />
+                  {fileError && <div className="ferr">{fileError}</div>}
                 </div>
               </div>
             )}

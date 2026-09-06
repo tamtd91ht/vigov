@@ -40,6 +40,26 @@ export const appConfig = {
     apiKey: process.env.NEXT_PUBLIC_MAP_API_KEY ?? "",
   },
 
+  /**
+   * Kênh thời gian thực (Socket.IO).
+   *
+   * `namespace` phải khớp REALTIME_NAMESPACE của backend. Địa chỉ máy chủ KHÔNG
+   * khai ở đây: nó suy ra từ `api.baseUrl` (bỏ phần đường dẫn API) nên đổi backend
+   * chỉ sửa một biến môi trường, không lệch hai nơi.
+   */
+  realtime: {
+    namespace: "/realtime",
+    /** Bật/tắt việc nối kênh realtime — tắt thì giao diện chỉ tải lại bằng tay */
+    enabled: (process.env.NEXT_PUBLIC_REALTIME_ENABLED ?? "true") === "true",
+  },
+
+  /** Đầu mối hỗ trợ hiển thị ở trang Trợ giúp — mỗi xã một số khác nhau */
+  support: {
+    email: process.env.NEXT_PUBLIC_SUPPORT_EMAIL ?? "",
+    phone: process.env.NEXT_PUBLIC_SUPPORT_PHONE ?? "",
+    hours: process.env.NEXT_PUBLIC_SUPPORT_HOURS ?? "Giờ hành chính, thứ Hai – thứ Sáu",
+  },
+
   /** Tải tệp lên — các ngưỡng phải khớp cấu hình storage của backend */
   files: {
     /** Dung lượng tối đa mỗi tệp (byte); đồng bộ với STORAGE_MAX_FILE_SIZE */

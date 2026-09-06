@@ -82,12 +82,22 @@ export interface FeedbackDrawerProps {
   onTransfer: (code: string, department: string, reason: string) => void;
   /** Xác nhận đã xử lý xong kèm kết quả xử lý (backend bắt buộc) và ảnh nghiệm thu */
   onResolve: (code: string, note: string, resultImageFileIds: string[]) => void;
+  /** Bấm "Chuyển thành công việc" — gọi POST /workflow/feedback-to-task */
+  onCreateTask: (item: CitizenFeedback) => void;
   /** true khi đang gửi yêu cầu lên máy chủ — khoá các nút thao tác */
   saving?: boolean;
 }
 
 /** Drawer chi tiết phiếu phản ánh */
-export function FeedbackDrawer({ item, onClose, onAssign, onTransfer, onResolve, saving = false }: FeedbackDrawerProps) {
+export function FeedbackDrawer({
+  item,
+  onClose,
+  onAssign,
+  onTransfer,
+  onResolve,
+  onCreateTask,
+  saving = false,
+}: FeedbackDrawerProps) {
   const { showToast } = useToast();
   const [tab, setTab] = useState("progress");
   const [panel, setPanel] = useState<PanelMode>(null);
@@ -263,6 +273,15 @@ export function FeedbackDrawer({ item, onClose, onAssign, onTransfer, onResolve,
             </button>
           </>
         )}
+        {/* Chuyển thành nhiệm vụ theo dõi — chỉ khi phiếu chưa có nhiệm vụ liên kết.
+            Backend idempotent nhưng vẫn khoá nút để cán bộ không tưởng là tạo phiếu mới;
+            `id` chỉ có ở dữ liệu thật nên chế độ mock không hiện nút này. */}
+        {!item.linkedTaskCode && item.id && (
+          <button className="btn" type="button" disabled={saving} onClick={() => onCreateTask(item)}>
+            <Icon name="right" size={15} />
+            Chuyển thành công việc
+          </button>
+        )}
         {item.status === "Đang xử lý" && (
           /* Khi xác nhận xử lý: backend tự động gửi kết quả cho công dân — chờ khách chốt (câu hỏi mở #9) */
           <button
@@ -369,6 +388,14 @@ export function FeedbackDrawer({ item, onClose, onAssign, onTransfer, onResolve,
               <div className="k">Bộ phận xử lý</div>
               <div className="v">{item.department}</div>
             </div>
+            {item.linkedTaskCode && (
+              <div className="fld">
+                <div className="k">Nhiệm vụ theo dõi</div>
+                <div className="v">
+                  <b style={{ color: "var(--navy)" }}>{item.linkedTaskCode}</b>
+                </div>
+              </div>
+            )}
             <div className="fld">
               <div className="k">SLA cam kết ({item.categoryLabel})</div>
               <div className="v">

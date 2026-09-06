@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Icon } from "@/lib/icons";
 import { Card } from "@/components/ui/Card";
 import { DataState } from "@/components/ui/DataState";
@@ -42,6 +43,8 @@ const PAGE_SIZE = 20;
 
 export function DocumentsPage() {
   const { showToast } = useToast();
+  /** Số đến trên thanh địa chỉ (/documents?arrivalNo=128) — do tìm kiếm toàn cục truyền sang */
+  const arrivalNoParam = useSearchParams().get("arrivalNo");
 
   // Danh mục bộ phận lấy từ API (GET /catalogs/departments)
   const departments = useCatalog(fetchDepartments);
@@ -118,6 +121,21 @@ export function DocumentsPage() {
     setSelectedNo(doc.arrivalNo);
     setDrawerOpen(true);
   };
+
+  /*
+   * Mở sẵn ngăn chi tiết theo số đến trên thanh địa chỉ. Dùng lại state có sẵn:
+   * `detail` tự tải theo `selectedNo`, kể cả khi văn bản đó không nằm trong
+   * trang danh sách đang xem.
+   *
+   * Điều chỉnh state ngay trong render (khuôn mẫu đang dùng ở các drawer) để
+   * không thêm lượt render trung gian, và để đóng drawer rồi thì không mở lại.
+   */
+  const [appliedArrivalNo, setAppliedArrivalNo] = useState<string | null>(null);
+  if (arrivalNoParam && arrivalNoParam !== appliedArrivalNo) {
+    setAppliedArrivalNo(arrivalNoParam);
+    setSelectedNo(arrivalNoParam);
+    setDrawerOpen(true);
+  }
 
   /** Đồng bộ bản ghi vừa ghi thành công vào cả drawer lẫn danh sách */
   const applyDoc = (updated: DocumentDetail) => {

@@ -54,6 +54,40 @@ h1,h2,h3,h4{color:var(--navy);font-weight:700;line-height:1.3}
 .usermenu button{display:flex;align-items:center;gap:9px;width:100%;border:none;background:none;padding:9px 11px;border-radius:8px;font-size:12.8px;cursor:pointer;text-align:left}
 .usermenu button:hover{background:var(--bg2)}
 
+/* Tìm kiếm toàn cục: ô nhập + bảng kết quả thả xuống (WBS #1, #28) */
+.tb-search-wrap{position:relative;flex:1;max-width:400px;margin-left:8px}
+.tb-search-wrap .tb-search{margin-left:0;max-width:none;width:100%}
+.tb-search-clear{border:none;background:none;color:var(--mut);cursor:pointer;display:grid;place-items:center;padding:0;flex:none}
+.tb-search-clear:hover{color:var(--tx)}
+.tb-results{position:absolute;top:calc(100% + 8px);left:0;right:0;background:#fff;border:1px solid var(--bd);border-radius:12px;box-shadow:0 8px 26px rgba(27,58,92,.14);padding:6px;z-index:60;max-height:min(70vh,520px);overflow-y:auto}
+.tb-results-msg{padding:16px 12px;text-align:center;font-size:12.5px;color:var(--mut)}
+.tb-results-cap{font-size:10.5px;letter-spacing:.7px;text-transform:uppercase;font-weight:700;color:var(--mut);padding:10px 11px 5px}
+.tb-result{display:flex;align-items:flex-start;gap:10px;width:100%;border:none;background:none;padding:8px 11px;border-radius:9px;cursor:pointer;text-align:left}
+.tb-result.on,.tb-result:hover{background:var(--bg2)}
+.tb-result .cd{font-size:10.5px;font-weight:700;letter-spacing:.3px;color:var(--navy);background:var(--bg2);border:1px solid var(--bd);border-radius:6px;padding:2px 7px;flex:none;margin-top:1px;white-space:nowrap}
+.tb-result.on .cd{background:#fff}
+.tb-result .tx{flex:1;min-width:0}
+.tb-result .tx b{display:block;font-size:12.8px;color:var(--tx);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tb-result .tx span{display:block;font-size:11px;color:var(--mut);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tb-result .tg{font-size:10.5px;font-weight:700;flex:none;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;margin-top:2px}
+.tb-results-foot{border-top:1px solid var(--bd);margin-top:6px;padding:8px 11px 4px;font-size:11px;color:var(--mut)}
+
+/* Trung tâm thông báo — khay thả xuống của chuông (WBS #1) */
+.notimenu{position:absolute;top:50px;right:0;width:360px;max-width:88vw;background:#fff;border:1px solid var(--bd);border-radius:12px;box-shadow:0 8px 26px rgba(27,58,92,.14);z-index:60;overflow:hidden}
+.notimenu-h{display:flex;align-items:center;gap:9px;padding:11px 13px;border-bottom:1px solid var(--bd);background:var(--bg2)}
+.notimenu-h b{font-size:13px;color:var(--navy)}
+.notimenu-h .btn{margin-left:auto}
+.notimenu-b{max-height:min(60vh,420px);overflow-y:auto;padding:6px}
+.noti{display:flex;gap:9px;width:100%;border:none;background:none;padding:9px 10px;border-radius:9px;cursor:pointer;text-align:left}
+.noti:hover{background:var(--bg2)}
+.noti .dot{width:7px;height:7px;border-radius:50%;background:transparent;flex:none;margin-top:6px}
+.noti.unread .dot{background:var(--pink)}
+.noti .tx{flex:1;min-width:0}
+.noti .tx b{display:block;font-size:12.5px;color:var(--mut);font-weight:600}
+.noti.unread .tx b{color:var(--navy);font-weight:700}
+.noti .bd{display:block;font-size:11.5px;color:var(--tx);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.noti .tm{display:block;font-size:10.5px;color:var(--mut);margin-top:3px}
+
 /* ---------- PAGE ---------- */
 /* KHÔNG đặt max-width: đây là màn điều hành, người dùng mở toàn màn hình để
    thấy nhiều số liệu cùng lúc — chặn bề ngang chỉ tạo dải trắng hai bên. Bề
@@ -324,6 +358,9 @@ textarea.finp{resize:vertical;min-height:88px}
 .login-foot{margin-top:18px;text-align:center;font-size:11.5px;color:var(--mut)}
 
 /* ---------- MISC ---------- */
+/* Liên kết trong đoạn văn (trang Trợ giúp) — thẻ <a> mặc định bị bỏ gạch chân */
+.lnk{color:var(--blue);font-weight:600;text-decoration:underline}
+.lnk:hover{color:var(--navy)}
 .empty{padding:40px 20px;text-align:center;color:var(--mut);font-size:13px}
 .medal{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;font-size:11.5px;font-weight:800;color:#fff}
 
@@ -333,7 +370,7 @@ textarea.finp{resize:vertical;min-height:88px}
   .grid3{grid-template-columns:repeat(2,1fr)}
   .grid4{grid-template-columns:repeat(2,1fr)}
   .kb{overflow-x:auto;grid-template-columns:repeat(5,232px);padding-bottom:8px}
-  .tb-search{max-width:230px}
+  .tb-search-wrap{max-width:230px}
 }
 @media (max-width:1080px){
   .grid2{grid-template-columns:1fr}

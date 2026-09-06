@@ -1,21 +1,26 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { taskPriorities } from "@/config/status.config";
 import { fetchDepartments, fetchStaffDirectory } from "@/services/catalogs.service";
 import {
+  addTaskAttachments,
   addTaskComment,
   apiErrorMessage,
   createTask,
   getTask,
   listTasks,
+  removeTaskAttachment,
   toggleChecklistItem,
   updateTask,
   type CreateTaskInput,
   type TaskDetail,
   type UpdateTaskInput,
 } from "@/services/tasks.service";
+import { REALTIME_EVENTS } from "@/services/realtime.service";
 import { useApiResource } from "@/hooks/useApiResource";
+import { useRealtime } from "@/hooks/useRealtime";
 import { useCatalog } from "@/hooks/useCatalog";
 import { Icon } from "@/lib/icons";
 import { DataState } from "@/components/ui/DataState";
@@ -39,6 +44,11 @@ const LIST_PAGE_SIZE = 20;
 
 export function TasksPage() {
   const { showToast } = useToast();
+  /**
+   * Mã nhiệm vụ trên thanh địa chỉ (/tasks?code=NV-2601) — tìm kiếm toàn cục và
+   * trung tâm thông báo điều hướng sang đây kèm mã để mở sẵn ngăn chi tiết.
+   */
+  const codeParam = useSearchParams().get("code");
 
   // Danh mục dùng chung lấy từ API (GET /catalogs/departments, /catalogs/staff)
   const departments = useCatalog(fetchDepartments);
@@ -88,6 +98,31 @@ export function TasksPage() {
     setOpenTaskId(id);
     setDrawerOpen(true);
   };
+
+  /*
+   * Mở sẵn ngăn chi tiết theo mã trên thanh địa chỉ. Dùng lại đúng state của
+   * drawer thay vì dựng luồng dữ liệu riêng: `detail` đã tự tải theo `openTaskId`.
+   *
+   * Điều chỉnh state NGAY TRONG RENDER (khuôn mẫu đang dùng ở các drawer khác)
+   * thay vì trong effect: cách này không tạo thêm một lượt render trung gian và
+   * cán bộ đóng drawer rồi thì không bị mở lại.
+   */
+  const [appliedCode, setAppliedCode] = useState<string | null>(null);
+  if (codeParam && codeParam !== appliedCode) {
+    setAppliedCode(codeParam);
+    openTask(codeParam);
+  }
+
+  /*
+   * Có biến động nhiệm vụ ở nơi khác thì tải lại danh sách (và bản chi tiết đang
+   * mở). Backend chỉ gửi tín hiệu gọn nên bắt buộc phải hỏi lại API.
+   */
+  useRealtime({
+    [REALTIME_EVENTS.taskChanged]: () => {
+      list.reload();
+      if (openTaskId) detail.reload();
+    },
+  });
 
   /** Đồng bộ bản ghi vừa ghi thành công vào cả drawer lẫn danh sách */
   const applyTask = (updated: TaskDetail) => {
@@ -143,6 +178,27 @@ export function TasksPage() {
       setPage(1);
       list.reload();
       showToast(`Đã giao việc ${created.id} cho ${created.assignee}`);
+    } catch (err) {
+      showToast(apiErrorMessage(err));
+    }
+  };
+
+  /** Đính kèm tệp minh chứng vừa tải lên vào nhiệm vụ đang mở */
+  const attachFile = async (fileId: string) => {
+    if (!openTaskId) return;
+    try {
+      applyTask(await addTaskAttachments(openTaskId, [fileId]));
+      showToast("Đã đính kèm tệp minh chứng vào nhiệm vụ");
+    } catch (err) {
+      showToast(apiErrorMessage(err));
+    }
+  };
+
+  const removeFile = async (fileId: string) => {
+    if (!openTaskId) return;
+    try {
+      applyTask(await removeTaskAttachment(openTaskId, fileId));
+      showToast("Đã gỡ tệp đính kèm khỏi nhiệm vụ");
     } catch (err) {
       showToast(apiErrorMessage(err));
     }
@@ -294,6 +350,8 @@ export function TasksPage() {
         onToggleChecklist={toggleChecklist}
         onSendComment={sendComment}
         onSave={saveTask}
+        onAttachFile={attachFile}
+        onRemoveFile={removeFile}
       />
       <NewTaskForm open={formOpen} onClose={() => setFormOpen(false)} onCreate={submitNewTask} />
     </div>

@@ -10,14 +10,16 @@ import { useApiResource } from "@/hooks/useApiResource";
 import { ApiError } from "@/services/api";
 import {
   disbursementService,
+  type CreateBudgetInput,
   type CreateEntryInput,
   type CreateObstacleInput,
 } from "@/services/disbursement.service";
-import { fetchBudgetYears } from "@/services/catalogs.service";
+import { fetchBudgetYears, fetchDepartments } from "@/services/catalogs.service";
 import { useCatalog } from "@/hooks/useCatalog";
 import { SummaryCards } from "./SummaryCards";
 import { BudgetList } from "./BudgetList";
 import { BudgetDrawer } from "./BudgetDrawer";
+import { AddBudgetForm } from "./AddBudgetForm";
 import type { DisburseRequestValues } from "./DisburseRequestForm";
 
 /** Thông báo lỗi hiển thị cho người dùng, ưu tiên thông điệp backend trả về */
@@ -31,6 +33,8 @@ export function DisbursementPage() {
 
   // Danh mục năm ngân sách lấy từ API (GET /catalogs/budget-years) — mới nhất đứng đầu
   const budgetYears = useCatalog(fetchBudgetYears);
+  // Danh mục bộ phận cho ô "Đơn vị chủ trì" của biểu mẫu thêm hạng mục
+  const departments = useCatalog(fetchDepartments);
 
   /** 0 = chưa chọn; mặc định là năm mới nhất có dữ liệu */
   const [yearChoice, setYearChoice] = useState(0);
@@ -39,6 +43,7 @@ export function DisbursementPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
 
   // Năm ngân sách là tham số truy vấn gửi server; summary cũng do server tính
   const list = useApiResource(() => disbursementService.list({ year }), [year]);
@@ -153,6 +158,19 @@ export function DisbursementPage() {
     }, "Không gửi được lời nhắc tháo gỡ vướng mắc");
   }
 
+  /** Tạo hạng mục ngân sách mới — mã HM-xx do máy chủ cấp */
+  function createBudget(values: CreateBudgetInput) {
+    void runWrite(async () => {
+      const created = await disbursementService.create(values);
+      setAddOpen(false);
+      /* Hạng mục mới làm đổi cả danh sách lẫn 4 thẻ tóm tắt (tổng kế hoạch vốn,
+         số hạng mục chậm tiến độ) — số liệu tổng hợp do server tính nên phải
+         tải lại chứ không cộng thêm ở trình duyệt. */
+      list.reload();
+      return `Đã thêm hạng mục ${created.id} · ${created.name}`;
+    }, "Không thêm được hạng mục ngân sách");
+  }
+
   async function exportReport() {
     setExporting(true);
     try {
@@ -189,13 +207,17 @@ export function DisbursementPage() {
               ))}
             </select>
             <button
-              className={exporting ? "btn pri saving" : "btn pri"}
+              className={exporting ? "btn saving" : "btn"}
               type="button"
               onClick={exportReport}
               disabled={exporting}
             >
               <Icon name="down" size={15} />
               Xuất Excel
+            </button>
+            <button className="btn pri" type="button" onClick={() => setAddOpen(true)} disabled={saving}>
+              <Icon name="plus" size={15} />
+              Thêm hạng mục
             </button>
           </>
         }
@@ -225,6 +247,16 @@ export function DisbursementPage() {
         onAddObstacle={addObstacle}
         onResolveObstacle={resolveObstacle}
         saving={saving}
+      />
+
+      <AddBudgetForm
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        departments={departments}
+        years={budgetYears}
+        defaultYear={year}
+        saving={saving}
+        onSubmit={createBudget}
       />
     </div>
   );

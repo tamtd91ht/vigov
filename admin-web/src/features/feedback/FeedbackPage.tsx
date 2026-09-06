@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import type { CitizenFeedback } from "@/types";
 import { useCategoryDirectory } from "@/services/category-directory";
 import { feedbackStatuses } from "@/config/status.config";
@@ -13,8 +14,10 @@ import { SegmentControl } from "@/components/ui/SegmentControl";
 import { useToast } from "@/components/ui/Toast";
 import { useApiResource } from "@/hooks/useApiResource";
 import { useCatalog } from "@/hooks/useCatalog";
+import { useRealtime } from "@/hooks/useRealtime";
 import { ApiError } from "@/services/api";
 import { feedbackService } from "@/services/feedback.service";
+import { REALTIME_EVENTS } from "@/services/realtime.service";
 import { FeedbackDrawer } from "./FeedbackDrawer";
 import { FeedbackGrid } from "./FeedbackGrid";
 import { StatCards } from "./StatCards";
@@ -34,6 +37,8 @@ export function FeedbackPage() {
   // Chip lọc lĩnh vực lấy theo danh mục hiện hành, gồm cả lĩnh vực cán bộ mới thêm
   const categoryChips = useCategoryDirectory().map((c) => ({ key: c.key, label: c.label }));
   const { showToast } = useToast();
+  /** Mã phiếu trên thanh địa chỉ (/feedback?code=PA-2608) — do tìm kiếm toàn cục truyền sang */
+  const codeParam = useSearchParams().get("code");
 
   // Danh bạ cán bộ lấy từ API (GET /catalogs/staff) — tra bộ phận khi phân công
   const staffDirectory = useCatalog(fetchStaffDirectory);
@@ -60,6 +65,31 @@ export function FeedbackPage() {
   const selected = openCode
     ? (detail.data?.code === openCode ? detail.data : items.find((i) => i.code === openCode)) ?? null
     : null;
+
+  /*
+   * Mở sẵn ngăn chi tiết theo mã trên thanh địa chỉ — dùng lại đúng state
+   * `openCode` mà lưới thẻ vẫn dùng, không dựng luồng dữ liệu riêng.
+   *
+   * Điều chỉnh state ngay trong render (khuôn mẫu đang dùng ở các drawer) để
+   * không thêm lượt render trung gian, và để đóng phiếu rồi thì không mở lại.
+   */
+  const [appliedCode, setAppliedCode] = useState<string | null>(null);
+  if (codeParam && codeParam !== appliedCode) {
+    setAppliedCode(codeParam);
+    setOpenCode(codeParam);
+  }
+
+  /*
+   * Có biến động phản ánh ở nơi khác (phiếu mới từ Mini App, đồng nghiệp vừa
+   * phân công) thì tải lại danh sách, thẻ thống kê và bản chi tiết đang mở.
+   */
+  useRealtime({
+    [REALTIME_EVENTS.feedbackChanged]: () => {
+      list.reload();
+      stats.reload();
+      if (openCode) detail.reload();
+    },
+  });
 
   /** Ghi kết quả máy chủ trả về vào danh sách và bản chi tiết đang mở */
   function applyUpdated(updated: CitizenFeedback) {
@@ -121,6 +151,26 @@ export function FeedbackPage() {
     );
   }
 
+  /** Nút "Chuyển thành công việc" — gọi /workflow/feedback-to-task */
+  function handleCreateTask(item: CitizenFeedback) {
+    if (!item.id) return;
+    const feedbackId = item.id;
+    setSaving(true);
+    void (async () => {
+      try {
+        const { code } = await feedbackService.createTask({ feedbackId });
+        showToast(`Đã tạo nhiệm vụ ${code} từ phiếu phản ánh ${item.code}`);
+        // Phiếu vừa có mã nhiệm vụ liên kết + một mốc nhật ký mới — lấy lại từ server
+        detail.reload();
+        list.reload();
+      } catch (err) {
+        showToast(errorMessage(err, "Không chuyển được phiếu phản ánh thành nhiệm vụ"));
+      } finally {
+        setSaving(false);
+      }
+    })();
+  }
+
   return (
     <div className="pg">
       <PageHead
@@ -175,6 +225,7 @@ export function FeedbackPage() {
         onAssign={handleAssign}
         onTransfer={handleTransfer}
         onResolve={handleResolve}
+        onCreateTask={handleCreateTask}
         saving={saving}
       />
     </div>

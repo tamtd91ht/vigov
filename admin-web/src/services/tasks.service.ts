@@ -14,11 +14,26 @@ import { mockTaskComments, mockTaskLog, taskAttachments, tasks as mockTasks } fr
  * nằm trong file này, các trang không cần biết.
  */
 
+/** Một tệp minh chứng đính kèm nhiệm vụ (WBS #3) */
+export interface TaskAttachment {
+  /** Mã tệp trong kho tệp dùng chung — dùng để xin link ký sẵn khi tải về */
+  fileId: string;
+  name: string;
+  size: number;
+  contentType: string;
+}
+
 /** Nhiệm vụ kèm phần chi tiết (bình luận, nhật ký, tệp) backend trả về */
 export interface TaskDetail extends Task {
   comments: Comment[];
   timeline: TimelineItem[];
+  /**
+   * Tên tệp dạng chuỗi — trường CŨ, giữ lại để tương thích với bản ghi tạo
+   * trước khi có kho tệp. Chỉ hiển thị khi `attachmentFiles` rỗng.
+   */
   attachments: string[];
+  /** Tệp đính kèm thật, tải lên/tải về được qua /files */
+  attachmentFiles: TaskAttachment[];
 }
 
 /** Bộ lọc + phân trang cho GET /tasks (gửi lên máy chủ, không lọc ở trình duyệt) */
@@ -65,11 +80,12 @@ interface RawTask extends Omit<Task, "id"> {
   comments?: Comment[];
   timeline?: TimelineItem[];
   attachments?: string[];
+  attachmentFiles?: TaskAttachment[];
 }
 
 /** Ánh xạ bản ghi backend sang kiểu dùng trong giao diện */
 function toTaskDetail(raw: RawTask): TaskDetail {
-  const { code, comments, timeline, attachments, ...rest } = raw;
+  const { code, comments, timeline, attachments, attachmentFiles, ...rest } = raw;
   return {
     ...rest,
     id: code,
@@ -78,6 +94,7 @@ function toTaskDetail(raw: RawTask): TaskDetail {
     comments: comments ?? [],
     timeline: timeline ?? [],
     attachments: attachments ?? [],
+    attachmentFiles: attachmentFiles ?? [],
   };
 }
 
@@ -99,6 +116,7 @@ function store(): TaskDetail[] {
       comments: mockTaskComments(task),
       timeline: mockTaskLog(task),
       attachments: [...taskAttachments],
+      attachmentFiles: [],
     }));
   }
   return mockStore;
@@ -207,6 +225,7 @@ export async function createTask(input: CreateTaskInput): Promise<TaskDetail> {
       comments: [],
       timeline: [],
       attachments: [],
+      attachmentFiles: [],
     };
     list.unshift(created);
     return { ...created };
@@ -260,6 +279,41 @@ export async function addTaskComment(code: string, content: string): Promise<Tas
     return { ...task };
   }
   return toTaskDetail(await apiClient.post<RawTask>(`/tasks/${encodeURIComponent(code)}/comments`, { content }));
+}
+
+/**
+ * Đính kèm tệp minh chứng vào nhiệm vụ (POST /tasks/:code/attachments).
+ * Tệp đã nằm sẵn trong kho tệp dùng chung — ở đây chỉ gắn mã tệp vào nhiệm vụ,
+ * nên backend trả về nguyên bản ghi nhiệm vụ đã cập nhật.
+ */
+export async function addTaskAttachments(code: string, fileIds: string[]): Promise<TaskDetail> {
+  if (appConfig.api.useMocks) {
+    await mockDelay();
+    const task = mockFind(code);
+    task.attachmentFiles = [
+      ...task.attachmentFiles,
+      ...fileIds.map((fileId) => ({ fileId, name: fileId, size: 0, contentType: "" })),
+    ];
+    return { ...task };
+  }
+  return toTaskDetail(
+    await apiClient.post<RawTask>(`/tasks/${encodeURIComponent(code)}/attachments`, { fileIds }),
+  );
+}
+
+/** Gỡ một tệp minh chứng khỏi nhiệm vụ (DELETE /tasks/:code/attachments/:fileId) */
+export async function removeTaskAttachment(code: string, fileId: string): Promise<TaskDetail> {
+  if (appConfig.api.useMocks) {
+    await mockDelay();
+    const task = mockFind(code);
+    task.attachmentFiles = task.attachmentFiles.filter((f) => f.fileId !== fileId);
+    return { ...task };
+  }
+  return toTaskDetail(
+    await apiClient.delete<RawTask>(
+      `/tasks/${encodeURIComponent(code)}/attachments/${encodeURIComponent(fileId)}`,
+    ),
+  );
 }
 
 /** Xoá nhiệm vụ — chỉ tài khoản quản trị hệ thống dùng được */

@@ -223,6 +223,7 @@ export function CitizenTable({
                   <th>Số điện thoại</th>
                   <th>Thôn / Tổ dân phố</th>
                   <th>Phản ánh đã gửi</th>
+                  <th>Ngày đăng ký</th>
                   <th>Kênh định danh</th>
                   <th>Trạng thái</th>
                   <th style={{ textAlign: "right" }}>Thao tác</th>
@@ -244,6 +245,9 @@ export function CitizenTable({
                       <td>{c.phone}</td>
                       <td>{c.area || <span className="muted">—</span>}</td>
                       <td>{formatNumber(c.feedbackCount)}</td>
+                      <td style={{ whiteSpace: "nowrap" }}>
+                        {c.createdAt ? formatDateTime(c.createdAt) : <span className="muted">—</span>}
+                      </td>
                       <td>{CHANNEL_LABEL[c.channel] ?? c.channel}</td>
                       <td>
                         <Chip color={st.color} tint={st.tint} dot>
@@ -447,6 +451,29 @@ export function CitizenTable({
                 Phản ánh đã gửi
               </div>
               <div className="v">{formatNumber(detail.feedbackCount)} lượt</div>
+            </div>
+            <div className="fld">
+              <div className="k">
+                <Icon name="cal" size={13} />
+                Ngày đăng ký
+              </div>
+              <div className="v">
+                {detail.createdAt ? formatDateTime(detail.createdAt) : <span className="muted">Không rõ</span>}
+              </div>
+            </div>
+            <div className="fld">
+              <div className="k">
+                <Icon name="clock" size={13} />
+                Hoạt động gần nhất
+              </div>
+              <div className="v">
+                {detail.lastActiveAt ? (
+                  formatDateTime(detail.lastActiveAt)
+                ) : (
+                  /* Backend suy mốc này từ bảng phiên đăng nhập — chưa đăng nhập lần nào thì không có */
+                  <span className="muted">Chưa ghi nhận phiên đăng nhập nào</span>
+                )}
+              </div>
             </div>
 
             <div className="gsec">

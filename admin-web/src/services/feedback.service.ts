@@ -37,6 +37,8 @@ export function toApiStatus(uiStatus: string | undefined): FeedbackApiStatus | u
 
 /** Bản ghi phản ánh do backend trả về cho cán bộ */
 interface FeedbackApiItem {
+  /** Khoá chính trong CSDL — cần cho /workflow/feedback-to-task */
+  _id?: string;
   code: string;
   categoryKey?: string;
   title?: string;
@@ -59,6 +61,8 @@ interface FeedbackApiItem {
   timeline?: TimelineItem[];
   imageFileIds?: string[];
   resultImageFileIds?: string[];
+  /** Mã nhiệm vụ đã sinh ra từ phiếu này — backend đặt khi chuyển thành công việc */
+  linkedTaskCode?: string;
 }
 
 /** Bộ lọc danh sách gửi lên server */
@@ -116,6 +120,16 @@ export interface ResolveFeedbackInput {
   resultImageFileIds?: string[];
 }
 
+/** Thân yêu cầu POST /workflow/feedback-to-task */
+export interface FeedbackToTaskInput {
+  /** `_id` của phiếu phản ánh (CitizenFeedback.id) */
+  feedbackId: string;
+  assignee?: string;
+  department?: string;
+  /** dd/MM/yyyy */
+  deadline?: string;
+}
+
 /** Mã phiếu có ký tự "#" nên phải mã hoá trước khi ghép vào đường dẫn */
 function codePath(code: string): string {
   return encodeURIComponent(code);
@@ -124,6 +138,7 @@ function codePath(code: string): string {
 /** Ánh xạ bản ghi backend sang kiểu dùng cho giao diện */
 function toCitizenFeedback(raw: FeedbackApiItem): CitizenFeedback {
   return {
+    id: raw._id,
     code: raw.code,
     categoryLabel: findCategory(raw.categoryKey ?? "").label,
     title: raw.title ?? "",
@@ -144,6 +159,7 @@ function toCitizenFeedback(raw: FeedbackApiItem): CitizenFeedback {
     timeline: raw.timeline ?? [],
     imageFileIds: raw.imageFileIds ?? [],
     resultImageFileIds: raw.resultImageFileIds ?? [],
+    linkedTaskCode: raw.linkedTaskCode || undefined,
   };
 }
 
@@ -256,5 +272,18 @@ export const feedbackService = {
       });
     }
     return toCitizenFeedback(await apiClient.patch<FeedbackApiItem>(`/feedback/${codePath(code)}/resolve`, input));
+  },
+
+  /**
+   * Nút "Chuyển thành công việc": sinh nhiệm vụ xử lý từ phiếu phản ánh.
+   * Backend idempotent — phiếu đã chuyển rồi thì trả lại đúng mã nhiệm vụ cũ,
+   * nên bấm nhầm hai lần cũng không tạo ra hai nhiệm vụ trùng.
+   */
+  async createTask(input: FeedbackToTaskInput): Promise<{ code: string }> {
+    if (appConfig.api.useMocks) {
+      const found = feedbackList.find((item) => item.code === input.feedbackId);
+      return mockDelay({ code: found?.linkedTaskCode ?? "NV-MOCK" });
+    }
+    return apiClient.post<{ code: string }>("/workflow/feedback-to-task", input);
   },
 };

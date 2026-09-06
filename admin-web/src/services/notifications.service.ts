@@ -20,12 +20,14 @@ export interface InboxNotification {
   id: string;
   title: string;
   body: string;
-  /** Loại sự kiện sinh ra thông báo (giao việc, quá hạn SLA, phản ánh mới…) */
-  kind: string;
   read: boolean;
   createdAt: string;
-  /** Đường dẫn trong Web Quản trị để mở thẳng bản ghi liên quan */
-  link?: string;
+  /**
+   * Dữ liệu kèm theo do backend gắn lúc gửi (`taskCode`, `feedbackCode`,
+   * `documentId`, `templateKey`…). Giao diện dùng nó để suy ra bản ghi liên quan
+   * — xem `notificationLink()`.
+   */
+  data: Record<string, string>;
 }
 
 export interface InboxPage {
@@ -40,18 +42,74 @@ export interface InboxPage {
 /** Số thông báo tải về cho khay thả xuống của chuông */
 const INBOX_PREVIEW_LIMIT = 10;
 
+/**
+ * Bản ghi thô của hộp thư. Backend dùng khoá chính `_id` và KHÔNG có trường
+ * đường dẫn — điều hướng do giao diện suy ra từ `data`.
+ */
+interface RawNotification {
+  _id: string;
+  title?: string;
+  body?: string;
+  read?: boolean;
+  createdAt?: string;
+  data?: Record<string, string>;
+}
+
+function toInboxNotification(raw: RawNotification): InboxNotification {
+  return {
+    id: raw._id,
+    title: raw.title ?? "",
+    body: raw.body ?? "",
+    read: raw.read ?? false,
+    createdAt: raw.createdAt ?? "",
+    data: raw.data ?? {},
+  };
+}
+
+/**
+ * Đường dẫn mở bản ghi liên quan tới một thông báo, hoặc `null` khi không suy được.
+ *
+ * Bảng khoá dưới đây là hợp đồng ngầm với backend (notification.consumer.ts,
+ * feedback.service.ts): mỗi thông báo gắn sẵn mã bản ghi vào `data`. Văn bản chỉ
+ * có `documentId` (_id trong CSDL) trong khi trang Văn bản mở ngăn chi tiết theo
+ * SỐ ĐẾN, nên chỉ mở được phân hệ chứ chưa mở thẳng bản ghi.
+ */
+export function notificationLink(item: InboxNotification): string | null {
+  const { taskCode, feedbackCode, documentId } = item.data;
+  if (taskCode) return `/tasks?code=${encodeURIComponent(taskCode)}`;
+  if (feedbackCode) return `/feedback?code=${encodeURIComponent(feedbackCode)}`;
+  if (documentId) return "/documents";
+  return null;
+}
+
 /** GET /notifications — hộp thư của người đang đăng nhập */
 export async function fetchInbox(limit = INBOX_PREVIEW_LIMIT): Promise<InboxPage> {
   if (appConfig.api.useMocks) {
     return { items: [], total: 0, unread: 0, page: 1, limit };
   }
-  return apiClient.get<InboxPage>(`/notifications${buildQuery({ page: 1, limit })}`);
+  const res = await apiClient.get<Omit<InboxPage, "items"> & { items: RawNotification[] }>(
+    `/notifications${buildQuery({ page: 1, limit })}`,
+  );
+  return { ...res, items: (res.items ?? []).map(toInboxNotification) };
 }
 
 /** PATCH /notifications/:id/read — đánh dấu một thông báo đã đọc */
 export async function markNotificationRead(id: string): Promise<void> {
   if (appConfig.api.useMocks) return;
-  await apiClient.patch<InboxNotification>(`/notifications/${encodeURIComponent(id)}/read`);
+  await apiClient.patch<RawNotification>(`/notifications/${encodeURIComponent(id)}/read`);
+}
+
+/**
+ * Đánh dấu đã đọc nhiều thông báo một lượt.
+ *
+ * Backend CHƯA có endpoint "đọc tất cả" nên hàm này gọi lần lượt từng mã — chấp
+ * nhận được vì chỉ áp dụng cho các thông báo đang hiển thị trong khay (tối đa
+ * `INBOX_PREVIEW_LIMIT`). Một mã lỗi không được làm hỏng cả lượt, nên dùng
+ * `allSettled` và trả về số thật sự thành công để giao diện báo đúng.
+ */
+export async function markNotificationsRead(ids: string[]): Promise<number> {
+  const results = await Promise.allSettled(ids.map((id) => markNotificationRead(id)));
+  return results.filter((r) => r.status === "fulfilled").length;
 }
 
 /** Bản ghi lịch sử gửi hàng loạt do backend trả về */
