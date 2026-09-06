@@ -44,8 +44,11 @@ ARG VITE_ORG_SHORT=VG
 ARG VITE_ZALO_APP_ID=
 ARG VITE_ZALO_OA_ID=
 ARG VITE_HOTLINE=
-# Bản đồ nền: mock (mô phỏng) hoặc nguồn style MapLibre — xem app.config.ts
+# Bản đồ nền: mock (mô phỏng bằng CSS, không gọi mạng) | openfreemap | vietmap …
+# LƯU Ý: dùng nguồn thật thì tên miền tile phải được khai trong danh sách domain
+# của Mini App trên Zalo Developers, nếu không tile im lặng không tải.
 ARG VITE_MAP_PROVIDER=mock
+# Bỏ trống là dùng mặc định trong app.config.ts, KHÔNG phải toạ độ 0,0
 ARG VITE_MAP_STYLE_URL=
 ARG VITE_MAP_CENTER_LAT=
 ARG VITE_MAP_CENTER_LNG=
@@ -62,7 +65,12 @@ ENV VITE_API_BASE_URL=${VITE_API_BASE_URL} \
     VITE_ORG_SHORT=${VITE_ORG_SHORT} \
     VITE_ZALO_APP_ID=${VITE_ZALO_APP_ID} \
     VITE_ZALO_OA_ID=${VITE_ZALO_OA_ID} \
-    VITE_HOTLINE=${VITE_HOTLINE} \n    VITE_MAP_PROVIDER=${VITE_MAP_PROVIDER} \n    VITE_MAP_STYLE_URL=${VITE_MAP_STYLE_URL} \n    VITE_MAP_CENTER_LAT=${VITE_MAP_CENTER_LAT} \n    VITE_MAP_CENTER_LNG=${VITE_MAP_CENTER_LNG} \n    VITE_MAP_ZOOM=${VITE_MAP_ZOOM} \
+    VITE_HOTLINE=${VITE_HOTLINE} \
+    VITE_MAP_PROVIDER=${VITE_MAP_PROVIDER} \
+    VITE_MAP_STYLE_URL=${VITE_MAP_STYLE_URL} \
+    VITE_MAP_CENTER_LAT=${VITE_MAP_CENTER_LAT} \
+    VITE_MAP_CENTER_LNG=${VITE_MAP_CENTER_LNG} \
+    VITE_MAP_ZOOM=${VITE_MAP_ZOOM} \
     VITE_APP_VERSION=${VITE_APP_VERSION}
 
 COPY --from=deps /app/node_modules ./node_modules
