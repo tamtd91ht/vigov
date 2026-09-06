@@ -8,6 +8,7 @@ import {
   StaffUser,
   StaffUserSchema,
 } from '@vigov/shared';
+import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { SessionRegistryProvider } from './session-registry.provider';
@@ -20,6 +21,9 @@ import { SessionRegistryProvider } from './session-registry.provider';
       { name: CitizenUser.name, schema: CitizenUserSchema },
       { name: LoginSession.name, schema: LoginSessionSchema },
     ]),
+    /* Đổi mật khẩu của chính mình dùng lại UsersService.revokeOtherSessions —
+       cùng một cơ chế thu hồi phiên với trang Bảo mật, không viết lại. */
+    UsersModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, SessionRegistryProvider],

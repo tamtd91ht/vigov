@@ -1,9 +1,16 @@
-import { Body, Controller, Get, Post, Req } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, Req } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import { Public, type AuthedRequest } from '@vigov/shared';
 import { AuthService } from './auth.service';
-import { RequestOtpDto, StaffLoginDto, VerifyOtpDto, ZaloIdentifyDto } from './dto/auth.dto';
+import {
+  ChangeOwnPasswordDto,
+  RefreshTokenDto,
+  RequestOtpDto,
+  StaffLoginDto,
+  VerifyOtpDto,
+  ZaloIdentifyDto,
+} from './dto/auth.dto';
 
 /**
  * Hạn mức riêng cho nhóm endpoint xác thực (P4-36).
@@ -60,9 +67,45 @@ export class AuthController {
     return this.auth.identifyZalo(dto.token, dto.accessToken, dto.zaloUserId, dto.displayName, ip);
   }
 
+  /**
+   * Cấp lại cặp token bằng refresh token (T-09).
+   *
+   * `@Public()` vì đúng lúc gọi thì access token đã hết hạn — bắt kèm token
+   * hợp lệ ở đây là làm cho endpoint vô dụng. Thứ xác thực người gọi chính là
+   * refresh token trong thân yêu cầu.
+   *
+   * Chịu chung hạn mức 5 lượt/phút của nhóm auth: refresh hợp lệ thì mỗi 8 giờ
+   * mới cần một lần, còn dò bí mật 32 byte thì hạn mức này chặn từ trong trứng.
+   */
+  @Public()
+  @Throttle(AUTH_THROTTLE)
+  @Post('refresh')
+  refresh(@Body() dto: RefreshTokenDto, @Req() req: Request) {
+    const { ip, device } = clientInfo(req);
+    return this.auth.refresh(dto.refreshToken, ip, device);
+  }
+
   /** Thông tin phiên hiện tại */
   @Get('me')
   me(@Req() req: AuthedRequest) {
     return req.user;
+  }
+
+  /**
+   * Cán bộ tự đổi mật khẩu của chính mình (trang Hồ sơ cá nhân).
+   *
+   * Không dùng `@RequirePermission`: đây là thao tác trên tài khoản của chính
+   * người gọi, mọi vai trò đều phải làm được — kể cả vai trò không có quyền gì
+   * trên phân hệ Người dùng. Danh tính lấy từ token, KHÔNG lấy từ thân yêu cầu,
+   * nên không ai đổi được mật khẩu của người khác qua đây.
+   */
+  @Patch('me/password')
+  changeOwnPassword(@Body() dto: ChangeOwnPasswordDto, @Req() req: AuthedRequest) {
+    return this.auth.changeOwnPassword(
+      req.user?.username ?? '',
+      dto.currentPassword,
+      dto.newPassword,
+      req.user?.sid,
+    );
   }
 }

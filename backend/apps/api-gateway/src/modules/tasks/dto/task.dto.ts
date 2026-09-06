@@ -1,5 +1,7 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMaxSize,
+  ArrayNotEmpty,
   IsArray,
   IsBoolean,
   IsIn,
@@ -152,6 +154,20 @@ export class CreateCommentDto {
   @IsNotEmpty({ message: 'Vui lòng nhập nội dung bình luận' })
   @MaxLength(2000, { message: 'Nội dung bình luận tối đa 2000 ký tự' })
   content: string;
+}
+
+/** Số tệp minh chứng tối đa gắn một lần cho nhiệm vụ */
+export const MAX_TASK_ATTACHMENTS_PER_CALL = 10;
+
+/** Gắn tệp minh chứng vào nhiệm vụ (POST /tasks/:code/attachments) */
+export class AttachTaskFilesDto {
+  @IsArray({ message: 'Danh sách tệp không hợp lệ' })
+  @ArrayNotEmpty({ message: 'Vui lòng chọn ít nhất một tệp cần gắn' })
+  @ArrayMaxSize(MAX_TASK_ATTACHMENTS_PER_CALL, {
+    message: `Chỉ được gắn tối đa ${MAX_TASK_ATTACHMENTS_PER_CALL} tệp mỗi lần`,
+  })
+  @IsString({ each: true, message: 'Mã tệp không hợp lệ' })
+  fileIds: string[];
 }
 
 /** Bộ lọc danh sách nhiệm vụ (GET /tasks) */

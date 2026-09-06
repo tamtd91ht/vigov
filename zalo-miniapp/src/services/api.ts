@@ -57,6 +57,74 @@ export function getAccessToken(): string | null {
   return readStoredSession()?.accessToken ?? null;
 }
 
+/** Đường dẫn nhóm xác thực — 401 ở đây KHÔNG được kích hoạt luồng refresh */
+const AUTH_PATH_PREFIX = "/auth/";
+
+/** Phản hồi của POST /auth/refresh */
+interface RefreshResponse {
+  accessToken: string;
+  refreshToken: string;
+  expiresInSeconds: number;
+}
+
+/**
+ * Một lời gọi refresh ĐANG chạy, dùng chung cho mọi yêu cầu gặp 401 cùng lúc.
+ *
+ * VÌ SAO CẦN: màn hình mở lên thường bắn 2–3 lời gọi song song. Nếu mỗi lời gọi
+ * tự refresh thì lời gọi thứ hai gửi refresh token vừa bị xoay vòng — backend
+ * coi đó là dấu hiệu token bị lộ và THU HỒI cả phiên. Nghĩa là chính cơ chế
+ * gia hạn lại đá người dùng ra ngoài. Gộp về một lượt là bắt buộc, không phải
+ * tối ưu hoá.
+ */
+let refreshInFlight: Promise<string | null> | null = null;
+
+/**
+ * Xin cặp token mới bằng refresh token đang lưu.
+ * Trả access token mới, hoặc null nếu không gia hạn được (hết hạn, bị thu hồi,
+ * chưa từng có refresh token — ví dụ phiên tạo từ bản demo offline).
+ *
+ * Gọi `fetch` trực tiếp thay vì `request()` để không quay lại chính nhánh xử lý
+ * 401 và tạo đệ quy.
+ */
+async function requestNewTokens(): Promise<string | null> {
+  const session = readStoredSession();
+  if (!session?.refreshToken) return null;
+
+  try {
+    const res = await fetch(`${appConfig.api.baseUrl}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refreshToken: session.refreshToken }),
+    });
+    if (!res.ok) return null;
+
+    const body = (await res.json()) as RefreshResponse;
+    if (!body.accessToken || !body.refreshToken) return null;
+
+    // Ghi CẢ hai token: backend xoay vòng nên refresh token cũ đã hết hiệu lực
+    writeStoredSession({ ...session, accessToken: body.accessToken, refreshToken: body.refreshToken });
+    return body.accessToken;
+  } catch {
+    return null;
+  }
+}
+
+/** Gộp mọi yêu cầu refresh đồng thời về đúng một lời gọi */
+function refreshOnce(): Promise<string | null> {
+  if (!refreshInFlight) {
+    refreshInFlight = requestNewTokens().finally(() => {
+      refreshInFlight = null;
+    });
+  }
+  return refreshInFlight;
+}
+
+/** Đóng phiên tại chỗ và báo cho SessionContext đưa người dùng về màn định danh */
+function endSession(): void {
+  clearStoredSession();
+  window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+}
+
 async function readErrorMessage(res: Response): Promise<string> {
   try {
     const body = (await res.json()) as ApiErrorBody;
@@ -80,12 +148,10 @@ export function buildQuery(params: Record<string, string | number | boolean | un
   return qs ? `?${qs}` : "";
 }
 
-/** Gọi API — tự gắn JWT, tự xoá phiên khi token hết hạn */
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = getAccessToken();
-  let res: Response;
+/** Một lượt gửi yêu cầu với token cho trước */
+async function send(path: string, token: string | null, init?: RequestInit): Promise<Response> {
   try {
-    res = await fetch(`${appConfig.api.baseUrl}${path}`, {
+    return await fetch(`${appConfig.api.baseUrl}${path}`, {
       ...init,
       headers: {
         "Content-Type": "application/json",
@@ -96,14 +162,38 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   } catch {
     throw new ApiError("Không kết nối được máy chủ. Kiểm tra đường truyền rồi thử lại.", 0);
   }
+}
+
+/**
+ * Gọi API — tự gắn JWT; gặp 401 thì THỬ REFRESH MỘT LẦN rồi mới huỷ phiên.
+ *
+ * Access token sống 8 giờ, nên trước đây mở app sau một đêm là rơi thẳng về màn
+ * liên kết số điện thoại. Nay thử gia hạn trước; chỉ khi gia hạn cũng trượt
+ * (refresh token hết hạn, phiên bị thu hồi, tài khoản bị khoá) mới bắt định
+ * danh lại. Đúng MỘT lần thử — refresh trượt rồi thì thử lại cũng trượt, mà
+ * vòng lặp ở đây sẽ treo màn hình.
+ */
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = getAccessToken();
+  let res = await send(path, token, init);
+
+  if (res.status === 401 && token && !path.startsWith(AUTH_PATH_PREFIX)) {
+    const renewed = await refreshOnce();
+    if (renewed) {
+      res = await send(path, renewed, init);
+    } else {
+      endSession();
+      throw new ApiError("Phiên định danh đã hết hạn, vui lòng liên kết lại số điện thoại", 401);
+    }
+  }
 
   if (res.status === 401) {
     const message = await readErrorMessage(res);
-    // Chỉ huỷ phiên khi đang CÓ token — 401 của màn định danh (sai OTP, chưa
-    // cấu hình OA) không được phép xoá phiên đang dùng.
+    /* Chỉ huỷ phiên khi đang CÓ token — 401 của màn định danh (sai OTP, chưa
+       cấu hình OA) không được phép xoá phiên đang dùng. Tới nhánh này với token
+       trong tay nghĩa là gia hạn xong vẫn bị từ chối: phiên hết đường cứu. */
     if (token) {
-      clearStoredSession();
-      window.dispatchEvent(new Event(SESSION_EXPIRED_EVENT));
+      endSession();
       throw new ApiError("Phiên định danh đã hết hạn, vui lòng liên kết lại số điện thoại", 401);
     }
     throw new ApiError(message, 401);

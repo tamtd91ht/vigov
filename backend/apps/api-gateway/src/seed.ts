@@ -23,6 +23,8 @@ import {
   type BudgetItemDocument,
   CitizenUser,
   type CitizenUserDocument,
+  Dossier,
+  type DossierDocument,
   Feedback,
   type FeedbackDocument,
   IncomingDocument,
@@ -54,6 +56,7 @@ import {
 import { TASK_SEED } from './seed-data/tasks.seed';
 import { DOCUMENT_SEED } from './seed-data/documents.seed';
 import { FEEDBACK_SEED } from './seed-data/feedback.seed';
+import { DOSSIER_SEED } from './seed-data/dossiers.seed';
 import { BUDGET_ITEM_SEED } from './seed-data/disbursement.seed';
 import { ARTICLE_SEED, RADIO_BULLETIN_SEED, VIDEO_SEED } from './seed-data/content.seed';
 import { BLACKLIST_SEED, CITIZEN_USER_SEED, LOGIN_SESSION_SEED } from './seed-data/users.seed';
@@ -183,6 +186,7 @@ async function seed() {
   const taskModel = app.get<Model<TaskDocument>>(getModelToken(Task.name));
   const documentModel = app.get<Model<IncomingDocumentDocument>>(getModelToken(IncomingDocument.name));
   const feedbackModel = app.get<Model<FeedbackDocument>>(getModelToken(Feedback.name));
+  const dossierModel = app.get<Model<DossierDocument>>(getModelToken(Dossier.name));
   const budgetModel = app.get<Model<BudgetItemDocument>>(getModelToken(BudgetItem.name));
   const articleModel = app.get<Model<ArticleDocument>>(getModelToken(Article.name));
   const videoModel = app.get<Model<VideoDocument>>(getModelToken(Video.name));
@@ -223,15 +227,17 @@ async function seed() {
   if (FRESH) {
     logger.warn('╔══════════════════════════════════════════════════════════════════╗');
     logger.warn('║  CỜ --fresh: XOÁ SẠCH toàn bộ dữ liệu nghiệp vụ trước khi seed!   ║');
-    logger.warn('║  Nhiệm vụ, văn bản, phản ánh, ngân sách, CMS, công dân, phiên     ║');
-    logger.warn('║  đăng nhập, danh sách chặn, cây tổ chức và bản đồ kinh tế số sẽ   ║');
-    logger.warn('║  MẤT chỉnh sửa. Tài khoản cán bộ và cấu hình SLA giữ nguyên.      ║');
+    logger.warn('║  Nhiệm vụ, văn bản, phản ánh, hồ sơ một cửa, ngân sách, CMS,      ║');
+    logger.warn('║  công dân, phiên đăng nhập, danh sách chặn, cây tổ chức và bản    ║');
+    logger.warn('║  đồ kinh tế số sẽ MẤT chỉnh sửa. Tài khoản cán bộ và cấu hình    ║');
+    logger.warn('║  SLA giữ nguyên.                                                  ║');
     logger.warn('╚══════════════════════════════════════════════════════════════════╝');
 
     const cleared = await Promise.all([
       taskModel.deleteMany({}).exec(),
       documentModel.deleteMany({}).exec(),
       feedbackModel.deleteMany({}).exec(),
+      dossierModel.deleteMany({}).exec(),
       budgetModel.deleteMany({}).exec(),
       articleModel.deleteMany({}).exec(),
       videoModel.deleteMany({}).exec(),
@@ -254,6 +260,7 @@ async function seed() {
     await upsertGroup('Văn bản & đơn thư', documentModel, DOCUMENT_SEED, (row) => ({ arrivalNo: row.arrivalNo })),
   );
   groups.push(await upsertGroup('Phản ánh người dân', feedbackModel, FEEDBACK_SEED, (row) => ({ code: row.code })));
+  groups.push(await upsertGroup('Hồ sơ một cửa', dossierModel, DOSSIER_SEED, (row) => ({ code: row.code })));
   groups.push(await upsertGroup('Hạng mục ngân sách', budgetModel, BUDGET_ITEM_SEED, (row) => ({ code: row.code })));
   groups.push(await upsertGroup('Bài viết CMS', articleModel, ARTICLE_SEED, (row) => ({ title: row.title })));
   groups.push(await upsertGroup('Video tuyên truyền', videoModel, VIDEO_SEED, (row) => ({ title: row.title })));

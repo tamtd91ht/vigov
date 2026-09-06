@@ -3,6 +3,7 @@ import { RequirePermission, type AuthedRequest, type JwtPayload } from '@vigov/s
 import {
   AssignFeedbackDto,
   CreateCitizenFeedbackDto,
+  CreateStaffFeedbackDto,
   ListFeedbackQueryDto,
   RateFeedbackDto,
   ResolveFeedbackDto,
@@ -51,6 +52,20 @@ export class FeedbackController {
   @Get('stats')
   stats() {
     return this.feedback.stats();
+  }
+
+  /**
+   * Cán bộ lập phiếu hộ người dân đến trình bày TRỰC TIẾP tại xã (WBS #6).
+   *
+   * Khai báo TRƯỚC nhóm /citizen và các route ':code' — POST '' không đụng
+   * route động, nhưng giữ cùng khối với nghiệp vụ cán bộ cho dễ đọc.
+   * Quyền `feedback:edit`: đúng mức đang dùng cho phân công / xử lý phiếu,
+   * và vai trò "Tiếp nhận một cửa" đã có sẵn mức này.
+   */
+  @RequirePermission('feedback', 'edit')
+  @Post()
+  createByStaff(@Body() dto: CreateStaffFeedbackDto, @Req() req: AuthedRequest) {
+    return this.feedback.createByStaff(dto, actorOf(req));
   }
 
   // --- Công dân -------------------------------------------------------------

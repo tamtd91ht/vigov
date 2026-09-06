@@ -109,6 +109,14 @@ export interface CitizenSession {
   area?: string;
   /** JWT gọi API — nhánh demo offline (useMocks) không có token */
   accessToken?: string;
+  /**
+   * Refresh token để xin access token mới khi token cũ hết hạn (T-09).
+   *
+   * Lưu cùng phiên trong localStorage: access token chỉ sống 8 giờ, không có
+   * trường này thì hết 8 giờ là người dân phải liên kết lại số điện thoại —
+   * trong Zalo Mini App đó là cả một luồng cấp quyền, rất dễ bỏ giữa đường.
+   */
+  refreshToken?: string;
 }
 
 /** Một lớp dữ liệu bật/tắt trên bản đồ kinh tế (doanh nghiệp, chợ, y tế…) */

@@ -112,8 +112,25 @@ export class Task {
   @Prop({ type: [TimelineStepSchema], default: [] })
   timeline: TimelineStep[];
 
+  /**
+   * Tên tệp đính kèm dạng chuỗi — DI SẢN, giữ lại cho tương thích ngược.
+   *
+   * Đây chỉ là tên hiển thị: không tải lên, không tải về được. Bản ghi cũ và
+   * dữ liệu seed đang dùng trường này, nên xoá đi là làm rỗng cột đính kèm
+   * trên giao diện. Tệp thật nằm ở `attachmentFileIds`.
+   */
   @Prop({ type: [String], default: [] })
   attachments: string[];
+
+  /**
+   * Mã tệp minh chứng trong module Files (WBS #3, #24) — tệp tải lên/tải về được.
+   *
+   * Tệp minh chứng nhiệm vụ là tài liệu nội bộ, nên BẮT BUỘC tải lên với
+   * `isPrivate = true` theo quy ước TB-09 trong SECURITY.md; TasksService từ
+   * chối gắn tệp công khai vào nhiệm vụ.
+   */
+  @Prop({ type: [String], default: [] })
+  attachmentFileIds: string[];
 }
 
 export const TaskSchema = SchemaFactory.createForClass(Task);

@@ -1,19 +1,21 @@
-import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { JwtService } from '@nestjs/jwt';
-import { Model } from 'mongoose';
-import { randomInt, timingSafeEqual } from 'node:crypto';
+import { Model, isValidObjectId } from 'mongoose';
+import { randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import * as bcrypt from 'bcryptjs';
 import {
   CitizenUser,
   type CitizenUserDocument,
   LoginSession,
   type LoginSessionDocument,
+  SessionRegistry,
   StaffUser,
   type StaffUserDocument,
   type JwtPayload,
 } from '@vigov/shared';
+import { UsersService } from '../users/users.service';
 
 /** Điểm cuối Zalo Open API đổi mã dùng một lần lấy số điện thoại */
 const ZALO_GRAPH_ME_INFO_URL = 'https://graph.zalo.me/v2.0/me/info';
@@ -100,6 +102,49 @@ export function nextLockState(
   return { failedLoginAttempts: attempts, lockedUntil: null };
 }
 
+/**
+ * Refresh token có dạng `<mã phiên>.<bí mật ngẫu nhiên>`.
+ *
+ * VÌ SAO GHÉP MÃ PHIÊN VÀO: bí mật được lưu dưới dạng băm bcrypt, mà bcrypt
+ * không tra ngược được — không có phần mã phiên thì mỗi lần refresh phải quét
+ * toàn bộ bảng phiên và so bcrypt với từng bản ghi. Phần mã phiên chỉ để TRA,
+ * không phải để tin: bí mật vẫn phải khớp băm thì mới được cấp token mới.
+ */
+const REFRESH_TOKEN_SEPARATOR = '.';
+/** 32 byte ngẫu nhiên — đủ để không thể dò, đủ ngắn để nằm gọn trong header */
+const REFRESH_TOKEN_BYTES = 32;
+
+/**
+ * Thông điệp DUY NHẤT cho mọi nhánh refresh hỏng.
+ *
+ * Cùng lý do với LOGIN_FAILED_MESSAGE: tách riêng "phiên không tồn tại" với
+ * "token sai" là biến chính thông điệp thành công cụ dò mã phiên hợp lệ.
+ */
+const REFRESH_FAILED_MESSAGE = 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn, vui lòng đăng nhập lại';
+
+/** Hạn dùng mặc định của refresh token khi REFRESH_EXPIRES_IN không đọc được */
+const DEFAULT_REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
+/** Hạn dùng mặc định của access token khi JWT_EXPIRES_IN không đọc được */
+const DEFAULT_ACCESS_TTL_SECONDS = 8 * 60 * 60;
+
+/** Hệ số quy đổi hậu tố thời lượng kiểu jsonwebtoken ("8h", "7d", "30m") sang giây */
+const DURATION_UNIT_SECONDS: Record<string, number> = { s: 1, m: 60, h: 3600, d: 86400 };
+
+/**
+ * "8h" → 28800. Nhận cả số trần ("3600" = 3600 giây, đúng quy ước jsonwebtoken).
+ * Chuỗi không đọc được thì trả `fallback` — cấu hình sai không được làm sập
+ * đăng nhập, nhưng phải có giá trị dự phòng rõ ràng thay vì NaN.
+ */
+export function parseDurationSeconds(value: string | undefined, fallback: number): number {
+  const raw = (value ?? '').trim();
+  if (!raw) return fallback;
+  const matched = /^(\d+)([smhd])?$/.exec(raw);
+  if (!matched) return fallback;
+  const amount = Number.parseInt(matched[1], 10);
+  const unit = matched[2] ? DURATION_UNIT_SECONDS[matched[2]] : 1;
+  return Number.isFinite(amount) && amount > 0 ? amount * unit : fallback;
+}
+
 interface OtpEntry {
   code: string;
   expiresAt: number;
@@ -123,7 +168,19 @@ export class AuthService {
     @InjectModel(LoginSession.name) private readonly sessionModel: Model<LoginSessionDocument>,
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
+    private readonly sessions: SessionRegistry,
+    private readonly users: UsersService,
   ) {}
+
+  /** Hạn dùng access token (giây) — đọc từ JWT_EXPIRES_IN */
+  private get accessTtlSeconds(): number {
+    return parseDurationSeconds(this.config.get<string>('auth.jwtExpiresIn'), DEFAULT_ACCESS_TTL_SECONDS);
+  }
+
+  /** Hạn dùng refresh token (giây) — đọc từ REFRESH_EXPIRES_IN */
+  private get refreshTtlSeconds(): number {
+    return parseDurationSeconds(this.config.get<string>('auth.refreshExpiresIn'), DEFAULT_REFRESH_TTL_SECONDS);
+  }
 
   /** Đăng nhập cán bộ Web Quản trị */
   async staffLogin(username: string, password: string, ip: string, device: string) {
@@ -167,6 +224,7 @@ export class AuthService {
 
     return {
       accessToken: await this.jwt.signAsync(payload),
+      refreshToken: await this.issueRefreshToken(sessionId),
       user: {
         username: user.username,
         displayName: user.displayName,
@@ -379,7 +437,175 @@ export class AuthService {
 
     return {
       accessToken: await this.jwt.signAsync(payload),
+      refreshToken: await this.issueRefreshToken(sessionId),
       user: { phone, displayName: payload.displayName, area: citizen.area },
+    };
+  }
+
+  /**
+   * Cấp lại cặp token bằng refresh token, có XOAY VÒNG (T-09).
+   *
+   * Mỗi lần gọi sinh một bí mật mới và ghi đè băm cũ, nên refresh token vừa
+   * dùng lập tức hết hiệu lực. Nếu ai đó gửi lại một token ĐÃ xoay vòng thì
+   * hoặc token bị lộ, hoặc có người đang phát lại — cả hai đều phải xử lý như
+   * nhau: thu hồi luôn phiên, buộc đăng nhập lại. Chấp nhận phiền cho người
+   * dùng thật hơn là để một token đã lộ tiếp tục gia hạn vô hạn.
+   *
+   * Việc kiểm "phiên còn hiệu lực / chủ tài khoản còn hoạt động" giao cho
+   * SessionRegistry — đúng cơ chế mà JwtAuthGuard đang dùng. Viết thêm một
+   * đường kiểm tra riêng ở đây là mở đường cho hai chỗ lệch nhau.
+   */
+  async refresh(rawToken: string, ip: string, device: string) {
+    const separator = rawToken.indexOf(REFRESH_TOKEN_SEPARATOR);
+    const sessionId = separator > 0 ? rawToken.slice(0, separator) : '';
+    const secret = separator > 0 ? rawToken.slice(separator + 1) : '';
+    if (!sessionId || !secret || !isValidObjectId(sessionId)) {
+      throw new UnauthorizedException(REFRESH_FAILED_MESSAGE);
+    }
+
+    // `refreshTokenHash` khai select:false nên phải xin tường minh
+    const session = await this.sessionModel.findById(sessionId).select('+refreshTokenHash').exec();
+    if (!session?.refreshTokenHash) {
+      throw new UnauthorizedException(REFRESH_FAILED_MESSAGE);
+    }
+
+    // Phiên đã thu hồi, hoặc chủ tài khoản bị khoá / xoá mềm
+    if (!(await this.sessions.isActive(sessionId))) {
+      throw new UnauthorizedException(REFRESH_FAILED_MESSAGE);
+    }
+
+    if (!(await bcrypt.compare(secret, session.refreshTokenHash))) {
+      await this.revokeSessionOnReuse(session, ip);
+      throw new UnauthorizedException(REFRESH_FAILED_MESSAGE);
+    }
+
+    if (session.refreshExpiresAt && session.refreshExpiresAt.getTime() <= Date.now()) {
+      /* Hết hạn refresh (7 ngày) thì access token 8 giờ đã chết từ lâu —
+         đóng hẳn phiên để nó không nằm lại trong danh sách phiên đang mở. */
+      await this.markRevoked(session);
+      throw new UnauthorizedException(REFRESH_FAILED_MESSAGE);
+    }
+
+    const payload = await this.buildPayloadForSession(session.subject, session.kind, sessionId);
+
+    session.lastActiveAt = new Date();
+    if (ip) session.ip = ip;
+    if (device) session.device = device;
+    await session.save();
+
+    return {
+      accessToken: await this.jwt.signAsync(payload),
+      refreshToken: await this.issueRefreshToken(sessionId),
+      expiresInSeconds: this.accessTtlSeconds,
+    };
+  }
+
+  /**
+   * Cán bộ tự đổi mật khẩu của CHÍNH MÌNH.
+   *
+   * Thu hồi các phiên KHÁC (giữ lại phiên đang thao tác qua `exceptSessionId`)
+   * bằng đúng cơ chế `UsersService.revokeOtherSessions` mà trang Bảo mật đang
+   * dùng — cùng lý do với `changeStaffPassword`: người ta đổi mật khẩu thường
+   * vì nghi bị lộ, để nguyên phiên cũ thì kẻ giữ token vẫn dùng tiếp 8 giờ.
+   * Khác `changeStaffPassword` ở chỗ KHÔNG tự đá mình ra ngoài.
+   */
+  async changeOwnPassword(
+    username: string,
+    currentPassword: string,
+    newPassword: string,
+    exceptSessionId?: string,
+  ) {
+    /*
+     * SAI MẬT KHẨU HIỆN TẠI TRẢ 400, KHÔNG PHẢI 401 — có lý do:
+     * client coi 401 là "phiên hết hạn" và tự đăng xuất (xem `services/api.ts`
+     * của Web Quản trị). Nếu nhánh này cũng trả 401 thì gõ sai mật khẩu một lần
+     * là bị đá ra trang đăng nhập giữa lúc đang đổi mật khẩu, mà lỗi thật lại
+     * không nói được với người dùng. Yêu cầu này ĐÃ mang token hợp lệ nên nó
+     * không phải lỗi xác thực phiên; đây là dữ liệu vào không hợp lệ.
+     */
+    const user = await this.staffModel.findOne({ username }).select('+passwordHash').exec();
+    if (!user) {
+      // Tài khoản công dân không có mật khẩu — cũng rơi vào nhánh này
+      throw new BadRequestException('Mật khẩu hiện tại không đúng');
+    }
+    if (!(await bcrypt.compare(currentPassword, user.passwordHash))) {
+      this.logger.warn(`Đổi mật khẩu thất bại cho ${username}: sai mật khẩu hiện tại`);
+      throw new BadRequestException('Mật khẩu hiện tại không đúng');
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await user.save();
+
+    const { revoked } = await this.users.revokeOtherSessions(username, exceptSessionId);
+    return { updated: true, revokedSessions: revoked };
+  }
+
+  /**
+   * Sinh refresh token mới cho một phiên và ghi băm của nó xuống bản ghi phiên.
+   * Ghi đè băm cũ chính là hành vi "vô hiệu token trước đó".
+   */
+  private async issueRefreshToken(sessionId: string): Promise<string> {
+    const secret = randomBytes(REFRESH_TOKEN_BYTES).toString('base64url');
+    const refreshTokenHash = await bcrypt.hash(secret, BCRYPT_ROUNDS);
+    const refreshExpiresAt = new Date(Date.now() + this.refreshTtlSeconds * 1000);
+
+    await this.sessionModel
+      .updateOne({ _id: sessionId }, { $set: { refreshTokenHash, refreshExpiresAt } })
+      .exec();
+
+    return `${sessionId}${REFRESH_TOKEN_SEPARATOR}${secret}`;
+  }
+
+  /**
+   * Phát hiện dùng lại refresh token đã xoay vòng — thu hồi cả phiên.
+   * Nhật ký ghi mã phiên và IP để truy vết; TUYỆT ĐỐI không ghi token.
+   */
+  private async revokeSessionOnReuse(session: LoginSessionDocument, ip: string): Promise<void> {
+    await this.markRevoked(session);
+    this.logger.warn(
+      `Refresh token đã bị xoay vòng lại được gửi cho phiên ${String(session._id)} từ ${ip || 'IP không xác định'} — ` +
+        'đã thu hồi phiên. Nghi token bị lộ hoặc bị phát lại.',
+    );
+  }
+
+  /** Đóng phiên và xoá bộ nhớ đệm để token hiện có mất hiệu lực ngay */
+  private async markRevoked(session: LoginSessionDocument): Promise<void> {
+    session.revoked = true;
+    await session.save();
+    this.sessions.invalidate(String(session._id));
+  }
+
+  /**
+   * Dựng payload JWT mới từ dữ liệu HIỆN TẠI của chủ phiên.
+   *
+   * Đọc lại bản ghi thay vì chép payload cũ: vai trò và phòng ban có thể đã
+   * đổi kể từ lần đăng nhập, mà JwtAuthGuard tin thẳng `roleKey` trong token.
+   * Refresh mà giữ nguyên vai trò cũ là kéo dài vô hạn một quyền đã bị thu hồi.
+   */
+  private async buildPayloadForSession(subject: string, kind: string, sid: string): Promise<JwtPayload> {
+    if (kind === 'web') {
+      const staff = await this.staffModel.findOne({ username: subject }).exec();
+      if (!staff || staff.status === 'locked') throw new UnauthorizedException(REFRESH_FAILED_MESSAGE);
+      return {
+        sub: String(staff._id),
+        username: staff.username,
+        displayName: staff.displayName,
+        roleKey: staff.roleKey,
+        department: staff.department,
+        sid,
+      };
+    }
+
+    const citizen = await this.citizenModel.findOne({ phone: subject }).exec();
+    if (!citizen || citizen.status === 'locked' || citizen.deletedAt) {
+      throw new UnauthorizedException(REFRESH_FAILED_MESSAGE);
+    }
+    return {
+      sub: String(citizen._id),
+      username: citizen.phone,
+      displayName: citizen.displayName || `Công dân ${citizen.phone.slice(-3)}`,
+      roleKey: 'citizen',
+      sid,
     };
   }
 

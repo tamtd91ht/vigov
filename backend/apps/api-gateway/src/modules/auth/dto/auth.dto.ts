@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString, Length, Matches } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, Length, Matches, MinLength } from 'class-validator';
 
 /** Đăng nhập cán bộ Web Quản trị */
 export class StaffLoginDto {
@@ -51,4 +51,32 @@ export class ZaloIdentifyDto {
   @IsOptional()
   @IsString()
   displayName?: string;
+}
+
+/** Cấp lại cặp token bằng refresh token (T-09) */
+export class RefreshTokenDto {
+  @IsString()
+  @IsNotEmpty({ message: 'Thiếu refresh token' })
+  refreshToken: string;
+}
+
+/**
+ * Độ dài mật khẩu tối thiểu — GIỮ BẰNG `MIN_PASSWORD_LENGTH` của
+ * users.dto.ts (đặt lại mật khẩu cán bộ). Hai đường đổi mật khẩu mà đòi độ dài
+ * khác nhau thì quản trị viên đặt được mật khẩu mà chính chủ không tự đổi lại
+ * được, hoặc ngược lại.
+ */
+export const MIN_PASSWORD_LENGTH = 8;
+
+/** Cán bộ tự đổi mật khẩu của chính mình (PATCH /auth/me/password) */
+export class ChangeOwnPasswordDto {
+  @IsString()
+  @IsNotEmpty({ message: 'Vui lòng nhập mật khẩu hiện tại' })
+  currentPassword: string;
+
+  @IsString()
+  @MinLength(MIN_PASSWORD_LENGTH, {
+    message: `Mật khẩu mới phải có tối thiểu ${MIN_PASSWORD_LENGTH} ký tự`,
+  })
+  newPassword: string;
 }

@@ -3,7 +3,7 @@ import { Icon } from "@/components/Icon";
 import { DemoNote, EmptyState, Note, SectionHead, SubHeader, tint } from "@/components/common";
 import { appConfig } from "@/config/app.config";
 import { demoConfig } from "@/config/demo.config";
-import { lookupDossier } from "@/mocks/dossier.mock";
+import { dossierService } from "@/services/dossier.service";
 import { zaloService } from "@/services/zalo";
 import { useToast } from "@/state/ToastContext";
 import type { DossierResult } from "@/types";
@@ -75,13 +75,23 @@ export function LookupPage() {
       setCode(trimmed);
       inputRef.current?.blur();
       setLoading(true);
-      const found = await lookupDossier(trimmed);
-      setLoading(false);
-      setResult(found);
-      setSearchedCode(trimmed);
-      if (found) saveToHistory(found.code);
+      try {
+        const found = await dossierService.lookup(trimmed);
+        setResult(found);
+        setSearchedCode(trimmed);
+        if (found) saveToHistory(found.code);
+      } catch (err) {
+        /* Lỗi kết nối / quá hạn mức KHÁC hẳn "không tìm thấy hồ sơ": giữ
+           nguyên kết quả cũ trên màn hình và báo bằng toast, nếu không người
+           dùng sẽ hiểu là hồ sơ của mình không tồn tại. */
+        setResult(undefined);
+        setSearchedCode("");
+        showToast(err instanceof Error ? err.message : "Không tra cứu được, vui lòng thử lại");
+      } finally {
+        setLoading(false);
+      }
     },
-    [saveToHistory],
+    [saveToHistory, showToast],
   );
 
   async function handleScan() {

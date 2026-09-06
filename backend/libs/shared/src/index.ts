@@ -14,5 +14,6 @@ export * from './events/events';
 export * from './schemas/task.schema';
 export * from './schemas/document.schema';
 export * from './schemas/feedback.schema';
+export * from './schemas/dossier.schema';
 export * from './schemas/user.schema';
 export * from './schemas/misc.schema';

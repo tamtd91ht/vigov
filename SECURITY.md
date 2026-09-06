@@ -41,11 +41,11 @@ Kiểm chứng sau khi sửa: `npx tsc --noEmit -p apps/api-gateway/tsconfig.app
 | 26 | Chữ ký link tệp riêng tư | ✅ Có sẵn | HMAC-SHA256, so sánh bằng `timingSafeEqual`, TTL tối đa 24 giờ |
 | 27 | Nhật ký thao tác (audit log) che trường nhạy cảm | ✅ Có sẵn | `AuditInterceptor` che password/token/otp |
 | 28 | Escape từ khoá người dùng trước khi ghép `$regex` | ✅ Có sẵn | Users, Feedback, Search đều escape |
-| 29 | Thu hồi token khi khoá tài khoản / thu hồi phiên | ❌ Chưa làm | Xem phát hiện **TB-01** |
-| 30 | Refresh token + xoay vòng token | ❌ Chưa làm | Có `REFRESH_EXPIRES_IN` nhưng chưa có luồng cấp lại |
+| 29 | Thu hồi token khi khoá tài khoản / thu hồi phiên | ✅ Có sẵn | `sid` trong payload JWT + `SessionRegistry` tra lại phiên/trạng thái chủ tài khoản (nhớ tạm 10 giây) |
+| 30 | Refresh token + xoay vòng token | ✅ Có sẵn | `POST /auth/refresh`, băm bcrypt lưu trên `login_sessions`, xoay vòng mỗi lượt, dùng lại token cũ thì thu hồi phiên |
 | 31 | Xác thực MongoDB / RabbitMQ | ❌ Chưa làm | Xem mục 4 — việc cần làm trước production |
 | 32 | HTTPS/TLS đầu vào | ❌ Chưa làm | Do hạ tầng triển khai đảm nhiệm |
-| 33 | Xác thực thật ở admin-web / mobile / Zalo Mini App | ❌ Chưa làm | Cả 3 client còn ở chế độ mock — xem **C-03** |
+| 33 | Xác thực thật ở admin-web / mobile / Zalo Mini App | ✅ Có sẵn | Cả 3 client gọi API thật; chế độ mock chỉ còn là lựa chọn có chủ ý để trình diễn giao diện |
 | 34 | Quét mã tự động (SAST/DAST), pentest | ❌ Ngoài phạm vi | Xem mục 5 |
 
 ---
@@ -58,14 +58,14 @@ Kiểm chứng sau khi sửa: `npx tsc --noEmit -p apps/api-gateway/tsconfig.app
 |---|---|---|
 | **C-01** | **Ai đăng nhập cũng xin được link đọc tệp riêng tư bất kỳ.** `GET /files/:id/signed-url` chỉ đi qua `JwtAuthGuard` mà không kiểm tra chủ sở hữu. Một tài khoản công dân (định danh chỉ bằng OTP) chỉ cần dò mã ObjectId là lấy được link ký sẵn để đọc bản scan văn bản, đơn thư nội bộ. | ✅ **ĐÃ SỬA** |
 | **C-02** | **Stored XSS qua tệp tải lên.** Mục đích `other` không giới hạn MIME, còn route đọc tệp luôn trả `Content-Disposition: inline`. Kẻ xấu tải lên tệp `text/html` (hoặc `image/svg+xml`) chứa script rồi phát tán link `/api/v1/files/<id>` — mã chạy ngay trên tên miền API. | ✅ **ĐÃ SỬA** |
-| **C-03** | **Xác thực phía client hoàn toàn là mock.** `admin-web/src/services/auth.ts` so sánh mật khẩu ngay trong trình duyệt với `NEXT_PUBLIC_DEMO_*` rồi ghi phiên vào `localStorage`; `AuthGuard.tsx` chỉ ẩn giao diện phía client, không có middleware chặn ở tầng route. Mobile (`identity_service.dart`) và Zalo Mini App cũng lưu phiên mock. **Không được đưa lên môi trường thật ở trạng thái này.** | ⚠️ **CÒN TỒN ĐỌNG** — thuộc hạng mục nối backend thật (P3/P4) |
+| **C-03** | **Xác thực phía client hoàn toàn là mock.** `admin-web/src/services/auth.ts` so sánh mật khẩu ngay trong trình duyệt với `NEXT_PUBLIC_DEMO_*` rồi ghi phiên vào `localStorage`; `AuthGuard.tsx` chỉ ẩn giao diện phía client, không có middleware chặn ở tầng route. Mobile (`identity_service.dart`) và Zalo Mini App cũng lưu phiên mock. **Không được đưa lên môi trường thật ở trạng thái này.** | ✅ **ĐÃ SỬA** — cả 3 client đăng nhập qua API thật (P5-01/02/03); mock nay phải bật tường minh bằng cờ môi trường và bị cấm ở staging/production |
 | **C-04** | **`JWT_SECRET` mẫu dùng chung cho cả ký token và ký link tệp.** Nếu lên production mà quên đổi, mọi token và mọi link tệp riêng tư đều giả mạo được. | ✅ **ĐÃ SỬA** (chặn khởi động) — vẫn phải đổi khoá thật, xem mục 4 |
 
 ### Mức TRUNG BÌNH
 
 | Mã | Phát hiện | Trạng thái |
 |---|---|---|
-| **TB-01** | **Khoá tài khoản / thu hồi phiên không làm token hết hiệu lực.** `JwtAuthGuard` chỉ kiểm tra chữ ký, không tra lại `staff_users.status`, `citizen_users.status` hay `login_sessions.revoked`. Người bị khoá vẫn dùng được token cũ tới 8 giờ. | ⚠️ Còn tồn đọng — cần đưa `sessionId` vào payload JWT + tra cứu (hoặc danh sách đen token trên Redis) |
+| **TB-01** | **Khoá tài khoản / thu hồi phiên không làm token hết hiệu lực.** `JwtAuthGuard` chỉ kiểm tra chữ ký, không tra lại `staff_users.status`, `citizen_users.status` hay `login_sessions.revoked`. Người bị khoá vẫn dùng được token cũ tới 8 giờ. | ✅ **ĐÃ SỬA** (P5-08) — payload mang `sid`, `SessionRegistry.isActive` tra `login_sessions.revoked` + trạng thái khoá/xoá mềm của chủ tài khoản; hiệu lực chậm nhất 10 giây do bộ nhớ đệm |
 | **TB-02** | **Rò rỉ số điện thoại đầy đủ ở phân hệ Phản ánh.** `GET /feedback` và `GET /feedback/:code` trả `citizenPhone` nguyên vẹn, trong khi phân hệ Người dùng đã có chính sách che số. | ✅ **ĐÃ SỬA** |
 | **TB-03** | **Không có hạn mức riêng cho endpoint đăng nhập / OTP.** Hạn mức chung 120 lượt/phút đủ để dò mật khẩu và quét mã OTP 6 chữ số (mã sống 5 phút, không đếm số lần sai). | ✅ **ĐÃ SỬA** (5 lượt/phút + tối đa 5 lần sai OTP) |
 | **TB-04** | **OTP sinh bằng `Math.random()`** — không phải nguồn ngẫu nhiên mật mã, có thể dự đoán. | ✅ **ĐÃ SỬA** (`crypto.randomInt`) |
@@ -73,7 +73,7 @@ Kiểm chứng sau khi sửa: `npx tsc --noEmit -p apps/api-gateway/tsconfig.app
 | **TB-06** | **CORS mở cho mọi nguồn** (`app.enableCors()` không tham số). | ✅ **ĐÃ SỬA** (whitelist `CORS_ORIGINS`) |
 | **TB-07** | **Thiếu toàn bộ security header** (nosniff, X-Frame-Options, HSTS, Referrer-Policy, Permissions-Policy, CSP) và vẫn để lộ `X-Powered-By: Express`. | ✅ **ĐÃ SỬA** |
 | **TB-08** | **Kho OTP nằm trong bộ nhớ tiến trình** (`Map` trong `AuthService`). Khi chạy nhiều instance sau load balancer, mã sinh ở instance A không xác thực được ở instance B; đồng thời hạn mức chống dò cũng không dùng chung. | ⚠️ Còn tồn đọng — chuyển sang Redis khi mở rộng nhiều instance (đã ghi chú sẵn trong mã) |
-| **TB-09** | **Tệp công khai đọc được không cần đăng nhập.** `GET /files/:id` để `@Public()`; tệp `isPrivate = false` chỉ được bảo vệ bằng độ khó đoán của ObjectId — mà ObjectId chứa dấu thời gian và bộ đếm nên đoán được một phần. | ⚠️ Còn tồn đọng — quy ước: mọi tệp nghiệp vụ (scan văn bản, ảnh phản ánh) phải tải lên với `isPrivate = true`; cần rà lại phía client khi nối backend thật |
+| **TB-09** | **Tệp công khai đọc được không cần đăng nhập.** `GET /files/:id` để `@Public()`; tệp `isPrivate = false` chỉ được bảo vệ bằng độ khó đoán của ObjectId — mà ObjectId chứa dấu thời gian và bộ đếm nên đoán được một phần. | ⚠️ Còn tồn đọng — quy ước: mọi tệp nghiệp vụ (scan văn bản, ảnh phản ánh) phải tải lên với `isPrivate = true`. Với **tệp đính kèm nhiệm vụ** quy ước này nay được **cưỡng chế bằng mã**: `POST /tasks/:code/attachments` từ chối 400 nếu tệp không phải tệp riêng tư. Các luồng tải tệp còn lại vẫn dựa vào quy ước |
 | **TB-10** | **Dò tài khoản qua thời gian phản hồi.** `staffLogin` chỉ chạy `bcrypt.compare` khi tìm thấy tài khoản, nên sai tên đăng nhập trả lời nhanh hơn hẳn sai mật khẩu. | ⚠️ Còn tồn đọng — mức rủi ro thấp sau khi đã siết 5 lượt/phút; xử lý bằng cách luôn so sánh với một hash giả |
 
 ### Mức THẤP
@@ -87,8 +87,8 @@ Kiểm chứng sau khi sửa: `npx tsc --noEmit -p apps/api-gateway/tsconfig.app
 | **T-05** | `admin-web` đọc mật khẩu demo từ `NEXT_PUBLIC_DEMO_PASSWORD`; biến `NEXT_PUBLIC_*` được nhúng thẳng vào gói JavaScript gửi cho trình duyệt. | ⚠️ Còn tồn đọng — gỡ bỏ khi nối backend thật |
 | **T-06** | Mobile lưu phiên trong `SharedPreferences` (không mã hoá). Khi có JWT thật phải chuyển sang `flutter_secure_storage` (Keychain/Keystore). | ⚠️ Còn tồn đọng |
 | **T-07** | Zalo Mini App lưu phiên trong `localStorage` — chấp nhận được với môi trường Zalo nhưng không được lưu token dài hạn ở đây. | ⚠️ Còn tồn đọng |
-| **T-08** | `exchangeZaloToken()` hiện luôn trả `null`; luồng định danh Zalo chưa có kiểm chứng thật với Zalo Open API. | ⚠️ Chờ tích hợp — câu hỏi mở #3 |
-| **T-09** | Chưa có refresh token / xoay vòng token dù đã khai báo `REFRESH_EXPIRES_IN`. Token sống 8 giờ, mất token là mất phiên trong 8 giờ. | ⚠️ Còn tồn đọng |
+| **T-08** | Luồng định danh Zalo chưa kiểm chứng được đầu-cuối với Zalo Open API. | ⚠️ Chờ bên ngoài — `exchangeZaloToken()` đã gọi Zalo Graph API thật, nhưng Zalo **chưa cấp quyền** `getPhoneNumber` nên hiện phải dùng `CITIZEN_OTP_BYPASS_CODE`; xoá biến này ngay khi được cấp quyền |
+| **T-09** | Chưa có refresh token / xoay vòng token dù đã khai báo `REFRESH_EXPIRES_IN`. Token sống 8 giờ, mất token là mất phiên trong 8 giờ. | ✅ **ĐÃ SỬA** — `POST /auth/refresh` có xoay vòng và phát hiện dùng lại token cũ (dùng lại thì thu hồi cả phiên). Đánh đổi đã nhận: ai biết `sid` có thể cố tình đóng phiên đó |
 | **T-10** | Chưa có chính sách độ mạnh mật khẩu cán bộ và chưa buộc đổi mật khẩu tạm ở lần đăng nhập đầu. | ⚠️ Còn tồn đọng |
 
 ---

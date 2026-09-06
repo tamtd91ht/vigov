@@ -21,6 +21,8 @@ import type { CitizenSession } from "@/types";
 /** Phản hồi định danh của backend (cả hai đường đều trả dạng này) */
 interface CitizenAuthResponse {
   accessToken: string;
+  /** Có ở cả hai đường định danh; thiếu (backend cũ) thì phiên vẫn dùng được nhưng hết 8 giờ là phải liên kết lại */
+  refreshToken?: string;
   user: { phone: string; displayName: string; area?: string };
 }
 
@@ -53,6 +55,7 @@ function toSession(res: CitizenAuthResponse): CitizenSession {
     identifiedAt: new Date().toISOString(),
     area: res.user.area,
     accessToken: res.accessToken,
+    refreshToken: res.refreshToken,
   };
 }
 

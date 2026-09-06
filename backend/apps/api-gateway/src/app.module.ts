@@ -11,6 +11,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { TasksModule } from './modules/tasks/tasks.module';
 import { DocumentsModule } from './modules/documents/documents.module';
 import { FeedbackModule } from './modules/feedback/feedback.module';
+import { DossiersModule } from './modules/dossiers/dossiers.module';
 import { DisbursementModule } from './modules/disbursement/disbursement.module';
 import { ContentModule } from './modules/content/content.module';
 import { UsersModule } from './modules/users/users.module';
@@ -84,6 +85,7 @@ import { HealthController } from './health.controller';
     TasksModule,
     DocumentsModule,
     FeedbackModule,
+    DossiersModule,
     DisbursementModule,
     ContentModule,
     UsersModule,

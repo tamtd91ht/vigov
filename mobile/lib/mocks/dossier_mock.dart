@@ -1,4 +1,3 @@
-import '../config/app_config.dart';
 import '../models/models.dart';
 
 /// 4 bước chuẩn của quy trình một cửa cấp xã — dùng chung cho mọi hồ sơ mẫu.
@@ -47,10 +46,12 @@ final List<DossierResult> dossierResults = [
   ),
 ];
 
-/// Tra cứu hồ sơ theo mã — so khớp không phân biệt hoa thường.
-/// Nguồn thật thay tại đây khi có API một cửa (câu hỏi mở #18).
-Future<DossierResult?> lookupDossier(String code) async {
-  await Future<void>.delayed(AppConfig.mockDelay);
+/// Tra cứu hồ sơ theo mã trong dữ liệu MẪU — so khớp không phân biệt hoa thường.
+///
+/// Chỉ dùng cho nhánh demo offline; nguồn thật là `GET /dossiers/lookup/:code`,
+/// xem `services/dossier_service.dart`. Hàm này KHÔNG tự trễ nữa — độ trễ giả
+/// lập do service quyết định, giống mọi mock khác trong dự án.
+DossierResult? lookupMockDossier(String code) {
   final normalized = code.trim().toLowerCase();
   for (final d in dossierResults) {
     if (d.code.toLowerCase() == normalized) return d;

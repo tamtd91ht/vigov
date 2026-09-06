@@ -3,9 +3,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../config/app_config.dart';
 import '../../config/theme.dart';
-import '../../mocks/dossier_mock.dart';
 import '../../models/models.dart';
+import '../../services/api_client.dart';
 import '../../services/device/qr_service.dart';
+import '../../services/dossier_service.dart';
 import '../../widgets/common.dart';
 import 'dossier_result_card.dart';
 
@@ -27,6 +28,7 @@ class LookupScreen extends StatefulWidget {
 class _LookupScreenState extends State<LookupScreen> {
   final TextEditingController _codeController = TextEditingController();
   final QrService _qrService = QrService();
+  final DossierService _dossierService = DossierService();
 
   bool _loading = false;
   bool _scanning = false;
@@ -65,7 +67,18 @@ class _LookupScreenState extends State<LookupScreen> {
     FocusScope.of(context).unfocus();
 
     setState(() => _loading = true);
-    final result = await lookupDossier(code);
+    DossierResult? result;
+    try {
+      result = await _dossierService.lookup(code);
+    } on ApiException catch (e) {
+      /* Sự cố kết nối / quá hạn mức KHÁC hẳn "không tìm thấy hồ sơ": nếu gộp
+         hai thứ này, người dân sẽ hiểu là hồ sơ của mình không tồn tại. Nên
+         giữ nguyên kết quả đang hiển thị và báo bằng snackbar. */
+      if (!mounted) return;
+      setState(() => _loading = false);
+      showAppSnack(context, e.message);
+      return;
+    }
     if (!mounted) return;
     setState(() {
       _loading = false;

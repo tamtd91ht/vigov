@@ -51,15 +51,43 @@ export class Feedback {
   @Prop({ type: [String], default: [] })
   resultImageFileIds: string[];
 
-  @Prop({ required: true, index: true })
+  /**
+   * Số điện thoại người phản ánh.
+   *
+   * KHÔNG còn `required`: phiếu do cán bộ lập hộ người dân đến trực tiếp
+   * (`source: 'offline'`, WBS #6) có thể không có số điện thoại — người dân
+   * trình bày tại trụ sở rồi về, không phải ai cũng để lại số. Mongoose coi
+   * chuỗi rỗng là VI PHẠM `required`, nên để `required: true` thì cả luồng
+   * tiếp nhận trực tiếp không tạo được phiếu.
+   */
+  @Prop({ default: '', index: true })
   citizenPhone: string;
 
   @Prop({ default: '' })
   citizenName: string;
 
+  /** Thôn / tổ dân phố của người phản ánh (cán bộ ghi khi lập phiếu trực tiếp) */
+  @Prop({ default: '' })
+  area: string;
+
   /** Kênh gửi: app Flutter hay Zalo Mini App */
   @Prop({ enum: ['app', 'zalo', 'web'], default: 'app' })
   channel: string;
+
+  /**
+   * Nguồn phiếu — phân biệt hai đường vào của WBS #6:
+   *   • 'app'     — công dân TỰ gửi qua app Flutter / Zalo Mini App;
+   *   • 'offline' — cán bộ lập hộ người dân đến trình bày trực tiếp tại xã.
+   *
+   * Mặc định 'app' để mọi phiếu tạo trước khi có trường này vẫn phân loại
+   * đúng (chúng đều do công dân tự gửi).
+   *
+   * Tách riêng khỏi `channel`: `channel` nói phiếu tới qua thiết bị nào, còn
+   * trường này nói AI đã lập phiếu — hai câu hỏi khác nhau, và báo cáo tiếp
+   * nhận trực tiếp cần đúng câu thứ hai.
+   */
+  @Prop({ enum: ['app', 'offline'], default: 'app', index: true })
+  source: string;
 
   @Prop({ default: '', index: true })
   assignee: string;

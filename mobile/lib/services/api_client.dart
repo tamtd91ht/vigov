@@ -49,6 +49,18 @@ class ApiClient {
   /// JWT của công dân đang đăng nhập; null = chưa định danh
   String? accessToken;
 
+  /// Refresh token của phiên hiện tại; null = phiên chưa có (hoặc bản demo offline).
+  ///
+  /// CỐ Ý KHÔNG dựng interceptor tự gia hạn ở đây, khác với Zalo Mini App.
+  /// Lý do: app Flutter mở lại là gọi `IdentityService.restore()`, nên chỗ tự
+  /// nhiên để gia hạn là lúc khôi phục phiên, không phải giữa một lời gọi API
+  /// bất kỳ. Còn dựng interceptor thì phải xử lý cả việc gộp nhiều lời gọi
+  /// song song cùng gặp 401 — gửi lại refresh token đã bị xoay vòng sẽ khiến
+  /// backend coi là token bị lộ và THU HỒI cả phiên, tức là chính cơ chế gia
+  /// hạn lại đá người dùng ra ngoài. Phase 1 chỉ LƯU token để dùng về sau;
+  /// `onUnauthorized` vẫn đưa công dân về màn định danh như trước.
+  String? refreshToken;
+
   /// Được gọi khi backend trả 401 — SessionController dùng để xoá phiên
   void Function()? onUnauthorized;
 

@@ -43,6 +43,7 @@ class IdentityService {
   static const _kAt = 'vigov.session.at';
   static const _kArea = 'vigov.session.area';
   static const _kToken = 'vigov.session.token';
+  static const _kRefreshToken = 'vigov.session.refreshToken';
 
   /// Yêu cầu backend gửi mã OTP; trả về số giây mã còn hiệu lực.
   ///
@@ -78,6 +79,7 @@ class IdentityService {
           identifiedAt: DateTime.now().toIso8601String(),
         ),
         token: null,
+        refreshToken: null,
       );
     }
 
@@ -91,6 +93,9 @@ class IdentityService {
     if (token.isEmpty) {
       throw const ApiException('Máy chủ không cấp được mã phiên, vui lòng thử lại.');
     }
+    /* Backend cũ (trước T-09) không trả refreshToken — phiên vẫn dùng được,
+       chỉ là hết 8 giờ thì phải định danh lại như cũ. */
+    final refreshToken = asString(res['refreshToken']);
     final user = res['user'] is Map<String, dynamic>
         ? res['user'] as Map<String, dynamic>
         : const <String, dynamic>{};
@@ -103,6 +108,7 @@ class IdentityService {
         area: asString(user['area']),
       ),
       token: token,
+      refreshToken: refreshToken.isEmpty ? null : refreshToken,
     );
   }
 
@@ -119,6 +125,7 @@ class IdentityService {
       return null;
     }
     _api.accessToken = token;
+    _api.refreshToken = prefs.getString(_kRefreshToken);
 
     return CitizenSession(
       phone: phone,
@@ -130,17 +137,24 @@ class IdentityService {
 
   Future<void> clear() async {
     _api.accessToken = null;
+    _api.refreshToken = null;
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_kPhone);
     await prefs.remove(_kName);
     await prefs.remove(_kAt);
     await prefs.remove(_kArea);
     await prefs.remove(_kToken);
+    await prefs.remove(_kRefreshToken);
   }
 
   /// Lưu phiên xuống shared_preferences và gắn token vào client HTTP
-  Future<CitizenSession> _persist(CitizenSession session, {required String? token}) async {
+  Future<CitizenSession> _persist(
+    CitizenSession session, {
+    required String? token,
+    required String? refreshToken,
+  }) async {
     _api.accessToken = token;
+    _api.refreshToken = refreshToken;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kPhone, session.phone);
     await prefs.setString(_kName, session.displayName);
@@ -150,6 +164,11 @@ class IdentityService {
       await prefs.remove(_kToken);
     } else {
       await prefs.setString(_kToken, token);
+    }
+    if (refreshToken == null) {
+      await prefs.remove(_kRefreshToken);
+    } else {
+      await prefs.setString(_kRefreshToken, refreshToken);
     }
     return session;
   }

@@ -2,6 +2,7 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import type { Model } from 'mongoose';
 import type { TaskDocument } from '@vigov/shared';
 import { duplicateKeyError, fakeDoc, queryChain } from '../../../../../test/support/mongoose-mock';
+import type { FilesService } from '../files/files.service';
 import type { RealtimeService } from '../realtime/realtime.service';
 import {
   TASK_STATUS_DONE,
@@ -42,6 +43,18 @@ function taskModelMock(existingCodes: string[] = []): TaskModelMock {
 }
 
 const realtimeMock = () => ({ emitChange: jest.fn() }) as unknown as RealtimeService;
+
+/**
+ * FilesService giả — các bộ test bên dưới không đụng tới tệp đính kèm, nhưng
+ * TasksService nhận nó qua constructor nên phải truyền vào. `findById` ném lỗi
+ * để bất kỳ test nào lỡ chạm vào tệp cũng hỏng ngay chứ không im lặng.
+ */
+const filesMock = () =>
+  ({
+    findById: jest.fn(() => {
+      throw new Error('Test này không được dùng tới FilesService');
+    }),
+  }) as unknown as FilesService;
 
 const VALID_TASK = {
   title: 'Rà soát quỹ đất công ích',
@@ -119,7 +132,7 @@ describe('TasksService — sinh mã NV-<yy><stt>', () => {
   afterEach(() => jest.useRealTimers());
 
   const createTask = async (mock: TaskModelMock) =>
-    new TasksService(mock.model, realtimeMock()).create({ ...VALID_TASK } as never);
+    new TasksService(mock.model, realtimeMock(), filesMock()).create({ ...VALID_TASK } as never);
 
   it('bắt đầu từ NV-2601 khi trong năm chưa có nhiệm vụ nào', async () => {
     const mock = taskModelMock([]);
@@ -188,7 +201,7 @@ describe('TasksService — sinh mã NV-<yy><stt>', () => {
 describe('TasksService.create', () => {
   it('từ chối hạn xử lý không tồn tại (31/02/2026)', async () => {
     const mock = taskModelMock([]);
-    const service = new TasksService(mock.model, realtimeMock());
+    const service = new TasksService(mock.model, realtimeMock(), filesMock());
 
     await expect(service.create({ ...VALID_TASK, deadline: '31/02/2026' } as never)).rejects.toBeInstanceOf(
       BadRequestException,
@@ -198,7 +211,7 @@ describe('TasksService.create', () => {
 
   it('tiến độ ban đầu = 0 khi mọi việc con chưa tick', async () => {
     const mock = taskModelMock([]);
-    const service = new TasksService(mock.model, realtimeMock());
+    const service = new TasksService(mock.model, realtimeMock(), filesMock());
 
     await service.create({
       ...VALID_TASK,
@@ -211,7 +224,7 @@ describe('TasksService.create', () => {
 
   it('tiến độ ban đầu tính theo số việc con đã tick sẵn', async () => {
     const mock = taskModelMock([]);
-    const service = new TasksService(mock.model, realtimeMock());
+    const service = new TasksService(mock.model, realtimeMock(), filesMock());
 
     await service.create({
       ...VALID_TASK,
@@ -223,7 +236,7 @@ describe('TasksService.create', () => {
 
   it('ghi tên người giao lấy từ phiên đăng nhập', async () => {
     const mock = taskModelMock([]);
-    const service = new TasksService(mock.model, realtimeMock());
+    const service = new TasksService(mock.model, realtimeMock(), filesMock());
 
     await service.create({ ...VALID_TASK } as never, { displayName: 'Nguyễn Văn Bình' } as never);
     expect(mock.created[0].assigner).toBe('Nguyễn Văn Bình');
@@ -231,7 +244,7 @@ describe('TasksService.create', () => {
 
   it('không có phiên đăng nhập thì người giao là "Hệ thống"', async () => {
     const mock = taskModelMock([]);
-    const service = new TasksService(mock.model, realtimeMock());
+    const service = new TasksService(mock.model, realtimeMock(), filesMock());
 
     await service.create({ ...VALID_TASK } as never);
     expect(mock.created[0].assigner).toBe('Hệ thống');
@@ -258,7 +271,7 @@ describe('TasksService.toggleChecklistItem', () => {
     const model = {
       findOne: jest.fn(() => ({ exec: jest.fn(async () => task) })),
     } as unknown as Model<TaskDocument>;
-    return { service: new TasksService(model, realtime), realtime };
+    return { service: new TasksService(model, realtime, filesMock()), realtime };
   };
 
   it('tick 1/3 việc con → 33% (làm tròn)', async () => {
@@ -372,7 +385,7 @@ describe('TasksService.update', () => {
     const model = {
       findOne: jest.fn(() => ({ exec: jest.fn(async () => task) })),
     } as unknown as Model<TaskDocument>;
-    return { service: new TasksService(model, realtime), realtime };
+    return { service: new TasksService(model, realtime, filesMock()), realtime };
   };
 
   it('thay danh sách việc con thì TÍNH LẠI tiến độ từ danh sách mới', async () => {
@@ -430,7 +443,7 @@ describe('TasksService.update', () => {
 /* ───────────────────────── Đếm ngày còn lại ───────────────────────── */
 
 describe('TasksService.daysLeft', () => {
-  const service = () => new TasksService(taskModelMock().model, realtimeMock());
+  const service = () => new TasksService(taskModelMock().model, realtimeMock(), filesMock());
 
   it('âm khi đã quá hạn', () => {
     const task = { deadlineAt: new Date(2026, 5, 10, 23, 59, 59, 999) } as TaskDocument;
@@ -444,5 +457,185 @@ describe('TasksService.daysLeft', () => {
 
   it('trả 0 khi nhiệm vụ không đặt hạn', () => {
     expect(service().daysLeft({} as TaskDocument, new Date())).toBe(0);
+  });
+});
+
+/* ─────────────────── Tệp minh chứng nhiệm vụ (WBS #3) ─────────────────── */
+
+/**
+ * VÌ SAO ĐÁNG MỘT BỘ TEST RIÊNG: ba nhánh dưới đây hỏng mà không báo lỗi nào.
+ *
+ *   · Quên `markModified` trên mảng con → Mongoose không thấy thay đổi, `save()`
+ *     chạy sạch, phản hồi trả về đúng danh sách mới… rồi tải lại trang là tệp
+ *     biến mất. Không có lỗi ở bất kỳ tầng nào.
+ *   · Không chặn tệp CÔNG KHAI → `GET /files/:id` để `@Public()`, nên hồ sơ
+ *     minh chứng nội bộ chỉ còn được che bằng độ khó đoán của ObjectId (TB-09).
+ *   · Trả nguyên mã tệp mà không tra siêu dữ liệu → giao diện không có tên tệp
+ *     để hiển thị, và mã tệp chết nằm lại trong bản ghi vô thời hạn.
+ */
+
+/** Bản ghi tệp như FilesService.findById trả về */
+function storedFile(id: string, isPrivate = true) {
+  return {
+    _id: id,
+    originalName: `minh-chung-${id}.pdf`,
+    size: 2048,
+    mimeType: 'application/pdf',
+    isPrivate,
+  };
+}
+
+interface AttachmentHarness {
+  service: TasksService;
+  task: ReturnType<typeof fakeDoc>;
+  findById: jest.Mock;
+}
+
+function attachmentHarness(
+  attachmentFileIds: string[] = [],
+  files: Record<string, ReturnType<typeof storedFile>> = {},
+): AttachmentHarness {
+  const task = fakeDoc({
+    _id: 'task-1',
+    code: 'NV-2601',
+    attachments: ['bien-ban-hop.docx'],
+    attachmentFileIds: [...attachmentFileIds],
+    timeline: [] as { title: string; meta: string; state: string }[],
+  });
+
+  const findById = jest.fn(async (id: string) => {
+    const found = files[id];
+    if (!found) throw new NotFoundException('Không tìm thấy tệp');
+    return found;
+  });
+
+  const service = new TasksService(
+    { findOne: jest.fn(() => queryChain(task)) } as unknown as Model<TaskDocument>,
+    realtimeMock(),
+    { findById } as unknown as FilesService,
+  );
+
+  return { service, task, findById };
+}
+
+describe('TasksService.addAttachments', () => {
+  it('gắn tệp riêng tư và trả về nhiệm vụ kèm siêu dữ liệu tệp', async () => {
+    const { service, task } = attachmentHarness([], { f1: storedFile('f1') });
+
+    const result = await service.addAttachments('NV-2601', ['f1']);
+
+    expect(task.attachmentFileIds).toEqual(['f1']);
+    expect(result.attachmentFiles).toEqual([
+      { fileId: 'f1', name: 'minh-chung-f1.pdf', size: 2048, contentType: 'application/pdf' },
+    ]);
+  });
+
+  it('GIỮ NGUYÊN trường `attachments` cũ để không phá tương thích ngược', async () => {
+    const { service } = attachmentHarness([], { f1: storedFile('f1') });
+
+    const result = await service.addAttachments('NV-2601', ['f1']);
+
+    expect(result.attachments).toEqual(['bien-ban-hop.docx']);
+  });
+
+  it('đánh dấu mảng con đã thay đổi — không có thì save() lặng lẽ bỏ qua', async () => {
+    const { service, task } = attachmentHarness([], { f1: storedFile('f1') });
+
+    await service.addAttachments('NV-2601', ['f1']);
+
+    expect(task.markModified).toHaveBeenCalledWith('attachmentFileIds');
+    expect(task.save).toHaveBeenCalledTimes(1);
+  });
+
+  it('ghi nhật ký kèm tên tệp và người thực hiện', async () => {
+    const { service, task } = attachmentHarness([], { f1: storedFile('f1') });
+
+    await service.addAttachments('NV-2601', ['f1'], { displayName: 'Nguyễn Văn Bình' } as never);
+
+    const step = (task.timeline as { title: string; meta: string }[])[0];
+    expect(step.title).toContain('minh-chung-f1.pdf');
+    expect(step.meta).toContain('Nguyễn Văn Bình');
+  });
+
+  it('TỪ CHỐI tệp công khai — hồ sơ minh chứng là tài liệu nội bộ (TB-09)', async () => {
+    const { service, task } = attachmentHarness([], { f1: storedFile('f1', false) });
+
+    await expect(service.addAttachments('NV-2601', ['f1'])).rejects.toBeInstanceOf(BadRequestException);
+    expect(task.attachmentFileIds).toEqual([]);
+    expect(task.save).not.toHaveBeenCalled();
+  });
+
+  it('mã tệp không tồn tại thì 404 — không để lại mã chết trong bản ghi', async () => {
+    const { service, task } = attachmentHarness([], {});
+
+    await expect(service.addAttachments('NV-2601', ['khong-co'])).rejects.toBeInstanceOf(NotFoundException);
+    expect(task.attachmentFileIds).toEqual([]);
+  });
+
+  it('gắn lại tệp đã có thì bỏ qua, không nhân bản mã', async () => {
+    const { service, task } = attachmentHarness(['f1'], { f1: storedFile('f1') });
+
+    const result = await service.addAttachments('NV-2601', ['f1']);
+
+    expect(task.attachmentFileIds).toEqual(['f1']);
+    expect(task.save).not.toHaveBeenCalled();
+    expect(result.attachmentFiles).toHaveLength(1);
+  });
+
+  it('gắn nhiều tệp một lượt', async () => {
+    const { service, task } = attachmentHarness([], {
+      f1: storedFile('f1'),
+      f2: storedFile('f2'),
+    });
+
+    const result = await service.addAttachments('NV-2601', ['f1', 'f2']);
+
+    expect(task.attachmentFileIds).toEqual(['f1', 'f2']);
+    expect(result.attachmentFiles).toHaveLength(2);
+  });
+});
+
+describe('TasksService.removeAttachment', () => {
+  it('gỡ đúng mã tệp và giữ nguyên các mã còn lại', async () => {
+    const { service, task } = attachmentHarness(['f1', 'f2'], {
+      f1: storedFile('f1'),
+      f2: storedFile('f2'),
+    });
+
+    const result = await service.removeAttachment('NV-2601', 'f1');
+
+    expect(task.attachmentFileIds).toEqual(['f2']);
+    expect(task.markModified).toHaveBeenCalledWith('attachmentFileIds');
+    expect(result.attachmentFiles).toEqual([
+      { fileId: 'f2', name: 'minh-chung-f2.pdf', size: 2048, contentType: 'application/pdf' },
+    ]);
+  });
+
+  it('gỡ mã không có trong nhiệm vụ thì 404, không sửa gì', async () => {
+    const { service, task } = attachmentHarness(['f1'], { f1: storedFile('f1') });
+
+    await expect(service.removeAttachment('NV-2601', 'f9')).rejects.toBeInstanceOf(NotFoundException);
+    expect(task.attachmentFileIds).toEqual(['f1']);
+    expect(task.save).not.toHaveBeenCalled();
+  });
+});
+
+describe('TasksService.detail', () => {
+  it('BỎ QUA mã tệp đã bị xoá khỏi kho — nhiệm vụ vẫn phải mở xem được', async () => {
+    const { service } = attachmentHarness(['f1', 'da-bi-xoa'], { f1: storedFile('f1') });
+
+    const result = await service.detail('NV-2601');
+
+    expect(result.attachmentFiles).toEqual([
+      { fileId: 'f1', name: 'minh-chung-f1.pdf', size: 2048, contentType: 'application/pdf' },
+    ]);
+  });
+
+  it('nhiệm vụ chưa có tệp nào thì attachmentFiles là mảng rỗng', async () => {
+    const { service } = attachmentHarness([], {});
+
+    const result = await service.detail('NV-2601');
+
+    expect(result.attachmentFiles).toEqual([]);
   });
 });

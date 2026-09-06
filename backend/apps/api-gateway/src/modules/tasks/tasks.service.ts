@@ -8,6 +8,7 @@ import {
   type TaskDocument,
   type TimelineStep,
 } from '@vigov/shared';
+import { FilesService } from '../files/files.service';
 import { REALTIME_EVENTS, RealtimeService } from '../realtime/realtime.service';
 import type {
   CreateCommentDto,
@@ -120,6 +121,14 @@ function isDuplicateKeyError(error: unknown): boolean {
   return typeof error === 'object' && error !== null && (error as { code?: number }).code === 11000;
 }
 
+/** Siêu dữ liệu tệp minh chứng trả kèm chi tiết nhiệm vụ */
+export interface TaskAttachmentFile {
+  fileId: string;
+  name: string;
+  size: number;
+  contentType: string;
+}
+
 /** Tham số tạo nhiệm vụ từ nguồn khác (văn bản / phản ánh) — dùng bởi WorkflowService */
 export interface CreateTaskFromSourceInput {
   title: string;
@@ -144,6 +153,7 @@ export class TasksService {
   constructor(
     @InjectModel(Task.name) private readonly taskModel: Model<TaskDocument>,
     private readonly realtime: RealtimeService,
+    private readonly files: FilesService,
   ) {}
 
   /** Danh sách nhiệm vụ có lọc + phân trang */
@@ -184,6 +194,101 @@ export class TasksService {
     return task;
   }
 
+  /**
+   * Chi tiết nhiệm vụ kèm siêu dữ liệu tệp minh chứng.
+   *
+   * Bản ghi chỉ lưu mã tệp; tên, dung lượng và loại tệp nằm ở module Files.
+   * Nếu không trả kèm thì giao diện phải gọi thêm một lượt cho mỗi mã tệp chỉ
+   * để hiện được tên tệp.
+   */
+  async detail(code: string): Promise<Record<string, unknown>> {
+    const task = await this.findByCode(code);
+    return this.withAttachmentFiles(task);
+  }
+
+  /**
+   * Gắn tệp minh chứng đã tải lên module Files vào nhiệm vụ.
+   *
+   * Kiểm tra từng mã tệp TRƯỚC khi ghi: mã không tồn tại thì 404 ngay thay vì
+   * để lại một mã chết trong bản ghi mà giao diện không tra được. Tệp công khai
+   * bị từ chối — hồ sơ minh chứng nhiệm vụ là tài liệu nội bộ, mà `GET /files/:id`
+   * để `@Public()` nên tệp `isPrivate = false` chỉ được che bằng độ khó đoán của
+   * ObjectId (quy ước TB-09 trong SECURITY.md).
+   *
+   * Mã đã gắn rồi thì bỏ qua, không nhân bản.
+   */
+  async addAttachments(code: string, fileIds: string[], user?: JwtPayload): Promise<Record<string, unknown>> {
+    const task = await this.findByCode(code);
+    const actor = user?.displayName ?? SYSTEM_ACTOR;
+
+    const names: string[] = [];
+    const added: string[] = [];
+    for (const fileId of fileIds) {
+      const file = await this.files.findById(fileId);
+      if (!file.isPrivate) {
+        throw new BadRequestException(
+          `Tệp "${file.originalName}" đang ở chế độ công khai. ` +
+            'Tệp minh chứng nhiệm vụ là tài liệu nội bộ, phải tải lên với isPrivate = true.',
+        );
+      }
+      if (task.attachmentFileIds.includes(fileId)) continue;
+      task.attachmentFileIds.push(fileId);
+      added.push(fileId);
+      names.push(file.originalName);
+    }
+
+    if (added.length > 0) {
+      task.markModified('attachmentFileIds');
+      task.timeline.push(
+        this.buildTimelineStep(`Đính kèm ${added.length} tệp minh chứng: ${names.join(', ')}`, actor),
+      );
+      await task.save();
+    }
+    return this.withAttachmentFiles(task);
+  }
+
+  /** Gỡ một tệp minh chứng khỏi nhiệm vụ — tệp vẫn còn trong module Files */
+  async removeAttachment(code: string, fileId: string, user?: JwtPayload): Promise<Record<string, unknown>> {
+    const task = await this.findByCode(code);
+    const index = task.attachmentFileIds.indexOf(fileId);
+    if (index < 0) {
+      throw new NotFoundException(`Nhiệm vụ ${code} không có tệp đính kèm ${fileId}`);
+    }
+
+    task.attachmentFileIds.splice(index, 1);
+    task.markModified('attachmentFileIds');
+    task.timeline.push(
+      this.buildTimelineStep('Gỡ một tệp minh chứng', user?.displayName ?? SYSTEM_ACTOR),
+    );
+    await task.save();
+    return this.withAttachmentFiles(task);
+  }
+
+  /**
+   * Bổ sung `attachmentFiles` vào phản hồi chi tiết nhiệm vụ.
+   *
+   * Mã tệp không tra được (tệp đã bị xoá khỏi kho) bị BỎ QUA thay vì làm cả
+   * lời gọi thất bại — nhiệm vụ vẫn phải mở xem được khi một tệp minh chứng cũ
+   * đã bị dọn. `attachments` cũ giữ nguyên trong phản hồi.
+   */
+  private async withAttachmentFiles(task: TaskDocument): Promise<Record<string, unknown>> {
+    const attachmentFiles: TaskAttachmentFile[] = [];
+    for (const fileId of task.attachmentFileIds ?? []) {
+      try {
+        const file = await this.files.findById(fileId);
+        attachmentFiles.push({
+          fileId: String(file._id),
+          name: file.originalName,
+          size: file.size,
+          contentType: file.mimeType,
+        });
+      } catch {
+        this.logger.warn(`Nhiệm vụ ${task.code} tham chiếu tệp ${fileId} không còn trong kho`);
+      }
+    }
+    return { ...task.toObject(), attachmentFiles };
+  }
+
   /** Tạo nhiệm vụ mới từ Web Quản trị */
   async create(dto: CreateTaskDto, user?: JwtPayload): Promise<TaskDocument> {
     const deadlineAt = parseVnDate(dto.deadline);
@@ -213,6 +318,7 @@ export class TasksService {
       comments: [],
       timeline: [this.buildTimelineStep('Giao nhiệm vụ', actor, 'cur')],
       attachments: [],
+      attachmentFileIds: [],
     });
   }
 
@@ -243,6 +349,7 @@ export class TasksService {
       comments: [],
       timeline: [this.buildTimelineStep('Giao nhiệm vụ', input.assigner || SYSTEM_ACTOR, 'cur')],
       attachments: [],
+      attachmentFileIds: [],
     });
   }
 

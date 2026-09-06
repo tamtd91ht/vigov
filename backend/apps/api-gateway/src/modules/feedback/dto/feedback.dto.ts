@@ -8,6 +8,7 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
   Max,
   MaxLength,
   Min,
@@ -28,6 +29,9 @@ const MIN_TITLE_LENGTH = 5;
 const MAX_DESCRIPTION_LENGTH = 5000;
 const MAX_LOCATION_LENGTH = 300;
 const MAX_NOTE_LENGTH = 1000;
+/** Số điện thoại di động Việt Nam — cùng mẫu với RequestOtpDto của phân hệ Xác thực */
+export const PHONE_PATTERN = /^0\d{9}$/;
+
 const MIN_RATING = 1;
 const MAX_RATING = 5;
 
@@ -117,6 +121,59 @@ export class CreateCitizenFeedbackDto {
   @IsString()
   @MaxLength(MAX_LOCATION_LENGTH)
   citizenName?: string;
+}
+
+/**
+ * Cán bộ lập phiếu hộ người dân đến trình bày TRỰC TIẾP tại xã (WBS #6).
+ *
+ * Khác `CreateCitizenFeedbackDto`: người gửi không phải người đang đăng nhập,
+ * nên tên và số điện thoại người dân là dữ liệu NHẬP TAY và đều tuỳ chọn —
+ * người dân đến trụ sở trình bày rồi về, không bắt buộc để lại số. Toạ độ
+ * không có ở đây vì cán bộ nhập trên máy tính tại trụ sở, không phải tại
+ * hiện trường.
+ */
+export class CreateStaffFeedbackDto {
+  @IsString()
+  @IsNotEmpty({ message: 'Vui lòng chọn lĩnh vực phản ánh' })
+  categoryKey: string;
+
+  @IsString()
+  @MinLength(MIN_TITLE_LENGTH, { message: `Tiêu đề phải có ít nhất ${MIN_TITLE_LENGTH} ký tự` })
+  @MaxLength(MAX_TITLE_LENGTH, { message: `Tiêu đề không vượt quá ${MAX_TITLE_LENGTH} ký tự` })
+  title: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Vui lòng mô tả nội dung phản ánh' })
+  @MaxLength(MAX_DESCRIPTION_LENGTH, { message: `Nội dung không vượt quá ${MAX_DESCRIPTION_LENGTH} ký tự` })
+  description: string;
+
+  @IsString()
+  @IsNotEmpty({ message: 'Vui lòng nhập địa điểm xảy ra vụ việc' })
+  @MaxLength(MAX_LOCATION_LENGTH, { message: `Địa điểm không vượt quá ${MAX_LOCATION_LENGTH} ký tự` })
+  location: string;
+
+  /** Thôn / tổ dân phố của người phản ánh */
+  @IsOptional()
+  @IsString()
+  @MaxLength(MAX_LOCATION_LENGTH, { message: `Thôn/tổ dân phố không vượt quá ${MAX_LOCATION_LENGTH} ký tự` })
+  area?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(MAX_LOCATION_LENGTH)
+  citizenName?: string;
+
+  /** Số điện thoại người dân để lại — cùng khuôn mẫu với RequestOtpDto */
+  @IsOptional()
+  @Matches(PHONE_PATTERN, { message: 'Số điện thoại không hợp lệ' })
+  citizenPhone?: string;
+
+  /** Ảnh hiện trường cán bộ chụp/nhận từ người dân, đã tải qua module Files */
+  @IsOptional()
+  @IsArray({ message: 'Danh sách ảnh không hợp lệ' })
+  @IsString({ each: true, message: 'Mã ảnh không hợp lệ' })
+  @ArrayMaxSize(MAX_FEEDBACK_IMAGES, { message: `Chỉ được đính kèm tối đa ${MAX_FEEDBACK_IMAGES} ảnh` })
+  imageFileIds?: string[];
 }
 
 /** Phân công cán bộ + bộ phận xử lý phản ánh */

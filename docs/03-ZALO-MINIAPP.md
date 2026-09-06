@@ -24,6 +24,7 @@ zalo-miniapp/src/
 │  ├─ api.ts             Bọc fetch, gắn token
 │  ├─ auth.service.ts    Định danh công dân
 │  ├─ content.service.ts Tin tức, video, truyền thanh, danh bạ
+│  ├─ dossier.service.ts Tra cứu hồ sơ một cửa
 │  ├─ feedback.service.ts Gửi và tra phản ánh của chính mình
 │  └─ zalo.ts            ADAPTER SDK Zalo — xem mục 4
 ├─ state/                5 context React
@@ -139,12 +140,37 @@ Nhóm công khai, **không cần token**:
 - `GET /catalogs/public/directory` — danh bạ chính quyền
 - `GET /map/public/economy` — lớp và ghim bản đồ kinh tế, đã lược bỏ họ tên
   đại diện và số điện thoại chủ cơ sở (dữ liệu cá nhân theo NĐ 13/2023)
+- `GET /dossiers/lookup/:code` — tra cứu hồ sơ một cửa (WBS #15). Hạn mức
+  20 lượt/phút mỗi IP; số điện thoại người nộp hồ sơ trả về đã được che sẵn
+- `POST /auth/refresh` — cấp lại cặp token, xem mục 6b
 
 Nhóm cần token công dân:
 
 - `POST /auth/citizen/otp/request` → `/verify`, hoặc `/auth/citizen/zalo/identify`
-- `POST /feedback` — gửi phản ánh kèm ảnh và toạ độ GPS
+- `POST /feedback/citizen` — gửi phản ánh kèm ảnh và toạ độ GPS
 - `GET /feedback/citizen/mine`, `/citizen/mine/:code`
+
+### 6b. Gia hạn phiên khi token hết hạn
+
+Access token sống 8 giờ, nên mở app sau một đêm là rơi thẳng về màn liên kết số
+điện thoại — trong Zalo Mini App đó là cả một luồng cấp quyền, rất dễ bỏ giữa
+đường. `services/api.ts` nay xử lý như sau:
+
+1. Gặp **401** trên một đường dẫn **không** thuộc nhóm `/auth/`, và phiên đang có
+   token → gọi `POST /auth/refresh` với `refreshToken` lưu trong phiên.
+2. Gia hạn được → **gửi lại đúng một lần** lời gọi vừa hỏng với token mới.
+3. Gia hạn trượt (refresh token hết hạn, phiên bị thu hồi, tài khoản bị khoá) →
+   xoá phiên và phát `vigov:session-expired` như trước.
+
+`refreshToken` được lưu cùng phiên trong `localStorage` (`CitizenSession`), và
+backend **xoay vòng** token mỗi lần refresh nên phải ghi lại cả token mới.
+
+> **Vì sao gộp các lời gọi refresh đồng thời về một lượt.** Một màn hình thường
+> bắn 2–3 lời gọi song song. Nếu mỗi lời gọi tự refresh thì lời gọi thứ hai gửi
+> refresh token vừa bị xoay vòng — backend coi đó là dấu hiệu token bị lộ và
+> **thu hồi cả phiên**. Nghĩa là chính cơ chế gia hạn lại đá người dùng ra
+> ngoài. Biến `refreshInFlight` trong `api.ts` là để chặn đúng chuyện đó, không
+> phải để tối ưu hoá.
 
 ---
 
@@ -170,8 +196,8 @@ Mini App nằm ở `app-config.json`.
 
 | Hạng mục | Tình trạng |
 |---|---|
-| **Kiểm thử tự động** | **Chưa có test nào.** admin-web có 59, backend 167. Đây là khoảng trống lớn nhất của module này |
-| Tra cứu hồ sơ | Vẫn dùng dữ liệu mẫu — backend **không có** endpoint vì tra vào hệ thống một cửa của tỉnh, chưa có đầu nối |
+| **Kiểm thử tự động** | **Chưa có test nào.** admin-web có 59, backend 300. Đây là khoảng trống lớn nhất của module này |
+| Tra cứu hồ sơ | Đã nối `GET /dossiers/lookup/:code` qua `services/dossier.service.ts`. Dữ liệu bên backend hiện là **seed demo** — nguồn thật phải liên thông từ hệ thống một cửa của tỉnh, hạng mục ngoài WBS (xem `01-BACKEND.md` mục 3.5) |
 | Zalo OA / ZNS | Chưa có tài khoản thật; template ZNS chờ Zalo duyệt (1 ngày đến 1 tuần) |
 | `@sentry/browser` | Lỗ hổng mức trung bình, đến bắc cầu từ `zmp-sdk`. Không tự nâng được, phải chờ Zalo phát hành bản mới |
 | Lưu phiên | Đang dùng `localStorage`; chấp nhận được trong môi trường Zalo nhưng không nên giữ token dài hạn |

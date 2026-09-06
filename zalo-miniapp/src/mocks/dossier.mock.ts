@@ -1,4 +1,3 @@
-import { appConfig } from "@/config/app.config";
 import type { DossierResult } from "@/types";
 
 /** 4 bước chuẩn của quy trình một cửa cấp xã — dùng chung cho mọi hồ sơ mẫu. */
@@ -50,11 +49,14 @@ export const dossierResults: DossierResult[] = [
 ];
 
 /**
- * Tra cứu hồ sơ theo mã — so khớp sau khi trim, không phân biệt hoa thường.
- * Nguồn thật thay tại đây khi có API một cửa (câu hỏi mở #18).
+ * Tra cứu hồ sơ theo mã trong dữ liệu MẪU — so khớp sau khi trim, không phân
+ * biệt hoa thường.
+ *
+ * Chỉ dùng cho nhánh demo offline; nguồn thật là GET /dossiers/lookup/:code,
+ * xem services/dossier.service.ts. Hàm này KHÔNG tự trễ nữa — độ trễ giả lập
+ * do service quyết định (mockDelay), giống mọi mock khác trong dự án.
  */
-export async function lookupDossier(code: string): Promise<DossierResult | undefined> {
-  await new Promise<void>((resolve) => setTimeout(resolve, appConfig.api.mockDelayMs));
+export function lookupMockDossier(code: string): DossierResult | undefined {
   const normalized = code.trim().toLowerCase();
   return dossierResults.find((d) => d.code.toLowerCase() === normalized);
 }

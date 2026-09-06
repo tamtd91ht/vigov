@@ -149,6 +149,27 @@ export class LoginSession {
 
   @Prop({ default: false })
   revoked: boolean;
+
+  /**
+   * BĂM (bcrypt) của refresh token đang có hiệu lực cho phiên này — T-09.
+   *
+   * Lưu băm chứ không lưu token thô: bảng `login_sessions` đọc được bởi mọi
+   * thứ chạm tới cơ sở dữ liệu (backup, công cụ quản trị, kết xuất sự cố), mà
+   * refresh token thô cầm được là mở lại phiên trong suốt 7 ngày.
+   *
+   * `select: false` để mọi truy vấn danh sách phiên không vô tình kéo trường
+   * này ra — chỉ luồng xoay vòng token mới đọc, và đọc tường minh.
+   *
+   * Mỗi lần refresh, trường này bị GHI ĐÈ bằng băm của token mới; nhờ vậy
+   * token cũ lập tức hết hiệu lực, và ai gửi lại token cũ là dấu hiệu token đã
+   * bị lộ (AuthService thu hồi luôn cả phiên khi gặp).
+   */
+  @Prop({ select: false })
+  refreshTokenHash?: string;
+
+  /** Hạn dùng của refresh token hiện tại (REFRESH_EXPIRES_IN) */
+  @Prop()
+  refreshExpiresAt?: Date;
 }
 export const LoginSessionSchema = SchemaFactory.createForClass(LoginSession);
 

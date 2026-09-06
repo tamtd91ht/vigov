@@ -1,18 +1,19 @@
-import { Controller, Get, HttpException, HttpStatus, Query, Res } from '@nestjs/common';
+import { Controller, Get, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import { RequirePermission } from '@vigov/shared';
 import { ReportsService } from './reports.service';
 import { DashboardService } from './dashboard.service';
 import { ReportQueryDto } from './dto/reports.dto';
 import { buildReportWorkbook, reportFileName } from './exporters/excel.exporter';
+import { buildReportPdf, reportPdfFileName } from './exporters/pdf.exporter';
+import { buildReportPptx, reportPptxFileName } from './exporters/pptx.exporter';
 
-/** MIME type của tệp .xlsx */
+/** MIME type của các tệp kết xuất */
 const XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+const PDF_MIME = 'application/pdf';
+const PPTX_MIME = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 
-/** Thông báo cho các định dạng kết xuất chưa hỗ trợ ở Phase 1 */
-const NOT_IMPLEMENTED_MESSAGE = 'Kết xuất PDF/PPT sẽ bổ sung ở giai đoạn tích hợp';
-
-/** Kết xuất báo cáo (WBS #27) */
+/** Kết xuất báo cáo: Excel, PDF, PowerPoint (WBS #8, #27) */
 @Controller('reports')
 export class ReportsController {
   constructor(
@@ -50,28 +51,35 @@ export class ReportsController {
   }
 
   /**
-   * Kết xuất PDF — chưa hỗ trợ ở Phase 1.
-   * Định dạng và mẫu trình bày chờ khách chốt (câu hỏi mở #11).
+   * Tải báo cáo PDF (WBS #8) — cùng bộ số liệu với bản Excel, trình bày để in.
+   *
+   * Trả cả Buffer một lần thay vì stream: báo cáo cấp xã chỉ vài trang, và
+   * pdfmake phải dựng xong toàn tài liệu mới biết tổng số trang cho chân trang.
    */
   @Get('export/pdf')
   @RequirePermission('reports', 'view')
-  exportPdf(): never {
-    throw new HttpException(
-      { statusCode: HttpStatus.NOT_IMPLEMENTED, message: NOT_IMPLEMENTED_MESSAGE, format: 'pdf' },
-      HttpStatus.NOT_IMPLEMENTED,
-    );
+  async exportPdf(@Query() query: ReportQueryDto, @Res({ passthrough: false }) res: Response) {
+    const summary = await this.reports.summary(query);
+    const buffer = await buildReportPdf(summary);
+    const fileName = reportPdfFileName(summary.period, summary.year);
+
+    res.setHeader('Content-Type', PDF_MIME);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Length', buffer.length);
+    res.end(buffer);
   }
 
-  /**
-   * Kết xuất PowerPoint — chưa hỗ trợ ở Phase 1.
-   * Khách có thể bỏ hạng mục PPT để tiết kiệm 0.5 ngày công (câu hỏi mở #11).
-   */
+  /** Tải báo cáo PowerPoint (WBS #27) — mỗi khối số liệu một slide, dùng cho giao ban */
   @Get('export/pptx')
   @RequirePermission('reports', 'view')
-  exportPptx(): never {
-    throw new HttpException(
-      { statusCode: HttpStatus.NOT_IMPLEMENTED, message: NOT_IMPLEMENTED_MESSAGE, format: 'pptx' },
-      HttpStatus.NOT_IMPLEMENTED,
-    );
+  async exportPptx(@Query() query: ReportQueryDto, @Res({ passthrough: false }) res: Response) {
+    const summary = await this.reports.summary(query);
+    const buffer = await buildReportPptx(summary);
+    const fileName = reportPptxFileName(summary.period, summary.year);
+
+    res.setHeader('Content-Type', PPTX_MIME);
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.setHeader('Content-Length', buffer.length);
+    res.end(buffer);
   }
 }

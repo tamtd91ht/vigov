@@ -17,6 +17,7 @@ import { REALTIME_EVENTS, RealtimeService } from '../realtime/realtime.service';
 import {
   AssignFeedbackDto,
   CreateCitizenFeedbackDto,
+  CreateStaffFeedbackDto,
   ListFeedbackQueryDto,
   RateFeedbackDto,
   ResolveFeedbackDto,
@@ -284,6 +285,66 @@ export class FeedbackService {
     return toStaffView(fb.toObject());
   }
 
+  /**
+   * Cán bộ lập phiếu hộ người dân đến trình bày TRỰC TIẾP tại xã (WBS #6).
+   *
+   * Ba điểm khác luồng công dân tự gửi, đều có lý do:
+   *   · KHÔNG chạy `assertNotSpamming` — hạn mức 5 phiếu/ngày là để chặn công
+   *     dân spam qua app. Đếm theo số điện thoại người dân ở đây thì một hộ
+   *     đến trình bày nhiều vụ việc trong ngày sẽ bị chặn oan, mà thao tác lại
+   *     do cán bộ thực hiện tại trụ sở nên đã có người chịu trách nhiệm.
+   *   · `channel: 'web'` — phiếu vào hệ thống từ Web Quản trị, không qua thiết
+   *     bị của người dân. Việc "ai lập phiếu" nằm ở `source`, không ở `channel`.
+   *   · Không gửi thông báo cho công dân — người dân đang đứng tại quầy, và có
+   *     thể không để lại số điện thoại để nhắn ZNS.
+   *
+   * SLA và hạn xử lý dùng CHUNG `resolveSla` với luồng công dân gửi, mã phiếu
+   * dùng chung `createWithUniqueCode`, nên hai đường vào không thể lệch nhau.
+   */
+  async createByStaff(dto: CreateStaffFeedbackDto, actor: string) {
+    const { resolveDays, sentAt, slaDueAt } = await this.resolveSla(dto.categoryKey);
+
+    const payload = buildNewFeedbackPayload({
+      categoryKey: dto.categoryKey,
+      title: dto.title,
+      description: dto.description,
+      location: dto.location,
+      sentAt,
+      slaDueAt,
+      imageFileIds: dto.imageFileIds,
+      citizenPhone: dto.citizenPhone ?? '',
+      citizenName: dto.citizenName ?? '',
+      area: dto.area ?? '',
+      channel: 'web',
+      source: 'offline',
+      openingStep: {
+        title: 'Cán bộ tiếp nhận trực tiếp tại xã',
+        // Ghi rõ ai LẬP phiếu và ai là người trình bày — hai người khác nhau
+        meta: [timeLabel(sentAt), `Cán bộ lập: ${actor}`, citizenLabel(dto.citizenName)]
+          .filter(Boolean)
+          .join(' · '),
+      },
+    });
+
+    const created = await this.createWithUniqueCode(payload, sentAt.getFullYear());
+
+    const event: FeedbackCreatedEvent = {
+      feedbackId: String(created._id),
+      code: created.code,
+      citizenPhone: created.citizenPhone,
+      categoryKey: created.categoryKey,
+      slaHours: resolveDays * 24,
+    };
+    this.logger.log(
+      `${EVENTS.FEEDBACK_CREATED}: ${event.code} (${event.categoryKey}) — lập trực tiếp bởi ${actor}`,
+    );
+
+    // Cán bộ khác đang mở danh sách phải thấy phiếu mới ngay (P5-05)
+    this.emitChanged('created', created);
+
+    return toStaffView(created.toObject());
+  }
+
   // ---------------------------------------------------------------------------
   // Nhóm nghiệp vụ CÔNG DÂN (app Flutter / Zalo Mini App)
   // ---------------------------------------------------------------------------
@@ -292,42 +353,29 @@ export class FeedbackService {
   async createByCitizen(dto: CreateCitizenFeedbackDto, citizenPhone: string, citizenName: string) {
     await this.assertNotSpamming(citizenPhone);
 
-    const sla = await this.slaRuleModel.findOne({ categoryKey: dto.categoryKey }).lean().exec();
-    const resolveDays = sla?.resolveDays ?? DEFAULT_RESOLVE_DAYS;
-    const sentAt = new Date();
-    const slaDueAt = addResolveDays(sentAt, resolveDays);
+    const { resolveDays, sentAt, slaDueAt } = await this.resolveSla(dto.categoryKey);
     const channel = dto.channel ?? 'app';
 
     const payload = {
-      categoryKey: dto.categoryKey,
-      title: dto.title,
-      description: dto.description,
-      location: dto.location ?? '',
-      lat: dto.lat,
-      lng: dto.lng,
-      sentAt: timeLabel(sentAt),
-      status: 'received',
-      slaDueAt,
-      imageFileIds: dto.imageFileIds ?? [],
-      resultImageFileIds: [],
-      citizenPhone,
-      citizenName: dto.citizenName ?? citizenName,
-      channel,
-      assignee: '',
-      department: '',
-      rating: 0,
-      timeline: [
-        {
+      ...buildNewFeedbackPayload({
+        categoryKey: dto.categoryKey,
+        title: dto.title,
+        description: dto.description,
+        location: dto.location ?? '',
+        sentAt,
+        slaDueAt,
+        imageFileIds: dto.imageFileIds,
+        citizenPhone,
+        citizenName: dto.citizenName ?? citizenName,
+        channel,
+        source: 'app',
+        openingStep: {
           title: 'Công dân gửi phản ánh',
           meta: `${timeLabel(sentAt)} · ${CHANNEL_LABELS[channel] ?? channel}`,
-          state: 'ok',
         },
-        {
-          title: 'Chờ tiếp nhận & phân công',
-          meta: `Hạn xử lý theo SLA: ${timeLabel(slaDueAt)}`,
-          state: 'cur',
-        },
-      ],
+      }),
+      lat: dto.lat,
+      lng: dto.lng,
     };
 
     const created = await this.createWithUniqueCode(payload, sentAt.getFullYear());
@@ -427,6 +475,20 @@ export class FeedbackService {
     );
   }
 
+  /**
+   * Hạn xử lý theo lĩnh vực — DÙNG CHUNG cho cả hai đường tạo phiếu.
+   *
+   * Tách ra để luồng công dân tự gửi và luồng cán bộ lập hộ không thể tính SLA
+   * khác nhau: nhân bản mấy dòng này là mở đường cho hai con số hạn xử lý của
+   * cùng một lĩnh vực, và sai lệch đó chỉ lộ ra khi đối chiếu báo cáo đúng hạn.
+   */
+  private async resolveSla(categoryKey: string): Promise<{ resolveDays: number; sentAt: Date; slaDueAt: Date }> {
+    const sla = await this.slaRuleModel.findOne({ categoryKey }).lean().exec();
+    const resolveDays = sla?.resolveDays ?? DEFAULT_RESOLVE_DAYS;
+    const sentAt = new Date();
+    return { resolveDays, sentAt, slaDueAt: addResolveDays(sentAt, resolveDays) };
+  }
+
   private async findOrFail(code: string): Promise<FeedbackDocument> {
     const fb = await this.feedbackModel.findOne({ code }).exec();
     if (!fb) throw new NotFoundException(`Không tìm thấy phiếu phản ánh ${code}`);
@@ -499,6 +561,67 @@ export class FeedbackService {
 // -----------------------------------------------------------------------------
 // Hàm thuần dùng chung trong module
 // -----------------------------------------------------------------------------
+
+/** Nhãn người dân trình bày cho nhật ký; bỏ trống khi không ghi được tên */
+function citizenLabel(citizenName: string | undefined): string | undefined {
+  const name = citizenName?.trim();
+  return name ? `Người dân: ${name}` : undefined;
+}
+
+/** Tham số dựng bản ghi phiếu mới — chung cho cả hai đường tạo phiếu */
+interface NewFeedbackInput {
+  categoryKey: string;
+  title: string;
+  description: string;
+  location: string;
+  sentAt: Date;
+  slaDueAt: Date;
+  imageFileIds?: string[];
+  citizenPhone: string;
+  citizenName: string;
+  area?: string;
+  channel: string;
+  source: 'app' | 'offline';
+  /** Mốc đầu tiên của nhật ký — nói AI đã đưa phiếu vào hệ thống */
+  openingStep: { title: string; meta: string };
+}
+
+/**
+ * Bản ghi phiếu ở trạng thái vừa tiếp nhận.
+ *
+ * Một hàm duy nhất cho cả hai đường vào để những thứ dễ quên — `status`,
+ * `sentAt` dạng chuỗi hiển thị, `rating: 0`, mốc "chờ phân công" kèm hạn SLA —
+ * luôn có mặt và giống hệt nhau ở cả hai luồng.
+ */
+function buildNewFeedbackPayload(input: NewFeedbackInput): Record<string, unknown> {
+  return {
+    categoryKey: input.categoryKey,
+    title: input.title,
+    description: input.description,
+    location: input.location,
+    sentAt: timeLabel(input.sentAt),
+    status: 'received',
+    slaDueAt: input.slaDueAt,
+    imageFileIds: input.imageFileIds ?? [],
+    resultImageFileIds: [],
+    citizenPhone: input.citizenPhone,
+    citizenName: input.citizenName,
+    area: input.area ?? '',
+    channel: input.channel,
+    source: input.source,
+    assignee: '',
+    department: '',
+    rating: 0,
+    timeline: [
+      { title: input.openingStep.title, meta: input.openingStep.meta, state: 'ok' },
+      {
+        title: 'Chờ tiếp nhận & phân công',
+        meta: `Hạn xử lý theo SLA: ${timeLabel(input.slaDueAt)}`,
+        state: 'cur',
+      },
+    ],
+  };
+}
 
 /**
  * Hạn xử lý = ngày gửi + resolveDays.
