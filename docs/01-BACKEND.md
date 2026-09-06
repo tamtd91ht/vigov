@@ -8,7 +8,7 @@ vấp của backend ViGov.
 | Công nghệ | NestJS 11 · TypeScript · MongoDB (Mongoose 8) · RabbitMQ · Socket.IO |
 | Thư mục | `../backend/` |
 | Cổng mặc định | `3001`, tiền tố `/api/v1` |
-| Quy mô | 20 module · 131 route · 22 collection |
+| Quy mô | 21 module · 135 route · 22 collection |
 | Kiểm thử | 300 unit test + 46 e2e (2 tệp) |
 
 ---

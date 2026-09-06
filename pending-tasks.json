@@ -326,10 +326,10 @@
   {
     "id": "P4-38",
     "name": "Triển khai — Regression & hỗ trợ UAT",
-    "description": "WBS #38 — Regression xuyên phân hệ trên staging, hỗ trợ khách UAT, sửa lỗi theo biên bản UAT.",
+    "description": "WBS #38 — Regression xuyên phân hệ trên staging, hỗ trợ khách UAT, sửa lỗi theo biên bản UAT. Hiện trạng 06/09/2026: bộ kiểm thử tự động đã có 300 test backend + 88 test Web Quản trị; còn chờ lịch UAT và thiết bị thật của khách (GPS/camera/QR/push).",
     "planFilePath": "plans/p4-38-uat.md",
     "createdAt": "2026-08-27T11:40:31.666Z",
-    "updatedAt": "2026-08-27T17:21:10.982Z",
+    "updatedAt": "2026-09-06T13:40:00.000Z",
     "status": "in-progress"
   },
   {
@@ -470,10 +470,10 @@
   {
     "id": "P5-09",
     "name": "Nối nhà cung cấp thật: OCR, GIS, ZNS, FCM/APNs",
-    "description": "Bốn adapter đang chạy mock, chờ khách chốt nhà cung cấp và cấp tài khoản (câu hỏi mở #1, #2, #3). Thuộc hệ số Tích hợp bên ngoài 15%.",
+    "description": "Bốn adapter đang chạy mock, chờ khách chốt nhà cung cấp và cấp tài khoản (câu hỏi mở #1, #2, #3). Thuộc hệ số Tích hợp bên ngoài 15%. Hiện trạng 06/09/2026: OCR_PROVIDER/IDCARD_PROVIDER/GEO_PROVIDER=mock, ZNS_TEMPLATE_* rỗng; OTP công dân chỉ ghi ra log máy chủ chứ chưa gửi SMS/ZNS, và Zalo chưa cấp quyền getPhoneNumber nên đang phải dùng CITIZEN_OTP_BYPASS_CODE — xoá biến này ngay khi được cấp quyền.",
     "planFilePath": "plans/p5-09-third-party-providers.md",
     "createdAt": "2026-08-28T02:43:23.547Z",
-    "updatedAt": "2026-08-28T02:43:23.547Z",
+    "updatedAt": "2026-09-06T13:40:00.000Z",
     "status": "pending"
   },
   {
@@ -484,5 +484,68 @@
     "createdAt": "2026-08-28T03:41:10.179Z",
     "updatedAt": "2026-08-28T08:04:42.179Z",
     "status": "done"
+  },
+  {
+    "id": "P5-11",
+    "name": "Quét thông tin Căn cước công dân (CCCD)",
+    "description": "Lấy thông tin công dân từ thẻ CCCD thay vì gõ tay. Đã xong tầng 2 (quét mã QR trên thẻ qua zmp-sdk) ở Zalo Mini App + bộ trường chuẩn và adapter mock ở backend. CÒN LẠI: chốt nhà cung cấp đọc thẻ bên thứ 3 (gắn với P5-09) và tầng đọc chip NFC — mã QR trên thẻ KHÔNG được ký số nên chỉ chống lỗi nhập liệu, không xác minh được thẻ thật/giả. Backend chưa mở endpoint cho luồng này.",
+    "planFilePath": "plans/p5-11-cccd-idcard.md",
+    "createdAt": "2026-08-30T00:00:00.000Z",
+    "updatedAt": "2026-09-06T13:40:00.000Z",
+    "status": "in-progress"
+  },
+  {
+    "id": "P6-01",
+    "name": "Chế độ demo Zalo Mini App + bộ nhận diện ViGov Demo",
+    "description": "Bật/tắt bằng VITE_DEMO_MODE: hộp thoại giới thiệu bản demo, logo và icon riêng (navy + chữ DEMO) tách khỏi bộ nhận diện bản chính, phục vụ nộp xét duyệt Zalo dạng ứng dụng demo trong lúc chờ Zalo cấp quyền API. Commit c4bc3e5.",
+    "planFilePath": null,
+    "createdAt": "2026-09-04T00:00:00.000Z",
+    "updatedAt": "2026-09-04T00:00:00.000Z",
+    "status": "done"
+  },
+  {
+    "id": "P6-02",
+    "name": "Xoá mềm tài khoản công dân Mini App",
+    "description": "Nút xoá ở danh sách và ngăn chi tiết người dùng Mini App (quyền users:admin). Đánh dấu deletedAt chứ không xoá tài liệu vì số điện thoại là khoá liên kết tới hồ sơ một cửa và phản ánh đã gửi. Ẩn khỏi danh sách/thống kê, thu hồi phiên, chặn đăng nhập lại, khôi phục được ở bộ lọc \"Đã xoá\". Commit 1071c05.",
+    "planFilePath": null,
+    "createdAt": "2026-09-06T00:00:00.000Z",
+    "updatedAt": "2026-09-06T00:00:00.000Z",
+    "status": "done"
+  },
+  {
+    "id": "P6-03",
+    "name": "Rà soát toàn bộ app theo WBS Phase 1",
+    "description": "Đối chiếu 39 dòng WBS + 7 câu hỏi xác nhận trong ViGov_Phase1_Req.xlsx với mã nguồn 4 module. Kết quả: 22 điểm lệch chia 5 nhóm — A (backend đã có, giao diện chưa dùng), B (thiếu cả hai đầu), C (chặn bởi khách/Zalo/nhà cung cấp), D (phạm vi cần thống nhất), E (tài liệu lệch hiện trạng). Không có hạng mục WBS nào bị bỏ sót.",
+    "planFilePath": null,
+    "createdAt": "2026-09-06T00:00:00.000Z",
+    "updatedAt": "2026-09-06T13:40:00.000Z",
+    "status": "done"
+  },
+  {
+    "id": "P6-04",
+    "name": "Khối A — nối giao diện vào các API đã có",
+    "description": "Sáu chỗ backend đã chạy mà Web Quản trị chưa dùng tới: tìm kiếm toàn cục (GET /search), realtime Socket.IO (3 sự kiện), chuyển phản ánh thành nhiệm vụ, tạo hạng mục ngân sách, khay thông báo + đánh dấu đã đọc, cột Ngày đăng ký công dân. Commit 37ad0d7.",
+    "planFilePath": null,
+    "createdAt": "2026-09-06T00:00:00.000Z",
+    "updatedAt": "2026-09-06T13:40:00.000Z",
+    "status": "done"
+  },
+  {
+    "id": "P6-05",
+    "name": "Khối B — các hạng mục WBS thiếu ở cả hai đầu",
+    "description": "Tra cứu hồ sơ một cửa (module dossiers + nối 2 kênh công dân, WBS #15), tiếp nhận phản ánh trực tiếp tại xã (WBS #6), tệp đính kèm nhiệm vụ (WBS #3), kết xuất PDF/PowerPoint (WBS #8/#27), refresh token có xoay vòng (SECURITY.md T-09), tự đổi mật khẩu. Commit 9891d14.",
+    "planFilePath": null,
+    "createdAt": "2026-09-06T00:00:00.000Z",
+    "updatedAt": "2026-09-06T13:40:00.000Z",
+    "status": "done"
+  },
+  {
+    "id": "P6-06",
+    "name": "Chốt nhà cung cấp bản đồ nền cho phân hệ Bản đồ Kinh tế số",
+    "description": "WBS #7/#26 và câu hỏi xác nhận #3: Google Maps không có giấy phép chính thức tại Việt Nam nên không khả thi. MapCanvas hiện là bản mô phỏng bằng CSS, adapter đã dựng sẵn theo appConfig.map.provider — thêm provider thật chỉ cần thêm một adapter. Chờ khách chốt (VietMap / Goong / MapLibre + nguồn tile miễn phí).",
+    "planFilePath": null,
+    "createdAt": "2026-09-06T00:00:00.000Z",
+    "updatedAt": "2026-09-06T13:40:00.000Z",
+    "status": "pending"
   }
 ]
