@@ -31,13 +31,20 @@ export interface ZaloUserProfile {
 export interface LocationResult {
   granted: boolean;
   /**
-   * Toạ độ chỉ có ở bản mock. SDK đã bỏ `latitude`/`longitude`: bản thật chỉ
-   * trả `token`, backend đổi token lấy toạ độ (hết hạn sau 2 phút, dùng 1 lần).
+   * Toạ độ. KHÔNG đến từ zmp-sdk: SDK đã bỏ `latitude`/`longitude`, chỉ trả
+   * `token` để backend đổi (hết hạn sau 2 phút, dùng một lần). Đây là toạ độ
+   * do THIẾT BỊ đo qua `navigator.geolocation` — xem browserGeolocate().
    */
   lat?: number;
   lng?: number;
   address?: string;
   token?: string;
+  /**
+   * Bán kính sai số (mét) do thiết bị khai. Phải hiện ra được: một điểm sai số
+   * 2000m nhìn trên bản đồ y như điểm sai số 10m, mà một cái ghim đúng ngõ còn
+   * cái kia ghim sang xã khác.
+   */
+  accuracy?: number;
   /** Nguồn toạ độ — để biết đường nào đang chạy khi thử trên điện thoại */
   source?: "zalo" | "browser" | "mock";
   /**
@@ -194,39 +201,80 @@ async function runScan(): Promise<ScanResult> {
   }
 }
 
+/** Một lần đọc vị trí từ thiết bị, kèm sai số do chính thiết bị khai */
+interface BrowserFix {
+  lat: number;
+  lng: number;
+  /** Bán kính sai số (mét) — GPS thường 5-20m, wifi/cell hàng trăm mét tới hàng km */
+  accuracy: number;
+}
+
 /**
- * `navigator.geolocation` bọc thành Promise.
- *
- * Có hạn chờ riêng vì API này hay im lặng mãi khi webview không được host
- * chuyển tiếp quyền vị trí — không callback thành công, cũng không callback lỗi.
+ * Đủ chính xác để ghim đúng ngõ, đúng nhà. Đạt ngưỡng này là nhận luôn, không
+ * chờ thêm — chờ nữa chỉ làm người dùng ngồi nhìn vòng xoay.
  */
-function browserGeolocate(): Promise<{ lat: number; lng: number; accuracy: number }> {
+const GOOD_ACCURACY_M = 30;
+
+/** Thời gian tối đa dành cho việc chờ GPS ổn định */
+const GEOLOCATE_WINDOW_MS = 15000;
+
+/**
+ * Vị trí hiện tại của THIẾT BỊ, qua `navigator.geolocation`.
+ *
+ * VÌ SAO `watchPosition` CHỨ KHÔNG `getCurrentPosition`: trên Android, lần đọc
+ * đầu tiên gần như luôn là điểm thô từ wifi/trạm phát sóng — sai số hàng trăm
+ * mét tới hàng chục km, đủ để ghim sang xã khác. `getCurrentPosition` trả đúng
+ * cái điểm thô đó rồi kết thúc, GPS có bắt được tín hiệu sau đó cũng vô ích.
+ * `watchPosition` cho nhiều lần đọc liên tiếp, mỗi lần một chính xác hơn, nên
+ * ở đây giữ lấy lần đọc TỐT NHẤT và dừng ngay khi đạt GOOD_ACCURACY_M.
+ *
+ * `maximumAge: 0` để không nhận điểm cũ trong bộ đệm: người dùng đang đứng ở
+ * hiện trường và cần vị trí LÚC NÀY, không phải chỗ họ mở máy lần trước.
+ *
+ * Hết thời gian mà chưa có điểm nào đủ tốt thì vẫn trả điểm tốt nhất đã đọc
+ * được — điểm thô kèm sai số hiển thị rõ còn hơn không có gì. Chỉ khi không đọc
+ * được lần nào mới coi là thất bại.
+ */
+function browserGeolocate(): Promise<BrowserFix> {
   return new Promise((resolve, reject) => {
     const geo = navigator.geolocation;
     if (!geo) {
       reject(new Error("webview không có navigator.geolocation"));
       return;
     }
-    let settled = false;
-    const timer = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      reject(new Error("không phản hồi sau 12s (webview có thể không được cấp quyền vị trí)"));
-    }, 12000);
-    geo.getCurrentPosition(
+
+    let best: BrowserFix | null = null;
+    let watchId: number | null = null;
+    let done = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    function finish(err?: Error): void {
+      if (done) return;
+      done = true;
+      if (timer !== null) clearTimeout(timer);
+      if (watchId !== null) geo.clearWatch(watchId);
+      // Có điểm nào là dùng điểm đó, kể cả khi lần đọc cuối báo lỗi
+      if (best) resolve(best);
+      else reject(err ?? new Error("không đọc được vị trí nào"));
+    }
+
+    timer = setTimeout(
+      () => finish(new Error(`không phản hồi sau ${GEOLOCATE_WINDOW_MS / 1000}s (webview có thể không được cấp quyền vị trí)`)),
+      GEOLOCATE_WINDOW_MS,
+    );
+
+    watchId = geo.watchPosition(
       (pos) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy });
+        const fix: BrowserFix = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+        };
+        if (!best || fix.accuracy < best.accuracy) best = fix;
+        if (fix.accuracy <= GOOD_ACCURACY_M) finish();
       },
-      (err) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timer);
-        reject(new Error(`[${err.code}] ${err.message || "không lấy được vị trí"}`));
-      },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+      (err) => finish(new Error(`[${err.code}] ${err.message || "không lấy được vị trí"}`)),
+      { enableHighAccuracy: true, timeout: GEOLOCATE_WINDOW_MS, maximumAge: 0 },
     );
   });
 }
@@ -261,7 +309,7 @@ async function runLocate(): Promise<LocationResult> {
       if (token) {
         try {
           const pos = await browserGeolocate();
-          return { granted: true, token, lat: pos.lat, lng: pos.lng, source: "browser" };
+          return { granted: true, token, lat: pos.lat, lng: pos.lng, accuracy: pos.accuracy, source: "browser" };
         } catch (err: unknown) {
           console.debug("[zalo] có token Zalo nhưng navigator.geolocation hỏng", err);
           return { granted: true, token, source: "zalo" };
@@ -276,7 +324,7 @@ async function runLocate(): Promise<LocationResult> {
   try {
     const pos = await browserGeolocate();
     if (notes.length > 0) console.debug("[zalo] dùng navigator.geolocation sau khi", notes.join(" · "));
-    return { granted: true, lat: pos.lat, lng: pos.lng, source: "browser" };
+    return { granted: true, lat: pos.lat, lng: pos.lng, accuracy: pos.accuracy, source: "browser" };
   } catch (err: unknown) {
     notes.push(`navigator.geolocation — ${errText(err)}`);
   }
@@ -461,6 +509,7 @@ export const zaloService = {
         lat: 20.7431,
         lng: 105.9214,
         address: `Đường trục Thôn Đông, ${appConfig.org.name}`,
+        accuracy: 12,
         source: "mock",
       };
     }

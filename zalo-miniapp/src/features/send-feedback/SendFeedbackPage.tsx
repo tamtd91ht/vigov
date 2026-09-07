@@ -26,29 +26,36 @@ const TOAST_SENT = "Đã gửi phản ánh";
 const TOAST_FAILED = "Gửi phản ánh không thành công, vui lòng thử lại";
 
 /**
- * Nhờ máy chủ hoàn thiện vị trí (P3-26). Hai đường, khác nhau ở chỗ bắt đầu:
+ * Nhờ máy chủ tra địa chỉ cho vị trí đã có (P3-26).
  *
- *   · Có mã định vị Zalo → POST /geo/zalo-location. Máy chủ cầm ZALO_APP_SECRET
- *     đổi mã lấy toạ độ THẬT của Zalo (đáng tin hơn navigator.geolocation) rồi
- *     tra luôn địa chỉ.
- *   · Chỉ có toạ độ của webview → GET /geo/reverse để lấy địa chỉ.
+ * THỨ TỰ ƯU TIÊN — toạ độ của THIẾT BỊ đứng trước mã định vị của Zalo:
+ *
+ *   · Có toạ độ do thiết bị đo → GET /geo/reverse. Chỉ lấy địa chỉ, GIỮ NGUYÊN
+ *     toạ độ. Người dân đang đứng ở hiện trường, nên vị trí đúng là vị trí máy
+ *     họ đang cầm đo được.
+ *   · Không đo được → POST /geo/zalo-location. Máy chủ cầm ZALO_APP_SECRET đổi
+ *     mã lấy toạ độ Zalo tự xác định. Đây là phương án dự phòng, KHÔNG phải
+ *     phương án chính: mã của Zalo trả về vị trí do dịch vụ Zalo xác định, có
+ *     thể là điểm thô hoặc điểm cũ, không nhất thiết là chỗ thiết bị đang đứng.
+ *     Trước đây đường này được ưu tiên và ghi đè lên điểm GPS — chính chỗ đó
+ *     làm bản đồ ghim sai.
  *
  * Hỏng thì trả null và giữ nguyên những gì đang có: bản đồ vẫn vẽ được bằng toạ
- * độ của webview, không có lý do gì xoá nó đi chỉ vì máy chủ không trả lời.
+ * độ của thiết bị, không có lý do gì xoá nó đi chỉ vì máy chủ không trả lời.
  */
 async function resolveCoordinates(res: LocationResult): Promise<ResolvedLocation | null> {
   // Bản demo offline không có backend để gọi, mà nhánh mock đã tự có toạ độ
   if (appConfig.api.useMocks) return null;
 
   try {
+    if (res.lat !== undefined && res.lng !== undefined) {
+      return await geoService.reverse(res.lat, res.lng);
+    }
     if (res.token) {
       // Zalo bắt gửi ĐỒNG THỜI mã định vị và access_token, thiếu một là từ chối
       const accessToken = await zaloService.getAccessToken();
       if (accessToken) return await geoService.resolveZaloLocation(res.token, accessToken);
       console.debug("[geo] có mã định vị nhưng không lấy được access_token Zalo");
-    }
-    if (res.lat !== undefined && res.lng !== undefined) {
-      return await geoService.reverse(res.lat, res.lng);
     }
   } catch (err: unknown) {
     console.debug("[geo] không hoàn thiện được vị trí", err);
@@ -97,6 +104,8 @@ export function SendFeedbackPage() {
         address: res.address ?? prev.address,
         lat: res.lat,
         lng: res.lng,
+        accuracy: res.accuracy,
+        source: res.source,
         token: res.token,
       }));
 

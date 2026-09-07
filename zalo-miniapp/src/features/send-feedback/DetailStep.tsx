@@ -12,12 +12,26 @@ export const MAX_DESC_LEN = 1000;
 const THUMB_RATIO = "1 / 1";
 const COORD_DIGITS = 5;
 
+/** Sai số vượt ngưỡng này thì nói thẳng là điểm còn thô, đừng để người dùng tin nhầm */
+const COARSE_ACCURACY_M = 100;
+
+/** Nhãn nguồn toạ độ — người thử cần biết điểm trên bản đồ do đâu mà có */
+const LOCATION_SOURCE_LABEL: Record<"zalo" | "browser" | "mock", string> = {
+  browser: "GPS thiết bị",
+  zalo: "dịch vụ Zalo",
+  mock: "dữ liệu mẫu",
+};
+
 /** Trạng thái lấy vị trí hiện trường */
 export interface LocationState {
   status: "idle" | "loading" | "granted" | "denied";
   address: string;
   lat?: number;
   lng?: number;
+  /** Bán kính sai số (mét) do thiết bị khai */
+  accuracy?: number;
+  /** Nguồn toạ độ — hiện ra để người thử biết đường nào đang chạy */
+  source?: "zalo" | "browser" | "mock";
   /** Mã định vị của Zalo — backend đổi ra toạ độ ở P3-26 */
   token?: string;
   /** Lý do thất bại nguyên văn từ SDK, hiện ra để người thử đọc được */
@@ -217,6 +231,10 @@ export function DetailStep({
                 {location.lat !== undefined && location.lng !== undefined && (
                   <div className="tiny muted" style={{ marginTop: 4 }}>
                     {location.lat.toFixed(COORD_DIGITS)}, {location.lng.toFixed(COORD_DIGITS)}
+                    {/* Sai số phải hiện: điểm lệch 2km nhìn trên bản đồ y hệt
+                        điểm lệch 10m, mà chỉ một trong hai ghim đúng chỗ. */}
+                    {location.accuracy !== undefined && ` · ±${Math.round(location.accuracy)}m`}
+                    {location.source && ` · ${LOCATION_SOURCE_LABEL[location.source]}`}
                   </div>
                 )}
               </div>
@@ -228,6 +246,20 @@ export function DetailStep({
             {/* Người dân phải THẤY điểm mình đang báo — một dòng toạ độ thì không ai
                 kiểm tra được. GPS lệch vài trăm mét là cán bộ tới nhầm nơi. */}
             <LocationPreviewMap lat={location.lat} lng={location.lng} />
+
+            {/* Điểm còn thô: nói ra và mời bấm lại. GPS cần vài giây ngoài trời
+                mới bắt được vệ tinh; lần đọc đầu thường là điểm wifi/trạm phát. */}
+            {location.accuracy !== undefined && location.accuracy > COARSE_ACCURACY_M && (
+              <div className="tiny" style={{ marginTop: 8, color: "var(--orange)" }}>
+                Điểm này còn lệch tới ±{Math.round(location.accuracy)}m. Ra chỗ thoáng rồi bấm định vị
+                lại, hoặc sửa địa chỉ bằng tay.
+              </div>
+            )}
+
+            <button type="button" className="btn sm" style={{ marginTop: 8 }} onClick={onRetryLocation}>
+              <Icon name="pin" size={15} />
+              Định vị lại
+            </button>
           </div>
         )}
 
