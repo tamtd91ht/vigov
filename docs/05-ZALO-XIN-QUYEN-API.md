@@ -88,18 +88,40 @@ Console không cho đi tắt:
 
 ### Quyền 100 — Xin người dùng cấp quyền truy cập số điện thoại
 
-> Dùng để **định danh công dân** khi truy cập ứng dụng lần đầu. Số điện thoại là
-> khoá định danh duy nhất giữa Mini App và hệ thống một cửa của UBND xã: nó liên
-> kết công dân với hồ sơ hành chính đã nộp và với các phản ánh đã gửi, để công
-> dân tra cứu lại được tiến độ của chính mình và nhận thông báo khi hồ sơ chuyển
-> trạng thái.
+Bản dán vào Console (đã cập nhật cho bản demo, khớp hai ảnh ở mục 4):
+
+> Ứng dụng dùng số điện thoại để **định danh người dùng** ngay ở màn hình đầu
+> tiên. Số điện thoại là khoá định danh duy nhất giữa Mini App và hệ thống xử lý
+> hồ sơ, phản ánh của chính quyền cấp xã: nó gắn người dùng với các phiếu phản
+> ánh đã gửi và hồ sơ hành chính đã nộp, để họ tra cứu lại tiến độ của chính
+> mình và nhận thông báo khi trạng thái thay đổi.
 >
-> Không có số điện thoại thì công dân chỉ xem được tin tức công khai, không dùng
-> được dịch vụ nào cần định danh. Ứng dụng nhận token từ Zalo và đổi lấy số điện
-> thoại ở phía máy chủ; không lưu token, không chia sẻ số điện thoại cho bên thứ
-> ba. Công dân từ chối thì vẫn định danh được bằng luồng OTP thay thế.
+> Luồng cụ thể: người dùng bấm "Liên kết số điện thoại Zalo" ở màn định danh
+> (ảnh 1). Ứng dụng gọi `getPhoneNumber` để lấy token, gửi token về máy chủ và
+> đổi lấy số điện thoại ở phía máy chủ. Ứng dụng không lưu token, không chia sẻ
+> số điện thoại cho bên thứ ba, và xoá dữ liệu khi người dùng yêu cầu.
 >
-> Đường vào: màn hình đầu tiên khi mở ứng dụng.
+> Nếu người dùng từ chối hoặc không lấy được số từ Zalo, ứng dụng chuyển sang
+> đường thay thế: người dùng tự nhập số điện thoại rồi nhận mã xác thực để hoàn
+> tất định danh (ảnh 2). Được cấp quyền truy cập số điện thoại thì bỏ được cả
+> bước nhập tay lẫn bước chờ mã xác thực này.
+>
+> Không có số điện thoại, người dùng chỉ xem được tin tức công khai, không dùng
+> được dịch vụ nào cần định danh.
+>
+> Phiên bản hiện tại là bản demo phục vụ trải nghiệm và kiểm thử tính năng; dữ
+> liệu nghiệp vụ trong ứng dụng là dữ liệu mẫu, còn số điện thoại chỉ dùng để
+> tạo phiên trải nghiệm cho chính người dùng đó.
+>
+> Đường vào: màn hình đầu tiên khi mở ứng dụng, nút "Liên kết số điện thoại Zalo".
+
+**Đừng đặt lý do là "để gửi tin OTP".** Hai chuyện ngược nhau: `getPhoneNumber`
+tồn tại để **khỏi phải** gửi OTP. Xin quyền lấy số điện thoại nhằm gửi OTP tới
+chính số đó là lý lẽ tự mâu thuẫn, người xét duyệt bắt được là hồ sơ trượt.
+Thêm nữa, `AuthService.requestOtp` ở backend hiện **chỉ ghi mã ra log, chưa gửi
+SMS/ZNS thật** (Phase 1) — nếu người xét duyệt thử luồng đó thì không có tin
+nhắn nào tới. Giữ lý do ở việc định danh, đường OTP chỉ nêu như phương án dự
+phòng đúng như mã nguồn đang làm.
 
 ---
 
@@ -119,6 +141,18 @@ chức năng chạy được mới chụp được — chỉ cần màn hình hi
 cước. Ảnh có thông báo lỗi hiện lên sẽ khiến người xét duyệt đánh giá thấp.
 
 Định dạng: JPG/PNG/JPEG, mỗi tệp tối đa 5MB.
+
+### Ảnh đã dựng sẵn cho quyền 100
+
+| Tệp | Nội dung |
+|---|---|
+| `anh-xin-quyen/quyen-100-so-dien-thoai-man-dinh-danh.png` | Ảnh 1 — màn định danh, thấy rõ nút *Liên kết số điện thoại Zalo* |
+| `anh-xin-quyen/quyen-100-duong-otp-thay-the.png` | Ảnh 2 — đường thay thế khi không lấy được số từ Zalo |
+
+Hai ảnh dựng từ bản build demo hiện tại, khung 390×812 đúng tỉ lệ điện thoại
+(604×1305 và 615×1313 điểm ảnh). Đủ dùng để nộp. Chụp được trên máy thật thì
+vẫn hơn — ảnh có thanh trạng thái, giờ, cột sóng nhìn thuyết phục hơn với người
+xét duyệt.
 
 ---
 
@@ -172,6 +206,12 @@ sử dụng. Bản dưới đây bám đúng 4 quyền đã xin ở mục 3.
 > **KHÁCH HÀNG PHẢI DUYỆT TRƯỚC KHI CÔNG BỐ.** Đây là văn bản pháp lý đứng tên
 > UBND xã, không phải nội dung kỹ thuật. Cần bổ sung tên đơn vị đầy đủ, địa chỉ,
 > và đầu mối liên hệ về dữ liệu cá nhân trước khi đăng.
+
+> **Bản nháp dưới đây dành cho BẢN CHÍNH THỨC**, đứng tên UBND xã. Bản đang phát
+> hành là bản demo, đứng tên đơn vị phát triển và có nội dung khác hẳn — xem
+> `zalo-miniapp/public/dieu-khoan-su-dung.html` (bản công bố) và `.md` (bản
+> nguồn). Đừng dán bản nháp này lên Console khi còn nộp dưới dạng demo: nó nói
+> ứng dụng do UBND xã cung cấp, ngược với những gì hồ sơ demo khai.
 
 ### Điều khoản sử dụng ứng dụng ViGov
 
