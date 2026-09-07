@@ -93,7 +93,21 @@ export function SendFeedbackPage() {
     void (async () => {
       const res = await zaloService.getLocation();
       if (!res.granted) {
-        setLocation((prev) => ({ status: "denied", address: prev.address, error: res.error }));
+        /* Bắt nhập địa chỉ NGAY, đừng để người dùng chờ máy chủ. Nhưng nếu còn
+           mã định vị thì vẫn thử đường máy chủ ở dưới: Zalo có thể biết vị trí
+           thật, và lúc đó nâng cấp lên granted. */
+        setLocation((prev) => ({ status: "denied", address: prev.address, error: res.error, token: res.token }));
+
+        const fromZalo = res.token ? await resolveCoordinates(res) : null;
+        if (!fromZalo) return;
+        setLocation((prev) => ({
+          status: "granted",
+          address: prev.address.trim() || usableAddress(fromZalo),
+          lat: fromZalo.lat,
+          lng: fromZalo.lng,
+          source: "zalo",
+          token: res.token,
+        }));
         return;
       }
 
@@ -146,7 +160,11 @@ export function SendFeedbackPage() {
     // thay vì để máy chủ trả 400 sau khi người dùng đã qua bước xác nhận.
     else if (title.trim().length < MIN_TITLE_LEN) next.title = `Tiêu đề phải có ít nhất ${MIN_TITLE_LEN} ký tự`;
     if (!description.trim()) next.description = "Vui lòng mô tả chi tiết sự việc";
-    if (location.status === "denied" && !location.address.trim()) {
+    /* Không có toạ độ thì địa chỉ chữ là thứ DUY NHẤT chỉ được chỗ xảy ra sự
+       việc — bắt buộc phải có. Xét theo toạ độ chứ không theo `status`: có
+       trường hợp xin quyền xong mà vẫn không ra toạ độ nào dùng được. */
+    const hasPoint = location.lat !== undefined && location.lng !== undefined;
+    if (!hasPoint && !location.address.trim()) {
       next.address = "Vui lòng nhập địa chỉ nơi xảy ra sự việc";
     }
     setErrors(next);

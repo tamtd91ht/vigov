@@ -77,6 +77,7 @@ export function DetailStep({
 }: DetailStepProps) {
   const [adding, setAdding] = useState(false);
   const canAddImage = images.length < appConfig.maxFeedbackImages;
+  const hasPoint = location.lat !== undefined && location.lng !== undefined;
 
   /**
    * Mở trình chọn ảnh của Zalo và giữ đúng đường dẫn tệp trả về, để ô thumbnail
@@ -201,7 +202,11 @@ export function DetailStep({
 
       <div className="fgroup">
         <label>
-          Vị trí xảy ra sự việc {location.status === "denied" && <span className="req">*</span>}
+          {/* Bắt buộc khi KHÔNG có toạ độ: lúc đó địa chỉ chữ là thứ duy nhất
+              chỉ được chỗ xảy ra sự việc. Xét theo toạ độ chứ không theo
+              `status` — xin quyền xong mà vẫn không ra điểm nào dùng được là
+              chuyện có thật. */}
+          Vị trí xảy ra sự việc {!hasPoint && <span className="req">*</span>}
         </label>
 
         {(location.status === "idle" || location.status === "loading") && (
@@ -216,9 +221,11 @@ export function DetailStep({
             <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
               <Icon name="pin" size={20} color="var(--pink)" />
               <div style={{ flex: 1, minWidth: 0 }}>
-                {editingAddress ? (
+                {/* Không có toạ độ thì mở sẵn ô nhập, đừng bắt người dùng tìm
+                    ra nút "Sửa" mới gõ được thứ bắt buộc phải gõ. */}
+                {editingAddress || !hasPoint ? (
                   <input
-                    className="finp"
+                    className={`finp ${errors.address ? "err" : ""}`}
                     value={location.address}
                     placeholder="Nhập địa chỉ cụ thể"
                     onChange={(e) => onAddressChange(e.target.value)}
@@ -238,11 +245,14 @@ export function DetailStep({
                   </div>
                 )}
               </div>
-              <button type="button" className="btn sm" onClick={onToggleEditAddress}>
-                <Icon name={editingAddress ? "check" : "edit"} size={15} />
-                {editingAddress ? "Xong" : "Sửa"}
-              </button>
+              {hasPoint && (
+                <button type="button" className="btn sm" onClick={onToggleEditAddress}>
+                  <Icon name={editingAddress ? "check" : "edit"} size={15} />
+                  {editingAddress ? "Xong" : "Sửa"}
+                </button>
+              )}
             </div>
+            {errors.address && <div className="ferr">{errors.address}</div>}
             {/* Người dân phải THẤY điểm mình đang báo — một dòng toạ độ thì không ai
                 kiểm tra được. GPS lệch vài trăm mét là cán bộ tới nhầm nơi. */}
             <LocationPreviewMap lat={location.lat} lng={location.lng} />
@@ -265,8 +275,11 @@ export function DetailStep({
 
         {location.status === "denied" && (
           <>
+            {/* Câu này phải đúng cho CẢ HAI trường hợp: không lấy được vị trí,
+                và lấy được nhưng lệch quá xa nên đã bỏ. Nói "không truy cập
+                được" trong trường hợp thứ hai là nói sai. */}
             <Note color="var(--orange)" icon="alert">
-              Không truy cập được vị trí — vui lòng nhập địa chỉ
+              Chưa xác định được vị trí đủ chính xác — vui lòng nhập địa chỉ
             </Note>
             {/* Lý do nguyên văn: phân biệt "người dùng bấm từ chối" với "Zalo
                 chặn quyền API getLocation" — hai việc khác nhau hoàn toàn, mà

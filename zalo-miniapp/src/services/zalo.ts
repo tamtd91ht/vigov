@@ -219,6 +219,24 @@ const GOOD_ACCURACY_M = 30;
 const GEOLOCATE_WINDOW_MS = 15000;
 
 /**
+ * Sai số vượt ngưỡng này thì toạ độ VÔ DỤNG — dứt khoát không ghim lên phiếu.
+ *
+ * VÌ SAO CẦN NGƯỠNG CHẶN, không chỉ cảnh báo: khi webview không được hệ điều
+ * hành cấp một điểm định vị thật, nó rơi về ước lượng theo địa chỉ mạng. Với
+ * nhà mạng Việt Nam, dải IP di động phần lớn đăng ký ở Hà Nội, nên người dùng
+ * ở Tuy Hoà vẫn ra một điểm giữa Hà Nội — lệch cả nghìn kilômét mà `accuracy`
+ * khai đúng là hàng chục nghìn mét.
+ *
+ * Một điểm như thế trên phiếu phản ánh còn TỆ HƠN không có điểm nào: cán bộ
+ * tin vào cái ghim rồi tới nhầm nơi, còn người dân thì tưởng đã báo đúng chỗ.
+ * Thà bắt nhập địa chỉ bằng tay.
+ *
+ * 500m: đủ rộng để nhận điểm GPS yếu trong nhà hay điểm wifi trong khu dân cư
+ * (vẫn khoanh đúng thôn), đủ hẹp để loại mọi ước lượng theo mạng.
+ */
+const MAX_USABLE_ACCURACY_M = 500;
+
+/**
  * Vị trí hiện tại của THIẾT BỊ, qua `navigator.geolocation`.
  *
  * VÌ SAO `watchPosition` CHỨ KHÔNG `getCurrentPosition`: trên Android, lần đọc
@@ -297,39 +315,48 @@ function browserGeolocate(): Promise<BrowserFix> {
 async function runLocate(): Promise<LocationResult> {
   const notes: string[] = [];
 
+  // Đường 1 — mã định vị của Zalo. Lấy trước vì nếu có thì backend đổi được ra
+  // toạ độ do chính Zalo xác định, không phụ thuộc webview có được cấp GPS hay không.
+  let token: string | undefined;
   const sdk = await loadSdk();
   if (!sdk) {
     notes.push("không nạp được zmp-sdk");
   } else {
     try {
-      const { token } = await withTimeout("getLocation", 15000, sdk.getLocation());
-      // Token vẫn đáng lấy dù chưa vẽ được bản đồ: phiếu gửi lên mang theo nó
-      // để backend đổi ra toạ độ khi P3-26 xong. Nhưng còn chạy tiếp đường 2 để
-      // có toạ độ hiển thị ngay.
-      if (token) {
-        try {
-          const pos = await browserGeolocate();
-          return { granted: true, token, lat: pos.lat, lng: pos.lng, accuracy: pos.accuracy, source: "browser" };
-        } catch (err: unknown) {
-          console.debug("[zalo] có token Zalo nhưng navigator.geolocation hỏng", err);
-          return { granted: true, token, source: "zalo" };
-        }
-      }
-      notes.push("getLocation không trả token");
+      token = (await withTimeout("getLocation", 15000, sdk.getLocation())).token;
+      if (!token) notes.push("getLocation không trả token");
     } catch (err: unknown) {
       notes.push(`getLocation — ${errText(err)}`);
     }
   }
 
+  // Đường 2 — thiết bị tự đo
+  let fix: BrowserFix | null = null;
   try {
-    const pos = await browserGeolocate();
-    if (notes.length > 0) console.debug("[zalo] dùng navigator.geolocation sau khi", notes.join(" · "));
-    return { granted: true, lat: pos.lat, lng: pos.lng, accuracy: pos.accuracy, source: "browser" };
+    fix = await browserGeolocate();
   } catch (err: unknown) {
     notes.push(`navigator.geolocation — ${errText(err)}`);
   }
 
-  return { granted: false, error: notes.join(" · ") };
+  /* Loại điểm quá thô TRƯỚC khi nó chạm tới giao diện. Đây là chỗ chặn cái
+     điểm-giữa-Hà-Nội do ước lượng theo địa chỉ mạng: nó là một toạ độ hoàn
+     toàn hợp lệ về mặt kiểu dữ liệu, chỉ sai chỗ. */
+  if (fix && fix.accuracy > MAX_USABLE_ACCURACY_M) {
+    notes.push(
+      `toạ độ đo được lệch tới ±${Math.round(fix.accuracy)}m — dáng của ước lượng theo địa chỉ mạng ` +
+        "chứ không phải GPS, đã bỏ",
+    );
+    fix = null;
+  }
+
+  if (fix) {
+    return { granted: true, token, lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy, source: "browser" };
+  }
+
+  /* Không đo được nhưng còn mã định vị: chưa kết luận là thất bại. Nơi gọi sẽ
+     nhờ máy chủ đổi mã — Zalo có thể biết vị trí thật. Trả granted:false để
+     giao diện bắt nhập địa chỉ ngay, rồi nâng cấp nếu máy chủ trả về toạ độ. */
+  return { granted: false, token, error: notes.join(" · ") };
 }
 
 /**
