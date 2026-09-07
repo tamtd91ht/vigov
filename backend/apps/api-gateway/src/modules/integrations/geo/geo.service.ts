@@ -52,7 +52,11 @@ export class GeoService {
     return provider.reverse(lat, lng);
   }
 
-  private get providerName(): string {
+  /**
+   * Tên provider GIS đang dùng. Công khai vì nơi gọi cần NÓI THẬT rằng địa chỉ
+   * do provider nào sinh ra — bằng "mock" thì địa chỉ là bịa.
+   */
+  get providerName(): string {
     return (this.config.get<string>('geo.provider') ?? DEFAULT_PROVIDER).trim().toLowerCase();
   }
 

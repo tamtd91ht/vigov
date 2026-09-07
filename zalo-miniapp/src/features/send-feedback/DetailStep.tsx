@@ -18,6 +18,10 @@ export interface LocationState {
   address: string;
   lat?: number;
   lng?: number;
+  /** Mã định vị của Zalo — backend đổi ra toạ độ ở P3-26 */
+  token?: string;
+  /** Lý do thất bại nguyên văn từ SDK, hiện ra để người thử đọc được */
+  error?: string;
 }
 
 /** Lỗi validate của bước 2 */
@@ -38,6 +42,7 @@ interface DetailStepProps {
   onAddressChange: (value: string) => void;
   editingAddress: boolean;
   onToggleEditAddress: () => void;
+  onRetryLocation: () => void;
   errors: DetailErrors;
 }
 
@@ -53,6 +58,7 @@ export function DetailStep({
   onAddressChange,
   editingAddress,
   onToggleEditAddress,
+  onRetryLocation,
   errors,
 }: DetailStepProps) {
   const [adding, setAdding] = useState(false);
@@ -230,6 +236,23 @@ export function DetailStep({
             <Note color="var(--orange)" icon="alert">
               Không truy cập được vị trí — vui lòng nhập địa chỉ
             </Note>
+            {/* Lý do nguyên văn: phân biệt "người dùng bấm từ chối" với "Zalo
+                chặn quyền API getLocation" — hai việc khác nhau hoàn toàn, mà
+                trước đây màn hình hiện y như nhau. */}
+            {location.error && (
+              <div className="tiny muted" style={{ marginTop: 6, wordBreak: "break-word" }}>
+                Chi tiết: {location.error}
+              </div>
+            )}
+            <button
+              type="button"
+              className="btn sm"
+              style={{ marginTop: 8 }}
+              onClick={onRetryLocation}
+            >
+              <Icon name="pin" size={15} />
+              Thử định vị lại
+            </button>
             <input
               className={`finp ${errors.address ? "err" : ""}`}
               style={{ marginTop: 10 }}

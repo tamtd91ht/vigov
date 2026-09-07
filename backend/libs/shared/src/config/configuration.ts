@@ -94,6 +94,7 @@ export default () => ({
     oaId: process.env.ZALO_OA_ID ?? '',
     appId: process.env.ZALO_APP_ID ?? '',
     appSecret: process.env.ZALO_APP_SECRET ?? '',
+    oaAccessToken: process.env.ZALO_OA_ACCESS_TOKEN ?? '',
     znsTemplateFeedbackReceived: process.env.ZNS_TEMPLATE_FEEDBACK_RECEIVED ?? '',
     znsTemplateFeedbackResolved: process.env.ZNS_TEMPLATE_FEEDBACK_RESOLVED ?? '',
   },

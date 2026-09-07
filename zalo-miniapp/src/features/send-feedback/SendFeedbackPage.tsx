@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { DemoBadge, DemoNote } from "@/components/common";
 import { appConfig } from "@/config/app.config";
@@ -6,7 +6,8 @@ import { demoConfig } from "@/config/demo.config";
 import { useGoBack } from "@/hooks/useGoBack";
 import { slaText, type FeedbackCategory } from "@/config/categories";
 import { ApiError } from "@/services/api";
-import { zaloService } from "@/services/zalo";
+import { geoService, usableAddress, type ResolvedLocation } from "@/services/geo.service";
+import { zaloService, type LocationResult } from "@/services/zalo";
 import { useFeedback } from "@/state/FeedbackContext";
 import { useToast } from "@/state/ToastContext";
 import type { FeedbackTicket } from "@/types";
@@ -23,6 +24,37 @@ const FALLBACK_LOCATION = "Chưa xác định vị trí";
 const TOAST_INVALID = "Vui lòng kiểm tra lại thông tin";
 const TOAST_SENT = "Đã gửi phản ánh";
 const TOAST_FAILED = "Gửi phản ánh không thành công, vui lòng thử lại";
+
+/**
+ * Nhờ máy chủ hoàn thiện vị trí (P3-26). Hai đường, khác nhau ở chỗ bắt đầu:
+ *
+ *   · Có mã định vị Zalo → POST /geo/zalo-location. Máy chủ cầm ZALO_APP_SECRET
+ *     đổi mã lấy toạ độ THẬT của Zalo (đáng tin hơn navigator.geolocation) rồi
+ *     tra luôn địa chỉ.
+ *   · Chỉ có toạ độ của webview → GET /geo/reverse để lấy địa chỉ.
+ *
+ * Hỏng thì trả null và giữ nguyên những gì đang có: bản đồ vẫn vẽ được bằng toạ
+ * độ của webview, không có lý do gì xoá nó đi chỉ vì máy chủ không trả lời.
+ */
+async function resolveCoordinates(res: LocationResult): Promise<ResolvedLocation | null> {
+  // Bản demo offline không có backend để gọi, mà nhánh mock đã tự có toạ độ
+  if (appConfig.api.useMocks) return null;
+
+  try {
+    if (res.token) {
+      // Zalo bắt gửi ĐỒNG THỜI mã định vị và access_token, thiếu một là từ chối
+      const accessToken = await zaloService.getAccessToken();
+      if (accessToken) return await geoService.resolveZaloLocation(res.token, accessToken);
+      console.debug("[geo] có mã định vị nhưng không lấy được access_token Zalo");
+    }
+    if (res.lat !== undefined && res.lng !== undefined) {
+      return await geoService.reverse(res.lat, res.lng);
+    }
+  } catch (err: unknown) {
+    console.debug("[geo] không hoàn thiện được vị trí", err);
+  }
+  return null;
+}
 
 /** Màn "Gửi phản ánh" 3 bước: Danh mục → Nội dung → Xác nhận (WBS #13) */
 export function SendFeedbackPage() {
@@ -43,24 +75,49 @@ export function SendFeedbackPage() {
   const [askLeave, setAskLeave] = useState(false);
   const locationAsked = useRef(false);
 
+  /**
+   * Xin vị trí một lượt.
+   *
+   * Địa chỉ người dùng đã tự nhập được GIỮ LẠI khi định vị lại: bấm "Thử định
+   * vị lại" mà mất chữ vừa gõ thì không ai bấm lần hai.
+   */
+  const requestLocation = useCallback(() => {
+    setLocation((prev) => ({ ...prev, status: "loading", error: undefined }));
+    void (async () => {
+      const res = await zaloService.getLocation();
+      if (!res.granted) {
+        setLocation((prev) => ({ status: "denied", address: prev.address, error: res.error }));
+        return;
+      }
+
+      // Toạ độ đã có (navigator.geolocation hoặc bản mock) thì hiện bản đồ NGAY,
+      // không chờ máy chủ — mạng di động chậm không được làm treo bước 2.
+      setLocation((prev) => ({
+        status: "granted",
+        address: res.address ?? prev.address,
+        lat: res.lat,
+        lng: res.lng,
+        token: res.token,
+      }));
+
+      const resolved = await resolveCoordinates(res);
+      if (!resolved) return;
+      setLocation((prev) => ({
+        ...prev,
+        lat: resolved.lat,
+        lng: resolved.lng,
+        // Không ghi đè địa chỉ người dùng đã tự gõ
+        address: prev.address.trim() || usableAddress(resolved),
+      }));
+    })();
+  }, []);
+
   /** Vào bước 2 lần đầu thì tự xin quyền vị trí (câu hỏi mở #16 — từ chối thì nhập tay) */
   useEffect(() => {
     if (step !== 2 || locationAsked.current) return;
     locationAsked.current = true;
-    setLocation((prev) => ({ ...prev, status: "loading" }));
-    let alive = true;
-    void zaloService.getLocation().then((res) => {
-      if (!alive) return;
-      if (res.granted) {
-        setLocation({ status: "granted", address: res.address ?? "", lat: res.lat, lng: res.lng });
-      } else {
-        setLocation({ status: "denied", address: "" });
-      }
-    });
-    return () => {
-      alive = false;
-    };
-  }, [step]);
+    requestLocation();
+  }, [step, requestLocation]);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -170,6 +227,7 @@ export function SendFeedbackPage() {
             onAddressChange={(value) => setLocation((prev) => ({ ...prev, address: value }))}
             editingAddress={editingAddress}
             onToggleEditAddress={() => setEditingAddress((v) => !v)}
+            onRetryLocation={requestLocation}
             errors={errors}
           />
         )}

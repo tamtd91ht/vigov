@@ -11,6 +11,7 @@ export * from './auth/password-policy';
 export * from './auth/session-registry';
 export * from './auth/session-registry.module';
 export * from './events/events';
+export * from './zalo/me-info';
 
 export * from './schemas/task.schema';
 export * from './schemas/document.schema';

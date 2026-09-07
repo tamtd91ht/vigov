@@ -38,6 +38,15 @@ export interface LocationResult {
   lng?: number;
   address?: string;
   token?: string;
+  /** Nguồn toạ độ — để biết đường nào đang chạy khi thử trên điện thoại */
+  source?: "zalo" | "browser" | "mock";
+  /**
+   * Lý do thất bại, NGUYÊN VĂN từ SDK. Trước đây mọi lỗi đều rơi về
+   * `{granted:false}` trơn, nên màn hình nói dối là "người dùng từ chối" trong
+   * khi thật ra Zalo chặn quyền API. Người thử cầm điện thoại không mở được
+   * console, nên lỗi phải hiện ra được trên giao diện.
+   */
+  error?: string;
 }
 
 /** Bật để thử luồng người dùng từ chối quyền vị trí (câu hỏi mở #16) */
@@ -186,6 +195,96 @@ async function runScan(): Promise<ScanResult> {
 }
 
 /**
+ * `navigator.geolocation` bọc thành Promise.
+ *
+ * Có hạn chờ riêng vì API này hay im lặng mãi khi webview không được host
+ * chuyển tiếp quyền vị trí — không callback thành công, cũng không callback lỗi.
+ */
+function browserGeolocate(): Promise<{ lat: number; lng: number; accuracy: number }> {
+  return new Promise((resolve, reject) => {
+    const geo = navigator.geolocation;
+    if (!geo) {
+      reject(new Error("webview không có navigator.geolocation"));
+      return;
+    }
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      reject(new Error("không phản hồi sau 12s (webview có thể không được cấp quyền vị trí)"));
+    }, 12000);
+    geo.getCurrentPosition(
+      (pos) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy });
+      },
+      (err) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        reject(new Error(`[${err.code}] ${err.message || "không lấy được vị trí"}`));
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+    );
+  });
+}
+
+/**
+ * Lấy vị trí thật — hai đường, thử lần lượt.
+ *
+ * 1. `sdk.getLocation()` là đường chính thức, nhưng chỉ trả `token`: KHÔNG có
+ *    toạ độ, nên không vẽ được bản đồ xem trước chừng nào backend chưa làm bước
+ *    đổi token + reverse geocode (P3-26). Và quyền API này (ID 38) hiện đang bị
+ *    Zalo chặn ở tầng nền tảng — cùng nhóm với scanQRCode/chooseImage.
+ * 2. `navigator.geolocation` — Mini App vẫn chạy trong webview. Nếu Zalo chuyển
+ *    tiếp quyền vị trí của hệ điều hành xuống webview thì đường này cho TOẠ ĐỘ
+ *    NGAY, tức bản đồ hiện được mà không phải chờ Zalo cấp quyền API lẫn chờ
+ *    backend. Đây là đường duy nhất có thể ra bản đồ ở thời điểm này.
+ *
+ * Mọi lý do thất bại được gom lại và trả nguyên văn lên giao diện, giống luồng
+ * quét QR: nuốt lỗi ở đây là bắt người thử đoán.
+ */
+async function runLocate(): Promise<LocationResult> {
+  const notes: string[] = [];
+
+  const sdk = await loadSdk();
+  if (!sdk) {
+    notes.push("không nạp được zmp-sdk");
+  } else {
+    try {
+      const { token } = await withTimeout("getLocation", 15000, sdk.getLocation());
+      // Token vẫn đáng lấy dù chưa vẽ được bản đồ: phiếu gửi lên mang theo nó
+      // để backend đổi ra toạ độ khi P3-26 xong. Nhưng còn chạy tiếp đường 2 để
+      // có toạ độ hiển thị ngay.
+      if (token) {
+        try {
+          const pos = await browserGeolocate();
+          return { granted: true, token, lat: pos.lat, lng: pos.lng, source: "browser" };
+        } catch (err: unknown) {
+          console.debug("[zalo] có token Zalo nhưng navigator.geolocation hỏng", err);
+          return { granted: true, token, source: "zalo" };
+        }
+      }
+      notes.push("getLocation không trả token");
+    } catch (err: unknown) {
+      notes.push(`getLocation — ${errText(err)}`);
+    }
+  }
+
+  try {
+    const pos = await browserGeolocate();
+    if (notes.length > 0) console.debug("[zalo] dùng navigator.geolocation sau khi", notes.join(" · "));
+    return { granted: true, lat: pos.lat, lng: pos.lng, source: "browser" };
+  } catch (err: unknown) {
+    notes.push(`navigator.geolocation — ${errText(err)}`);
+  }
+
+  return { granted: false, error: notes.join(" · ") };
+}
+
+/**
  * Ảnh chụp trạng thái tích hợp, hiển thị ngay trong app.
  *
  * Người thử cầm điện thoại không mở được console, nên mọi phán đoán về "vì sao
@@ -228,6 +327,22 @@ export async function zaloDiagnostics(): Promise<Array<[string, string]>> {
     rows.push(["Xin quyền camera", JSON.stringify(asked)]);
   } catch (err: unknown) {
     rows.push(["Xin quyền camera", `lỗi — ${errText(err)}`]);
+  }
+
+  // Hai đường lấy vị trí, đo riêng từng đường. Đặt TRƯỚC scanQRCode vì cả hai
+  // chạy không cần người dùng chạm gì, còn scanQRCode thì mở màn quét và chặn.
+  try {
+    const loc = await withTimeout("getLocation (thử 10s)", 10000, sdk.getLocation());
+    rows.push(["Gọi getLocation", loc.token ? "có token" : "không token"]);
+  } catch (err: unknown) {
+    rows.push(["Gọi getLocation", errText(err)]);
+  }
+
+  try {
+    const pos = await browserGeolocate();
+    rows.push(["navigator.geolocation", `${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)} (±${Math.round(pos.accuracy)}m)`]);
+  } catch (err: unknown) {
+    rows.push(["navigator.geolocation", errText(err)]);
   }
 
   // Gọi thẳng scanQRCode với thời gian chờ ngắn: nếu quyền API bị Zalo chặn thì
@@ -333,9 +448,9 @@ export const zaloService = {
   /**
    * Vị trí hiện tại.
    *
-   * Bản thật chỉ có `token` — không có toạ độ để hiển thị ngay, nên `address`
-   * bỏ trống và người dùng tự nhập (đúng luồng "từ chối" đã có sẵn ở màn phản ánh).
-   * Điền địa chỉ tự động được sau khi backend làm bước đổi token + reverse geocode (P3-26).
+   * Xem runLocate() để biết thứ tự hai đường và vì sao cần đường thứ hai.
+   * `address` vẫn bỏ trống ở bản thật — điền tự động được sau khi backend làm
+   * bước đổi token + reverse geocode (P3-26); trước đó người dùng tự nhập.
    */
   async getLocation(): Promise<LocationResult> {
     if (appConfig.zalo.useMockSdk) {
@@ -346,17 +461,10 @@ export const zaloService = {
         lat: 20.7431,
         lng: 105.9214,
         address: `Đường trục Thôn Đông, ${appConfig.org.name}`,
+        source: "mock",
       };
     }
-    return attempt(
-      "getLocation",
-      async (sdk) => {
-        const { token } = await sdk.getLocation();
-        // Không token nghĩa là người dùng bấm từ chối trên popup của Zalo
-        return token ? { granted: true, token } : { granted: false };
-      },
-      { granted: false },
-    );
+    return runLocate();
   },
 
   /**

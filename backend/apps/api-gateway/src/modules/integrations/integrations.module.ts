@@ -6,6 +6,7 @@ import { IdCardService } from './idcard/idcard.service';
 import { GeoController } from './geo/geo.controller';
 import { MockGeoProvider } from './geo/geo.provider';
 import { GeoService } from './geo/geo.service';
+import { ZaloLocationService } from './geo/zalo-location.service';
 
 /**
  * Module Integrations — gom các đầu nối bên thứ 3 (OCR văn bản, đọc thẻ căn
@@ -20,6 +21,7 @@ import { GeoService } from './geo/geo.service';
     IdCardService,
     MockGeoProvider,
     GeoService,
+    ZaloLocationService,
   ],
   exports: [OcrService, IdCardService, GeoService],
 })
