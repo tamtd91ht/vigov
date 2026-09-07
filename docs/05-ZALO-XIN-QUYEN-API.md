@@ -21,7 +21,7 @@ trong danh sách người dùng thử:
 | ID | API | Màn hình dùng | Biểu hiện khi chưa được cấp |
 |---|---|---|---|
 | 25 | `scanQRCode` | Quét thẻ căn cước · Tra cứu hồ sơ | `[-2000] Unknown error` |
-| 38 | `getLocation` | Gửi phản ánh, bước 2 | Không hiện popup xin quyền |
+| 38 | `getLocation` | Gửi phản ánh, bước 2 | Không hiện popup xin quyền · xác nhận lại 07/09/2026 |
 | 94 | `chooseImage` | Gửi phản ánh, bước 2 | Không mở trình chọn ảnh |
 | 100 | `getPhoneNumber` | Onboarding | Không hiện popup xin quyền |
 
@@ -66,15 +66,52 @@ Console không cho đi tắt:
 
 ### Quyền 38 — Lấy thông tin vị trí hiện tại
 
-> Dùng ở chức năng **Gửi phản ánh, kiến nghị** của công dân. Khi công dân phản ánh
-> một sự việc trên địa bàn — rác tồn đọng, đèn đường hỏng, ngập úng, vi phạm trật
-> tự — cán bộ xử lý cần biết vị trí chính xác để phân công đúng bộ phận và đúng
-> thôn. Vị trí được lấy một lần tại bước 2 của biểu mẫu phản ánh, có popup xác
-> nhận của Zalo, và công dân luôn sửa hoặc nhập tay được địa chỉ trước khi gửi.
-> Từ chối cấp quyền thì biểu mẫu vẫn dùng được bình thường bằng cách nhập địa chỉ
-> thủ công.
+Bản dán vào Console (đã cập nhật cho bản demo, khớp ảnh ở mục 4):
+
+> Ứng dụng dùng vị trí ở chức năng **Gửi phản ánh, kiến nghị**. Khi người dùng
+> phản ánh một sự việc ngoài hiện trường — rác tồn đọng, đèn đường hỏng, ngập
+> úng — phiếu cần một điểm toạ độ để xác định chỗ xảy ra sự việc, thay cho việc
+> mô tả bằng lời.
+>
+> Luồng cụ thể: người dùng vào bước 2 của biểu mẫu phản ánh (ảnh 1), ứng dụng gọi
+> `getLocation` để lấy token, gửi token về máy chủ và đổi lấy toạ độ ở phía máy
+> chủ. Toạ độ được hiển thị ngay trên một bản đồ nhỏ để người dùng **tự kiểm tra
+> điểm có đúng chỗ mình đang đứng hay không** trước khi gửi, và người dùng luôn
+> sửa được địa chỉ bằng tay. Ứng dụng không lưu token, không theo dõi vị trí liên
+> tục, không chia sẻ vị trí cho bên thứ ba.
+>
+> Vị trí chỉ được lấy tại đúng bước đó, và khi người dùng chủ động bấm "Định vị
+> lại". Không lấy ở bất kỳ màn hình nào khác, không lấy khi ứng dụng chạy nền.
+>
+> Nếu người dùng từ chối, biểu mẫu vẫn dùng được bình thường: người dùng tự nhập
+> địa chỉ nơi xảy ra sự việc.
+>
+> Phiên bản hiện tại là bản demo phục vụ trải nghiệm và kiểm thử tính năng; phiếu
+> phản ánh trong ứng dụng là dữ liệu mô phỏng, không chuyển tới cơ quan nào.
 >
 > Đường vào: Trang chủ → Gửi phản ánh → bước 2.
+
+**Lý do cần chính API này, không thay được bằng `navigator.geolocation`.** Đây là
+lập luận mạnh nhất của hồ sơ 38, và nó có số liệu thật để dẫn:
+
+Mini App chạy trong webview nên `navigator.geolocation` gọi được. Nhưng khi
+webview không được cấp một điểm định vị thật, nó rơi về ước lượng theo địa chỉ
+mạng — mà dải IP di động của nhà mạng Việt Nam phần lớn đăng ký ở Hà Nội. Thử
+thật ngày 07/09/2026: thiết bị đang ở **Tuy Hoà, Phú Yên**, webview trả về một
+điểm giữa **Hà Nội**, lệch khoảng 1.000km, `accuracy` thiết bị khai hàng chục
+nghìn mét. Một toạ độ như vậy vô dụng với chức năng phản ánh hiện trường, nên
+ứng dụng đã phải chủ động loại bỏ nó (ngưỡng 500m, xem `MAX_USABLE_ACCURACY_M`
+trong `zalo-miniapp/src/services/zalo.ts`) và bắt người dùng nhập địa chỉ tay.
+
+`getLocation` của Zalo lấy vị trí bằng quyền của chính ứng dụng Zalo ở tầng hệ
+điều hành, không qua webview, nên là đường duy nhất cho ra toạ độ dùng được.
+Nêu đúng chuyện này trong ô lý do: nó chứng minh quyền là **cần thiết**, chứ
+không phải tiện thì xin.
+
+**Đừng viết** rằng vị trí dùng để "cán bộ phân công xử lý" hay "chuyển tới cơ
+quan chức năng". Điều khoản sử dụng đang phát hành nói rõ phiếu KHÔNG tới cơ
+quan nào; người xét duyệt đọc chéo hai tài liệu thấy vênh là hồ sơ trượt — đúng
+lý do Zalo từ chối ngày 05/09/2026.
 
 ### Quyền 94 — Mở cửa sổ chọn media từ thiết bị
 
@@ -133,12 +170,26 @@ chức năng chạy được mới chụp được — chỉ cần màn hình hi
 | Quyền | Màn hình cần chụp | Đường đi |
 |---|---|---|
 | 25 | Màn "Quét thẻ căn cước", thấy rõ nút *Quét mã QR trên thẻ* | Cá nhân → Tiện ích của tôi → dòng thứ 3 |
-| 38 | Bước 2 của Gửi phản ánh, thấy phần địa chỉ/vị trí | Trang chủ → Gửi phản ánh → bước 2 |
+| 38 | Bước 2 của Gửi phản ánh, thấy phần "Vị trí xảy ra sự việc" | Trang chủ → Gửi phản ánh → bước 2 |
 | 94 | Bước 2 của Gửi phản ánh, thấy nút thêm ảnh | cùng màn trên |
 | 100 | Màn onboarding, thấy nút *Liên kết số điện thoại Zalo* | mở ứng dụng khi chưa định danh |
 
 **Chụp bản sạch**: tắt bảng "Chẩn đoán tích hợp" trước khi chụp màn quét thẻ căn
 cước. Ảnh có thông báo lỗi hiện lên sẽ khiến người xét duyệt đánh giá thấp.
+
+**Vướng riêng của quyền 38.** Chính vì quyền chưa được cấp, bước 2 trên máy thật
+hiện ra nhánh thất bại — ô nhập địa chỉ kèm dòng "Chưa xác định được vị trí đủ
+chính xác". Chụp đúng cái đó rồi nộp thì tự tay đưa cho người xét duyệt một ảnh
+báo lỗi. Hai đường ra:
+
+- Chụp ở nơi webview lấy được điểm GPS thật (sai số dưới 500m) — lúc đó bản đồ
+  xem trước hiện lên và ảnh nhìn đúng như tính năng hoàn chỉnh. Bật "vị trí
+  chính xác" cho ứng dụng Zalo trong Cài đặt Android và ra chỗ thoáng.
+- Hoặc dựng ảnh từ bản build trên trình duyệt như đã làm với quyền 100: đặt
+  `VITE_USE_MOCK_SDK=true` để `getLocation` trả toạ độ mẫu, bước 2 sẽ hiện đủ
+  bản đồ và địa chỉ. Đây là ảnh minh hoạ tính năng, không phải bằng chứng
+  nghiệp vụ, nên cách này chấp nhận được — nhưng KHÔNG được để lộ nhãn nào cho
+  thấy đang chạy dữ liệu mẫu.
 
 Định dạng: JPG/PNG/JPEG, mỗi tệp tối đa 5MB.
 
