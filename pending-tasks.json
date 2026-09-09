@@ -457,5 +457,14 @@
     "createdAt": "2026-09-06T00:00:00.000Z",
     "updatedAt": "2026-09-06T15:20:00.000Z",
     "status": "done"
+  },
+  {
+    "id": "P6-08",
+    "name": "Mini App xem lại ảnh hiện trường của phản ánh mình đã gửi",
+    "description": "Màn \"Phản ánh của tôi\" trong Zalo Mini App vẫn hiển thị ô màu giữ chỗ thay vì ảnh thật. Ảnh ĐÃ được tải lên đúng từ commit ba65026 (Web Quản trị xem được ảnh hiện trường), nhưng backend chỉ trả về mã tệp (imageFileIds) chứ không trả URL — ảnh phản ánh lưu riêng tư theo quy ước TB-09 nên phải xin link ký sẵn qua GET /files/:id/signed-url mới xem được. Mini App chưa có component nào làm việc đó. Cần: thêm component kiểu SignedImage như admin-web/src/components/ui/SignedImage.tsx (xin link, nhớ tạm theo fileId, xử lý lỗi/hết hạn), rồi dùng ở zalo-miniapp/src/features/my-feedback/FeedbackDetailPage.tsx thay khối imageColors. Lưu ý: FilesService.assertCanSign chỉ cho công dân ký tệp do CHÍNH MÌNH tải lên — cần kiểm chứng luồng này chạy đúng với tài khoản công dân trên thiết bị thật. Giữ ô màu làm phương án dự phòng khi link ký sẵn lỗi. Đã ghi trong docs/03-ZALO-MINIAPP.md mục \"Việc còn dở\".",
+    "planFilePath": null,
+    "createdAt": "2026-09-09T00:00:00.000Z",
+    "updatedAt": "2026-09-09T00:00:00.000Z",
+    "status": "pending"
   }
 ]
