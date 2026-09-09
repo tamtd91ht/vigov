@@ -37,7 +37,7 @@ git branch --show-current
 
 | # | Kiểm | Nếu sai |
 |---|------|---|
-| 1 | Đang ở **nhánh riêng**, không phải `main` | Tạo nhánh trước: `git checkout -b <loại>/<slug>` |
+| 1 | Đang ở `main` — **đúng**, dự án này chỉ dùng một nhánh | Đang ở nhánh khác thì merge về `main` rồi push |
 | 2 | Không có tệp `.env*` nào staged ngoài `.env.example` | Bỏ khỏi staging. **Không** `git add -f` |
 | 3 | Không có tệp rác (`img.png`, `.bak`, `dist/`, tệp tạm) | Bỏ khỏi staging |
 | 4 | Thay đổi **đúng phạm vi** — không có refactor kèm, không đổi format | Tách commit |
@@ -59,13 +59,27 @@ git branch --show-current
 - `git add -A` mà không xem `git status` trước
 - `git add -f` bất kỳ tệp `.env*` nào ngoài `.env.example`
 - Ghi **giá trị** secret hay dữ liệu cá nhân vào thông điệp commit (tên biến thì được)
-- Commit trên `main`
+- **Tự ý tạo nhánh mới** — xem mục Nhánh bên dưới
 - `--no-verify` để bỏ qua hook
 - Gộp nhiều task không liên quan vào một commit
 - Tự `git push` khi người dùng chưa yêu cầu
 
-## Nhánh
+## Nhánh — chỉ dùng `main`
 
-Đặt tên `<loại>/<slug>-<ngày>` — ví dụ `security/auth-hardening-20260904`.
+Dự án này làm việc **trên một nhánh duy nhất là `main`**. Commit và push thẳng vào `main`.
+
+**Tách nhánh chỉ xảy ra trong đúng hai trường hợp:**
+
+1. Người dùng **tự quyết định** tách và nói ra;
+2. Agent **đề nghị** tách, nêu rõ vì sao, và người dùng **chốt đồng ý**.
+
+Ngoài hai trường hợp đó, tạo nhánh là **sai** — nó đẩy phần việc merge sang cho người
+dùng, việc mà họ không yêu cầu. "Cẩn thận" không phải lý do để tự tách nhánh: nếu thấy
+thay đổi có rủi ro thì **nói ra rủi ro đó**, đừng tự chọn cách làm khác.
+
+Đang lỡ ở nhánh khác thì merge về `main` (`git merge --ff-only`) rồi push `main`.
+
+Khi thật sự cần đề nghị tách: đặt tên `<loại>/<slug>-<ngày>` — ví dụ
+`security/auth-hardening-20260904`.
 
 → `commands/ra-soat-diff` · `rules/critical/bi-mat-cau-hinh.md`

@@ -2,7 +2,7 @@
 
 Mục tiêu: <= 8 dòng, nói đúng ba thứ người viết mã cần biết ngay:
   1. Đây là ứng dụng của cơ quan nhà nước (nhắc một dòng, không giảng bài)
-  2. Đang ở nhánh nào — nhánh main thì cảnh báo
+  2. Đang ở nhánh nào — dự án CHỈ dùng main, ở nhánh khác thì cảnh báo
   3. Còn task nào đang dở
 
 Ràng buộc thiết kế:
@@ -119,11 +119,13 @@ def main() -> None:
     branch = git_branch(root)
     if branch:
         if branch in MAIN_BRANCHES:
-            lines.append(
-                f"[ViGov] ⚠ Đang ở nhánh '{branch}'. Tạo nhánh riêng trước khi sửa mã."
-            )
+            lines.append(f"[ViGov] Nhánh: {branch} (đúng — dự án chỉ dùng một nhánh)")
         else:
-            lines.append(f"[ViGov] Nhánh: {branch}")
+            lines.append(
+                f"[ViGov] ⚠ Đang ở nhánh '{branch}', không phải main. Dự án này CHỈ dùng "
+                "main — merge về main (git merge --ff-only) rồi push main. Tách nhánh chỉ "
+                "khi người dùng quyết hoặc đã chốt đồng ý."
+            )
 
     pending, doing = task_summary(root)
     if doing:

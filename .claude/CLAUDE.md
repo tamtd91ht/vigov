@@ -70,6 +70,16 @@ RabbitMQ chỉ dùng cho việc nền (thông báo, workflow).
 
 ---
 
+## GIT — CHỈ DÙNG NHÁNH `main`
+
+Commit và push thẳng vào `main`. **Tách nhánh chỉ khi người dùng tự quyết, hoặc khi
+agent đề nghị và người dùng chốt đồng ý** — ngoài hai trường hợp đó, tự tạo nhánh là sai.
+
+"Cho cẩn thận" không phải lý do để tự tách: thấy rủi ro thì **nói ra rủi ro**, rồi làm
+theo yêu cầu. Quy ước do agent tự nghĩ ra không được chặn yêu cầu tường minh của người dùng.
+
+→ Chi tiết: `CLAUDE.md` gốc dự án, mục "Git" · `commands/git-commit`
+
 ## LUỒNG CÔNG VIỆC
 
 - **`pending-tasks.json`** (gốc dự án) — toàn bộ task Phase 1, trạng thái

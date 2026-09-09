@@ -34,6 +34,24 @@ trong dự án này chạm tới một trong ba thứ sau:
 **Khi phải chọn giữa "làm cho nhanh" và "làm cho đúng" — luôn chọn đúng, rồi nói cho
 người dùng biết nó tốn thêm bao nhiêu.**
 
+## Git: CHỈ DÙNG NHÁNH `main`
+
+Dự án này làm việc trên **một nhánh duy nhất là `main`**. Commit và push thẳng vào `main`.
+
+**Tách nhánh chỉ xảy ra trong đúng hai trường hợp:**
+
+1. Người dùng **tự quyết định** tách và nói ra;
+2. Agent **đề nghị** tách, nêu rõ vì sao, và người dùng **chốt đồng ý**.
+
+Ngoài hai trường hợp đó, tự tạo nhánh là **sai**. Nó đẩy việc merge sang cho người dùng —
+việc họ không yêu cầu — và làm chậm đúng thứ họ vừa nhờ đưa lên.
+
+Đặc biệt: **"cho cẩn thận" KHÔNG phải lý do để tự tách nhánh.** Thấy thay đổi có rủi ro
+thì **nói ra rủi ro đó** rồi làm theo yêu cầu; đừng tự đổi sang cách làm khác. Một quy ước
+do agent tự nghĩ ra không được phép chặn một yêu cầu tường minh của người dùng.
+
+Đang lỡ ở nhánh khác: `git merge --ff-only <nhánh>` về `main` rồi push `main`.
+
 ## Bộ não `.claude/` — khuôn khổ bắt buộc
 
 Toàn bộ luật, kỹ năng, quy trình và chốt cưỡng chế nằm ở `.claude/`:
