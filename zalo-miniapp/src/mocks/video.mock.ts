@@ -9,10 +9,7 @@ export const videoTopics: string[] = [
   "Nông thôn mới",
 ];
 
-/**
- * Video tuyên truyền mẫu cấp xã — Phase 1 mock (WBS #18),
- * port từ app Flutter (lib/mocks/video_mock.dart).
- */
+/** Video tuyên truyền mẫu cấp xã — Phase 1 mock (WBS #18). */
 export const mockVideos: VideoItem[] = [
   {
     id: "v1",

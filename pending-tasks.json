@@ -100,7 +100,7 @@
   },
   {
     "id": "P1-10",
-    "name": "CMS nội dung Mobile",
+    "name": "CMS nội dung Mini App",
     "description": "WBS #10 (chưa có mockup — thiết kế theo design system) — CRUD tin tức / sự kiện / thông báo, video tuyên truyền, bản tin truyền thanh; gửi broadcast ZNS/push; 2 lịch sử gửi (công dân / nội bộ).",
     "planFilePath": "plans/p1-10-cms.md",
     "createdAt": "2026-08-27T11:40:31.666Z",
@@ -114,96 +114,6 @@
     "planFilePath": "plans/p1-11-users-security.md",
     "createdAt": "2026-08-27T11:40:31.666Z",
     "updatedAt": "2026-08-27T12:12:49.190Z",
-    "status": "done"
-  },
-  {
-    "id": "P2-00",
-    "name": "Thiết kế UI/UX App công dân (Flutter)",
-    "description": "Design system Flutter (Material 3 tuỳ biến theo nhận diện ViGov: navy #1B3A5C, hồng #E91E8C), theme sáng, cỡ chữ điều chỉnh được; wireframe 9 màn + luồng điều hướng bottom nav. App chạy Android + iOS từ 1 codebase.",
-    "planFilePath": "plans/p2-00-mobile-design.md",
-    "createdAt": "2026-08-27T11:40:31.666Z",
-    "updatedAt": "2026-08-27T16:38:23.897Z",
-    "status": "done"
-  },
-  {
-    "id": "P2-12",
-    "name": "Mobile — Home & Định danh SĐT",
-    "description": "Scaffold Flutter (go_router, provider); luồng định danh số điện thoại + OTP (mock, backend thật ở P3); Trang chủ: header chào theo định danh, 6 ô truy cập nhanh, widget 'Phản ánh của tôi' mới nhất, mini-feed tin tức.",
-    "planFilePath": "plans/p2-12-home-identity.md",
-    "createdAt": "2026-08-27T11:40:31.666Z",
-    "updatedAt": "2026-08-27T16:38:23.897Z",
-    "status": "done"
-  },
-  {
-    "id": "P2-13",
-    "name": "Mobile — Gửi phản ánh 3 bước",
-    "description": "Stepper 3 bước: chọn 1/12 danh mục → mô tả (validate) + tối đa 3 ảnh (mock picker, preview/xoá) + vị trí GPS (mock service, sửa được địa chỉ) → xác nhận: sinh mã phiếu, cam kết SLA theo danh mục, nút theo dõi phiếu. Xử lý luồng từ chối quyền GPS/camera (nhập tay).",
-    "planFilePath": "plans/p2-13-send-feedback.md",
-    "createdAt": "2026-08-27T11:40:31.666Z",
-    "updatedAt": "2026-08-27T16:38:23.897Z",
-    "status": "done"
-  },
-  {
-    "id": "P2-14",
-    "name": "Mobile — Phản ánh của tôi",
-    "description": "Danh sách phiếu của công dân (lọc trạng thái), màn chi tiết: mô tả, ảnh, timeline xử lý (widget dùng chung với Tra cứu hồ sơ), đánh giá sao khi hoàn thành.",
-    "planFilePath": "plans/p2-14-my-feedback.md",
-    "createdAt": "2026-08-27T11:40:31.666Z",
-    "updatedAt": "2026-08-27T16:38:23.897Z",
-    "status": "done"
-  },
-  {
-    "id": "P2-15",
-    "name": "Mobile — Tra cứu Hồ sơ",
-    "description": "Nhập mã hồ sơ + quét QR (adapter mock, plugin camera thật ở tích hợp ngoài); kết quả: thủ tục, người nộp, trạng thái, cán bộ phụ trách, tracker 4 bước; lưu & hiển thị lịch sử tra cứu (shared_preferences).",
-    "planFilePath": "plans/p2-15-lookup.md",
-    "createdAt": "2026-08-27T11:40:31.666Z",
-    "updatedAt": "2026-08-27T16:38:23.897Z",
-    "status": "done"
-  },
-  {
-    "id": "P2-16",
-    "name": "Mobile — Tin tức, Sự kiện",
-    "description": "3 tab (Tin tức/Sự kiện/Thông báo) đồng bộ CMS admin-web; danh sách card + màn chi tiết bài viết.",
-    "planFilePath": "plans/p2-16-news.md",
-    "createdAt": "2026-08-27T11:40:31.666Z",
-    "updatedAt": "2026-08-27T16:38:23.897Z",
-    "status": "done"
-  },
-  {
-    "id": "P2-17",
-    "name": "Mobile — Truyền thanh phường",
-    "description": "Danh sách bản tin theo ngày, lọc chuyên mục; audio player sticky toàn app: play/pause, thanh tua, ±15s, tốc độ 1x/1.5x/2x, giữ phát khi chuyển màn (controller mock, just_audio thật ở tích hợp ngoài).",
-    "planFilePath": "plans/p2-17-radio.md",
-    "createdAt": "2026-08-27T11:40:31.666Z",
-    "updatedAt": "2026-08-27T16:38:23.897Z",
-    "status": "done"
-  },
-  {
-    "id": "P2-18",
-    "name": "Mobile — Video tuyên truyền",
-    "description": "Lưới video (thumbnail, thời lượng, lượt xem), lọc chủ đề, màn phát video (mock player; YouTube/tự host chờ khách — câu hỏi mở #19).",
-    "planFilePath": "plans/p2-18-video.md",
-    "createdAt": "2026-08-27T11:40:31.666Z",
-    "updatedAt": "2026-08-27T16:38:23.897Z",
-    "status": "done"
-  },
-  {
-    "id": "P2-19",
-    "name": "Mobile — Danh bạ chính quyền",
-    "description": "Tìm theo tên/chức danh/SĐT; 2 nhóm (Lãnh đạo/Bộ phận chuyên môn); nút gọi nhanh (url_launcher mock adapter); nút nhắn tin cho lãnh đạo.",
-    "planFilePath": "plans/p2-19-directory.md",
-    "createdAt": "2026-08-27T11:40:31.666Z",
-    "updatedAt": "2026-08-27T16:38:23.897Z",
-    "status": "done"
-  },
-  {
-    "id": "P2-20",
-    "name": "Mobile — Cá nhân & Cài đặt",
-    "description": "Cỡ chữ lớn áp dụng toàn app (textScaleFactor qua provider, lưu shared_preferences), toggle nhận thông báo đẩy, thông tin định danh, lối tắt Phản ánh của tôi + lịch sử tra cứu, đăng xuất.",
-    "planFilePath": "plans/p2-20-profile.md",
-    "createdAt": "2026-08-27T11:40:31.666Z",
-    "updatedAt": "2026-08-27T16:38:23.897Z",
     "status": "done"
   },
   {
@@ -402,15 +312,6 @@
     "planFilePath": "plans/p5-01-admin-web-api.md",
     "createdAt": "2026-08-28T02:43:23.547Z",
     "updatedAt": "2026-08-28T03:41:10.179Z",
-    "status": "done"
-  },
-  {
-    "id": "P5-02",
-    "name": "Nối app Flutter vào API thật",
-    "description": "App công dân Android/iOS đang chạy hoàn toàn bằng mock trong lib/mocks/*. Nối vào backend: định danh SĐT + OTP, gửi và theo dõi phản ánh, tin tức, truyền thanh, video, tra cứu hồ sơ.",
-    "planFilePath": "plans/p5-02-mobile-api.md",
-    "createdAt": "2026-08-28T02:43:23.547Z",
-    "updatedAt": "2026-08-28T08:04:42.179Z",
     "status": "done"
   },
   {

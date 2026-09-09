@@ -1,4 +1,4 @@
-# P1-10 — CMS nội dung Mobile
+# P1-10 — CMS nội dung Mini App
 
 > Trạng thái: **done** · Nguồn: ESTIMATE_TECHNICAL.md · Tạo: 2026-08-27
 

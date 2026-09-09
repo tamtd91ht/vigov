@@ -1,0 +1,846 @@
+<title>ViGov Phase 1</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+
+<style>
+  :root {
+    --ground:      #FBFAF8;
+    --surface:     #FFFFFF;
+    --surface-alt: #F4F2EF;
+    --ink:         #1A1D21;
+    --ink-soft:    #5C5F66;
+    --ink-faint:   #8A8B90;
+    --line:        #E2DFDA;
+    --line-strong: #CFCBC4;
+    --accent:      #A6192E;
+    --accent-soft: #F6E9EA;
+    --ok:          #1F7A4D;
+    --ok-soft:     #E6F2EB;
+    --warn:        #A66A00;
+    --warn-soft:   #FAF0DC;
+    --hold:        #4A5FA5;
+    --hold-soft:   #E9ECF7;
+    --shadow:      0 1px 2px rgba(26,29,33,.05), 0 8px 24px -16px rgba(26,29,33,.25);
+
+    --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+    --body:    "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+    --mono:    "JetBrains Mono", ui-monospace, "Cascadia Mono", monospace;
+
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #131519;
+      --surface:     #1B1E24;
+      --surface-alt: #22262D;
+      --ink:         #ECEAE6;
+      --ink-soft:    #A7A9AE;
+      --ink-faint:   #7C7E84;
+      --line:        #2C3038;
+      --line-strong: #3D424B;
+      --accent:      #E9657A;
+      --accent-soft: #34181E;
+      --ok:          #5CC08B;
+      --ok-soft:     #16301F;
+      --warn:        #DFA644;
+      --warn-soft:   #33270F;
+      --hold:        #8FA2E0;
+      --hold-soft:   #1C2136;
+      --shadow:      0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:      #131519;
+    --surface:     #1B1E24;
+    --surface-alt: #22262D;
+    --ink:         #ECEAE6;
+    --ink-soft:    #A7A9AE;
+    --ink-faint:   #7C7E84;
+    --line:        #2C3038;
+    --line-strong: #3D424B;
+    --accent:      #E9657A;
+    --accent-soft: #34181E;
+    --ok:          #5CC08B;
+    --ok-soft:     #16301F;
+    --warn:        #DFA644;
+    --warn-soft:   #33270F;
+    --hold:        #8FA2E0;
+    --hold-soft:   #1C2136;
+    --shadow:      0 1px 2px rgba(0,0,0,.4), 0 8px 24px -16px rgba(0,0,0,.7);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 32px 96px;
+  }
+
+  /* ---------- Masthead ---------- */
+
+  .masthead {
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+  }
+  .masthead-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 40px 32px 32px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 10px;
+  }
+  h1 {
+    font-family: var(--display);
+    font-weight: 800;
+    font-size: clamp(34px, 5vw, 52px);
+    line-height: 1.04;
+    letter-spacing: -.022em;
+    margin: 0 0 12px;
+    text-wrap: balance;
+  }
+  .lede {
+    margin: 0;
+    max-width: 56ch;
+    color: var(--ink-soft);
+    font-size: 17px;
+  }
+  .stamp {
+    border-left: 3px solid var(--accent);
+    padding-left: 16px;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.9;
+    color: var(--ink-soft);
+    white-space: nowrap;
+  }
+  .stamp b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- Status band ---------- */
+
+  .band-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 32px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    width: 100%;
+  }
+  .band-outer { background: var(--surface-alt); border-bottom: 1px solid var(--line); }
+  .stat {
+    padding: 20px 24px 20px 0;
+    border-right: 1px solid var(--line);
+  }
+  .stat:last-child { border-right: 0; }
+  .stat:not(:first-child) { padding-left: 24px; }
+  .stat-n {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 30px;
+    line-height: 1.1;
+    letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .stat-l {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin-top: 2px;
+  }
+
+  /* ---------- Sections ---------- */
+
+  section { padding-top: 64px; scroll-margin-top: 16px; }
+
+  h2 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 27px;
+    letter-spacing: -.015em;
+    margin: 0 0 6px;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    text-wrap: balance;
+  }
+  h2 .num {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: .06em;
+  }
+  .sub {
+    margin: 0 0 28px;
+    color: var(--ink-soft);
+    max-width: 68ch;
+  }
+
+  h3 {
+    font-family: var(--display);
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: -.01em;
+    margin: 0;
+  }
+
+  /* ---------- Module blocks ---------- */
+
+  .module {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .module-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px 16px;
+    padding: 18px 22px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(to bottom, var(--surface), var(--surface-alt));
+  }
+  .module-head .tech {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    color: var(--ink-faint);
+    margin-left: auto;
+    white-space: nowrap;
+  }
+  .pill {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    padding: 4px 9px;
+    border-radius: 3px;
+  }
+  .pill.ok   { background: var(--ok-soft);   color: var(--ok); }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .pill.hold { background: var(--hold-soft); color: var(--hold); }
+
+  .feat {
+    display: grid;
+    grid-template-columns: 210px 1fr;
+    gap: 0 24px;
+    padding: 13px 22px;
+    border-bottom: 1px solid var(--line);
+    align-items: baseline;
+  }
+  .feat:last-child { border-bottom: 0; }
+  .feat dt {
+    font-weight: 600;
+    font-size: 15px;
+  }
+  .feat dd {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 14.5px;
+  }
+  .feat code, .inline-code {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: var(--surface-alt);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 1px 5px;
+    color: var(--ink);
+  }
+  dl { margin: 0; }
+
+  /* ---------- Architecture ---------- */
+
+  .arch {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 28px 24px;
+    overflow-x: auto;
+    box-shadow: var(--shadow);
+  }
+  .arch svg { display: block; margin: 0 auto; min-width: 640px; }
+
+  .rules {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    margin-top: 20px;
+    overflow: hidden;
+  }
+  .rule {
+    background: var(--surface);
+    padding: 18px 20px;
+  }
+  .rule h4 {
+    font-family: var(--display);
+    font-size: 15px;
+    font-weight: 700;
+    margin: 0 0 5px;
+  }
+  .rule p { margin: 0; font-size: 14px; color: var(--ink-soft); }
+
+  /* ---------- Tables ---------- */
+
+  .tablebox {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    background: var(--surface);
+    box-shadow: var(--shadow);
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 14.5px;
+    min-width: 560px;
+  }
+  th, td {
+    text-align: left;
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  thead th {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 600;
+    background: var(--surface-alt);
+    white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.role { font-weight: 600; white-space: nowrap; }
+  .perm {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 2px 7px;
+    border-radius: 3px;
+    background: var(--surface-alt);
+    color: var(--ink-soft);
+    border: 1px solid var(--line);
+  }
+  .perm.p-admin   { background: var(--accent-soft); color: var(--accent); border-color: transparent; font-weight: 600; }
+  .perm.p-approve { background: var(--hold-soft);   color: var(--hold);   border-color: transparent; font-weight: 600; }
+  .perm.p-edit    { background: var(--ok-soft);     color: var(--ok);     border-color: transparent; font-weight: 600; }
+  .num-cell { font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 13px; }
+
+  /* ---------- Verification ---------- */
+
+  .checks {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(268px, 1fr));
+    gap: 14px;
+  }
+  .check {
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--ok);
+    border-radius: 3px;
+    background: var(--surface);
+    padding: 14px 16px;
+  }
+  .check.pending { border-left-color: var(--hold); }
+  .check h4 {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 0 0 3px;
+    font-family: var(--display);
+  }
+  .check p { margin: 0; font-size: 13.5px; color: var(--ink-soft); }
+
+  /* ---------- Notice ---------- */
+
+  .notice {
+    border: 1px solid var(--line);
+    border-top: 3px solid var(--warn);
+    border-radius: 4px;
+    background: var(--surface);
+    padding: 22px 24px;
+    box-shadow: var(--shadow);
+  }
+  .notice > p:first-child { margin-top: 0; }
+  .notice ul { margin: 0; padding-left: 20px; }
+  .notice li { margin-bottom: 8px; color: var(--ink-soft); font-size: 14.5px; }
+  .notice li:last-child { margin-bottom: 0; }
+  .notice li b { color: var(--ink); }
+
+  footer {
+    margin-top: 72px;
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+    font-size: 13px;
+    color: var(--ink-faint);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 24px;
+    justify-content: space-between;
+  }
+  footer span { font-family: var(--mono); }
+
+  @media (max-width: 760px) {
+    .wrap, .masthead-inner { padding-left: 20px; padding-right: 20px; }
+    .band-inner { grid-template-columns: repeat(2, 1fr); padding: 0 20px; }
+    .stat { border-right: 0; padding: 16px 0; }
+    .stat:nth-child(odd) { border-right: 1px solid var(--line); padding-right: 20px; }
+    .stat:nth-child(even) { padding-left: 20px; }
+    .stat:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+    .feat { grid-template-columns: 1fr; gap: 3px; }
+    .stamp { white-space: normal; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div>
+      <p class="eyebrow">Nền tảng Điều hành số cấp Xã / Phường · Phase 1</p>
+      <h1>ViGov</h1>
+      <p class="lede">
+        Bốn sản phẩm chạy trên một nền nghiệp vụ và một bộ dữ liệu: web quản trị cho cán bộ,
+        API nền tảng, app công dân Android/iOS và Zalo Mini App.
+      </p>
+    </div>
+    <div class="stamp">
+      Bản demo đối tác<br>
+      Cập nhật <b>09/09/2026</b><br>
+      Tiến độ <b>56/61</b> hạng mục
+    </div>
+  </div>
+</header>
+
+<div class="band-outer">
+  <div class="band-inner">
+    <div class="stat">
+      <div class="stat-n">4</div>
+      <div class="stat-l">module sản phẩm</div>
+    </div>
+    <div class="stat">
+      <div class="stat-n">21</div>
+      <div class="stat-l">module API · 135 route</div>
+    </div>
+    <div class="stat">
+      <div class="stat-n">13</div>
+      <div class="stat-l">phân hệ web quản trị</div>
+    </div>
+    <div class="stat">
+      <div class="stat-n">388</div>
+      <div class="stat-l">test tự động đang pass</div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <section id="modules">
+    <h2><span class="num">01</span> Ba module đã xây dựng</h2>
+    <p class="sub">
+      Mỗi module tự chứa, sẵn sàng tách repo khi cần. Cả ba dùng chung một bộ tên trường —
+      <span class="inline-code">admin-web/src/types/index.ts</span> là nguồn chuẩn.
+    </p>
+
+    <!-- Web quản trị -->
+    <div class="module">
+      <div class="module-head">
+        <h3>Web Quản trị</h3>
+        <span class="pill ok">Code-complete</span>
+        <span class="tech">Next.js 16 · App Router · TypeScript · 88 test</span>
+      </div>
+      <dl>
+        <div class="feat">
+          <dt>Bảng điều hành</dt>
+          <dd>Thẻ KPI và biểu đồ tổng hợp toàn xã; danh sách tự làm mới qua Socket.IO.</dd>
+        </div>
+        <div class="feat">
+          <dt>Nhiệm vụ</dt>
+          <dd>Chuyển đổi Kanban ⇄ bảng, checklist, ghi nhận vướng mắc, bình luận, tệp minh chứng đính kèm tải lên/tải về thật.</dd>
+        </div>
+        <div class="feat">
+          <dt>Văn bản &amp; Đơn thư</dt>
+          <dd>OCR trích tự động 7 trường, cán bộ xác nhận từng trường trước khi lưu; đính kèm phụ lục.</dd>
+        </div>
+        <div class="feat">
+          <dt>Giải ngân</dt>
+          <dd>Đề nghị giải ngân, hạng mục ngân sách, theo dõi tiến độ và vướng mắc theo từng hạng mục.</dd>
+        </div>
+        <div class="feat">
+          <dt>Phản ánh người dân</dt>
+          <dd>Đồng hồ đếm ngược SLA, ghim vị trí trên bản đồ, ảnh hiện trường, chuyển thẳng phản ánh thành nhiệm vụ; tiếp nhận được cả phản ánh nộp trực tiếp tại xã.</dd>
+        </div>
+        <div class="feat">
+          <dt>Bản đồ kinh tế số</dt>
+          <dd>Lớp dữ liệu và ghim cơ sở kinh doanh trên nền bản đồ thật (MapLibre) hoặc bản mô phỏng, chọn bằng biến môi trường.</dd>
+        </div>
+        <div class="feat">
+          <dt>Báo cáo</dt>
+          <dd>Kết xuất <b>Excel · PDF · PowerPoint</b>. Bản PDF nhúng sẵn phông Roboto nên đủ dấu tiếng Việt.</dd>
+        </div>
+        <div class="feat">
+          <dt>Cấu hình</dt>
+          <dd>Ngưỡng SLA, cây tổ chức, lĩnh vực phản ánh, danh mục vai trò, tài khoản cán bộ.</dd>
+        </div>
+        <div class="feat">
+          <dt>Nội dung Mini App (CMS)</dt>
+          <dd>Bài viết, video tuyên truyền, bản tin truyền thanh, gửi thông báo hàng loạt tới công dân.</dd>
+        </div>
+        <div class="feat">
+          <dt>Người dùng Mini App</dt>
+          <dd>Danh sách công dân kèm ngày đăng ký và hoạt động gần nhất, phiên đăng nhập, danh sách chặn, xoá mềm có khôi phục.</dd>
+        </div>
+        <div class="feat">
+          <dt>Hồ sơ cá nhân · Trợ giúp</dt>
+          <dd>Tự đổi mật khẩu, xem và thu hồi thiết bị đang mở phiên; hướng dẫn theo phân hệ và bảng vai trò × quyền.</dd>
+        </div>
+        <div class="feat">
+          <dt>Xuyên suốt</dt>
+          <dd>Tìm kiếm toàn cục và khay thông báo trên thanh trên cùng. Link chi tiết chia sẻ được — <span class="inline-code">/tasks?code=NV-2601</span> mở đúng bản ghi đó cho đồng nghiệp.</dd>
+        </div>
+      </dl>
+    </div>
+
+    <!-- Backend -->
+    <div class="module">
+      <div class="module-head">
+        <h3>API nền tảng</h3>
+        <span class="pill ok">Code-complete</span>
+        <span class="tech">NestJS 11 · MongoDB · RabbitMQ · Socket.IO · 300 test + 46 e2e</span>
+      </div>
+      <dl>
+        <div class="feat">
+          <dt>Xác thực</dt>
+          <dd>Ba luồng: cán bộ (tài khoản + mật khẩu bcrypt), công dân (OTP 6 số), công dân qua Zalo (token định danh). Refresh token xoay vòng, có phát hiện dùng lại.</dd>
+        </div>
+        <div class="feat">
+          <dt>Phân quyền</dt>
+          <dd>RBAC 5 vai trò × 10 phân hệ × 4 mức quyền, guard toàn cục chặn mọi endpoint. Công dân bị 403 ở toàn bộ API quản trị — có test bảo vệ.</dd>
+        </div>
+        <div class="feat">
+          <dt>Quản lý phiên</dt>
+          <dd>JWT mang mã phiên; khoá hoặc xoá tài khoản là thu hồi token ngay. Người dùng tự xem và đóng phiên trên thiết bị khác.</dd>
+        </div>
+        <div class="feat">
+          <dt>Chính sách mật khẩu</dt>
+          <dd>Một nơi định nghĩa, áp cho cả ba đường (tạo tài khoản, quản trị đặt lại, tự đổi): tối thiểu 10 ký tự, có chữ và số, không trùng tên đăng nhập, không nằm trong danh sách mật khẩu phổ biến.</dd>
+        </div>
+        <div class="feat">
+          <dt>21 module nghiệp vụ</dt>
+          <dd>tasks · documents · feedback · disbursement · content · users · settings · search · audit · files · notification · workflow · reports · dossiers · catalogs · map · realtime · messaging · integrations · zalo-webhook · health.</dd>
+        </div>
+        <div class="feat">
+          <dt>Luồng liên phân hệ</dt>
+          <dd>Cảnh báo SLA chạy theo lịch, sự kiện đi qua RabbitMQ, cập nhật đẩy tới giao diện qua Socket.IO (phản ánh · nhiệm vụ · thông báo).</dd>
+        </div>
+        <div class="feat">
+          <dt>Kho tệp</dt>
+          <dd>Tệp riêng tư được cưỡng chế quyền, liên kết tải về ký số có hạn dùng.</dd>
+        </div>
+        <div class="feat">
+          <dt>Vận hành</dt>
+          <dd><span class="inline-code">/health</span> kiểm tra sống, <span class="inline-code">/health/ready</span> báo kèm trạng thái MongoDB và RabbitMQ. Nhật ký thao tác ghi tự động qua interceptor.</dd>
+        </div>
+      </dl>
+    </div>
+
+    <!-- Zalo -->
+    <div class="module">
+      <div class="module-head">
+        <h3>Zalo Mini App công dân</h3>
+        <span class="pill ok">Code-complete</span>
+        <span class="tech">React 19 · Vite · TypeScript · zmp-sdk</span>
+      </div>
+      <dl>
+        <div class="feat">
+          <dt>Định danh</dt>
+          <dd>Định danh qua tài khoản Zalo; toàn bộ màn hình nghiệp vụ nằm sau lớp chặn định danh.</dd>
+        </div>
+        <div class="feat">
+          <dt>Gửi phản ánh</dt>
+          <dd>Biểu mẫu 3 bước: nội dung và lĩnh vực → ảnh hiện trường → ghim vị trí trên bản đồ.</dd>
+        </div>
+        <div class="feat">
+          <dt>Phản ánh của tôi</dt>
+          <dd>Theo dõi trạng thái xử lý từng phản ánh đã gửi, kèm phản hồi của cán bộ.</dd>
+        </div>
+        <div class="feat">
+          <dt>Tra cứu hồ sơ một cửa</dt>
+          <dd>Nhập mã hồ sơ, xem tiến trình theo từng bước xử lý.</dd>
+        </div>
+        <div class="feat">
+          <dt>Quét thẻ CCCD</dt>
+          <dd>Đọc mã QR trên thẻ căn cước để tự điền thông tin, qua adapter thay được nhà cung cấp.</dd>
+        </div>
+        <div class="feat">
+          <dt>Thông tin xã</dt>
+          <dd>Tin tức, video tuyên truyền, bản tin truyền thanh, danh bạ chính quyền, bản đồ kinh tế số, hồ sơ cá nhân.</dd>
+        </div>
+      </dl>
+    </div>
+
+  </section>
+
+  <section id="kien-truc">
+    <h2><span class="num">02</span> Kiến trúc</h2>
+    <p class="sub">Hai kênh giao diện gọi chung một API Gateway. Mọi dịch vụ bên thứ ba nằm sau adapter.</p>
+
+    <div class="arch">
+      <svg viewBox="0 0 700 340" width="700" height="340" role="img" aria-label="Sơ đồ kiến trúc: hai kênh giao diện gọi API Gateway NestJS, gateway nối MongoDB, RabbitMQ và các adapter bên thứ ba">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--line-strong)"></path>
+          </marker>
+        </defs>
+
+        <!-- clients -->
+        <g font-family="Source Sans 3, sans-serif">
+          <rect x="80"  y="16" width="230" height="54" rx="3" fill="var(--surface-alt)" stroke="var(--line-strong)"></rect>
+          <text x="195" y="38" text-anchor="middle" font-size="14" font-weight="700" fill="var(--ink)">Web Quản trị</text>
+          <text x="195" y="56" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">Next.js · cán bộ</text>
+
+          <rect x="390" y="16" width="230" height="54" rx="3" fill="var(--surface-alt)" stroke="var(--line-strong)"></rect>
+          <text x="505" y="38" text-anchor="middle" font-size="14" font-weight="700" fill="var(--ink)">Zalo Mini App</text>
+          <text x="505" y="56" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">React + Vite · công dân</text>
+
+          <!-- rails down to bus -->
+          <path d="M195 70 V 96" stroke="var(--line-strong)" fill="none"></path>
+          <path d="M505 70 V 96" stroke="var(--line-strong)" fill="none"></path>
+          <path d="M195 96 H 505" stroke="var(--line-strong)" fill="none"></path>
+          <path d="M350 96 V 126" stroke="var(--line-strong)" fill="none" marker-end="url(#ar)"></path>
+          <text x="366" y="114" font-size="11" font-family="JetBrains Mono, monospace" fill="var(--ink-faint)">REST + JWT</text>
+
+          <!-- gateway -->
+          <rect x="150" y="130" width="400" height="76" rx="3" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.6"></rect>
+          <text x="350" y="155" text-anchor="middle" font-size="15" font-weight="700" fill="var(--ink)">API Gateway — NestJS 11</text>
+          <text x="350" y="176" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">JwtAuthGuard · RBAC 5 vai trò · ThrottlerGuard</text>
+          <text x="350" y="193" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">AuditInterceptor · 21 module · 135 route</text>
+
+          <!-- fan out -->
+          <path d="M350 206 V 226" stroke="var(--line-strong)" fill="none"></path>
+          <path d="M120 226 H 580" stroke="var(--line-strong)" fill="none"></path>
+          <path d="M120 226 V 254" stroke="var(--line-strong)" fill="none" marker-end="url(#ar)"></path>
+          <path d="M350 226 V 254" stroke="var(--line-strong)" fill="none" marker-end="url(#ar)"></path>
+          <path d="M580 226 V 254" stroke="var(--line-strong)" fill="none" marker-end="url(#ar)"></path>
+
+          <rect x="30"  y="258" width="180" height="58" rx="3" fill="var(--surface-alt)" stroke="var(--line-strong)"></rect>
+          <text x="120" y="280" text-anchor="middle" font-size="13.5" font-weight="700" fill="var(--ink)">MongoDB</text>
+          <text x="120" y="299" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">Mongoose · 22 collection</text>
+
+          <rect x="260" y="258" width="180" height="58" rx="3" fill="var(--surface-alt)" stroke="var(--line-strong)"></rect>
+          <text x="350" y="280" text-anchor="middle" font-size="13.5" font-weight="700" fill="var(--ink)">RabbitMQ</text>
+          <text x="350" y="299" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">sự kiện liên module</text>
+
+          <rect x="490" y="258" width="180" height="58" rx="3" fill="var(--surface-alt)" stroke="var(--line-strong)"></rect>
+          <text x="580" y="280" text-anchor="middle" font-size="13.5" font-weight="700" fill="var(--ink)">Adapter bên thứ 3</text>
+          <text x="580" y="299" text-anchor="middle" font-size="11.5" fill="var(--ink-soft)">OCR · GIS · CCCD · ZNS · FCM</text>
+        </g>
+      </svg>
+    </div>
+
+    <div class="rules">
+      <div class="rule">
+        <h4>Không hardcode</h4>
+        <p>URL, tên đơn vị, danh mục, ngưỡng SLA, trạng thái, màu sắc nằm ở tệp cấu hình hoặc biến môi trường — không rải rác trong component.</p>
+      </div>
+      <div class="rule">
+        <h4>Adapter cho mọi dịch vụ ngoài</h4>
+        <p>Đổi nhà cung cấp OCR, bản đồ, ZNS hay push chỉ sửa một tệp adapter, không đụng tầng nghiệp vụ.</p>
+      </div>
+      <div class="rule">
+        <h4>Một nguồn chuẩn tên trường</h4>
+        <p>Ba module dùng chung một bộ kiểu dữ liệu, nên dữ liệu đi từ Zalo Mini App lên web quản trị không lệch tên trường.</p>
+      </div>
+      <div class="rule">
+        <h4>Ba tầng, không đi tắt</h4>
+        <p>Giao diện → tầng service → API. Component không bao giờ gọi thẳng HTTP, nên đổi endpoint chỉ sửa một tầng.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="phan-quyen">
+    <h2><span class="num">03</span> Phân quyền</h2>
+    <p class="sub">
+      Năm vai trò × mười phân hệ × bốn mức quyền <span class="inline-code">view &lt; edit &lt; approve &lt; admin</span>.
+      Định nghĩa một lần ở backend, đồng bộ sang web quản trị; guard toàn cục chặn ở tầng API nên ẩn nút trên giao diện không phải là biện pháp bảo vệ duy nhất.
+    </p>
+
+    <div class="tablebox">
+      <table>
+        <thead>
+          <tr>
+            <th>Vai trò</th>
+            <th>Nhiệm vụ</th>
+            <th>Văn bản</th>
+            <th>Giải ngân</th>
+            <th>Phản ánh</th>
+            <th>Người dùng</th>
+            <th>Cấu hình</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="role">Quản trị hệ thống</td>
+            <td><span class="perm p-admin">admin</span></td>
+            <td><span class="perm p-admin">admin</span></td>
+            <td><span class="perm p-admin">admin</span></td>
+            <td><span class="perm p-admin">admin</span></td>
+            <td><span class="perm p-admin">admin</span></td>
+            <td><span class="perm p-admin">admin</span></td>
+          </tr>
+          <tr>
+            <td class="role">Lãnh đạo phê duyệt</td>
+            <td><span class="perm p-approve">approve</span></td>
+            <td><span class="perm p-approve">approve</span></td>
+            <td><span class="perm p-approve">approve</span></td>
+            <td><span class="perm p-approve">approve</span></td>
+            <td><span class="perm">view</span></td>
+            <td><span class="perm">view</span></td>
+          </tr>
+          <tr>
+            <td class="role">Chuyên viên xử lý</td>
+            <td><span class="perm p-edit">edit</span></td>
+            <td><span class="perm p-edit">edit</span></td>
+            <td><span class="perm">view</span></td>
+            <td><span class="perm p-edit">edit</span></td>
+            <td><span class="perm">view</span></td>
+            <td><span class="perm">view</span></td>
+          </tr>
+          <tr>
+            <td class="role">Kế toán – giải ngân</td>
+            <td><span class="perm">view</span></td>
+            <td><span class="perm">view</span></td>
+            <td><span class="perm p-edit">edit</span></td>
+            <td><span class="perm">view</span></td>
+            <td><span class="perm">view</span></td>
+            <td><span class="perm">view</span></td>
+          </tr>
+          <tr>
+            <td class="role">Tiếp nhận một cửa</td>
+            <td><span class="perm">view</span></td>
+            <td><span class="perm p-edit">edit</span></td>
+            <td><span class="perm">view</span></td>
+            <td><span class="perm p-edit">edit</span></td>
+            <td><span class="perm p-edit">edit</span></td>
+            <td><span class="perm">view</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="kiem-chung">
+    <h2><span class="num">04</span> Đã kiểm chứng thực tế</h2>
+    <p class="sub">Không phải mô tả thiết kế — đây là những gì đã chạy được và đo được.</p>
+
+    <div class="checks">
+      <div class="check">
+        <h4>Kiểm thử tự động</h4>
+        <p>300 unit test + 46 e2e ở backend · 88 test web quản trị · type-check và lint 0 lỗi trên cả ba module.</p>
+      </div>
+      <div class="check">
+        <h4>Nối cơ sở dữ liệu thật</h4>
+        <p>MongoDB đã nối, seed 10 tài khoản cán bộ theo danh bạ xã và 12 cấu hình SLA. Đăng nhập web quản trị → JWT → các API trả 200.</p>
+      </div>
+      <div class="check">
+        <h4>Hai kênh dùng chung dữ liệu</h4>
+        <p>Web quản trị và Zalo Mini App gọi cùng một bộ API. Không màn hình nào còn đọc dữ liệu mẫu trực tiếp.</p>
+      </div>
+      <div class="check">
+        <h4>Realtime hai đầu</h4>
+        <p>Socket.IO đã nối cả phía máy chủ và phía giao diện: phản ánh mới, nhiệm vụ đổi trạng thái, thông báo — danh sách tự cập nhật.</p>
+      </div>
+      <div class="check">
+        <h4>Kết xuất báo cáo</h4>
+        <p>Excel, PDF và PowerPoint đều xuất được. PDF nhúng phông Roboto nên tiếng Việt đủ dấu, không lỗi ô vuông.</p>
+      </div>
+      <div class="check">
+        <h4>Bảo mật</h4>
+        <p>Security header, CORS whitelist, giới hạn 5 lượt đăng nhập/phút, giới hạn sai OTP, thu hồi token khi khoá tài khoản, phát hiện refresh token dùng lại.</p>
+      </div>
+      <div class="check">
+        <h4>Đóng gói &amp; CI/CD</h4>
+        <p>Dockerfile cho 3 module, <span class="inline-code">docker-compose.yml</span> dựng toàn hệ, Jenkinsfile và GitHub Actions.</p>
+      </div>
+      <div class="check pending">
+        <h4>Tài liệu bàn giao</h4>
+        <p>Sáu tài liệu kỹ thuật, runbook triển khai VPS từng bước, hồ sơ ba store, 10 kịch bản UAT hồi quy, rà soát bảo mật.</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="con-lai">
+    <h2><span class="num">05</span> Còn chờ bên ngoài</h2>
+    <p class="sub">
+      Năm hạng mục chưa đóng được, tất cả đều chờ quyết định hoặc tài khoản từ phía ngoài đội phát triển.
+      Adapter đã dựng sẵn cho từng cái — có nhà cung cấp là cắm vào, không phải viết lại nghiệp vụ.
+    </p>
+
+    <div class="notice">
+      <ul>
+        <li>
+          <b>Nhà cung cấp OCR và đọc thẻ CCCD</b> — chờ khách chốt. Adapter và luồng xác nhận 7 trường đã hoàn thiện.
+        </li>
+        <li>
+          <b>Bản đồ nền chính thức</b> — hiện chạy MapLibre với nền mô phỏng. Cần khách chốt VietMap hay Goong;
+          Google Maps không có giấy phép chính thức tại Việt Nam.
+        </li>
+        <li>
+          <b>Gửi ZNS và push thật</b> — cần khách đăng ký Zalo Business và duyệt template. OTP công dân hiện ghi ra log máy chủ.
+        </li>
+        <li>
+          <b>Quyền <span class="inline-code">getPhoneNumber</span> của Zalo Mini App</b> — chờ Zalo xét duyệt; đang dùng mã tạm để demo.
+        </li>
+        <li>
+          <b>Tài khoản Google Play và Apple Developer</b> — Apple cần mã D-U-N-S của đơn vị; iOS cần thêm máy macOS để build.
+        </li>
+      </ul>
+    </div>
+
+    <p class="sub" style="margin-top:24px">
+      Hai điểm cần thống nhất phạm vi: WBS #21 ghi “micro-services” trong khi hệ hiện là
+      <b>monolith mô-đun</b> trong monorepo — đã có thư viện dùng chung và RabbitMQ nên tách được về sau,
+      nhưng chưa tách thành nhiều dịch vụ triển khai độc lập. Và hệ hiện phục vụ <b>một đơn vị</b>,
+      tên đơn vị lấy từ biến môi trường; nếu cần đa phường/xã thì đây là hạng mục riêng.
+    </p>
+  </section>
+
+  <footer>
+    <span>ViGov Phase 1 · Báo cáo tính năng · 09/09/2026</span>
+    <span>56/61 hạng mục hoàn thành · 3 đang làm · 2 chờ bên ngoài</span>
+  </footer>
+
+</div>

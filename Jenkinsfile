@@ -3,8 +3,8 @@
 //
 // Luồng:
 //   Checkout
-//     → Build & Test (4 module chạy SONG SONG: backend / admin-web /
-//       zalo-miniapp / mobile)
+//     → Build & Test (3 module chạy SONG SONG: backend / admin-web /
+//       zalo-miniapp)
 //     → Docker Build & Push  (tag = <branch>-<git short sha> + <branch>-latest)
 //     → Deploy Staging       (tự động, chỉ nhánh `develop`)
 //     → Manual Approval      (input — người phụ trách bấm duyệt)
@@ -20,11 +20,9 @@
 //   vigov-registry-credentials  Username with password  — tài khoản Docker registry
 //   vigov-staging-ssh           SSH Username with private key — deploy staging
 //   vigov-production-ssh        SSH Username with private key — deploy production
-//   vigov-android-keystore      Secret file (tuỳ chọn) — keystore ký APK phát hành
 //
 // YÊU CẦU AGENT (Linux): docker + docker compose plugin, node >= 22 (npm),
-// flutter SDK, jdk 17 (cho Android), ssh client. Nếu agent chưa có Flutter,
-// đặt nhãn riêng cho stage Mobile hoặc bật cờ SKIP_MOBILE.
+// ssh client.
 //
 // PLUGIN JENKINS CẦN CÀI: Pipeline, Credentials Binding, SSH Agent,
 // Timestamper, Workspace Cleanup (cleanWs).
@@ -57,8 +55,6 @@ pipeline {
                description: 'Máy chủ production (SSH)')
         string(name: 'REMOTE_DEPLOY_DIR', defaultValue: '/opt/vigov',
                description: 'Thư mục chứa docker-compose.yml + .env trên máy chủ đích')
-        booleanParam(name: 'SKIP_MOBILE', defaultValue: false,
-                     description: 'Bỏ qua stage Mobile khi agent chưa cài Flutter SDK')
     }
 
     environment {
@@ -141,31 +137,6 @@ pipeline {
                             sh 'npm ci'
                             sh 'npm run lint'
                             sh 'npm run build'
-                        }
-                    }
-                }
-
-                stage('Mobile') {
-                    when {
-                        expression { return !params.SKIP_MOBILE }
-                    }
-                    steps {
-                        dir('mobile') {
-                            sh 'flutter --version'
-                            sh 'flutter pub get'
-                            // flutter analyze trả mã lỗi khi có warning/error ⇒ build đỏ.
-                            sh 'flutter analyze'
-                            // Widget test + unit test của app công dân (P5-07);
-                            // flutter test trả mã lỗi khi có test đỏ ⇒ build đỏ.
-                            sh 'flutter test'
-                            sh 'flutter build apk --release'
-                        }
-                    }
-                    post {
-                        success {
-                            // APK để QA cài thử; bản ký phát hành lên CH Play làm ở P4-37.
-                            archiveArtifacts artifacts: 'mobile/build/app/outputs/flutter-apk/*.apk',
-                                             fingerprint: true, allowEmptyArchive: true
                         }
                     }
                 }
@@ -296,8 +267,6 @@ pipeline {
     post {
         always {
             // Lưu lại sản phẩm build để đối chiếu/khôi phục khi cần.
-            archiveArtifacts artifacts: 'mobile/build/app/outputs/flutter-apk/*.apk',
-                             fingerprint: true, allowEmptyArchive: true
             archiveArtifacts artifacts: 'docker-compose.yml, .env.example, deploy/**',
                              allowEmptyArchive: true
 

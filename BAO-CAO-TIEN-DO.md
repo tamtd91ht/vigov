@@ -14,7 +14,6 @@
 |---|---|---|---|
 | `admin-web/` | Next.js 16 · TypeScript | 11 phân hệ + Hồ sơ cá nhân + Trợ giúp | tsc 0 lỗi · eslint 0 · **88 test pass** · build 14 route |
 | `backend/` | NestJS 11 · MongoDB · JWT | 21 module API | **300 test pass** · build OK |
-| `mobile/` | Flutter · Material 3 | 9 màn app công dân (Android + iOS) | `flutter analyze` sạch · build APK OK |
 | `zalo-miniapp/` | ReactJS · Vite · zmp-sdk | 10 màn Zalo Mini App (kèm quét CCCD) | tsc 0 · oxlint 0 · build OK |
 
 **Web Quản trị:** Đăng nhập + RBAC, Dashboard, Nhiệm vụ (Kanban ⇄ bảng, đính kèm tệp), Văn bản & Đơn thư
@@ -26,7 +25,7 @@ toàn cục và khay thông báo; danh sách tự làm mới qua Socket.IO.
 content, users, settings, search, audit, files, notification, workflow, reports, dossiers, realtime,
 messaging (RabbitMQ), catalogs, integrations (OCR/GIS/CCCD adapter), map, zalo-webhook, health.
 
-**Kênh công dân:** app Flutter và Zalo Mini App gọi cùng một bộ API; không màn hình nào còn đọc dữ liệu
+**Kênh công dân:** Zalo Mini App gọi trực tiếp bộ API của backend; không màn hình nào còn đọc dữ liệu
 mẫu trực tiếp (chế độ mock chỉ còn là cờ môi trường để trình diễn giao diện khi chưa có backend).
 
 ---
@@ -34,13 +33,13 @@ mẫu trực tiếp (chế độ mock chỉ còn là cờ môi trường để t
 ## 2. Kiến trúc
 
 ```
-┌────────────┐   ┌────────────┐   ┌──────────────┐
-│ admin-web  │   │  mobile    │   │ zalo-miniapp │
-│ Next.js    │   │  Flutter   │   │ React+Vite   │
-└─────┬──────┘   └─────┬──────┘   └──────┬───────┘
-      │  REST + JWT    │                 │
-      └────────────────┴─────────────────┘
-                       ▼
+┌────────────┐              ┌──────────────┐
+│ admin-web  │              │ zalo-miniapp │
+│ Next.js    │              │ React+Vite   │
+└─────┬──────┘              └──────┬───────┘
+      │      REST + JWT            │
+      └──────────────┬─────────────┘
+                     ▼
               ┌──────────────────┐
               │  API Gateway     │  NestJS 11
               │  JwtAuthGuard    │  RBAC 5 vai trò
@@ -76,7 +75,7 @@ mẫu trực tiếp (chế độ mock chỉ còn là cờ môi trường để t
 | CI/CD | Jenkinsfile + GitHub Actions, Dockerfile 3 module, `docker-compose.yml` |
 | Bảo mật | Security headers, CORS whitelist, rate-limit đăng nhập 5 lượt/phút, giới hạn sai OTP, thu hồi token khi khoá/xoá tài khoản, refresh token có phát hiện dùng lại |
 | Kết xuất báo cáo | Excel (exceljs), PDF (pdfmake, nhúng Roboto để đủ dấu tiếng Việt), PowerPoint (pptxgenjs) |
-| Kiểm thử tự động | 300 test backend · 88 test Web Quản trị · `flutter analyze` sạch |
+| Kiểm thử tự động | 300 test backend · 88 test Web Quản trị · Zalo Mini App tsc + oxlint sạch |
 
 **Chạy:** `npm run dev` ở thư mục gốc → API 3001, Web 3100, Zalo Mini App 5173.
 
@@ -89,8 +88,6 @@ mẫu trực tiếp (chế độ mock chỉ còn là cờ môi trường để t
 | Chốt provider OCR, đọc thẻ CCCD, bản đồ (VietMap/Goong/MapLibre) | Khách hàng |
 | Zalo cấp quyền `getPhoneNumber` cho Mini App — chưa có nên đang dùng `CITIZEN_OTP_BYPASS_CODE` | Zalo |
 | Zalo OA/Business + duyệt template ZNS | Khách hàng + Zalo |
-| Tài khoản Google Play, Apple Developer (cần D-U-N-S) | Khách hàng |
-| Máy macOS để build iOS | Khách hàng / thuê CI |
 | Lịch UAT + thiết bị thật (GPS/camera/QR/push) | Khách hàng |
 | ~27 câu hỏi mở trong `ESTIMATE_TECHNICAL.md` | Khách hàng chốt |
 
@@ -108,7 +105,6 @@ nhiệm, không tính dòng riêng.
 | Mã | Nội dung | Hiện trạng |
 |---|---|---|
 | `P5-01` | Nối Web Quản trị vào API thật | ✅ Xong |
-| `P5-02` | Nối app Flutter vào API thật | ✅ Xong |
 | `P5-03` | Nối Zalo Mini App vào API thật | ✅ Xong |
 | `P5-04` | RabbitMQ publisher/consumer thật | ✅ Xong |
 | `P5-05` | Socket.IO realtime | ✅ Xong — có cả phía client (trước chỉ có cổng ở backend mà không ai nối) |
@@ -141,8 +137,9 @@ nhiệm, không tính dòng riêng.
 - **WBS #21 "micro-services"**: hiện là **monolith mô-đun** trong monorepo (một app
   `api-gateway`, 21 module). Có thư viện dùng chung + RabbitMQ nên tách được về sau,
   nhưng chưa tách thành nhiều dịch vụ triển khai độc lập.
-- **Nhóm "Ứng dụng Di động" (WBS #12–20)**: đã làm **hai kênh** — Zalo Mini App (đúng
-  như WBS mô tả) và thêm app Flutter. App Flutter là phần vượt phạm vi.
+- **Nhóm "Ứng dụng Di động" (WBS #12–20)**: làm bằng **Zalo Mini App** đúng như WBS
+  mô tả. App Flutter từng làm thêm ngoài phạm vi, đã bỏ khỏi dự án ngày 09/09/2026 —
+  kênh công dân chỉ còn Zalo Mini App.
 - **Đa phường/xã** (câu hỏi trong WBS #9): hệ thống hiện phục vụ một đơn vị, tên đơn vị
   lấy từ biến môi trường.
 - **Phạm vi realtime** (câu hỏi xác nhận #8): hiện có 3 sự kiện (phản ánh, nhiệm vụ,

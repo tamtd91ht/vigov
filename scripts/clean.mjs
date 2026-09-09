@@ -21,8 +21,6 @@ const TARGETS = [
   'zalo-miniapp/dist',
   'zalo-miniapp/node_modules/.vite',
   'zalo-miniapp/node_modules/.tmp',
-  'mobile/build',
-  'mobile/.dart_tool',
 ];
 
 let removed = 0;

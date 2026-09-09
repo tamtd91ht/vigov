@@ -15,23 +15,6 @@ out/
 .env.*
 !.env.example
 
-# ── Flutter / Dart ───────────────────────────────────────────
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.packages
-mobile/build/
-mobile/android/.gradle/
-mobile/android/local.properties
-mobile/android/key.properties
-mobile/android/app/*.jks
-mobile/android/app/*.keystore
-mobile/ios/Pods/
-mobile/ios/.symlinks/
-mobile/ios/Flutter/Flutter.framework
-mobile/ios/Flutter/Flutter.podspec
-mobile/ios/Flutter/Generated.xcconfig
-mobile/ios/Flutter/flutter_export_environment.sh
 *.iml
 
 # ── Dữ liệu chạy thật ────────────────────────────────────────

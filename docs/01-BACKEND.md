@@ -188,8 +188,7 @@ giữ nguyên vai trò cũ là kéo dài vô hạn một quyền đã bị thu h
 Phía client: Zalo Mini App gặp 401 thì **thử refresh đúng một lần** rồi mới bắt
 định danh lại (`src/services/api.ts`, các lời gọi đồng thời được gộp về một lượt
 refresh — nếu không, lời gọi thứ hai gửi token vừa xoay vòng và bị chính cơ chế
-phát hiện dùng lại đá ra). App Flutter **chỉ lưu** `refreshToken` cho lần sau,
-không dựng interceptor — lý do ghi trong `lib/services/api_client.dart`.
+phát hiện dùng lại đá ra).
 
 ---
 
@@ -227,7 +226,7 @@ module `dossiers` cố tình chỉ có duy nhất một endpoint đọc — khô
 tạo / sửa / xoá, không có danh sách cho Web Quản trị.
 
 **Dữ liệu hiện tại trong collection `dossiers` là dữ liệu SEED** (ba hồ sơ mẫu,
-port từ mock của Zalo Mini App và app Flutter — xem
+port từ mock của Zalo Mini App — xem
 `apps/api-gateway/src/seed-data/dossiers.seed.ts`). Nó dùng để trình diễn, không
 phải hồ sơ thật.
 

@@ -9,7 +9,7 @@ export const dossierSteps: string[] = [
 ];
 
 /**
- * Hồ sơ một cửa mẫu — ngữ cảnh Xã Đại Thắng (port từ app Flutter: mocks/dossier_mock.dart).
+ * Hồ sơ một cửa mẫu — ngữ cảnh Xã Đại Thắng.
  * Nguồn dữ liệu hồ sơ một cửa thật chờ khách xác nhận — câu hỏi mở #18.
  */
 export const dossierResults: DossierResult[] = [

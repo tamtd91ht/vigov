@@ -55,7 +55,6 @@ Nên thư mục gốc giữ nguyên cặp `.env` / `.env.example`, chỉ dùng c
 | `backend/` | `ConfigModule.forRoot({ envFilePath: ['.env.local', '.env'] })` trong `apps/api-gateway/src/app.module.ts`; mọi biến truy cập qua `ConfigService`, khai báo tại `libs/shared/config/configuration.ts` |
 | `admin-web/` | Next.js nạp `.env.local` sẵn có. Biến `NEXT_PUBLIC_*` **được nhúng vào bundle gửi trình duyệt** — tuyệt đối không đặt secret vào tiền tố này |
 | `zalo-miniapp/` | Vite nạp `.env.local` (ưu tiên cao hơn `.env`). Biến `VITE_*` cũng vào bundle — không đặt secret |
-| `mobile/` | Không dùng tệp env; cấu hình build qua `--dart-define`, xem `lib/config/app_config.dart` |
 
 Biến đã có sẵn trong môi trường (Docker, CI) luôn thắng giá trị trong tệp.
 
@@ -65,7 +64,7 @@ Biến đã có sẵn trong môi trường (Docker, CI) luôn thắng giá trị
   `src/config/*` của từng module hoặc biến môi trường — không rải rác trong component.
 - **Adapter cho mọi dịch vụ bên thứ 3** (OCR, GIS, ZNS, FCM): đổi nhà cung cấp chỉ
   sửa một tệp adapter, không đụng vào tầng nghiệp vụ.
-- **Tên trường thống nhất giữa 4 module**; `admin-web/src/types/index.ts` là nguồn chuẩn.
+- **Tên trường thống nhất giữa 3 module**; `admin-web/src/types/index.ts` là nguồn chuẩn.
 
 ## Tài liệu
 

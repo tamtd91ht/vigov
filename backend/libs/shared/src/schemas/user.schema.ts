@@ -71,7 +71,7 @@ export class StaffUser {
 }
 export const StaffUserSchema = SchemaFactory.createForClass(StaffUser);
 
-/** Công dân dùng app Flutter / Zalo Mini App (WBS #11) */
+/** Công dân dùng Zalo Mini App (WBS #11) */
 @Schema({ collection: 'citizen_users', timestamps: true })
 export class CitizenUser {
   @Prop({ required: true, unique: true, index: true })
@@ -83,7 +83,11 @@ export class CitizenUser {
   @Prop({ default: '' })
   area: string;
 
-  /** Kênh định danh: app Flutter hay Zalo Mini App */
+  /**
+   * Kênh định danh. `'app'` là DI SẢN của app Flutter (module `mobile/` đã bỏ
+   * 09/09/2026) — giữ trong enum vì tài khoản cũ đang dùng; tài khoản mới vào
+   * bằng `'zalo'`.
+   */
   @Prop({ enum: ['app', 'zalo'], default: 'app' })
   channel: string;
 

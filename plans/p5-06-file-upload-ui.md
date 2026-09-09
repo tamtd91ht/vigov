@@ -1,6 +1,10 @@
 # P5-06 — Tải tệp thật từ giao diện
 
 > Trạng thái: **done** · Bổ sung 28/08/2026 sau khi đối chiếu WBS gốc (`ViGov_Phase1_Req.xlsx`) với mã nguồn thực tế
+>
+> **Cập nhật 09/09/2026** — module `mobile/` (Flutter) đã bị bỏ khỏi dự án; mục
+> `mobile:` trong checklist bên dưới không còn áp dụng, giữ lại làm bản ghi việc
+> đã làm.
 
 ## Mô tả
 

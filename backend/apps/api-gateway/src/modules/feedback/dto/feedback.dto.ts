@@ -71,7 +71,7 @@ export class ListFeedbackQueryDto {
   limit?: number;
 }
 
-/** Công dân gửi phản ánh mới từ app Flutter / Zalo Mini App */
+/** Công dân gửi phản ánh mới từ Zalo Mini App */
 export class CreateCitizenFeedbackDto {
   @IsString()
   @IsNotEmpty({ message: 'Vui lòng chọn lĩnh vực phản ánh' })

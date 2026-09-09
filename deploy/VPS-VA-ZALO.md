@@ -1,7 +1,7 @@
 # ViGov — Triển khai VPS và nộp Zalo Mini App
 
 > Tài liệu thao tác, viết theo đúng hiện trạng mã nguồn ngày 28/08/2026.
-> Chi tiết hạ tầng nền: `deploy/README.md` · Hồ sơ 3 store: `deploy/RELEASE.md`
+> Chi tiết hạ tầng nền: `deploy/README.md` · Hồ sơ phát hành: `deploy/RELEASE.md`
 
 ---
 
@@ -20,7 +20,7 @@ Ba tên miền phụ (đổi `<tên-miền>` theo thực tế):
 
 | Tên miền | Dùng cho |
 |---|---|
-| `api.vigov.<tên-miền>` | Backend — **bắt buộc HTTPS**, cả Mini App lẫn app Flutter đều gọi vào đây |
+| `api.vigov.<tên-miền>` | Backend — **bắt buộc HTTPS**, Mini App và Web Quản trị đều gọi vào đây |
 | `quantri.vigov.<tên-miền>` | Web Quản trị cho cán bộ |
 | `miniapp.vigov.<tên-miền>` | Chỉ để xem trước Mini App trên trình duyệt (bản chính thức chạy trên hạ tầng Zalo) |
 
@@ -210,7 +210,7 @@ npm run zmp:deploy     # build rồi tải bundle lên hạ tầng Zalo
 
 - **Quyền sử dụng**: số điện thoại, vị trí, camera/thư viện ảnh, quét QR — mỗi
   quyền phải nêu rõ mục đích (Zalo kiểm rất kỹ phần này).
-- **Ảnh chụp màn hình + mô tả**: dùng nội dung soạn sẵn ở `deploy/RELEASE.md` mục 4.
+- **Ảnh chụp màn hình + mô tả**: dùng nội dung soạn sẵn ở `deploy/RELEASE.md` mục 2.
 - **Chính sách quyền riêng tư**: cần URL công khai — có thể đặt luôn trên
   `quantri.vigov.<tên-miền>/privacy` hoặc trang thông tin của xã.
 - **Tài khoản thử cho người kiểm duyệt**: Mini App định danh bằng SĐT Zalo nên

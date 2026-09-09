@@ -11,9 +11,7 @@
 |---|---|---|
 | Web Quản trị | `https://admin-staging.<tên-miền>` | 9 tài khoản cán bộ do `npm run seed` tạo, tài khoản quản trị `admin` / `123456`, cán bộ dùng `ViGov@2026` — **đổi ngay sau vòng UAT** |
 | API Backend | `https://api-staging.<tên-miền>/api/v1` | — |
-| App công dân (Android) | Bản Internal testing trên Google Play | SĐT thật của người kiểm thử (nhận OTP) |
-| App công dân (iOS) | TestFlight | Như trên |
-| Zalo Mini App | Bản thử nghiệm trong Zalo Developers | Tài khoản Zalo của người kiểm thử |
+| Zalo Mini App | Bản thử nghiệm trong Zalo Developers | Tài khoản Zalo của người kiểm thử (nhận OTP bằng SĐT thật) |
 
 Dữ liệu UAT: chạy `npm run seed` (tài khoản cán bộ + cấu hình SLA), phần dữ liệu nghiệp vụ do người kiểm thử tự tạo trong quá trình chạy kịch bản.
 
@@ -29,7 +27,7 @@ Dữ liệu UAT: chạy `npm run seed` (tài khoản cán bộ + cấu hình SLA
 5. **Kỳ vọng**: liên kết hai chiều đúng, không tạo trùng nhiệm vụ khi bấm lại.
 
 ### KB-02 — Phản ánh của công dân → Xử lý → Đánh giá
-1. Công dân mở **app Flutter**, định danh SĐT, gửi phản ánh: chọn danh mục, nhập mô tả, đính 2 ảnh, lấy vị trí GPS.
+1. Công dân mở **Zalo Mini App**, định danh SĐT, gửi phản ánh: chọn danh mục, nhập mô tả, đính 2 ảnh, lấy vị trí GPS.
 2. Kiểm tra màn kết quả có mã phiếu và cam kết SLA đúng theo danh mục.
 3. Cán bộ thấy phiếu trên Web Quản trị, phân công cán bộ xử lý → trạng thái "Đang xử lý".
 4. Cán bộ bấm "Xác nhận đã xử lý" → công dân nhận thông báo, phiếu chuyển "Đã xử lý".
@@ -46,9 +44,9 @@ Dữ liệu UAT: chạy `npm run seed` (tài khoản cán bộ + cấu hình SLA
 2. Kiểm tra tỷ lệ % và cờ "Chậm tiến độ" tính đúng.
 3. Thêm vướng mắc, gửi đề nghị giải ngân, xuất Excel — kiểm tra file mở được và số liệu khớp.
 
-### KB-05 — CMS → App công dân
+### KB-05 — CMS → Zalo Mini App
 1. Cán bộ đăng bài viết mới trên Web Quản trị (trạng thái "Đã đăng").
-2. Kiểm tra bài xuất hiện ở tab Tin tức của **cả app Flutter và Zalo Mini App**, mở chi tiết đọc được đầy đủ nội dung.
+2. Kiểm tra bài xuất hiện ở tab Tin tức của **Zalo Mini App**, mở chi tiết đọc được đầy đủ nội dung.
 3. Gỡ bài về "Nháp" → bài biến mất khỏi app.
 
 ### KB-06 — Người dùng & bảo mật
@@ -110,5 +108,5 @@ Phát một bản tin, chuyển sang màn khác → kiểm tra thanh phát thu n
 - [ ] Kiểm thử thiết bị thật đủ hạng mục ở mục 3, không còn lỗi chặn (blocker).
 - [ ] `npm run test:e2e` của backend pass toàn bộ.
 - [ ] Không còn lỗi mức Cao trong `SECURITY.md`.
-- [ ] 3 kênh app đã nộp kiểm duyệt (hoặc đã được duyệt) theo `deploy/RELEASE.md`.
+- [ ] Zalo Mini App đã nộp kiểm duyệt (hoặc đã được duyệt) theo `deploy/RELEASE.md`.
 - [ ] Bàn giao: mã nguồn, tài liệu triển khai, tài khoản quản trị, hướng dẫn sử dụng cho cán bộ.

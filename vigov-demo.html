@@ -1,0 +1,2181 @@
+<title>ViGov cho UBND xã</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Source+Sans+3:ital,wght@0,400;0,600;0,700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    /* nền trang */
+    --ground:      #FAF9F7;
+    --surface:     #FFFFFF;
+    --surface-alt: #F2F0EC;
+    --ink:         #191C20;
+    --ink-soft:    #565A61;
+    --ink-faint:   #868990;
+    --line:        #E3E0DB;
+    --line-soft:   #EDEBE7;
+    --shadow-lg:   0 2px 4px rgba(25,28,32,.04), 0 18px 44px -26px rgba(25,28,32,.42);
+
+    /* bảng màu sản phẩm ViGov */
+    --navy:   #1B3A5C;
+    --navy-2: #24507E;
+    --blue:   #3B82C4;
+    --green:  #27AE60;
+    --orange: #E67E22;
+    --red:    #E74C3C;
+    --purple: #8E44AD;
+    --teal:   #17A2A2;
+    --pink:   #E91E8C;
+    --mut:    #8896A6;
+
+    /* nền chip nhạt */
+    --t-blue:   rgba(59,130,196,.12);
+    --t-green:  rgba(39,174,96,.13);
+    --t-orange: rgba(230,126,34,.13);
+    --t-red:    rgba(231,76,60,.12);
+    --t-purple: rgba(142,68,173,.12);
+    --t-teal:   rgba(23,162,162,.12);
+    --t-mut:    rgba(136,150,166,.14);
+
+    /* khung ảnh chụp màn hình */
+    --ui-bg:    #F5F7F9;
+    --ui-card:  #FFFFFF;
+    --ui-line:  #E5E8EB;
+    --ui-tx:    #4A5568;
+    --ui-head:  #1B3A5C;
+    --map-bg:   #EDF3F7;
+    --grid-l:   rgba(59,130,196,.05);
+
+    --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+    --body:    "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+    --mono:    "JetBrains Mono", ui-monospace, monospace;
+
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #121418;
+      --surface:     #1A1D22;
+      --surface-alt: #212429;
+      --ink:         #ECEAE7;
+      --ink-soft:    #A8AAAF;
+      --ink-faint:   #7B7E84;
+      --line:        #2B2F36;
+      --line-soft:   #24282E;
+      --shadow-lg:   0 2px 4px rgba(0,0,0,.4), 0 18px 44px -26px rgba(0,0,0,.9);
+      --navy:   #2E5B87;
+      --navy-2: #3A6E9F;
+      --blue:   #63A4DD;
+      --green:  #4CC684;
+      --orange: #EE9A4D;
+      --red:    #F0776A;
+      --purple: #AE71CB;
+      --teal:   #3EC0C0;
+      --pink:   #F154A8;
+      --mut:    #93A0AE;
+      --t-blue:   rgba(99,164,221,.16);
+      --t-green:  rgba(76,198,132,.16);
+      --t-orange: rgba(238,154,77,.16);
+      --t-red:    rgba(240,119,106,.16);
+      --t-purple: rgba(174,113,203,.16);
+      --t-teal:   rgba(62,192,192,.16);
+      --t-mut:    rgba(147,160,174,.16);
+      --ui-bg:    #191D23;
+      --ui-card:  #21262D;
+      --ui-line:  #333941;
+      --ui-tx:    #B6BAC0;
+      --ui-head:  #16324F;
+      --map-bg:   #1D242C;
+      --grid-l:   rgba(99,164,221,.07);
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:      #121418;
+    --surface:     #1A1D22;
+    --surface-alt: #212429;
+    --ink:         #ECEAE7;
+    --ink-soft:    #A8AAAF;
+    --ink-faint:   #7B7E84;
+    --line:        #2B2F36;
+    --line-soft:   #24282E;
+    --shadow-lg:   0 2px 4px rgba(0,0,0,.4), 0 18px 44px -26px rgba(0,0,0,.9);
+    --navy:   #2E5B87;
+    --navy-2: #3A6E9F;
+    --blue:   #63A4DD;
+    --green:  #4CC684;
+    --orange: #EE9A4D;
+    --red:    #F0776A;
+    --purple: #AE71CB;
+    --teal:   #3EC0C0;
+    --pink:   #F154A8;
+    --mut:    #93A0AE;
+    --t-blue:   rgba(99,164,221,.16);
+    --t-green:  rgba(76,198,132,.16);
+    --t-orange: rgba(238,154,77,.16);
+    --t-red:    rgba(240,119,106,.16);
+    --t-purple: rgba(174,113,203,.16);
+    --t-teal:   rgba(62,192,192,.16);
+    --t-mut:    rgba(147,160,174,.16);
+    --ui-bg:    #191D23;
+    --ui-card:  #21262D;
+    --ui-line:  #333941;
+    --ui-tx:    #B6BAC0;
+    --ui-head:  #16324F;
+    --map-bg:   #1D242C;
+    --grid-l:   rgba(99,164,221,.07);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ============ MASTHEAD ============ */
+
+  .masthead {
+    background: linear-gradient(150deg, var(--navy) 0%, #16324F 60%, #112945 100%);
+    color: #EEF3F8;
+  }
+  .masthead-inner {
+    max-width: 1200px; margin: 0 auto; padding: 46px 32px 42px;
+    display: flex; flex-wrap: wrap; gap: 32px;
+    align-items: flex-end; justify-content: space-between;
+  }
+  .brandline {
+    display: flex; align-items: center; gap: 11px; margin-bottom: 18px;
+  }
+  .brandmark {
+    width: 34px; height: 34px; border-radius: 6px; flex: none;
+    background: #FFFFFF; color: var(--navy);
+    display: grid; place-items: center;
+    font-family: var(--display); font-weight: 800; font-size: 14px;
+    letter-spacing: -.02em;
+  }
+  .brandline b {
+    font-family: var(--display); font-weight: 700; font-size: 17px;
+    letter-spacing: -.01em;
+  }
+  .brandline span {
+    font-size: 13.5px; color: rgba(238,243,248,.62);
+    border-left: 1px solid rgba(238,243,248,.24); padding-left: 11px;
+  }
+  h1 {
+    font-family: var(--display); font-weight: 800;
+    font-size: clamp(32px, 4.6vw, 50px); line-height: 1.05;
+    letter-spacing: -.024em; margin: 0 0 14px; text-wrap: balance;
+    max-width: 17ch;
+  }
+  .lede {
+    margin: 0; max-width: 52ch; font-size: 17px;
+    color: rgba(238,243,248,.78);
+  }
+  .facts { display: grid; gap: 14px; }
+  .fact {
+    border-left: 2px solid rgba(238,243,248,.3); padding-left: 14px;
+  }
+  .fact b {
+    font-family: var(--display); font-size: 25px; font-weight: 700;
+    display: block; line-height: 1.15; letter-spacing: -.02em;
+  }
+  .fact span { font-size: 13px; color: rgba(238,243,248,.65); }
+
+  /* ============ NAV ============ */
+
+  .navbar {
+    position: sticky; top: 0; z-index: 50;
+    background: var(--surface); border-bottom: 1px solid var(--line);
+  }
+  .navbar-inner {
+    max-width: 1200px; margin: 0 auto; padding: 0 32px;
+    display: flex; gap: 2px; overflow-x: auto; scrollbar-width: thin;
+  }
+  .navbar a {
+    flex: none; font-size: 13.5px; font-weight: 600; color: var(--ink-soft);
+    text-decoration: none; padding: 13px 13px 11px; white-space: nowrap;
+    border-bottom: 2px solid transparent;
+  }
+  .navbar a:hover { color: var(--navy); border-bottom-color: var(--line); }
+  .navbar a:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+  .navbar a.part { color: var(--ink-faint); font-family: var(--mono); font-size: 11px;
+    letter-spacing: .1em; text-transform: uppercase; padding-left: 0; padding-right: 4px; pointer-events: none; }
+
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 0 32px 110px; }
+
+  /* ============ PART HEADER ============ */
+
+  .parthead { padding: 66px 0 0; }
+  .part-tag {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--blue); margin: 0 0 9px;
+  }
+  .parthead h2 {
+    font-family: var(--display); font-weight: 800; font-size: 33px;
+    letter-spacing: -.02em; margin: 0 0 10px; text-wrap: balance;
+  }
+  .parthead p { margin: 0; color: var(--ink-soft); max-width: 66ch; font-size: 16.5px; }
+  .rule { height: 1px; background: var(--line); margin: 26px 0 0; }
+
+  /* ============ PART A — TECH ============ */
+
+  .stack {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 14px; margin-top: 28px;
+  }
+  .sc {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 6px; padding: 18px 19px;
+    border-top: 3px solid var(--navy);
+  }
+  .sc:nth-child(2) { border-top-color: var(--blue); }
+  .sc:nth-child(3) { border-top-color: var(--teal); }
+  .sc:nth-child(4) { border-top-color: var(--purple); }
+  .sc h3 {
+    font-family: var(--display); font-size: 16.5px; font-weight: 700;
+    margin: 0 0 3px; letter-spacing: -.01em;
+  }
+  .sc .tech {
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint);
+    display: block; margin-bottom: 11px;
+  }
+  .sc p { margin: 0 0 12px; font-size: 14.4px; color: var(--ink-soft); }
+  .sc .m {
+    font-family: var(--mono); font-size: 11.5px; color: var(--ink-soft);
+    padding-top: 10px; border-top: 1px solid var(--line-soft);
+    display: flex; justify-content: space-between; gap: 10px;
+  }
+  .sc .m b { color: var(--ink); font-weight: 600; }
+
+  .techstrip {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
+    gap: 1px; background: var(--line); border: 1px solid var(--line);
+    border-radius: 6px; overflow: hidden; margin-top: 14px;
+  }
+  .ts { background: var(--surface); padding: 15px 17px; }
+  .ts b {
+    font-family: var(--display); font-size: 14px; font-weight: 700;
+    display: block; margin-bottom: 3px;
+  }
+  .ts span { font-size: 13.4px; color: var(--ink-soft); }
+
+  /* ============ PART B — SCREENS ============ */
+
+  .screen { padding-top: 62px; scroll-margin-top: 52px; }
+
+  .sh { display: flex; align-items: baseline; gap: 11px; flex-wrap: wrap; margin-bottom: 5px; }
+  .sh .n {
+    font-family: var(--mono); font-size: 12px; font-weight: 600;
+    color: var(--blue); letter-spacing: .05em;
+  }
+  .sh h3 {
+    font-family: var(--display); font-weight: 700; font-size: 26px;
+    letter-spacing: -.018em; margin: 0; text-wrap: balance;
+  }
+  .who {
+    font-size: 12px; font-family: var(--mono); color: var(--ink-faint);
+    background: var(--surface-alt); border: 1px solid var(--line);
+    border-radius: 3px; padding: 2px 8px;
+  }
+  .sd { margin: 0 0 22px; color: var(--ink-soft); max-width: 76ch; font-size: 16px; }
+
+  .split {
+    display: grid; grid-template-columns: minmax(0, 1.62fr) minmax(0, 1fr);
+    gap: 26px; align-items: start;
+  }
+  .split.rev { grid-template-columns: minmax(0, 1fr) minmax(0, 1.62fr); }
+  .split.rev .shot { order: 2; }
+  .split.rev .side { order: 1; }
+
+  /* --- can lam gi --- */
+  .side h4 {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--ink-faint); font-weight: 600;
+    margin: 0 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--line);
+  }
+  .side ul { margin: 0; padding: 0; list-style: none; }
+  .side li {
+    position: relative; padding: 0 0 13px 21px; font-size: 14.9px;
+    color: var(--ink-soft);
+  }
+  .side li:last-child { padding-bottom: 0; }
+  .side li b { color: var(--ink); font-weight: 600; }
+  .side li::before {
+    content: ""; position: absolute; left: 2px; top: 8px;
+    width: 6px; height: 6px; border-radius: 50%; background: var(--blue);
+  }
+  .side .kicker {
+    margin: 16px 0 0; padding: 11px 13px; font-size: 13.8px;
+    background: var(--surface-alt); border-left: 3px solid var(--teal);
+    border-radius: 0 4px 4px 0; color: var(--ink-soft);
+  }
+  .side .kicker b { color: var(--ink); }
+
+  /* ============ MOCKUP CHROME ============ */
+
+  .shot {
+    border: 1px solid var(--line); border-radius: 7px; overflow: hidden;
+    background: var(--ui-card); box-shadow: var(--shadow-lg);
+  }
+  .shot-bar {
+    display: flex; align-items: center; gap: 7px;
+    padding: 8px 12px; background: var(--surface-alt);
+    border-bottom: 1px solid var(--line);
+  }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); flex: none; }
+  .shot-bar .url {
+    margin-left: 6px; font-family: var(--mono); font-size: 11px;
+    color: var(--ink-faint); background: var(--surface);
+    border: 1px solid var(--line); border-radius: 3px; padding: 1.5px 9px;
+  }
+
+  /* app frame */
+  .app { display: grid; grid-template-columns: 148px 1fr; background: var(--ui-bg); }
+  .app.nosb { grid-template-columns: 1fr; }
+
+  .sb { background: var(--navy); padding: 11px 0 14px; }
+  .sb-brand {
+    display: flex; align-items: center; gap: 7px; padding: 0 12px 12px;
+    border-bottom: 1px solid rgba(255,255,255,.11); margin-bottom: 9px;
+  }
+  .sb-brand i {
+    width: 21px; height: 21px; border-radius: 4px; background: #fff;
+    color: var(--navy); display: grid; place-items: center; flex: none;
+    font-family: var(--display); font-weight: 800; font-size: 9.5px; font-style: normal;
+  }
+  .sb-brand b { color: #fff; font-size: 12.5px; font-family: var(--display); font-weight: 700; }
+  .sb-cap {
+    font-family: var(--mono); font-size: 8px; letter-spacing: .13em;
+    text-transform: uppercase; color: rgba(255,255,255,.42);
+    padding: 8px 12px 5px;
+  }
+  .sb-i {
+    display: flex; align-items: center; gap: 7px; padding: 5.5px 12px;
+    font-size: 11.5px; color: rgba(255,255,255,.7);
+  }
+  .sb-i .ico {
+    width: 13px; height: 13px; border-radius: 3px; flex: none;
+    background: rgba(255,255,255,.22);
+  }
+  .sb-i.on { background: rgba(255,255,255,.13); color: #fff; font-weight: 600; box-shadow: inset 2px 0 0 #fff; }
+  .sb-i.on .ico { background: #fff; }
+  .sb-i .bdg {
+    margin-left: auto; font-family: var(--mono); font-size: 8.5px; font-weight: 600;
+    background: var(--red); color: #fff; border-radius: 7px; padding: 0 5px;
+  }
+
+  .main { padding: 13px 15px 16px; min-width: 0; }
+
+  .tb {
+    display: flex; align-items: center; gap: 9px; margin-bottom: 12px;
+    padding-bottom: 11px; border-bottom: 1px solid var(--ui-line);
+  }
+  .tb .pt {
+    font-family: var(--display); font-size: 14.5px; font-weight: 700;
+    color: var(--ui-head); letter-spacing: -.01em;
+  }
+  .tb .ps { font-size: 10.5px; color: var(--mut); }
+  .tb .sp { margin-left: auto; }
+  .srch {
+    font-size: 10px; color: var(--mut); background: var(--ui-bg);
+    border: 1px solid var(--ui-line); border-radius: 4px; padding: 3px 9px;
+    min-width: 132px;
+  }
+  .btn {
+    font-size: 10.5px; font-weight: 600; border-radius: 4px;
+    padding: 4px 10px; background: var(--ui-bg);
+    border: 1px solid var(--ui-line); color: var(--ui-tx); white-space: nowrap;
+  }
+  .btn.pri { background: var(--navy); border-color: var(--navy); color: #fff; }
+  .btn.gh { background: transparent; }
+
+  /* KPI */
+  .kpis { display: grid; gap: 8px; margin-bottom: 12px; }
+  .kpis.k3 { grid-template-columns: repeat(3, 1fr); }
+  .kpis.k4 { grid-template-columns: repeat(4, 1fr); }
+  .kpi {
+    background: var(--ui-card); border: 1px solid var(--ui-line);
+    border-radius: 5px; padding: 9px 10px;
+  }
+  .kpi .lb { font-size: 9px; color: var(--mut); margin-bottom: 2px; line-height: 1.35; }
+  .kpi .vl {
+    font-family: var(--display); font-size: 19px; font-weight: 700;
+    line-height: 1.1; letter-spacing: -.02em; color: var(--ui-head);
+  }
+  .kpi .sub { font-size: 8.5px; color: var(--mut); margin-top: 1px; }
+  .kpi.a { border-left: 3px solid var(--blue); }
+  .kpi.b { border-left: 3px solid var(--red); }
+  .kpi.c { border-left: 3px solid var(--orange); }
+  .kpi.d { border-left: 3px solid var(--green); }
+  .kpi.e { border-left: 3px solid var(--teal); }
+  .kpi.f { border-left: 3px solid var(--purple); }
+
+  /* card */
+  .cd {
+    background: var(--ui-card); border: 1px solid var(--ui-line);
+    border-radius: 5px; overflow: hidden;
+  }
+  .cd-h {
+    display: flex; align-items: center; gap: 8px;
+    padding: 8px 11px; border-bottom: 1px solid var(--ui-line);
+  }
+  .cd-h b { font-size: 11.5px; color: var(--ui-head); font-family: var(--display); font-weight: 700; }
+  .cd-h .x { margin-left: auto; font-size: 9.5px; color: var(--mut); }
+  .cd-b { padding: 10px 11px; }
+
+  /* table */
+  .tb2 { width: 100%; border-collapse: collapse; font-size: 10.5px; }
+  .tb2 th {
+    text-align: left; font-size: 8.5px; letter-spacing: .06em; text-transform: uppercase;
+    color: var(--mut); font-weight: 600; padding: 6px 9px;
+    background: var(--ui-bg); border-bottom: 1px solid var(--ui-line); white-space: nowrap;
+  }
+  .tb2 td {
+    padding: 7px 9px; border-bottom: 1px solid var(--ui-line);
+    color: var(--ui-tx); vertical-align: middle;
+  }
+  .tb2 tr:last-child td { border-bottom: 0; }
+  .tb2 .cid { font-family: var(--mono); font-size: 9.5px; color: var(--navy-2); font-weight: 600; }
+  .tb2 .st { font-weight: 600; color: var(--ui-head); }
+  .tb2 .lt td { background: rgba(231,76,60,.045); }
+
+  /* chip */
+  .ch {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 9px; font-weight: 600; padding: 2px 7px; border-radius: 10px;
+    white-space: nowrap; line-height: 1.5;
+  }
+  .ch i { width: 4px; height: 4px; border-radius: 50%; background: currentColor; flex: none; font-style: normal; }
+  .c-bl { background: var(--t-blue);   color: var(--blue); }
+  .c-gr { background: var(--t-green);  color: var(--green); }
+  .c-or { background: var(--t-orange); color: var(--orange); }
+  .c-rd { background: var(--t-red);    color: var(--red); }
+  .c-pu { background: var(--t-purple); color: var(--purple); }
+  .c-te { background: var(--t-teal);   color: var(--teal); }
+  .c-mu { background: var(--t-mut);    color: var(--mut); }
+
+  /* avatar */
+  .av {
+    width: 17px; height: 17px; border-radius: 50%; flex: none;
+    display: inline-grid; place-items: center; color: #fff;
+    font-size: 7.5px; font-weight: 700; vertical-align: middle;
+  }
+  .who-cell { display: flex; align-items: center; gap: 5px; }
+
+  /* progress */
+  .pg { height: 4px; border-radius: 3px; background: var(--ui-line); overflow: hidden; min-width: 48px; }
+  .pg i { display: block; height: 100%; border-radius: 3px; }
+  .pgw { display: flex; align-items: center; gap: 6px; }
+  .pgw span { font-family: var(--mono); font-size: 9px; color: var(--ui-tx); }
+
+  /* kanban */
+  .kb { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; }
+  .kbc { background: var(--ui-bg); border: 1px solid var(--ui-line); border-radius: 5px; padding: 7px 6px; }
+  .kbc-h {
+    display: flex; align-items: center; gap: 5px; margin-bottom: 7px;
+    font-size: 9px; font-weight: 700; color: var(--ui-head);
+  }
+  .kbc-h .n {
+    margin-left: auto; font-family: var(--mono); font-size: 8px;
+    background: var(--ui-card); border: 1px solid var(--ui-line);
+    border-radius: 7px; padding: 0 5px; color: var(--mut);
+  }
+  .kbt {
+    background: var(--ui-card); border: 1px solid var(--ui-line);
+    border-radius: 4px; padding: 6px 7px; margin-bottom: 5px;
+  }
+  .kbt:last-child { margin-bottom: 0; }
+  .kbt .id { font-family: var(--mono); font-size: 8px; color: var(--navy-2); font-weight: 600; }
+  .kbt .tt { font-size: 9.5px; color: var(--ui-head); font-weight: 600; line-height: 1.35; margin: 2px 0 5px; }
+  .kbt .ft { display: flex; align-items: center; gap: 4px; }
+
+  /* two col inside main */
+  .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+  .g21 { display: grid; grid-template-columns: 1.5fr 1fr; gap: 9px; }
+  .g12 { display: grid; grid-template-columns: 1fr 1.7fr; gap: 9px; }
+
+  /* chart bars */
+  .bars { display: flex; align-items: flex-end; gap: 5px; height: 78px; padding-top: 4px; }
+  .bcol { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; height: 100%; justify-content: flex-end; }
+  .bstk { display: flex; align-items: flex-end; gap: 1.5px; width: 100%; height: 100%; justify-content: center; }
+  .bstk i { width: 6px; border-radius: 2px 2px 0 0; display: block; }
+  .bcol span { font-size: 7.5px; color: var(--mut); font-family: var(--mono); }
+
+  /* hbars */
+  .hb { display: grid; gap: 6px; }
+  .hbr { display: grid; grid-template-columns: 74px 1fr 22px; gap: 7px; align-items: center; }
+  .hbr .l { font-size: 9px; color: var(--ui-tx); text-align: right; line-height: 1.25; }
+  .hbr .t { height: 8px; border-radius: 3px; background: var(--ui-line); overflow: hidden; }
+  .hbr .t i { display: block; height: 100%; border-radius: 3px; }
+  .hbr .v { font-family: var(--mono); font-size: 9px; color: var(--ui-tx); }
+
+  /* line chart */
+  .lc { width: 100%; height: auto; display: block; }
+
+  /* urgent list */
+  .ul2 { display: grid; gap: 0; }
+  .ur {
+    display: flex; align-items: center; gap: 7px; padding: 6.5px 0;
+    border-bottom: 1px solid var(--ui-line);
+  }
+  .ur:last-child { border-bottom: 0; }
+  .ur .pd { width: 5px; height: 5px; border-radius: 50%; flex: none; }
+  .ur .tx { min-width: 0; flex: 1; }
+  .ur .tx b { display: block; font-size: 10px; color: var(--ui-head); font-weight: 600; line-height: 1.3; }
+  .ur .tx span { font-size: 8.5px; color: var(--mut); }
+
+  /* feedback grid */
+  .fg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .fc { background: var(--ui-card); border: 1px solid var(--ui-line); border-radius: 5px; overflow: hidden; }
+  .fc .im {
+    height: 46px; display: grid; place-items: center;
+    font-size: 7.5px; font-weight: 700; letter-spacing: .08em; color: rgba(255,255,255,.9);
+  }
+  .fc .bd { padding: 7px 8px; }
+  .fc .hd { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; }
+  .fc .cid { font-family: var(--mono); font-size: 8.5px; color: var(--navy-2); font-weight: 600; }
+  .fc .tt { font-size: 10px; font-weight: 600; color: var(--ui-head); line-height: 1.35; margin-bottom: 3px; }
+  .fc .ex { font-size: 8.5px; color: var(--mut); line-height: 1.4; margin-bottom: 6px; }
+  .fc .ft { display: flex; align-items: center; gap: 5px; }
+  .fc .ft .loc { margin-left: auto; font-size: 8px; color: var(--mut); }
+
+  /* budget list */
+  .bl { display: grid; gap: 7px; }
+  .bi { background: var(--ui-card); border: 1px solid var(--ui-line); border-radius: 5px; padding: 8px 10px; }
+  .bi.late { border-left: 3px solid var(--red); }
+  .bi .r1 { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+  .bi .nm { font-size: 10.5px; font-weight: 700; color: var(--ui-head); }
+  .bi .mn { margin-left: auto; font-family: var(--mono); font-size: 9.5px; color: var(--ui-tx); white-space: nowrap; }
+  .bi .r2 { display: flex; align-items: center; gap: 7px; }
+  .bi .ow { font-size: 8.5px; color: var(--mut); }
+
+  /* doc ocr */
+  .ocr { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .of {
+    border: 1px solid var(--ui-line); border-radius: 4px; padding: 6px 8px;
+    background: var(--ui-card);
+  }
+  .of.w { grid-column: 1 / -1; }
+  .of .lb { display: flex; align-items: center; gap: 4px; margin-bottom: 2px; }
+  .of .lb span { font-size: 8px; color: var(--mut); }
+  .of .lb .tag {
+    font-family: var(--mono); font-size: 6.5px; font-weight: 700; letter-spacing: .06em;
+    background: var(--t-purple); color: var(--purple); border-radius: 2px; padding: 0.5px 3px;
+  }
+  .of .lb .ok {
+    margin-left: auto; width: 11px; height: 11px; border-radius: 3px; flex: none;
+    display: grid; place-items: center; font-size: 7px; font-weight: 700;
+    background: var(--t-green); color: var(--green);
+  }
+  .of .lb .no {
+    margin-left: auto; width: 11px; height: 11px; border-radius: 3px; flex: none;
+    display: grid; place-items: center; font-size: 7px;
+    background: var(--ui-bg); color: var(--mut); border: 1px solid var(--ui-line);
+  }
+  .of .vv { font-size: 9.5px; color: var(--ui-head); font-weight: 600; line-height: 1.35; }
+  .ocr-bar {
+    display: flex; align-items: center; gap: 7px; margin-bottom: 7px;
+    font-size: 9px; color: var(--mut);
+  }
+
+  /* map */
+  .mapwrap { display: grid; grid-template-columns: 92px 1fr 104px; gap: 7px; }
+  .mp {
+    position: relative; height: 172px; border-radius: 5px; overflow: hidden;
+    border: 1px solid var(--ui-line);
+    background:
+      linear-gradient(var(--grid-l) 1px, transparent 1px) 0 0/100% 17px,
+      linear-gradient(90deg, var(--grid-l) 1px, transparent 1px) 0 0/17px 100%,
+      var(--map-bg);
+  }
+  .mp .road { position: absolute; background: rgba(136,150,166,.3); }
+  .mp .river { position: absolute; background: rgba(59,130,196,.22); }
+  .mp .lbl {
+    position: absolute; font-size: 7px; font-weight: 700; letter-spacing: .07em;
+    color: var(--mut);
+  }
+  .mp .pin {
+    position: absolute; width: 9px; height: 9px; border-radius: 50% 50% 50% 2px;
+    transform: rotate(-45deg); border: 1.5px solid #fff;
+    box-shadow: 0 1px 3px rgba(0,0,0,.28);
+  }
+  .mpop {
+    position: absolute; background: var(--ui-card); border: 1px solid var(--ui-line);
+    border-radius: 4px; padding: 6px 8px; width: 118px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.16);
+  }
+  .mpop b { font-size: 8.5px; color: var(--ui-head); display: block; line-height: 1.3; }
+  .mpop span { font-size: 7.5px; color: var(--mut); display: block; line-height: 1.45; }
+  .lyr { display: flex; align-items: center; gap: 5px; padding: 4.5px 0; font-size: 9px; color: var(--ui-tx); }
+  .lyr i { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+  .lyr b { margin-left: auto; font-family: var(--mono); font-size: 8px; color: var(--mut); font-weight: 500; }
+  .donut { width: 62px; height: 62px; border-radius: 50%; margin: 0 auto 8px; }
+
+  /* cms grid */
+  .vg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .vc { border: 1px solid var(--ui-line); border-radius: 5px; overflow: hidden; background: var(--ui-card); }
+  .vc .th { height: 44px; position: relative; display: grid; place-items: center; }
+  .vc .th .pl {
+    width: 17px; height: 17px; border-radius: 50%; background: rgba(255,255,255,.9);
+    display: grid; place-items: center; font-size: 7px; color: var(--navy);
+  }
+  .vc .th .dur {
+    position: absolute; right: 4px; bottom: 4px; font-family: var(--mono);
+    font-size: 7px; background: rgba(0,0,0,.6); color: #fff;
+    border-radius: 2px; padding: 0.5px 3px;
+  }
+  .vc .bd { padding: 6px 7px; }
+  .vc .tt { font-size: 9px; font-weight: 600; color: var(--ui-head); line-height: 1.35; margin-bottom: 4px; }
+  .vc .ft { display: flex; align-items: center; gap: 4px; }
+
+  /* tabs inside app */
+  .tabs { display: flex; gap: 3px; margin-bottom: 10px; border-bottom: 1px solid var(--ui-line); }
+  .tabs div {
+    font-size: 10px; padding: 5px 9px; color: var(--mut); font-weight: 600;
+    border-bottom: 2px solid transparent; margin-bottom: -1px;
+  }
+  .tabs div.on { color: var(--navy-2); border-bottom-color: var(--navy-2); }
+
+  /* filter chips row */
+  .fr { display: flex; gap: 4px; margin-bottom: 9px; flex-wrap: wrap; align-items: center; }
+  .fch {
+    font-size: 9px; padding: 2.5px 8px; border-radius: 11px;
+    border: 1px solid var(--ui-line); color: var(--mut); background: var(--ui-card);
+  }
+  .fch.on { background: var(--navy); border-color: var(--navy); color: #fff; font-weight: 600; }
+  .fsel {
+    font-size: 9px; padding: 2.5px 8px; border-radius: 4px;
+    border: 1px solid var(--ui-line); color: var(--ui-tx); background: var(--ui-card);
+  }
+
+  /* settings sla table inputs */
+  .inp {
+    font-family: var(--mono); font-size: 9px; color: var(--ui-head);
+    border: 1px solid var(--ui-line); border-radius: 3px;
+    padding: 1.5px 6px; background: var(--ui-bg); min-width: 30px;
+    display: inline-block; text-align: center;
+  }
+
+  /* org tree */
+  .tree { display: grid; gap: 4px; }
+  .tn { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 4px; background: var(--ui-bg); }
+  .tn.l1 { margin-left: 17px; background: transparent; border: 1px solid var(--ui-line); }
+  .tn .sq { width: 15px; height: 15px; border-radius: 3px; flex: none; }
+  .tn b { font-size: 10px; color: var(--ui-head); }
+  .tn span { font-size: 8.5px; color: var(--mut); }
+
+  /* mobile phone frame */
+  .phones { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; padding: 20px 0; }
+  .ph {
+    width: 178px; border: 6px solid var(--navy); border-radius: 20px;
+    overflow: hidden; background: var(--ui-card); flex: none;
+    box-shadow: var(--shadow-lg);
+  }
+  .ph-top { height: 15px; background: var(--navy); display: grid; place-items: center; }
+  .ph-top i { width: 34px; height: 3.5px; border-radius: 3px; background: rgba(255,255,255,.35); }
+  .ph-b { padding: 9px 9px 11px; min-height: 268px; }
+  .ph-h { font-family: var(--display); font-size: 11.5px; font-weight: 700; color: var(--ui-head); margin-bottom: 8px; }
+  .qa { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 9px; }
+  .qi { display: grid; place-items: center; gap: 3px; padding: 7px 3px; border-radius: 5px; background: var(--ui-bg); }
+  .qi i { width: 17px; height: 17px; border-radius: 5px; }
+  .qi span { font-size: 7px; color: var(--ui-tx); text-align: center; line-height: 1.25; }
+  .ph-nav {
+    display: flex; justify-content: space-around; padding-top: 8px;
+    border-top: 1px solid var(--ui-line); margin-top: 9px;
+  }
+  .ph-nav i { width: 13px; height: 13px; border-radius: 4px; background: var(--ui-line); }
+  .ph-nav i.on { background: var(--navy); }
+  .stp { display: flex; gap: 6px; align-items: flex-start; padding: 6px 0; }
+  .stp .cir {
+    width: 13px; height: 13px; border-radius: 50%; flex: none; display: grid;
+    place-items: center; font-size: 7px; font-weight: 700; color: #fff;
+  }
+  .stp .tx b { display: block; font-size: 8.5px; color: var(--ui-head); line-height: 1.3; }
+  .stp .tx span { font-size: 7.5px; color: var(--mut); }
+
+  /* ============ CLOSING ============ */
+
+  .close-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(238px, 1fr));
+    gap: 1px; background: var(--line); border: 1px solid var(--line);
+    border-radius: 6px; overflow: hidden; margin-top: 26px;
+  }
+  .cg { background: var(--surface); padding: 17px 19px; }
+  .cg b { font-family: var(--display); font-size: 15px; font-weight: 700; display: block; margin-bottom: 4px; }
+  .cg span { font-size: 14px; color: var(--ink-soft); }
+
+  .ready {
+    margin-top: 20px; background: var(--surface); border: 1px solid var(--line);
+    border-top: 3px solid var(--orange); border-radius: 6px; padding: 20px 22px;
+  }
+  .ready h4 { font-family: var(--display); font-size: 17px; font-weight: 700; margin: 0 0 4px; }
+  .ready > p { margin: 0 0 14px; color: var(--ink-soft); font-size: 15px; max-width: 76ch; }
+  .ready ul { margin: 0; padding-left: 19px; }
+  .ready li { font-size: 14.5px; color: var(--ink-soft); margin-bottom: 6px; }
+  .ready li:last-child { margin-bottom: 0; }
+  .ready li b { color: var(--ink); }
+
+  footer {
+    margin-top: 68px; padding-top: 20px; border-top: 1px solid var(--line);
+    font-size: 13px; color: var(--ink-faint);
+    display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between;
+  }
+  footer span { font-family: var(--mono); }
+
+  @media (max-width: 1040px) {
+    .split, .split.rev { grid-template-columns: 1fr; }
+    .split.rev .shot { order: 1; }
+    .split.rev .side { order: 2; }
+  }
+  @media (max-width: 720px) {
+    .wrap, .masthead-inner, .navbar-inner { padding-left: 18px; padding-right: 18px; }
+    .app { grid-template-columns: 1fr; }
+    .sb { display: none; }
+    .kpis.k4, .kpis.k3 { grid-template-columns: repeat(2, 1fr); }
+    .kb { grid-template-columns: repeat(2, 1fr); }
+    .fg, .vg { grid-template-columns: 1fr 1fr; }
+    .mapwrap { grid-template-columns: 1fr; }
+    .g2, .g21, .g12 { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div>
+      <div class="brandline">
+        <div class="brandmark">VG</div>
+        <b>ViGov</b>
+        <span>Điều hành số cấp xã · Phase 1</span>
+      </div>
+      <h1>Một nền tảng cho cả chính quyền và người dân</h1>
+      <p class="lede">
+        Cán bộ xã điều hành công việc trên web quản trị. Người dân gửi phản ánh, tra cứu hồ sơ
+        và theo dõi kết quả ngay trên điện thoại. Cùng một bộ dữ liệu, cập nhật tức thời hai chiều.
+      </p>
+    </div>
+    <div class="facts">
+      <div class="fact"><b>13</b><span>phân hệ web quản trị</span></div>
+      <div class="fact"><b>3</b><span>kênh cho người dân</span></div>
+      <div class="fact"><b>388</b><span>test tự động đang pass</span></div>
+    </div>
+  </div>
+</header>
+
+<nav class="navbar" aria-label="Điều hướng">
+  <div class="navbar-inner">
+    <a class="part" href="#phana">A</a>
+    <a href="#congnghe">Công nghệ</a>
+    <a class="part" href="#phanb">B</a>
+    <a href="#s1">Tổng quan</a>
+    <a href="#s2">Nhiệm vụ</a>
+    <a href="#s3">Văn bản</a>
+    <a href="#s4">Phản ánh</a>
+    <a href="#s5">Giải ngân</a>
+    <a href="#s6">Bản đồ</a>
+    <a href="#s7">Báo cáo</a>
+    <a href="#s8">Nội dung</a>
+    <a href="#s9">Người dùng</a>
+    <a href="#s10">Cấu hình</a>
+    <a href="#s11">App công dân</a>
+    <a href="#ketthuc">Triển khai</a>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <!-- ══════════════ PHẦN A ══════════════ -->
+  <section id="phana" class="parthead">
+    <p class="part-tag">Phần A</p>
+    <h2 id="congnghe">Nền tảng công nghệ</h2>
+    <p>
+      Bốn sản phẩm, một API dùng chung. Mỗi module tự chứa và tách repo được khi cần mở rộng đội phát triển.
+    </p>
+    <div class="rule"></div>
+
+    <div class="stack">
+      <div class="sc">
+        <h3>Web Quản trị</h3>
+        <span class="tech">Next.js 16 · React 19 · TypeScript</span>
+        <p>Giao diện làm việc hằng ngày của cán bộ xã. Mười ba phân hệ, có tìm kiếm toàn cục và cập nhật danh sách tức thời.</p>
+        <div class="m"><span>13 phân hệ</span><b>88 test</b></div>
+      </div>
+      <div class="sc">
+        <h3>API nền tảng</h3>
+        <span class="tech">NestJS 11 · MongoDB · RabbitMQ</span>
+        <p>Toàn bộ nghiệp vụ, phân quyền và dữ liệu. Hai kênh giao diện gọi chung một bộ API duy nhất.</p>
+        <div class="m"><span>21 module · 135 route</span><b>300 test</b></div>
+      </div>
+      <div class="sc">
+        <h3>Zalo Mini App</h3>
+        <span class="tech">React 19 · Vite · zmp-sdk</span>
+        <p>Kênh chính cho người dân — mở thẳng trong Zalo, không cần cài thêm ứng dụng nào.</p>
+        <div class="m"><span>13 màn hình</span><b>Sẵn sàng nộp</b></div>
+      </div>
+    </div>
+
+    <div class="techstrip">
+      <div class="ts"><b>Phân quyền 5 vai trò</b><span>Chặn ngay ở tầng API, không chỉ ẩn nút trên giao diện.</span></div>
+      <div class="ts"><b>Cập nhật tức thời</b><span>Phản ánh mới, nhiệm vụ đổi trạng thái, thông báo — đẩy thẳng về màn hình.</span></div>
+      <div class="ts"><b>Adapter dịch vụ ngoài</b><span>Đổi nhà cung cấp OCR, bản đồ, ZNS chỉ sửa một tệp.</span></div>
+      <div class="ts"><b>Đóng gói sẵn</b><span>Docker Compose dựng toàn hệ, CI/CD qua Jenkins và GitHub Actions.</span></div>
+    </div>
+  </section>
+
+  <!-- ══════════════ PHẦN B ══════════════ -->
+  <section id="phanb" class="parthead">
+    <p class="part-tag">Phần B</p>
+    <h2>Màn hình và chức năng</h2>
+    <p>
+      Từng màn hình kèm việc cán bộ làm được trên đó. Số liệu trong hình là dữ liệu mẫu của
+      một xã giả định, đúng định dạng hệ thống đang chạy.
+    </p>
+    <div class="rule"></div>
+  </section>
+
+  <!-- ── 01 TỔNG QUAN ── -->
+  <section id="s1" class="screen">
+    <div class="sh">
+      <span class="n">01</span>
+      <h3>Tổng quan điều hành</h3>
+      <span class="who">Mọi vai trò</span>
+    </div>
+    <p class="sd">Màn hình đầu ca làm việc: lãnh đạo nhìn một lượt biết xã đang vướng ở đâu.</p>
+
+    <div class="split">
+      <div class="shot">
+        <div class="shot-bar">
+          <i class="dot"></i><i class="dot"></i><i class="dot"></i>
+          <span class="url">vigov.xa-daithang.gov.vn</span>
+        </div>
+        <div class="app">
+          <aside class="sb">
+            <div class="sb-brand"><i>VG</i><b>ViGov</b></div>
+            <div class="sb-cap">Điều hành</div>
+            <div class="sb-i on"><i class="ico"></i>Tổng quan</div>
+            <div class="sb-i"><i class="ico"></i>Nhiệm vụ<span class="bdg">12</span></div>
+            <div class="sb-i"><i class="ico"></i>Văn bản<span class="bdg">7</span></div>
+            <div class="sb-i"><i class="ico"></i>Giải ngân</div>
+            <div class="sb-i"><i class="ico"></i>Phản ánh<span class="bdg">5</span></div>
+            <div class="sb-i"><i class="ico"></i>Bản đồ</div>
+            <div class="sb-i"><i class="ico"></i>Báo cáo</div>
+            <div class="sb-cap">Quản trị</div>
+            <div class="sb-i"><i class="ico"></i>Nội dung</div>
+            <div class="sb-i"><i class="ico"></i>Người dùng</div>
+            <div class="sb-i"><i class="ico"></i>Cấu hình</div>
+          </aside>
+          <div class="main">
+            <div class="tb">
+              <div>
+                <div class="pt">Tổng quan điều hành</div>
+                <div class="ps">Kỳ báo cáo: tháng 8 năm 2026</div>
+              </div>
+              <div class="sp"></div>
+              <div class="srch">Tìm nhiệm vụ, văn bản, phản ánh…</div>
+              <div class="btn pri">Xem báo cáo</div>
+            </div>
+
+            <div class="kpis k3" style="margin-bottom:8px">
+              <div class="kpi a"><div class="lb">Nhiệm vụ đang thực hiện</div><div class="vl">24</div><div class="sub">Trong đó 3 việc quá hạn</div></div>
+              <div class="kpi b"><div class="lb">Nhiệm vụ quá hạn</div><div class="vl">3</div><div class="sub">Cần đôn đốc trong ngày</div></div>
+              <div class="kpi c"><div class="lb">Văn bản chưa xử lý</div><div class="vl">7</div><div class="sub">Trong đó 2 văn bản đến hạn</div></div>
+            </div>
+            <div class="kpis k3">
+              <div class="kpi d"><div class="lb">Tỷ lệ giải ngân</div><div class="vl">68%</div><div class="sub">11,4 / 16,8 tỷ đồng</div></div>
+              <div class="kpi e"><div class="lb">Phản ánh đúng hạn</div><div class="vl">87%</div><div class="sub">41 / 47 lượt đã xử lý</div></div>
+              <div class="kpi f"><div class="lb">Mức hài lòng người dân</div><div class="vl">4,6</div><div class="sub">Thang điểm 5 · 38 lượt đánh giá</div></div>
+            </div>
+
+            <div class="g21" style="margin-top:9px">
+              <div class="cd">
+                <div class="cd-h"><b>Nhiệm vụ hoàn thành theo tháng</b></div>
+                <div class="cd-b">
+                  <div class="bars">
+                    <div class="bcol"><div class="bstk"><i style="height:52%;background:var(--blue)"></i><i style="height:66%;background:#DCE7F2"></i></div><span>T3</span></div>
+                    <div class="bcol"><div class="bstk"><i style="height:61%;background:var(--blue)"></i><i style="height:74%;background:#DCE7F2"></i></div><span>T4</span></div>
+                    <div class="bcol"><div class="bstk"><i style="height:48%;background:var(--blue)"></i><i style="height:70%;background:#DCE7F2"></i></div><span>T5</span></div>
+                    <div class="bcol"><div class="bstk"><i style="height:73%;background:var(--blue)"></i><i style="height:88%;background:#DCE7F2"></i></div><span>T6</span></div>
+                    <div class="bcol"><div class="bstk"><i style="height:66%;background:var(--blue)"></i><i style="height:80%;background:#DCE7F2"></i></div><span>T7</span></div>
+                    <div class="bcol"><div class="bstk"><i style="height:84%;background:var(--blue)"></i><i style="height:100%;background:#DCE7F2"></i></div><span>T8</span></div>
+                  </div>
+                </div>
+              </div>
+              <div class="cd">
+                <div class="cd-h"><b>Cần xử lý ngay</b><span class="x">4 việc</span></div>
+                <div class="cd-b" style="padding-top:2px;padding-bottom:4px">
+                  <div class="ul2">
+                    <div class="ur">
+                      <i class="pd" style="background:var(--red)"></i>
+                      <div class="tx"><b>Rà soát quỹ đất công ích</b><span>Địa chính – Xây dựng</span></div>
+                      <span class="ch c-rd">Quá hạn 2 ngày</span>
+                    </div>
+                    <div class="ur">
+                      <i class="pd" style="background:var(--red)"></i>
+                      <div class="tx"><b>Chuẩn bị kỳ họp HĐND xã</b><span>Văn phòng UBND</span></div>
+                      <span class="ch c-or">Hôm nay</span>
+                    </div>
+                    <div class="ur">
+                      <i class="pd" style="background:var(--orange)"></i>
+                      <div class="tx"><b>Hồ sơ hộ nghèo Quý III</b><span>Văn hoá – Xã hội</span></div>
+                      <span class="ch c-mu">Còn 3 ngày</span>
+                    </div>
+                    <div class="ur">
+                      <i class="pd" style="background:var(--orange)"></i>
+                      <div class="tx"><b>Kiểm tra an toàn PCCC chợ xã</b><span>Công an xã</span></div>
+                      <span class="ch c-mu">Còn 5 ngày</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="side">
+        <h4>Trên màn hình này</h4>
+        <ul>
+          <li><b>Sáu chỉ số then chốt</b> — nhiệm vụ, văn bản, giải ngân, phản ánh và mức hài lòng của dân, gom về một chỗ.</li>
+          <li><b>Bấm thẳng vào số</b> để mở danh sách chi tiết đằng sau nó, không phải đi vòng qua menu.</li>
+          <li><b>Danh sách việc cần xử lý ngay</b> xếp theo mức ưu tiên, nhãn đỏ cho việc đã quá hạn.</li>
+          <li><b>Biểu đồ tháng</b> đối chiếu số việc được giao với số việc hoàn thành.</li>
+          <li><b>Chọn kỳ</b> tháng, quý hoặc cả năm.</li>
+        </ul>
+        <p class="kicker">
+          <b>Ý nghĩa với lãnh đạo:</b> thay vì hỏi từng bộ phận rồi chờ báo cáo giấy,
+          chủ tịch xã mở máy là biết ngay việc nào đang trễ và ai đang giữ.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 02 NHIỆM VỤ ── -->
+  <section id="s2" class="screen">
+    <div class="sh">
+      <span class="n">02</span>
+      <h3>Quản lý nhiệm vụ</h3>
+      <span class="who">Chuyên viên · Lãnh đạo</span>
+    </div>
+    <p class="sd">Giao việc, theo dõi tiến độ và chốt kết quả. Việc sinh ra từ ba nguồn: kết luận họp, văn bản đến và phản ánh của dân.</p>
+
+    <div class="split rev">
+      <div class="side">
+        <h4>Làm được gì</h4>
+        <ul>
+          <li><b>Hai cách nhìn</b> — bảng Kanban kéo theo trạng thái, hoặc bảng danh sách khi cần lọc và tìm.</li>
+          <li><b>Giao việc mới</b> chọn cán bộ, bộ phận chủ trì, hạn xử lý và mức ưu tiên.</li>
+          <li><b>Chia việc thành các đầu mục nhỏ</b>, tick xong tới đâu hệ thống tự tính phần trăm tiến độ tới đó.</li>
+          <li><b>Đính kèm tệp minh chứng</b>, trao đổi ngay trong việc thay vì nhắn tin ngoài.</li>
+          <li><b>Truy ngược về nguồn</b> — việc sinh từ văn bản hay phản ánh đều có nút mở lại hồ sơ gốc.</li>
+        </ul>
+        <p class="kicker">
+          <b>Vì sao quan trọng:</b> kết luận cuộc họp không còn nằm trong biên bản rồi trôi đi —
+          nó thành nhiệm vụ có người chịu trách nhiệm, có hạn và có bằng chứng hoàn thành.
+        </p>
+      </div>
+
+      <div class="shot">
+        <div class="shot-bar">
+          <i class="dot"></i><i class="dot"></i><i class="dot"></i>
+          <span class="url">vigov.xa-daithang.gov.vn/tasks</span>
+        </div>
+        <div class="app nosb">
+          <div class="main">
+            <div class="tb">
+              <div>
+                <div class="pt">Quản lý nhiệm vụ</div>
+                <div class="ps">Theo dõi việc giao từ kết luận họp, văn bản đến và phản ánh</div>
+              </div>
+              <div class="sp"></div>
+              <div class="btn">Kanban · Bảng</div>
+              <div class="btn pri">+ Giao việc mới</div>
+            </div>
+
+            <div class="fr">
+              <span class="fch on">Tất cả bộ phận</span>
+              <span class="fch">Địa chính – Xây dựng</span>
+              <span class="fch">Văn phòng UBND</span>
+              <span class="fch">Văn hoá – Xã hội</span>
+              <span class="fsel">Tất cả mức ưu tiên ▾</span>
+            </div>
+
+            <div class="kb">
+              <div class="kbc">
+                <div class="kbc-h"><i class="ch c-mu" style="width:5px;height:5px;padding:0;border-radius:50%"></i>Mới giao<span class="n">3</span></div>
+                <div class="kbt">
+                  <div class="id">NV-2607</div>
+                  <div class="tt">Kiểm tra an toàn PCCC chợ xã</div>
+                  <div class="ft"><span class="av" style="background:var(--teal)">VĐ</span><span class="ch c-or">Cao</span></div>
+                </div>
+                <div class="kbt">
+                  <div class="id">NV-2608</div>
+                  <div class="tt">Thống kê hộ chăn nuôi quy mô lớn</div>
+                  <div class="ft"><span class="av" style="background:var(--purple)">HS</span><span class="ch c-mu">Thấp</span></div>
+                </div>
+              </div>
+              <div class="kbc">
+                <div class="kbc-h"><i style="width:5px;height:5px;border-radius:50%;background:var(--blue)"></i>Đang thực hiện<span class="n">5</span></div>
+                <div class="kbt">
+                  <div class="id">NV-2601</div>
+                  <div class="tt">Rà soát quỹ đất công ích 2026</div>
+                  <div class="pgw" style="margin-bottom:4px"><div class="pg"><i style="width:65%;background:var(--blue)"></i></div><span>65%</span></div>
+                  <div class="ft"><span class="av" style="background:var(--blue)">LT</span><span class="ch c-rd">Cao</span></div>
+                </div>
+                <div class="kbt">
+                  <div class="id">NV-2604</div>
+                  <div class="tt">Vá đường liên thôn Đoài – Trung</div>
+                  <div class="pgw" style="margin-bottom:4px"><div class="pg"><i style="width:40%;background:var(--blue)"></i></div><span>40%</span></div>
+                  <div class="ft"><span class="av" style="background:var(--blue)">LT</span><span class="ch c-pu">Từ phản ánh</span></div>
+                </div>
+              </div>
+              <div class="kbc">
+                <div class="kbc-h"><i style="width:5px;height:5px;border-radius:50%;background:var(--orange)"></i>Chờ duyệt<span class="n">2</span></div>
+                <div class="kbt">
+                  <div class="id">NV-2602</div>
+                  <div class="tt">Chuẩn bị nội dung kỳ họp HĐND xã</div>
+                  <div class="pgw" style="margin-bottom:4px"><div class="pg"><i style="width:80%;background:var(--orange)"></i></div><span>80%</span></div>
+                  <div class="ft"><span class="av" style="background:var(--pink)">TH</span><span class="ch c-rd">Cao</span></div>
+                </div>
+              </div>
+              <div class="kbc">
+                <div class="kbc-h"><i style="width:5px;height:5px;border-radius:50%;background:var(--red)"></i>Quá hạn<span class="n">3</span></div>
+                <div class="kbt">
+                  <div class="id">NV-2596</div>
+                  <div class="tt">Báo cáo đất công ích gửi huyện</div>
+                  <div class="pgw" style="margin-bottom:4px"><div class="pg"><i style="width:55%;background:var(--red)"></i></div><span>55%</span></div>
+                  <div class="ft"><span class="av" style="background:var(--blue)">LT</span><span class="ch c-rd">Trễ 2 ngày</span></div>
+                </div>
+              </div>
+              <div class="kbc">
+                <div class="kbc-h"><i style="width:5px;height:5px;border-radius:50%;background:var(--green)"></i>Hoàn thành<span class="n">14</span></div>
+                <div class="kbt">
+                  <div class="id">NV-2589</div>
+                  <div class="tt">Chi trả trợ cấp người có công tháng 8</div>
+                  <div class="ft"><span class="av" style="background:var(--green)">ĐH</span><span class="ch c-gr">Đúng hạn</span></div>
+                </div>
+                <div class="kbt">
+                  <div class="id">NV-2591</div>
+                  <div class="tt">Tiêm phòng dại đàn chó nuôi đợt 2</div>
+                  <div class="ft"><span class="av" style="background:var(--teal)">VĐ</span><span class="ch c-gr">Đúng hạn</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 03 VĂN BẢN ── -->
+  <section id="s3" class="screen">
+    <div class="sh">
+      <span class="n">03</span>
+      <h3>Văn bản &amp; Đơn thư</h3>
+      <span class="who">Văn thư · Tiếp nhận một cửa</span>
+    </div>
+    <p class="sd">Sổ văn bản đến điện tử. Máy đọc bản scan và điền sẵn thông tin, cán bộ chỉ việc kiểm tra rồi xác nhận.</p>
+
+    <div class="split">
+      <div class="shot">
+        <div class="shot-bar">
+          <i class="dot"></i><i class="dot"></i><i class="dot"></i>
+          <span class="url">vigov.xa-daithang.gov.vn/documents</span>
+        </div>
+        <div class="app nosb">
+          <div class="main">
+            <div class="tb">
+              <div>
+                <div class="pt">Văn bản và đơn thư</div>
+                <div class="ps">Quản lý văn bản đến và luồng chuyển tiếp xử lý</div>
+              </div>
+              <div class="sp"></div>
+              <div class="btn pri">+ Tiếp nhận văn bản</div>
+            </div>
+
+            <div class="tabs">
+              <div class="on">Văn bản đến (42)</div>
+              <div>Đơn thư công dân (9)</div>
+            </div>
+
+            <div class="cd" style="margin-bottom:9px">
+              <table class="tb2">
+                <thead>
+                  <tr><th>Số đến</th><th>Số/Ký hiệu</th><th>Cơ quan ban hành</th><th>Trích yếu</th><th>Bộ phận giữ</th><th>Hạn</th><th>Trạng thái</th></tr>
+                </thead>
+                <tbody>
+                  <tr class="lt">
+                    <td class="cid">412</td>
+                    <td>214/UBND-VP</td>
+                    <td>UBND huyện Phú Xuyên</td>
+                    <td>V/v báo cáo kết quả quản lý, sử dụng đất công ích</td>
+                    <td>Địa chính – XD</td>
+                    <td><span class="ch c-rd">Quá hạn 4 ngày</span></td>
+                    <td><span class="ch c-bl"><i></i>Đang xử lý</span></td>
+                  </tr>
+                  <tr>
+                    <td class="cid">418</td>
+                    <td>1123/QĐ-UBND</td>
+                    <td>UBND TP Hà Nội</td>
+                    <td>Quyết định phê duyệt kế hoạch sử dụng đất năm 2026</td>
+                    <td>Địa chính – XD</td>
+                    <td><span class="ch c-or">Còn 2 ngày</span></td>
+                    <td><span class="ch c-or"><i></i>Chờ duyệt</span></td>
+                  </tr>
+                  <tr>
+                    <td class="cid">421</td>
+                    <td>198/UBND-VHXH</td>
+                    <td>UBND huyện Phú Xuyên</td>
+                    <td>V/v rà soát, bổ sung hồ sơ hộ nghèo Quý III/2026</td>
+                    <td>Văn hoá – Xã hội</td>
+                    <td><span class="ch c-mu">Còn 13 ngày</span></td>
+                    <td><span class="ch c-mu"><i></i>Mới tiếp nhận</span></td>
+                  </tr>
+                  <tr>
+                    <td class="cid">425</td>
+                    <td>87/TB-CAH</td>
+                    <td>Công an huyện Phú Xuyên</td>
+                    <td>Thông báo tăng cường bảo đảm ANTT dịp lễ 2/9</td>
+                    <td>Công an xã</td>
+                    <td><span class="ch c-mu">Còn 6 ngày</span></td>
+                    <td><span class="ch c-gr"><i></i>Đã hoàn thành</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="cd">
+              <div class="cd-h">
+                <b>Số đến 412 — Bóc tách từ bản scan</b>
+                <span class="x">Đã xác nhận 5/7 trường</span>
+              </div>
+              <div class="cd-b">
+                <div class="ocr-bar">
+                  <span class="btn">Mở bản scan</span>
+                  <span class="btn">Chạy lại OCR</span>
+                  <span class="btn pri">Xác nhận tất cả</span>
+                </div>
+                <div class="ocr">
+                  <div class="of">
+                    <div class="lb"><span>Số/Ký hiệu</span><span class="tag">OCR</span><span class="ok">✓</span></div>
+                    <div class="vv">214/UBND-VP</div>
+                  </div>
+                  <div class="of">
+                    <div class="lb"><span>Ngày ban hành</span><span class="tag">OCR</span><span class="ok">✓</span></div>
+                    <div class="vv">12/08/2026</div>
+                  </div>
+                  <div class="of">
+                    <div class="lb"><span>Độ khẩn</span><span class="tag">OCR</span><span class="ok">✓</span></div>
+                    <div class="vv">Khẩn</div>
+                  </div>
+                  <div class="of">
+                    <div class="lb"><span>Độ mật</span><span class="tag">OCR</span><span class="ok">✓</span></div>
+                    <div class="vv">Thường</div>
+                  </div>
+                  <div class="of w">
+                    <div class="lb"><span>Cơ quan ban hành</span><span class="tag">OCR</span><span class="ok">✓</span></div>
+                    <div class="vv">UBND huyện Phú Xuyên</div>
+                  </div>
+                  <div class="of w">
+                    <div class="lb"><span>Trích yếu nội dung</span><span class="tag">OCR</span><span class="no">○</span></div>
+                    <div class="vv">V/v báo cáo kết quả quản lý, sử dụng đất công ích và đất chưa sử dụng trên địa bàn</div>
+                  </div>
+                  <div class="of w">
+                    <div class="lb"><span>Hạn xử lý</span><span class="tag">OCR</span><span class="no">○</span></div>
+                    <div class="vv">19/08/2026</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="side">
+        <h4>Làm được gì</h4>
+        <ul>
+          <li><b>Vào sổ văn bản đến</b>, số đến do hệ thống cấp nên không trùng, không nhảy số.</li>
+          <li><b>Quét bản scan, máy đọc ra 7 trường</b>: số ký hiệu, ngày ban hành, độ khẩn, độ mật, cơ quan ban hành, trích yếu, hạn xử lý.</li>
+          <li><b>Cán bộ tick xác nhận từng trường</b> sau khi đối chiếu bản gốc — máy đề xuất, người quyết định.</li>
+          <li><b>Chuyển bộ phận</b> và hệ thống tự ghi lại toàn bộ đường đi của văn bản.</li>
+          <li><b>Biến văn bản thành nhiệm vụ</b> có người chịu trách nhiệm và hạn cụ thể, chỉ bằng một nút.</li>
+        </ul>
+        <p class="kicker">
+          <b>Tiết kiệm thời gian:</b> vào sổ một văn bản thủ công mất vài phút gõ lại.
+          Có OCR, cán bộ chỉ đọc soát và tick — phần nhập liệu gần như biến mất.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 04 PHẢN ÁNH ── -->
+  <section id="s4" class="screen">
+    <div class="sh">
+      <span class="n">04</span>
+      <h3>Phản ánh của người dân</h3>
+      <span class="who">Tiếp nhận một cửa · Chuyên viên</span>
+    </div>
+    <p class="sd">Phản ánh gửi từ điện thoại người dân rơi thẳng vào đây, kèm ảnh hiện trường, vị trí và đồng hồ đếm ngược hạn xử lý.</p>
+
+    <div class="split rev">
+      <div class="side">
+        <h4>Làm được gì</h4>
+        <ul>
+          <li><b>Đồng hồ SLA đếm ngược từng phiếu</b> — xanh còn thời gian, cam sắp tới hạn, đỏ đã trễ. Mỗi lĩnh vực một mức hạn riêng.</li>
+          <li><b>Phân công cán bộ xử lý</b> hoặc chuyển sang bộ phận đúng thẩm quyền, có ghi lý do.</li>
+          <li><b>Xem ảnh hiện trường</b> người dân gửi và ảnh nghiệm thu sau khi xử lý, đặt cạnh nhau.</li>
+          <li><b>Chốt kết quả</b> là hệ thống tự gửi thông báo về cho người dân, không cần gọi điện báo lại.</li>
+          <li><b>Người dân chấm sao</b> sau khi nhận kết quả, điểm hài lòng lên thẳng báo cáo.</li>
+        </ul>
+        <p class="kicker">
+          <b>Ví dụ hạn xử lý:</b> An ninh trật tự 2 ngày · Rác thải 3 ngày · Xây dựng 7 ngày.
+          Cấu hình sửa được, và chỉ áp cho phiếu mới — không hồi tố phiếu cũ.
+        </p>
+      </div>
+
+      <div class="shot">
+        <div class="shot-bar">
+          <i class="dot"></i><i class="dot"></i><i class="dot"></i>
+          <span class="url">vigov.xa-daithang.gov.vn/feedback</span>
+        </div>
+        <div class="app nosb">
+          <div class="main">
+            <div class="tb">
+              <div>
+                <div class="pt">Phản ánh, kiến nghị của người dân</div>
+                <div class="ps">Xử lý theo cam kết thời hạn từng lĩnh vực</div>
+              </div>
+              <div class="sp"></div>
+              <div class="btn pri">+ Tiếp nhận trực tiếp</div>
+            </div>
+
+            <div class="kpis k4" style="margin-bottom:10px">
+              <div class="kpi a"><div class="lb">Tiếp nhận trong tháng</div><div class="vl">47</div></div>
+              <div class="kpi d"><div class="lb">Đã xử lý xong</div><div class="vl">41</div><div class="sub">6 lượt đang xử lý</div></div>
+              <div class="kpi c"><div class="lb">Tỷ lệ đúng hạn</div><div class="vl">87%</div><div class="sub">Chỉ tiêu giao: 85%</div></div>
+              <div class="kpi e"><div class="lb">Điểm hài lòng</div><div class="vl">4,6</div><div class="sub">38 lượt đánh giá</div></div>
+            </div>
+
+            <div class="fr">
+              <span class="fch on">Tất cả lĩnh vực</span>
+              <span class="fch">Vệ sinh môi trường</span>
+              <span class="fch">Giao thông</span>
+              <span class="fch">An ninh</span>
+              <span class="fsel">Đang xử lý ▾</span>
+            </div>
+
+            <div class="fg">
+              <div class="fc">
+                <div class="im" style="background:linear-gradient(135deg,#2E8B57,#27AE60)">ẢNH HIỆN TRƯỜNG</div>
+                <div class="bd">
+                  <div class="hd"><span class="cid">PA-1042</span><span class="ch c-bl"><i></i>Đang xử lý</span></div>
+                  <div class="tt">Bãi rác tự phát đầu cầu Thôn Đông</div>
+                  <div class="ex">Người dân tự ý đổ rác thải sinh hoạt tại khu đất trống, bốc mùi hôi thối.</div>
+                  <div class="ft"><span class="ch c-gr">Vệ sinh MT</span><span class="ch c-rd">Quá hạn 24 giờ</span><span class="loc">Thôn Đông</span></div>
+                </div>
+              </div>
+              <div class="fc">
+                <div class="im" style="background:linear-gradient(135deg,#2C6FAF,#3B82C4)">ẢNH HIỆN TRƯỜNG</div>
+                <div class="bd">
+                  <div class="hd"><span class="cid">PA-1041</span><span class="ch c-bl"><i></i>Đang xử lý</span></div>
+                  <div class="tt">Ổ gà lớn đường liên thôn Đoài – Trung</div>
+                  <div class="ex">Đoạn đường dài khoảng 60m nhiều ổ gà sâu, đã có 2 vụ ngã xe máy.</div>
+                  <div class="ft"><span class="ch c-bl">Giao thông</span><span class="ch c-or">Còn 6 giờ</span><span class="loc">Thôn Đoài</span></div>
+                </div>
+              </div>
+              <div class="fc">
+                <div class="im" style="background:linear-gradient(135deg,#7B3FA0,#8E44AD)">ẢNH HIỆN TRƯỜNG</div>
+                <div class="bd">
+                  <div class="hd"><span class="cid">PA-1039</span><span class="ch c-gr"><i></i>Đã xử lý</span></div>
+                  <div class="tt">Đèn chiếu sáng ngõ 5 hỏng nhiều ngày</div>
+                  <div class="ex">Đã thay bóng và kiểm tra toàn tuyến, bàn giao thôn quản lý.</div>
+                  <div class="ft"><span class="ch c-pu">Trật tự ĐT</span><span class="ch c-gr">★ 5,0</span><span class="loc">Tổ 5</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="cd" style="margin-top:9px">
+              <div class="cd-h"><b>PA-1042 · Tiến trình xử lý</b><span class="x">Vũ Đức Anh phụ trách</span></div>
+              <div class="cd-b" style="padding-top:4px;padding-bottom:6px">
+                <div class="stp"><div class="cir" style="background:var(--green)">✓</div><div class="tx"><b>Người dân gửi phản ánh qua Mini App</b><span>18/08/2026 07:42</span></div></div>
+                <div class="stp"><div class="cir" style="background:var(--green)">✓</div><div class="tx"><b>Tiếp nhận, phân loại</b><span>18/08/2026 08:10 · Ngô Thị Lan</span></div></div>
+                <div class="stp"><div class="cir" style="background:var(--green)">✓</div><div class="tx"><b>Kiểm tra hiện trường, lập biên bản</b><span>19/08/2026 14:20 · Vũ Đức Anh</span></div></div>
+                <div class="stp"><div class="cir" style="background:var(--blue)">●</div><div class="tx"><b>Đang thu gom, cắm biển cấm đổ rác</b><span>Từ 21/08/2026 · Vũ Đức Anh</span></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 05 GIẢI NGÂN ── -->
+  <section id="s5" class="screen">
+    <div class="sh">
+      <span class="n">05</span>
+      <h3>Theo dõi giải ngân</h3>
+      <span class="who">Kế toán · Lãnh đạo</span>
+    </div>
+    <p class="sd">Từng hạng mục đầu tư công: giao bao nhiêu, chi được bao nhiêu, đang vướng ở đâu.</p>
+
+    <div class="split">
+      <div class="shot">
+        <div class="shot-bar">
+          <i class="dot"></i><i class="dot"></i><i class="dot"></i>
+          <span class="url">vigov.xa-daithang.gov.vn/disbursement</span>
+        </div>
+        <div class="app nosb">
+          <div class="main">
+            <div class="tb">
+              <div>
+                <div class="pt">Theo dõi giải ngân vốn đầu tư</div>
+                <div class="ps">Năm ngân sách 2026</div>
+              </div>
+              <div class="sp"></div>
+              <div class="fsel">Năm 2026 ▾</div>
+              <div class="btn">↓ Xuất Excel</div>
+              <div class="btn pri">+ Thêm hạng mục</div>
+            </div>
+
+            <div class="kpis k4" style="margin-bottom:10px">
+              <div class="kpi a"><div class="lb">Tổng kế hoạch vốn năm 2026</div><div class="vl">16,8 tỷ</div><div class="sub">06 hạng mục · 04 nguồn vốn</div></div>
+              <div class="kpi d"><div class="lb">Đã giải ngân</div><div class="vl">11,4 tỷ</div><div class="sub">Trên tổng kế hoạch 16,8 tỷ</div></div>
+              <div class="kpi c"><div class="lb">Tỷ lệ giải ngân</div><div class="vl">67,9%</div><div class="sub">So với kế hoạch vốn giao</div></div>
+              <div class="kpi b"><div class="lb">Hạng mục chậm tiến độ</div><div class="vl">2</div><div class="sub">Nhà văn hoá xã · Trạm y tế</div></div>
+            </div>
+
+            <div class="cd">
+              <div class="cd-h"><b>Danh sách hạng mục</b><span class="x">6 hạng mục</span></div>
+              <div class="cd-b">
+                <div class="bl">
+                  <div class="bi">
+                    <div class="r1">
+                      <span class="nm">Đường giao thông Thôn Đông</span>
+                      <span class="ch c-gr">Ngân sách xã</span>
+                      <span class="mn">3,2 tỷ / 3,7 tỷ</span>
+                    </div>
+                    <div class="r2">
+                      <span class="ow">Lê Minh Tuấn · HM-01</span>
+                      <div class="pg" style="flex:1"><i style="width:86%;background:var(--green)"></i></div>
+                      <span class="ch c-gr">86%</span>
+                    </div>
+                  </div>
+                  <div class="bi late">
+                    <div class="r1">
+                      <span class="nm">Nhà văn hoá xã</span>
+                      <span class="ch c-bl">Ngân sách huyện</span>
+                      <span class="ch c-rd">Chậm tiến độ</span>
+                      <span class="mn">1,1 tỷ / 4,2 tỷ</span>
+                    </div>
+                    <div class="r2">
+                      <span class="ow">Đỗ Thanh Hà · HM-02 · 2 vướng mắc</span>
+                      <div class="pg" style="flex:1"><i style="width:26%;background:var(--red)"></i></div>
+                      <span class="ch c-rd">26%</span>
+                    </div>
+                  </div>
+                  <div class="bi late">
+                    <div class="r1">
+                      <span class="nm">Nâng cấp Trạm y tế xã</span>
+                      <span class="ch c-pu">CTMT quốc gia</span>
+                      <span class="ch c-rd">Chậm tiến độ</span>
+                      <span class="mn">1,6 tỷ / 4,5 tỷ</span>
+                    </div>
+                    <div class="r2">
+                      <span class="ow">Vũ Đức Anh · HM-03 · 1 vướng mắc</span>
+                      <div class="pg" style="flex:1"><i style="width:36%;background:var(--red)"></i></div>
+                      <span class="ch c-rd">36%</span>
+                    </div>
+                  </div>
+                  <div class="bi">
+                    <div class="r1">
+                      <span class="nm">Kiên cố hoá kênh mương nội đồng</span>
+                      <span class="ch c-te">Vốn sự nghiệp</span>
+                      <span class="mn">2,8 tỷ / 2,9 tỷ</span>
+                    </div>
+                    <div class="r2">
+                      <span class="ow">Hoàng Văn Sơn · HM-04</span>
+                      <div class="pg" style="flex:1"><i style="width:96%;background:var(--green)"></i></div>
+                      <span class="ch c-gr">96%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="side">
+        <h4>Làm được gì</h4>
+        <ul>
+          <li><b>Nhìn một màn biết cả năm ngân sách</b> — tổng vốn giao, đã chi, tỷ lệ đạt và hạng mục nào đang chậm.</li>
+          <li><b>Ghi nhận từng lần chi</b> kèm số chứng từ và đơn vị thụ hưởng; hệ thống tự cộng luỹ kế và tính lại phần trăm.</li>
+          <li><b>Gửi đề nghị giải ngân đợt mới</b> — biểu mẫu chặn ngay nếu số tiền vượt phần vốn còn lại.</li>
+          <li><b>Ghi vướng mắc kèm người phụ trách tháo gỡ</b> và hạn, gỡ xong thì đánh dấu.</li>
+          <li><b>Xuất Excel</b> báo cáo giải ngân cả năm để gửi lên huyện.</li>
+        </ul>
+        <p class="kicker">
+          <b>Màu thanh tiến độ nói ngay:</b> xanh từ 80% trở lên, cam khi thấp, đỏ với hạng mục
+          bị đánh dấu chậm — lãnh đạo lướt mắt là biết phải hỏi ai.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 06 BẢN ĐỒ ── -->
+  <section id="s6" class="screen">
+    <div class="sh">
+      <span class="n">06</span>
+      <h3>Bản đồ kinh tế số</h3>
+      <span class="who">Lãnh đạo · Chuyên viên</span>
+    </div>
+    <p class="sd">Doanh nghiệp, hộ kinh doanh và hạ tầng của xã đặt lên bản đồ, kèm phân tích cơ cấu ngành.</p>
+
+    <div class="split rev">
+      <div class="side">
+        <h4>Làm được gì</h4>
+        <ul>
+          <li><b>Bật tắt từng lớp dữ liệu</b> — doanh nghiệp, hộ kinh doanh, cơ sở hạ tầng, mỗi lớp một màu.</li>
+          <li><b>Bấm vào ghim</b> ra ngay ngành nghề, địa chỉ, số lao động, người đại diện và số điện thoại.</li>
+          <li><b>Xem cơ cấu ngành kinh tế</b> của xã bằng biểu đồ tròn, chọn ngành để soi tỷ trọng.</li>
+          <li><b>Đổi nền bản đồ</b> bằng cấu hình, không phải sửa mã nguồn.</li>
+        </ul>
+        <p class="kicker">
+          <b>Đang chờ khách chốt:</b> nhà cung cấp bản đồ nền (VietMap hay Goong — Google Maps
+          không có giấy phép chính thức tại Việt Nam). Adapter đã dựng sẵn, chốt xong là cắm vào.
+        </p>
+      </div>
+
+      <div class="shot">
+        <div class="shot-bar">
+          <i class="dot"></i><i class="dot"></i><i class="dot"></i>
+          <span class="url">vigov.xa-daithang.gov.vn/map</span>
+        </div>
+        <div class="app nosb">
+          <div class="main">
+            <div class="tb">
+              <div>
+                <div class="pt">Bản đồ kinh tế số</div>
+                <div class="ps">Doanh nghiệp, hộ kinh doanh và hạ tầng trên địa bàn xã</div>
+              </div>
+              <div class="sp"></div>
+              <div class="btn">↓ Xuất dữ liệu</div>
+            </div>
+
+            <div class="mapwrap">
+              <div class="cd">
+                <div class="cd-h"><b>Lớp dữ liệu</b></div>
+                <div class="cd-b" style="padding:6px 9px">
+                  <div class="lyr"><i style="background:var(--blue)"></i>Doanh nghiệp<b>18</b></div>
+                  <div class="lyr"><i style="background:var(--green)"></i>Hộ kinh doanh<b>134</b></div>
+                  <div class="lyr"><i style="background:var(--orange)"></i>Cơ sở sản xuất<b>27</b></div>
+                  <div class="lyr"><i style="background:var(--purple)"></i>Hạ tầng công<b>12</b></div>
+                  <div class="lyr"><i style="background:var(--teal)"></i>Chợ, cửa hàng<b>45</b></div>
+                </div>
+              </div>
+
+              <div class="mp">
+                <div class="road" style="left:0;right:0;top:56%;height:5px"></div>
+                <div class="road" style="top:0;bottom:0;left:34%;width:4px"></div>
+                <div class="road" style="left:0;right:0;top:24%;height:2.5px"></div>
+                <div class="river" style="left:0;right:0;top:78%;height:8px"></div>
+                <div class="lbl" style="left:8%;top:12%">THÔN ĐÔNG</div>
+                <div class="lbl" style="left:48%;top:34%">THÔN ĐOÀI</div>
+                <div class="lbl" style="left:12%;top:66%">THÔN TRUNG</div>
+                <div class="lbl" style="left:62%;top:86%">TỔ DÂN PHỐ SỐ 5</div>
+                <div class="lbl" style="left:60%;top:59%">ĐT-428</div>
+                <div class="pin" style="background:var(--blue);left:20%;top:22%"></div>
+                <div class="pin" style="background:var(--green);left:29%;top:38%"></div>
+                <div class="pin" style="background:var(--green);left:15%;top:47%"></div>
+                <div class="pin" style="background:var(--orange);left:44%;top:30%"></div>
+                <div class="pin" style="background:var(--teal);left:56%;top:44%"></div>
+                <div class="pin" style="background:var(--green);left:24%;top:70%"></div>
+                <div class="pin" style="background:var(--purple);left:70%;top:36%"></div>
+                <div class="pin" style="background:var(--blue);left:78%;top:68%"></div>
+                <div class="pin" style="background:var(--green);left:64%;top:74%"></div>
+                <div class="mpop" style="left:46%;top:8%">
+                  <b>Xưởng may Tân Tiến</b>
+                  <span>May mặc · Thôn Đoài</span>
+                  <span>42 lao động</span>
+                  <span>Ng. Văn Thắng · 0987•••321</span>
+                </div>
+              </div>
+
+              <div class="cd">
+                <div class="cd-h"><b>Cơ cấu ngành</b></div>
+                <div class="cd-b" style="padding:9px 8px">
+                  <div class="donut" style="background:conic-gradient(var(--green) 0 38%, var(--blue) 38% 62%, var(--orange) 62% 80%, var(--purple) 80% 92%, var(--teal) 92% 100%)"></div>
+                  <div class="lyr" style="padding:3px 0"><i style="background:var(--green)"></i>Nông nghiệp<b>38%</b></div>
+                  <div class="lyr" style="padding:3px 0"><i style="background:var(--blue)"></i>Thương mại<b>24%</b></div>
+                  <div class="lyr" style="padding:3px 0"><i style="background:var(--orange)"></i>Tiểu thủ CN<b>18%</b></div>
+                  <div class="lyr" style="padding:3px 0"><i style="background:var(--purple)"></i>Dịch vụ<b>12%</b></div>
+                  <div class="lyr" style="padding:3px 0"><i style="background:var(--teal)"></i>Khác<b>8%</b></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 07 BÁO CÁO ── -->
+  <section id="s7" class="screen">
+    <div class="sh">
+      <span class="n">07</span>
+      <h3>Báo cáo tổng hợp</h3>
+      <span class="who">Lãnh đạo · Văn phòng</span>
+    </div>
+    <p class="sd">Số liệu điều hành theo kỳ, so sánh được với cùng kỳ năm trước, xuất ra tệp gửi cấp trên.</p>
+
+    <div class="split">
+      <div class="shot">
+        <div class="shot-bar">
+          <i class="dot"></i><i class="dot"></i><i class="dot"></i>
+          <span class="url">vigov.xa-daithang.gov.vn/reports</span>
+        </div>
+        <div class="app nosb">
+          <div class="main">
+            <div class="tb">
+              <div>
+                <div class="pt">Báo cáo tổng hợp</div>
+                <div class="ps">Số liệu điều hành kỳ Quý III/2026 · có so sánh cùng kỳ 2025</div>
+              </div>
+              <div class="sp"></div>
+              <div class="btn">Xuất PDF</div>
+              <div class="btn">Xuất PPT</div>
+              <div class="btn pri">↓ Xuất Excel</div>
+            </div>
+
+            <div class="fr">
+              <span class="fsel">Quý III/2026 ▾</span>
+              <span class="fch">Kỳ hiện tại</span>
+              <span class="fch on">So sánh cùng kỳ 2025</span>
+            </div>
+
+            <div class="g2" style="margin-bottom:9px">
+              <div class="cd">
+                <div class="cd-h"><b>Nhiệm vụ theo bộ phận</b><span class="x">Tổng 86 việc</span></div>
+                <div class="cd-b">
+                  <div class="hb">
+                    <div class="hbr"><span class="l">Địa chính – XD</span><div class="t"><i style="width:100%;background:var(--navy)"></i></div><span class="v">24</span></div>
+                    <div class="hbr"><span class="l">Văn phòng UBND</span><div class="t"><i style="width:79%;background:var(--blue)"></i></div><span class="v">19</span></div>
+                    <div class="hbr"><span class="l">Văn hoá – Xã hội</span><div class="t"><i style="width:67%;background:var(--green)"></i></div><span class="v">16</span></div>
+                    <div class="hbr"><span class="l">Tài chính – Kế toán</span><div class="t"><i style="width:50%;background:var(--purple)"></i></div><span class="v">12</span></div>
+                    <div class="hbr"><span class="l">Công an xã</span><div class="t"><i style="width:42%;background:var(--orange)"></i></div><span class="v">10</span></div>
+                    <div class="hbr"><span class="l">Tư pháp – Hộ tịch</span><div class="t"><i style="width:21%;background:var(--teal)"></i></div><span class="v">5</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="cd">
+                <div class="cd-h"><b>Tỷ lệ xử lý đúng hạn theo tháng</b></div>
+                <div class="cd-b">
+                  <svg class="lc" viewBox="0 0 300 108" role="img" aria-label="Biểu đồ đường tỷ lệ xử lý đúng hạn theo tháng, năm 2026 so với 2025">
+                    <g font-family="JetBrains Mono, monospace" font-size="6.5" fill="#8896A6">
+                      <text x="2" y="12">100%</text><text x="2" y="38">90%</text>
+                      <text x="2" y="64">80%</text><text x="2" y="90">70%</text>
+                    </g>
+                    <g stroke="#E5E8EB" stroke-width="0.7">
+                      <line x1="26" y1="9"  x2="292" y2="9"></line>
+                      <line x1="26" y1="35" x2="292" y2="35"></line>
+                      <line x1="26" y1="61" x2="292" y2="61"></line>
+                      <line x1="26" y1="87" x2="292" y2="87"></line>
+                    </g>
+                    <polyline fill="none" stroke="#C3CDD8" stroke-width="1.6" stroke-dasharray="4 3"
+                      points="42,66 84,60 126,68 168,54 210,58 252,50"></polyline>
+                    <polyline fill="none" stroke="#3B82C4" stroke-width="2.2" stroke-linejoin="round"
+                      points="42,52 84,44 126,48 168,34 210,30 252,22"></polyline>
+                    <g fill="#3B82C4">
+                      <circle cx="42" cy="52" r="2.4"></circle><circle cx="84" cy="44" r="2.4"></circle>
+                      <circle cx="126" cy="48" r="2.4"></circle><circle cx="168" cy="34" r="2.4"></circle>
+                      <circle cx="210" cy="30" r="2.4"></circle><circle cx="252" cy="22" r="2.8"></circle>
+                    </g>
+                    <text x="262" y="24" font-family="JetBrains Mono, monospace" font-size="7" font-weight="600" fill="#3B82C4">92%</text>
+                    <g font-family="JetBrains Mono, monospace" font-size="6.5" fill="#8896A6" text-anchor="middle">
+                      <text x="42" y="102">T3</text><text x="84" y="102">T4</text><text x="126" y="102">T5</text>
+                      <text x="168" y="102">T6</text><text x="210" y="102">T7</text><text x="252" y="102">T8</text>
+                    </g>
+                  </svg>
+                </div>
+              </div>
+            </div>
+
+            <div class="cd">
+              <div class="cd-h"><b>Xếp hạng bộ phận theo tỷ lệ đúng hạn</b><span class="x">Kỳ Quý III/2026</span></div>
+              <table class="tb2">
+                <thead>
+                  <tr><th>Hạng</th><th>Bộ phận</th><th>Tổng nhiệm vụ</th><th>Đúng hạn</th><th>Trễ hạn</th><th>Tỷ lệ đúng hạn</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><span style="color:#D4A017;font-weight:700">①</span></td>
+                    <td class="st">Tư pháp – Hộ tịch</td><td>5</td>
+                    <td style="color:var(--green)">5</td><td>0</td>
+                    <td><span class="ch c-gr">100%</span></td>
+                  </tr>
+                  <tr>
+                    <td><span style="color:#9AA8B6;font-weight:700">②</span></td>
+                    <td class="st">Văn phòng UBND</td><td>19</td>
+                    <td style="color:var(--green)">18</td><td>1</td>
+                    <td><span class="ch c-gr">95%</span></td>
+                  </tr>
+                  <tr>
+                    <td><span style="color:#B87333;font-weight:700">③</span></td>
+                    <td class="st">Văn hoá – Xã hội</td><td>16</td>
+                    <td style="color:var(--green)">14</td><td>2</td>
+                    <td><span class="ch c-gr">92%</span></td>
+                  </tr>
+                  <tr>
+                    <td><span style="color:var(--mut)">4</span></td>
+                    <td class="st">Tài chính – Kế toán</td><td>12</td>
+                    <td style="color:var(--green)">10</td><td>2</td>
+                    <td><span class="ch c-or">83%</span></td>
+                  </tr>
+                  <tr>
+                    <td><span style="color:var(--mut)">5</span></td>
+                    <td class="st">Địa chính – Xây dựng</td><td>24</td>
+                    <td style="color:var(--green)">18</td>
+                    <td style="color:var(--red)">6</td>
+                    <td><span class="ch c-rd">75%</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="side">
+        <h4>Làm được gì</h4>
+        <ul>
+          <li><b>Chọn kỳ báo cáo</b> theo tháng, quý, 6 tháng hoặc cả năm.</li>
+          <li><b>Bật so sánh cùng kỳ năm trước</b> — đường nét đứt trên biểu đồ là số liệu năm ngoái.</li>
+          <li><b>Bốn góc nhìn</b>: nhiệm vụ theo bộ phận, tỷ lệ đúng hạn theo tháng, phản ánh theo lĩnh vực, giải ngân theo nguồn vốn.</li>
+          <li><b>Bảng xếp hạng bộ phận</b> theo tỷ lệ đúng hạn, có huy chương ba hạng đầu.</li>
+          <li><b>Xuất Excel, PDF và PowerPoint</b> — bản PDF nhúng sẵn phông tiếng Việt nên không lỗi dấu.</li>
+        </ul>
+        <p class="kicker">
+          <b>Hết cảnh tổng hợp tay:</b> báo cáo quý trước đây phải gom số từ nhiều bộ phận rồi gõ lại vào Word.
+          Giờ chọn kỳ và bấm xuất.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 08 CMS ── -->
+  <section id="s8" class="screen">
+    <div class="sh">
+      <span class="n">08</span>
+      <h3>Nội dung cho người dân</h3>
+      <span class="who">Văn hoá – Xã hội · Quản trị</span>
+    </div>
+    <p class="sd">Tin tức, video tuyên truyền, bản tin truyền thanh và thông báo hàng loạt — soạn ở đây, hiện ngay trên điện thoại người dân.</p>
+
+    <div class="split rev">
+      <div class="side">
+        <h4>Làm được gì</h4>
+        <ul>
+          <li><b>Viết tin bài</b> có ảnh bìa, lưu nháp trước rồi đăng sau khi lãnh đạo duyệt nội dung.</li>
+          <li><b>Đăng video tuyên truyền</b> — nhúng từ YouTube hoặc tải tệp lên, thời lượng máy tự đọc.</li>
+          <li><b>Đăng bản tin truyền thanh</b> để dân nghe lại trên điện thoại nếu lỡ giờ phát loa.</li>
+          <li><b>Gửi thông báo hàng loạt</b> qua Zalo ZNS hoặc thông báo đẩy, chọn nhóm nhận là toàn dân hay nội bộ.</li>
+          <li><b>Xem lịch sử gửi</b>: đã tới bao nhiêu người trên tổng số.</li>
+        </ul>
+        <p class="kicker">
+          <b>Điều kiện gửi ZNS thật:</b> khách cần đăng ký Zalo Business và được Zalo duyệt mẫu tin
+          (thường 1–3 ngày làm việc). Phần mềm đã sẵn sàng, chờ tài khoản.
+        </p>
+      </div>
+
+      <div class="shot">
+        <div class="shot-bar">
+          <i class="dot"></i><i class="dot"></i><i class="dot"></i>
+          <span class="url">vigov.xa-daithang.gov.vn/cms</span>
+        </div>
+        <div class="app nosb">
+          <div class="main">
+            <div class="tb">
+              <div>
+                <div class="pt">Nội dung Mini App</div>
+                <div class="ps">Tin bài, video, truyền thanh và thông báo gửi công dân</div>
+              </div>
+              <div class="sp"></div>
+              <div class="btn pri">+ Viết bài mới</div>
+            </div>
+
+            <div class="tabs">
+              <div class="on">Tin tức &amp; Sự kiện</div>
+              <div>Video</div>
+              <div>Truyền thanh</div>
+              <div>Gửi thông báo</div>
+              <div>Lịch sử gửi</div>
+            </div>
+
+            <div class="cd" style="margin-bottom:9px">
+              <table class="tb2">
+                <thead><tr><th>Tiêu đề</th><th>Loại</th><th>Tác giả</th><th>Ngày đăng</th><th>Lượt xem</th><th>Trạng thái</th></tr></thead>
+                <tbody>
+                  <tr>
+                    <td class="st">Xã Đại Thắng ra mắt mô hình camera an ninh thôn xóm</td>
+                    <td><span class="ch c-bl">Tin tức</span></td>
+                    <td><div class="who-cell"><span class="av" style="background:var(--pink)">TH</span>Trần Thị Hạnh</div></td>
+                    <td>22/08/2026</td><td>1.284</td>
+                    <td><span class="ch c-gr"><i></i>Đã đăng</span></td>
+                  </tr>
+                  <tr>
+                    <td class="st">Lịch tiếp công dân định kỳ tháng 9/2026</td>
+                    <td><span class="ch c-or">Thông báo</span></td>
+                    <td><div class="who-cell"><span class="av" style="background:var(--teal)">NL</span>Ngô Thị Lan</div></td>
+                    <td>20/08/2026</td><td>856</td>
+                    <td><span class="ch c-gr"><i></i>Đã đăng</span></td>
+                  </tr>
+                  <tr>
+                    <td class="st">Kế hoạch tổ chức Tết Trung thu cho thiếu nhi</td>
+                    <td><span class="ch c-pu">Sự kiện</span></td>
+                    <td><div class="who-cell"><span class="av" style="background:var(--green)">ĐH</span>Đỗ Thanh Hà</div></td>
+                    <td>—</td><td>—</td>
+                    <td><span class="ch c-mu"><i></i>Nháp</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="g12">
+              <div class="cd">
+                <div class="cd-h"><b>Soạn thông báo</b></div>
+                <div class="cd-b" style="padding:9px 10px">
+                  <div style="font-size:8.5px;color:var(--mut);margin-bottom:3px">Kênh gửi</div>
+                  <div class="fr" style="margin-bottom:8px"><span class="fch on">Zalo ZNS</span><span class="fch">Push</span></div>
+                  <div style="font-size:8.5px;color:var(--mut);margin-bottom:3px">Đối tượng nhận</div>
+                  <div class="fsel" style="display:block;margin-bottom:8px">Toàn bộ công dân ▾</div>
+                  <div style="font-size:8.5px;color:var(--mut);margin-bottom:3px">Nội dung</div>
+                  <div style="font-size:9px;color:var(--ui-tx);background:var(--ui-bg);border:1px solid var(--ui-line);border-radius:4px;padding:6px 7px;line-height:1.45">
+                    Thông báo lịch cắt điện bảo trì trạm biến áp Thôn Đông từ 8h–11h ngày 28/8/2026.
+                  </div>
+                  <div style="font-size:8px;color:var(--mut);text-align:right;margin-top:3px">98/200 ký tự</div>
+                  <div class="btn pri" style="display:block;text-align:center;margin-top:8px">Gửi thông báo</div>
+                </div>
+              </div>
+
+              <div class="cd">
+                <div class="cd-h"><b>Video tuyên truyền</b><span class="x">12 video</span></div>
+                <div class="cd-b">
+                  <div class="vg">
+                    <div class="vc">
+                      <div class="th" style="background:linear-gradient(135deg,#1B3A5C,#3B82C4)"><div class="pl">▶</div><span class="dur">4:12</span></div>
+                      <div class="bd">
+                        <div class="tt">Hướng dẫn nộp hồ sơ trực tuyến</div>
+                        <div class="ft"><span class="ch c-rd">YouTube</span><span style="font-size:7.5px;color:var(--mut)">942 lượt</span></div>
+                      </div>
+                    </div>
+                    <div class="vc">
+                      <div class="th" style="background:linear-gradient(135deg,#1F7A4D,#27AE60)"><div class="pl">▶</div><span class="dur">2:38</span></div>
+                      <div class="bd">
+                        <div class="tt">An toàn giao thông mùa tựu trường</div>
+                        <div class="ft"><span class="ch c-te">Tự host</span><span style="font-size:7.5px;color:var(--mut)">517 lượt</span></div>
+                      </div>
+                    </div>
+                    <div class="vc">
+                      <div class="th" style="background:linear-gradient(135deg,#8E44AD,#B061CE)"><div class="pl">▶</div><span class="dur">6:05</span></div>
+                      <div class="bd">
+                        <div class="tt">Phòng chống thiên tai mùa mưa bão</div>
+                        <div class="ft"><span class="ch c-mu">Nháp</span><span style="font-size:7.5px;color:var(--mut)">—</span></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 09 NGƯỜI DÙNG ── -->
+  <section id="s9" class="screen">
+    <div class="sh">
+      <span class="n">09</span>
+      <h3>Người dùng &amp; Bảo mật</h3>
+      <span class="who">Chỉ Quản trị hệ thống</span>
+    </div>
+    <p class="sd">Tài khoản công dân trên Mini App, phiên đăng nhập toàn cơ quan và danh sách chặn.</p>
+
+    <div class="split">
+      <div class="shot">
+        <div class="shot-bar">
+          <i class="dot"></i><i class="dot"></i><i class="dot"></i>
+          <span class="url">vigov.xa-daithang.gov.vn/users</span>
+        </div>
+        <div class="app nosb">
+          <div class="main">
+            <div class="tb">
+              <div>
+                <div class="pt">Người dùng Mini App &amp; Bảo mật</div>
+                <div class="ps">Tài khoản công dân, phiên đăng nhập và danh sách chặn</div>
+              </div>
+              <div class="sp"></div>
+              <div class="srch">Tìm theo tên Zalo hoặc số điện thoại…</div>
+            </div>
+
+            <div class="kpis k3" style="margin-bottom:10px">
+              <div class="kpi a"><div class="lb">Tổng công dân đã đăng ký</div><div class="vl">1.847</div><div class="sub">Qua Zalo Mini App và app công dân</div></div>
+              <div class="kpi d"><div class="lb">Hoạt động 30 ngày qua</div><div class="vl">1.126</div><div class="sub">Có phiên đăng nhập gần đây</div></div>
+              <div class="kpi b"><div class="lb">Tài khoản bị khoá</div><div class="vl">4</div><div class="sub">Do vi phạm quy định gửi phản ánh</div></div>
+            </div>
+
+            <div class="tabs">
+              <div class="on">Công dân</div>
+              <div>Phiên đăng nhập</div>
+              <div>Blacklist</div>
+            </div>
+
+            <div class="fr">
+              <span class="fch on">Tất cả</span>
+              <span class="fch">Thôn Đông</span>
+              <span class="fch">Thôn Đoài</span>
+              <span class="fch">Tổ dân phố số 5</span>
+            </div>
+
+            <div class="cd">
+              <table class="tb2">
+                <thead>
+                  <tr><th>Tên Zalo</th><th>Số điện thoại</th><th>Thôn / Tổ</th><th>Phản ánh</th><th>Ngày đăng ký</th><th>Kênh</th><th>Trạng thái</th><th></th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><div class="who-cell"><span class="av" style="background:var(--blue)">NM</span>Nguyễn Văn Minh</div></td>
+                    <td style="font-family:var(--mono);font-size:9.5px">098•••321</td>
+                    <td>Thôn Đông</td><td>7</td><td>12/03/2026</td>
+                    <td><span class="ch c-bl">Zalo</span></td>
+                    <td><span class="ch c-gr"><i></i>Hoạt động</span></td>
+                    <td><span class="btn">Khoá</span></td>
+                  </tr>
+                  <tr>
+                    <td><div class="who-cell"><span class="av" style="background:var(--pink)">PL</span>Phạm Thị Lựu</div></td>
+                    <td style="font-family:var(--mono);font-size:9.5px">091•••874</td>
+                    <td>Thôn Đoài</td><td>3</td><td>28/04/2026</td>
+                    <td><span class="ch c-te">App</span></td>
+                    <td><span class="ch c-gr"><i></i>Hoạt động</span></td>
+                    <td><span class="btn">Khoá</span></td>
+                  </tr>
+                  <tr>
+                    <td><div class="who-cell"><span class="av" style="background:var(--mut)">TQ</span>Trần Quốc Toản</div></td>
+                    <td style="font-family:var(--mono);font-size:9.5px">037•••115</td>
+                    <td>Tổ dân phố số 5</td><td>22</td><td>05/01/2026</td>
+                    <td><span class="ch c-bl">Zalo</span></td>
+                    <td><span class="ch c-rd"><i></i>Đã khoá</span></td>
+                    <td><span class="btn">Mở khoá</span></td>
+                  </tr>
+                  <tr>
+                    <td><div class="who-cell"><span class="av" style="background:var(--green)">LH</span>Lê Thị Hoa</div></td>
+                    <td style="font-family:var(--mono);font-size:9.5px">090•••662</td>
+                    <td>Thôn Trung</td><td>1</td><td>19/07/2026</td>
+                    <td><span class="ch c-bl">Zalo</span></td>
+                    <td><span class="ch c-gr"><i></i>Hoạt động</span></td>
+                    <td><span class="btn">Khoá</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="side">
+        <h4>Làm được gì</h4>
+        <ul>
+          <li><b>Khoá tài khoản gửi phản ánh sai sự thật</b> — bắt buộc nêu lý do, và lý do đó hiện cho chính người dân khi họ mở app.</li>
+          <li><b>Xoá tài khoản là xoá mềm</b>: hồ sơ và phản ánh đã gửi vẫn giữ nguyên, khôi phục lại được.</li>
+          <li><b>Xem ai đang đăng nhập ở đâu</b> — cả cán bộ trên web lẫn người dân trên điện thoại — và thu hồi phiên đáng ngờ.</li>
+          <li><b>Danh sách chặn</b> theo tài khoản, thiết bị hoặc địa chỉ IP.</li>
+        </ul>
+        <p class="kicker">
+          <b>Bảo vệ dữ liệu cá nhân:</b> số điện thoại công dân luôn hiển thị dạng che
+          <span style="font-family:var(--mono)">098•••321</span> với mọi vai trò, kể cả quản trị viên.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 10 CẤU HÌNH ── -->
+  <section id="s10" class="screen">
+    <div class="sh">
+      <span class="n">10</span>
+      <h3>Cấu hình hệ thống</h3>
+      <span class="who">Chỉ Quản trị hệ thống</span>
+    </div>
+    <p class="sd">Xã tự đặt luật chơi: thời hạn xử lý từng lĩnh vực, sơ đồ tổ chức, tài khoản cán bộ và phân quyền.</p>
+
+    <div class="split rev">
+      <div class="side">
+        <h4>Làm được gì</h4>
+        <ul>
+          <li><b>Đặt thời hạn xử lý riêng cho từng lĩnh vực</b> phản ánh — sửa số ngay trên bảng rồi lưu.</li>
+          <li><b>Dựng sơ đồ tổ chức</b> nhiều cấp theo đúng bộ máy của xã.</li>
+          <li><b>Tạo tài khoản cán bộ</b>, gán vai trò, khoá hoặc đặt lại mật khẩu khi cần.</li>
+          <li><b>Thêm lĩnh vực phản ánh mới</b> kèm màu nhận diện, rồi đặt thời hạn cho nó.</li>
+        </ul>
+        <p class="kicker">
+          <b>Hai quy tắc an toàn:</b> đổi thời hạn chỉ áp cho phiếu phát sinh sau đó, không hồi tố phiếu cũ.
+          Mật khẩu tạm chỉ hiện đúng một lần, bàn giao trực tiếp cho cán bộ.
+        </p>
+      </div>
+
+      <div class="shot">
+        <div class="shot-bar">
+          <i class="dot"></i><i class="dot"></i><i class="dot"></i>
+          <span class="url">vigov.xa-daithang.gov.vn/settings</span>
+        </div>
+        <div class="app nosb">
+          <div class="main">
+            <div class="tb">
+              <div>
+                <div class="pt">Cấu hình hệ thống</div>
+                <div class="ps">Thời hạn xử lý, sơ đồ tổ chức, tài khoản và danh mục</div>
+              </div>
+              <div class="sp"></div>
+              <div class="btn">Khôi phục mặc định</div>
+              <div class="btn pri">Lưu cấu hình</div>
+            </div>
+
+            <div class="tabs">
+              <div class="on">SLA phản ánh</div>
+              <div>Sơ đồ tổ chức</div>
+              <div>Tài khoản &amp; phân quyền</div>
+              <div>Danh mục phản ánh</div>
+            </div>
+
+            <div class="g21">
+              <div class="cd">
+                <div class="cd-h"><b>Thời hạn xử lý theo lĩnh vực</b><span class="x">Giờ hành chính, trừ ngày nghỉ</span></div>
+                <table class="tb2">
+                  <thead>
+                    <tr><th>Lĩnh vực</th><th>Tiếp nhận</th><th>Xử lý</th><th>Cảnh báo trước</th><th>Trạng thái</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><span class="ch c-rd">An ninh trật tự</span></td>
+                      <td><span class="inp">2</span></td><td><span class="inp">2</span></td>
+                      <td>4 giờ</td><td><span class="ch c-gr"><i></i>Đang áp dụng</span></td>
+                    </tr>
+                    <tr>
+                      <td><span class="ch c-gr">Rác thải</span></td>
+                      <td><span class="inp">4</span></td><td><span class="inp">3</span></td>
+                      <td>8 giờ</td><td><span class="ch c-gr"><i></i>Đang áp dụng</span></td>
+                    </tr>
+                    <tr>
+                      <td><span class="ch c-bl">Giao thông</span></td>
+                      <td><span class="inp">4</span></td><td><span class="inp">5</span></td>
+                      <td>12 giờ</td><td><span class="ch c-gr"><i></i>Đang áp dụng</span></td>
+                    </tr>
+                    <tr>
+                      <td><span class="ch c-pu">Trật tự đô thị</span></td>
+                      <td><span class="inp">6</span></td><td><span class="inp">5</span></td>
+                      <td>12 giờ</td><td><span class="ch c-gr"><i></i>Đang áp dụng</span></td>
+                    </tr>
+                    <tr>
+                      <td><span class="ch c-or">Xây dựng</span></td>
+                      <td><span class="inp">8</span></td><td><span class="inp">7</span></td>
+                      <td>24 giờ</td><td><span class="ch c-gr"><i></i>Đang áp dụng</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              <div class="cd">
+                <div class="cd-h"><b>Sơ đồ tổ chức</b><span class="x">9 đơn vị</span></div>
+                <div class="cd-b">
+                  <div class="tree">
+                    <div class="tn">
+                      <span class="sq" style="background:var(--navy)"></span>
+                      <div><b>UBND Xã Đại Thắng</b><br><span>Nguyễn Văn Bình · Chủ tịch</span></div>
+                    </div>
+                    <div class="tn l1">
+                      <span class="sq" style="background:var(--blue)"></span>
+                      <div><b>Văn phòng UBND</b><br><span>Trần Thị Hạnh · 6 cán bộ</span></div>
+                    </div>
+                    <div class="tn l1">
+                      <span class="sq" style="background:var(--green)"></span>
+                      <div><b>Địa chính – Xây dựng</b><br><span>Lê Minh Tuấn · 4 cán bộ</span></div>
+                    </div>
+                    <div class="tn l1">
+                      <span class="sq" style="background:var(--purple)"></span>
+                      <div><b>Văn hoá – Xã hội</b><br><span>Đỗ Thanh Hà · 5 cán bộ</span></div>
+                    </div>
+                    <div class="tn l1">
+                      <span class="sq" style="background:var(--orange)"></span>
+                      <div><b>Tài chính – Kế toán</b><br><span>Vũ Đức Anh · 3 cán bộ</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── 11 APP CÔNG DÂN ── -->
+  <section id="s11" class="screen">
+    <div class="sh">
+      <span class="n">11</span>
+      <h3>Phía người dân</h3>
+      <span class="who">Zalo Mini App · App Android &amp; iOS</span>
+    </div>
+    <p class="sd">Cùng một hệ thống, nhìn từ phía người dân. Mở thẳng trong Zalo, không cần cài thêm gì.</p>
+
+    <div class="split">
+      <div class="shot">
+        <div class="shot-bar">
+          <i class="dot"></i><i class="dot"></i><i class="dot"></i>
+          <span class="url">Zalo Mini App · ViGov Xã Đại Thắng</span>
+        </div>
+        <div style="background:var(--ui-bg)">
+          <div class="phones">
+            <!-- Trang chu -->
+            <div class="ph">
+              <div class="ph-top"><i></i></div>
+              <div class="ph-b">
+                <div class="ph-h">Xin chào,<br>Nguyễn Văn Minh</div>
+                <div class="qa">
+                  <div class="qi"><i style="background:var(--pink)"></i><span>Gửi phản ánh</span></div>
+                  <div class="qi"><i style="background:var(--blue)"></i><span>Tra cứu hồ sơ</span></div>
+                  <div class="qi"><i style="background:var(--orange)"></i><span>Truyền thanh</span></div>
+                  <div class="qi"><i style="background:var(--purple)"></i><span>Video</span></div>
+                  <div class="qi"><i style="background:var(--teal)"></i><span>Danh bạ</span></div>
+                  <div class="qi"><i style="background:var(--green)"></i><span>Bản đồ</span></div>
+                </div>
+                <div style="font-size:8.5px;font-weight:700;color:var(--ui-head);margin-bottom:5px">Tin mới của xã</div>
+                <div style="border:1px solid var(--ui-line);border-radius:5px;padding:6px 7px;margin-bottom:5px">
+                  <div style="font-size:8.5px;font-weight:600;color:var(--ui-head);line-height:1.35">Ra mắt mô hình camera an ninh thôn xóm</div>
+                  <div style="font-size:7px;color:var(--mut);margin-top:2px">22/08/2026</div>
+                </div>
+                <div style="border:1px solid var(--ui-line);border-radius:5px;padding:6px 7px">
+                  <div style="font-size:8.5px;font-weight:600;color:var(--ui-head);line-height:1.35">Lịch tiếp công dân tháng 9/2026</div>
+                  <div style="font-size:7px;color:var(--mut);margin-top:2px">20/08/2026</div>
+                </div>
+                <div class="ph-nav"><i class="on"></i><i></i><i></i><i></i></div>
+              </div>
+            </div>
+
+            <!-- Gui phan anh -->
+            <div class="ph">
+              <div class="ph-top"><i></i></div>
+              <div class="ph-b">
+                <div class="ph-h">Gửi phản ánh</div>
+                <div style="display:flex;gap:4px;margin-bottom:9px">
+                  <div style="flex:1;height:3px;border-radius:2px;background:var(--navy)"></div>
+                  <div style="flex:1;height:3px;border-radius:2px;background:var(--navy)"></div>
+                  <div style="flex:1;height:3px;border-radius:2px;background:var(--ui-line)"></div>
+                </div>
+                <div style="font-size:7.5px;color:var(--mut);margin-bottom:3px">Lĩnh vực</div>
+                <div style="border:1px solid var(--ui-line);border-radius:4px;padding:5px 7px;font-size:8.5px;color:var(--ui-head);margin-bottom:8px">Vệ sinh môi trường ▾</div>
+                <div style="font-size:7.5px;color:var(--mut);margin-bottom:3px">Nội dung phản ánh</div>
+                <div style="border:1px solid var(--ui-line);border-radius:4px;padding:6px 7px;font-size:8px;color:var(--ui-tx);line-height:1.45;margin-bottom:8px">
+                  Bãi rác tự phát đầu cầu Thôn Đông, bốc mùi hôi thối, ruồi muỗi nhiều.
+                </div>
+                <div style="font-size:7.5px;color:var(--mut);margin-bottom:3px">Ảnh hiện trường</div>
+                <div style="display:flex;gap:4px;margin-bottom:9px">
+                  <div style="flex:1;height:34px;border-radius:4px;background:linear-gradient(135deg,#2E8B57,#27AE60)"></div>
+                  <div style="flex:1;height:34px;border-radius:4px;background:linear-gradient(135deg,#3D7A52,#4E9E68)"></div>
+                  <div style="flex:1;height:34px;border-radius:4px;border:1px dashed var(--ui-line);display:grid;place-items:center;font-size:11px;color:var(--mut)">+</div>
+                </div>
+                <div style="background:var(--navy);color:#fff;text-align:center;font-size:9px;font-weight:600;border-radius:5px;padding:6px">Tiếp tục — Ghim vị trí</div>
+              </div>
+            </div>
+
+            <!-- Theo doi -->
+            <div class="ph">
+              <div class="ph-top"><i></i></div>
+              <div class="ph-b">
+                <div class="ph-h">Phản ánh của tôi</div>
+                <div style="border:1px solid var(--ui-line);border-radius:5px;padding:7px 8px;margin-bottom:6px">
+                  <div style="display:flex;align-items:center;gap:4px;margin-bottom:3px">
+                    <span style="font-family:var(--mono);font-size:7.5px;color:var(--navy-2);font-weight:600">PA-1042</span>
+                    <span class="ch c-bl" style="font-size:7.5px"><i></i>Đang xử lý</span>
+                  </div>
+                  <div style="font-size:8.5px;font-weight:600;color:var(--ui-head);line-height:1.35;margin-bottom:5px">Bãi rác tự phát đầu cầu Thôn Đông</div>
+                  <div class="stp" style="padding:3px 0"><div class="cir" style="background:var(--green);width:11px;height:11px;font-size:6px">✓</div><div class="tx"><b style="font-size:7.5px">Đã tiếp nhận</b><span style="font-size:6.5px">18/08 08:10</span></div></div>
+                  <div class="stp" style="padding:3px 0"><div class="cir" style="background:var(--green);width:11px;height:11px;font-size:6px">✓</div><div class="tx"><b style="font-size:7.5px">Đã kiểm tra hiện trường</b><span style="font-size:6.5px">19/08 14:20</span></div></div>
+                  <div class="stp" style="padding:3px 0"><div class="cir" style="background:var(--blue);width:11px;height:11px;font-size:6px">●</div><div class="tx"><b style="font-size:7.5px">Đang thu gom, xử lý</b><span style="font-size:6.5px">Từ 21/08</span></div></div>
+                </div>
+                <div style="border:1px solid var(--ui-line);border-radius:5px;padding:7px 8px">
+                  <div style="display:flex;align-items:center;gap:4px;margin-bottom:3px">
+                    <span style="font-family:var(--mono);font-size:7.5px;color:var(--navy-2);font-weight:600">PA-1039</span>
+                    <span class="ch c-gr" style="font-size:7.5px"><i></i>Đã xử lý</span>
+                  </div>
+                  <div style="font-size:8.5px;font-weight:600;color:var(--ui-head);line-height:1.35;margin-bottom:4px">Đèn chiếu sáng ngõ 5 hỏng</div>
+                  <div style="font-size:7.5px;color:var(--mut);margin-bottom:4px">Đánh giá của bạn</div>
+                  <div style="font-size:10px;color:var(--orange);letter-spacing:1px">★★★★★</div>
+                </div>
+                <div class="ph-nav"><i></i><i class="on"></i><i></i><i></i></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="side">
+        <h4>Người dân làm được gì</h4>
+        <ul>
+          <li><b>Gửi phản ánh ba bước</b>: chọn lĩnh vực và mô tả, chụp ảnh hiện trường, ghim vị trí trên bản đồ.</li>
+          <li><b>Theo dõi phản ánh của mình</b> qua từng mốc xử lý, biết ai đang cầm và đến đâu rồi.</li>
+          <li><b>Chấm sao đánh giá</b> khi xã báo đã xử lý xong — điểm này lên thẳng báo cáo của xã.</li>
+          <li><b>Tra cứu hồ sơ một cửa</b> bằng mã biên nhận, xem hồ sơ đang ở bước nào.</li>
+          <li><b>Đọc tin xã, nghe lại bản tin truyền thanh, xem video, tra danh bạ cán bộ.</b></li>
+          <li><b>Quét mã QR trên thẻ căn cước</b> để tự điền thông tin, đỡ gõ tay.</li>
+        </ul>
+        <p class="kicker">
+          <b>Vì sao chọn Zalo:</b> phần lớn người dân đã có sẵn Zalo trên máy.
+          Không phải thuyết phục ai cài thêm ứng dụng mới — rào cản lớn nhất của app chính quyền.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════ KẾT ══════════════ -->
+  <section id="ketthuc" class="parthead">
+    <p class="part-tag">Triển khai</p>
+    <h2>Đưa vào chạy thật cần gì</h2>
+    <p>Phần mềm đã sẵn sàng. Những việc còn lại phụ thuộc vào tài khoản và quyết định từ phía đơn vị.</p>
+    <div class="rule"></div>
+
+    <div class="close-grid">
+      <div class="cg"><b>Đã kiểm chứng</b><span>388 test tự động đang pass, đã nối cơ sở dữ liệu thật, hai kênh giao diện dùng chung một bộ API.</span></div>
+      <div class="cg"><b>Đóng gói sẵn</b><span>Docker Compose dựng toàn hệ trên một máy chủ; CI/CD qua Jenkins và GitHub Actions.</span></div>
+      <div class="cg"><b>Tài liệu bàn giao</b><span>Sáu tài liệu kỹ thuật, runbook triển khai từng bước, 10 kịch bản kiểm thử, hồ sơ ba kho ứng dụng.</span></div>
+      <div class="cg"><b>Bảo mật</b><span>Chặn thử sai mật khẩu, thu hồi token khi khoá tài khoản, tệp nội bộ chỉ mở bằng liên kết có hạn.</span></div>
+    </div>
+
+    <div class="ready">
+      <h4>Năm việc cần phía đơn vị quyết</h4>
+      <p>
+        Mỗi việc dưới đây đều đã có sẵn phần tiếp nhận trong hệ thống — chốt xong là cắm vào dùng,
+        không phải viết lại nghiệp vụ.
+      </p>
+      <ul>
+        <li><b>Nhà cung cấp OCR và đọc thẻ căn cước</b> — giao diện xác nhận từng trường đã hoàn thiện.</li>
+        <li><b>Nhà cung cấp bản đồ nền</b> — VietMap hay Goong; Google Maps không có giấy phép chính thức tại Việt Nam.</li>
+        <li><b>Tài khoản Zalo Business và duyệt mẫu tin ZNS</b> — để gửi thông báo thật tới người dân.</li>
+        <li><b>Quyền lấy số điện thoại của Zalo Mini App</b> — đang chờ Zalo xét duyệt.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer>
+    <span>ViGov Phase 1 · Bản demo giới thiệu · 09/09/2026</span>
+    <span>Số liệu trong hình là dữ liệu mẫu của một xã giả định</span>
+  </footer>
+
+</div>

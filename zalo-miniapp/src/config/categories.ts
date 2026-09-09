@@ -2,7 +2,7 @@ import type { IconName } from "@/components/Icon";
 
 /**
  * Danh mục phản ánh + SLA cam kết (WBS #13 — 12 danh mục),
- * đồng bộ với app Flutter và cấu hình SLA của Web Quản trị.
+ * đồng bộ với cấu hình SLA của Web Quản trị.
  */
 export interface FeedbackCategory {
   key: string;

@@ -2,7 +2,7 @@ import type { FeedbackTicket } from "@/types";
 
 /**
  * Phiếu phản ánh mẫu của công dân đang đăng nhập.
- * Cùng ngữ cảnh với app Flutter để demo hai kênh đồng bộ (nguồn thật: API P3).
+ * Nguồn thật: API P3.
  */
 export const initialTickets: FeedbackTicket[] = [
   {

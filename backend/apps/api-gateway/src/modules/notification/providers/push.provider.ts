@@ -13,7 +13,7 @@ const FCM_ENDPOINT = 'https://fcm.googleapis.com/fcm/send';
 const MOCK_PROVIDER = 'mock';
 
 /**
- * Đẩy thông báo tới app Flutter qua FCM (Android) / APNs (iOS).
+ * Đẩy thông báo tới thiết bị công dân qua FCM (Android) / APNs (iOS).
  * Token thiết bị lưu ở CitizenUser.pushTokens do app đăng ký sau khi định danh.
  * Chưa cấu hình PUSH_PROVIDER/FCM_SERVER_KEY thì chỉ ghi log và báo ok:false.
  */

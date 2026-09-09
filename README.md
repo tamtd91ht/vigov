@@ -1,15 +1,14 @@
 https://github.com/tamtd91ht/vigov.git# ViGov — Nền tảng Điều hành số cấp Xã/Phường (Phase 1)
 
-Bốn module chung một dự án (mỗi module tự chứa, sẵn sàng tách repo khi cần):
+Ba module chung một dự án (mỗi module tự chứa, sẵn sàng tách repo khi cần):
 
 | Thư mục | Sản phẩm | Techstack | Trạng thái |
 |---|---|---|---|
 | `admin-web/` | Web Quản trị (11 phân hệ) | Next.js 16 · App Router · TypeScript | **Code-complete P1 (mock data)** |
 | `backend/` | API nền tảng (15 module nghiệp vụ) | NestJS 11 · MongoDB · JWT + RBAC | **Code-complete P3 · 11/11 test API pass** |
-| `mobile/` | App công dân Android + iOS (9 màn) | **Flutter** · Material 3 · provider + go_router | **Code-complete P2 (mock data)** |
 | `zalo-miniapp/` | Zalo Mini App công dân (9 màn) | **ReactJS + Vite** · TypeScript · zmp-sdk adapter | **Code-complete P2Z** |
 
-> Cập nhật 27/08/2026 theo yêu cầu khách: kênh công dân làm **cả hai** — app Flutter (Android + iOS) và Zalo Mini App, dùng chung nghiệp vụ + dữ liệu mẫu để demo đồng bộ. Phát hành 3 kênh: Google Play, App Store, Zalo Mini App Store (task P4-37).
+> Kênh công dân **chỉ làm Zalo Mini App**. Phát hành qua Zalo Mini App Store (task P4-37).
 
 ## Quản lý công việc
 
@@ -20,8 +19,7 @@ Bốn module chung một dự án (mỗi module tự chứa, sẵn sàng tách r
 - **`ViGov_Phase1_Req.xlsx`** — WBS yêu cầu gốc của khách.
 - **`BAO-CAO-TIEN-DO.md`** — báo cáo tiến độ + tài liệu kỹ thuật ngắn gọn (kiến trúc, đã tích hợp gì, còn thiếu gì).
 - **`SECURITY.md`** — kết quả rà soát bảo mật (P4-36) và việc cần làm trước khi lên production.
-- **`mobile/BUILD.md`** — cách build APK/AAB phát hành, cấu hình ký, kết nối backend.
-- **`deploy/`** — triển khai VPS + nộp Zalo Mini App (`VPS-VA-ZALO.md`), hạ tầng nền (`README.md`), hồ sơ 3 store (`RELEASE.md`), kế hoạch UAT (`UAT.md`), cấu hình nginx mẫu (`nginx-vigov.conf`).
+- **`deploy/`** — triển khai VPS + nộp Zalo Mini App (`VPS-VA-ZALO.md`), hạ tầng nền (`README.md`), hồ sơ phát hành (`RELEASE.md`), kế hoạch UAT (`UAT.md`), cấu hình nginx mẫu (`nginx-vigov.conf`).
 - **`docker-compose.yml` · `Jenkinsfile` · `.github/workflows/ci.yml`** — dựng toàn hệ và CI/CD (P4-34).
 
 ## Chạy nhanh toàn bộ môi trường phát triển
@@ -29,7 +27,7 @@ Bốn module chung một dự án (mỗi module tự chứa, sẵn sàng tách r
 Từ **thư mục gốc** `vi-gov/`:
 
 ```bash
-npm run install:all   # cài dependency cho cả 4 module (lần đầu)
+npm run install:all   # cài dependency cho cả 3 module (lần đầu)
 npm run dev           # chạy song song backend + admin-web + zalo-miniapp
 ```
 
@@ -38,13 +36,12 @@ npm run dev           # chạy song song backend + admin-web + zalo-miniapp
 | Backend API | http://localhost:3001/api/v1 | `npm run dev:api` |
 | Web Quản trị | http://localhost:3100 | `npm run dev:web` |
 | Zalo Mini App | http://localhost:5173 | `npm run dev:zalo` |
-| App Flutter | thiết bị/emulator | `npm run dev:mobile` |
 
 > Web Quản trị dùng cổng **3100** (không phải 3000 mặc định của Next.js) để tránh
 > đụng các công cụ khác thường chiếm cổng 3000 — khi đó Next tự nhảy sang 3001 và
 > trùng cổng backend.
 
-Lệnh tiện ích khác ở thư mục gốc: `npm run check:all` (type-check + lint cả 4 module),
+Lệnh tiện ích khác ở thư mục gốc: `npm run check:all` (type-check + lint cả 3 module),
 `npm run build:all`, `npm run test:api`, `npm run seed`, `npm run clean`.
 
 ### Xử lý sự cố thường gặp
@@ -101,16 +98,6 @@ Ngoài ra còn 9 tài khoản cán bộ theo danh bạ xã (`binh.nv`, `hanh.tt`
 
 > Đặt `NEXT_PUBLIC_USE_MOCKS=false` trong `admin-web/.env.local` để đăng nhập qua backend thật (mặc định hiện tại).
 > Đặt `true` nếu muốn xem giao diện khi chưa dựng backend — khi đó trang đăng nhập hiện sẵn tài khoản dùng thử.
-
-## Chạy App công dân (Flutter)
-
-```bash
-cd mobile
-flutter pub get
-flutter run          # chọn thiết bị Android/iOS/emulator
-```
-
-Định danh demo (chế độ mock): nhập SĐT 10 số bất kỳ, OTP 6 số bất kỳ. Cấu hình build qua `--dart-define` (xem `mobile/lib/config/app_config.dart`).
 
 ## Chạy Zalo Mini App
 

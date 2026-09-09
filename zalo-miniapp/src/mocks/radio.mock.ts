@@ -2,7 +2,6 @@ import type { RadioBulletin } from "@/types";
 
 /**
  * Chuyên mục truyền thanh — dùng cho hàng chip lọc (WBS #17).
- * Port từ app Flutter: lib/mocks/radio_mock.dart.
  */
 export const radioCategories: string[] = ["Thời sự xã", "Nông vụ", "Chính sách mới", "An ninh trật tự"];
 

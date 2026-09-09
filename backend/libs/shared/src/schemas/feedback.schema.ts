@@ -5,7 +5,7 @@ import { TimelineStep, TimelineStepSchema } from './task.schema';
 export type FeedbackDocument = HydratedDocument<Feedback>;
 
 /**
- * Phiếu phản ánh của người dân (WBS #6/#13) — nguồn gửi từ app Flutter
+ * Phiếu phản ánh của người dân (WBS #6/#13) — nguồn gửi từ Zalo Mini App
  * hoặc Zalo Mini App; tên field khớp CitizenFeedback (admin-web)
  * và FeedbackTicket (mobile / zalo-miniapp).
  */
@@ -70,13 +70,17 @@ export class Feedback {
   @Prop({ default: '' })
   area: string;
 
-  /** Kênh gửi: app Flutter hay Zalo Mini App */
+  /**
+   * Kênh gửi phiếu. Giá trị `'app'` là DI SẢN của app Flutter (module `mobile/`
+   * đã bỏ 09/09/2026) — giữ trong enum vì bản ghi cũ đang dùng; phiếu mới của
+   * công dân vào bằng `'zalo'`, cán bộ lập hộ vào bằng `'web'`.
+   */
   @Prop({ enum: ['app', 'zalo', 'web'], default: 'app' })
   channel: string;
 
   /**
    * Nguồn phiếu — phân biệt hai đường vào của WBS #6:
-   *   • 'app'     — công dân TỰ gửi qua app Flutter / Zalo Mini App;
+   *   • 'app'     — công dân TỰ gửi qua Zalo Mini App;
    *   • 'offline' — cán bộ lập hộ người dân đến trình bày trực tiếp tại xã.
    *
    * Mặc định 'app' để mọi phiếu tạo trước khi có trường này vẫn phân loại

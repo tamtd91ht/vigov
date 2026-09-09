@@ -28,7 +28,7 @@ export interface DossierStepView {
   done: boolean;
 }
 
-/** Kết quả tra cứu hồ sơ — hợp đồng dùng chung cho Zalo Mini App và app Flutter */
+/** Kết quả tra cứu hồ sơ — hợp đồng dùng chung cho Zalo Mini App và Web Quản trị */
 export interface DossierLookupView {
   code: string;
   procedure: string;

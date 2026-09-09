@@ -399,13 +399,11 @@ và chuẩn bị đường vào máy chủ.
 | Stage | Nội dung | Chạy khi |
 |---|---|---|
 | `Checkout` | Lấy mã, tính `IMAGE_TAG` = `<branch>-<git-short-sha>` | Mọi lần |
-| `Build & Test` | Chạy song song 4 nhánh: Backend (unit + e2e), Admin Web (typecheck + lint + test), Zalo Mini App (typecheck + lint), Mobile (`flutter analyze` + build APK) | Mọi lần |
+| `Build & Test` | Chạy song song 3 nhánh: Backend (unit + e2e), Admin Web (typecheck + lint + test), Zalo Mini App (typecheck + lint) | Mọi lần |
 | `Docker Build & Push` | Dựng 3 image, đẩy lên registry | `develop` và `main` |
 | `Deploy Staging` | Triển khai lên `STAGING_HOST` | Nhánh `develop` |
 | `Manual Approval` | Chờ người duyệt, hỏi có sao lưu trước khi triển khai không | Nhánh `main` |
 | `Deploy Production` | `mongodump` (nếu chọn) rồi triển khai lên `PRODUCTION_HOST` | Nhánh `main`, sau khi duyệt |
-
-Mobile build bỏ qua được bằng tham số `SKIP_MOBILE` khi chỉ cần deploy nhanh phần web.
 
 ### 12.2 Điều kiện tiên quyết
 
@@ -453,7 +451,6 @@ Tạo job kiểu **Multibranch Pipeline** trỏ vào repo, rồi đặt lại gi
 | `STAGING_HOST` | Host/IP máy staging |
 | `PRODUCTION_HOST` | Host/IP máy production |
 | `REMOTE_DEPLOY_DIR` | Thư mục đã chọn ở Bước 3 — mặc định `/opt/vigov` |
-| `SKIP_MOBILE` | `false` |
 
 ### 12.5 Khai báo biến toàn cục trên Jenkins (bắt buộc)
 

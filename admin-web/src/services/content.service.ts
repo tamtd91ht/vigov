@@ -4,7 +4,7 @@ import { cmsArticles, cmsVideos, radioBulletins } from "@/mocks/cms";
 import type { BroadcastLog, CmsArticle, CmsVideo, RadioBulletin } from "@/types";
 
 /**
- * Phân hệ CMS nội dung Mobile (WBS #10) + gửi thông báo hàng loạt (WBS #23).
+ * Phân hệ CMS nội dung Zalo Mini App (WBS #10) + gửi thông báo hàng loạt (WBS #23).
  * Backend trả tài liệu Mongo thô (`_id`, `durationSeconds`…) nên lớp này quy đổi
  * về đúng kiểu dùng chung trong `@/types` trước khi giao cho giao diện.
  */

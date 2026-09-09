@@ -18,7 +18,7 @@ import {
   type SessionRecord,
 } from "@/services/users.service";
 
-/** Hai nhóm kênh hiển thị: cán bộ (web) và công dân (app Flutter + Zalo Mini App) */
+/** Hai nhóm kênh hiển thị: cán bộ (web) và công dân (Zalo Mini App) */
 type SessionGroup = "web" | "citizen";
 
 const KIND_OPTIONS: { key: SessionGroup; label: string }[] = [

@@ -14,7 +14,7 @@ import { findRole, roles as staticRoles } from "@/config/roles.config";
 
 export type AccountStatus = "active" | "locked";
 
-/** Tài khoản công dân dùng Mini App / app Flutter */
+/** Tài khoản công dân dùng Zalo Mini App */
 export interface CitizenAccount {
   id: string;
   /** Đã che theo quy định bảo vệ dữ liệu cá nhân */
@@ -280,7 +280,7 @@ export async function listSessions(kind: SessionKind): Promise<ListResponse<Sess
   return apiClient.get<ListResponse<SessionRecord>>(`/users/sessions${buildQuery({ kind })}`);
 }
 
-/** Kênh công dân gồm cả app Flutter và Zalo Mini App — gộp hai lời gọi */
+/** Kênh công dân: gộp cả phiên 'zalo' và phiên 'app' (di sản app Flutter đã bỏ) */
 export async function listCitizenSessions(): Promise<ListResponse<SessionRecord>> {
   const [app, zalo] = await Promise.all([listSessions("app"), listSessions("zalo")]);
   const items = [...app.items, ...zalo.items].sort((a, b) => b.lastActiveAt.localeCompare(a.lastActiveAt));

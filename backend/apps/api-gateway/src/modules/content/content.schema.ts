@@ -10,7 +10,7 @@ import { HydratedDocument } from 'mongoose';
 export type VideoDocument = HydratedDocument<Video>;
 export type RadioBulletinDocument = HydratedDocument<RadioBulletin>;
 
-/** Video tuyên truyền đẩy sang app Flutter / Zalo Mini App */
+/** Video tuyên truyền đẩy sang Zalo Mini App */
 @Schema({ collection: 'videos', timestamps: true })
 export class Video {
   @Prop({ required: true })

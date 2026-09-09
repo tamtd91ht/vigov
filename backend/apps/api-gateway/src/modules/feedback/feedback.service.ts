@@ -364,7 +364,7 @@ export class FeedbackService {
   }
 
   // ---------------------------------------------------------------------------
-  // Nhóm nghiệp vụ CÔNG DÂN (app Flutter / Zalo Mini App)
+  // Nhóm nghiệp vụ CÔNG DÂN (Zalo Mini App)
   // ---------------------------------------------------------------------------
 
   /** Công dân gửi phản ánh mới */

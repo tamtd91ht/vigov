@@ -1,7 +1,7 @@
 import type { Article } from "@/types";
 
 /**
- * Bài viết mẫu — đồng bộ cấu trúc CmsArticle của Web Quản trị và app Flutter
+ * Bài viết mẫu — đồng bộ cấu trúc CmsArticle của Web Quản trị
  * (lib/mocks/news_mock.dart). Nguồn thật: CMS API ở P3.
  */
 export const mockArticles: Article[] = [

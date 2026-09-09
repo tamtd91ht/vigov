@@ -7,8 +7,6 @@
  * Viết bằng Node thuần để thư mục gốc không cần cài dependency nào
  * (thêm dependency ở gốc sẽ sinh package-lock.json và làm Next.js
  * suy luận nhầm thư mục gốc workspace).
- *
- * App Flutter không nằm ở đây vì cần chọn thiết bị: dùng `npm run dev:mobile`.
  */
 import { execSync, spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';

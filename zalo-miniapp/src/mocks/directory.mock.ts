@@ -1,8 +1,7 @@
 import type { GovContact } from "@/types";
 
 /**
- * Danh bạ chính quyền mẫu — port từ app Flutter (mocks/directory_mock.dart),
- * đồng bộ danh bạ cán bộ của Web Quản trị.
+ * Danh bạ chính quyền mẫu — đồng bộ danh bạ cán bộ của Web Quản trị.
  * Nguồn thật: API danh bạ (P3).
  */
 export const mockGovContacts: GovContact[] = [

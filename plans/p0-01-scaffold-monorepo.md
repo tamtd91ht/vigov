@@ -1,6 +1,10 @@
 # P0-01 — Scaffold cấu trúc dự án 3 module
 
 > Trạng thái: **done** · Nguồn: ESTIMATE_TECHNICAL.md · Tạo: 2026-08-27
+>
+> **Cập nhật 09/09/2026** — module `mobile/` (Flutter) đã bị **bỏ khỏi dự án**: kênh
+> công dân chỉ còn Zalo Mini App (`zalo-miniapp/`). Checklist bên dưới giữ nguyên vì
+> đây là bản ghi việc đã làm ngày 27/08/2026.
 
 ## Mô tả
 

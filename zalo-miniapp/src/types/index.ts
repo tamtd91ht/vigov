@@ -1,4 +1,4 @@
-/** ===== Model nghiệp vụ — đồng bộ tên field với app Flutter và schema backend P3 ===== */
+/** ===== Model nghiệp vụ — đồng bộ tên field với schema backend P3 ===== */
 
 /** Bước trong timeline xử lý / luân chuyển */
 export interface TimelineStep {
@@ -56,7 +56,7 @@ export interface VideoItem {
   publishedAt: string;
   coverColor: string;
   description: string;
-  /** Cán bộ chọn ở CMS Web Quản trị (Nội dung Mobile → Video) */
+  /** Cán bộ chọn ở CMS Web Quản trị (Nội dung Mini App → Video) */
   source: VideoSource;
   /** Đường dẫn YouTube khi source = "youtube" */
   youtubeUrl?: string;

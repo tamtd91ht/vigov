@@ -17,14 +17,14 @@ vận hành hệ thống.
 ## Toàn cảnh hệ thống
 
 ```
-┌────────────┐   ┌────────────┐   ┌──────────────┐
-│ admin-web  │   │  mobile    │   │ zalo-miniapp │
-│ Next.js 16 │   │  Flutter   │   │ React + Vite │
-│ Cán bộ     │   │  Công dân  │   │ Công dân     │
-└─────┬──────┘   └─────┬──────┘   └──────┬───────┘
-      │      REST + JWT │                │
-      └────────────────┴─────────────────┘
-                       ▼
+┌────────────┐              ┌──────────────┐
+│ admin-web  │              │ zalo-miniapp │
+│ Next.js 16 │              │ React + Vite │
+│ Cán bộ     │              │ Công dân     │
+└─────┬──────┘              └──────┬───────┘
+      │      REST + JWT            │
+      └──────────────┬─────────────┘
+                     ▼
               ┌──────────────────┐
               │   API Gateway    │  NestJS 11
               │   19 module      │  125 route
@@ -34,12 +34,6 @@ vận hành hệ thống.
     MongoDB        RabbitMQ      Adapter bên thứ 3
     21 collection  7 sự kiện     OCR · GIS · ZNS · FCM
 ```
-
-`mobile/` (Flutter, Android + iOS) dùng chung nghiệp vụ và endpoint với Zalo Mini
-App — chưa có tài liệu riêng; phần lớn nội dung `03-ZALO-MINIAPP.md` áp dụng được,
-khác biệt chính nằm ở adapter thiết bị và quy trình phát hành (`../deploy/RELEASE.md`).
-
----
 
 ## Đọc theo tình huống
 
@@ -63,7 +57,7 @@ quyết định hoặc cấp tài khoản:
 |---|---|
 | OCR, bản đồ (GIS) | Khách chốt nhà cung cấp và cấp khoá API |
 | Zalo OA + ZNS | Khách đăng ký OA; template ZNS chờ Zalo duyệt (1 ngày – 1 tuần) |
-| Phát hành 3 store | Tài khoản Google Play, Apple Developer (cần D-U-N-S), Zalo Developers |
+| Phát hành Zalo Mini App | Tài khoản Zalo Developers + Official Account của đơn vị |
 | Tra cứu hồ sơ (WBS #15) | Đầu nối vào hệ thống một cửa của tỉnh — hệ thống ngoài |
 
 Danh sách câu hỏi mở đầy đủ: `../ESTIMATE_TECHNICAL.md`.
@@ -75,5 +69,5 @@ Danh sách câu hỏi mở đầy đủ: `../ESTIMATE_TECHNICAL.md`.
 `../README.md` (chạy tại máy phát triển) · `../SECURITY.md` (rà soát bảo mật, 12
 việc bắt buộc trước production) · `../BAO-CAO-TIEN-DO.md` (tiến độ) ·
 `../deploy/README.md` (vận hành theo chủ đề) · `../deploy/UAT.md` (10 kịch bản
-nghiệm thu) · `../deploy/RELEASE.md` (phát hành app lên 3 store) · `../plans/`
+nghiệm thu) · `../deploy/RELEASE.md` (phát hành Zalo Mini App) · `../plans/`
 (plan chi tiết từng task) · `../CLAUDE.md` (quy ước cho AI agent)

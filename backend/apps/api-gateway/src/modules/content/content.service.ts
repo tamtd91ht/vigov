@@ -211,7 +211,7 @@ export class ContentService {
 
   // ------------------------------------------- Nội dung công khai cho công dân
 
-  /** Bài viết đã phát hành — app Flutter / Zalo Mini App */
+  /** Bài viết đã phát hành — Zalo Mini App */
   async publicArticles(query: PublicArticleQueryDto) {
     const filter: Record<string, unknown> = { status: STATUS_PUBLISHED };
     if (query.type) filter.type = query.type;

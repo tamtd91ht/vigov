@@ -34,7 +34,7 @@ export const navSections: NavSection[] = [
   {
     caption: "Quản trị",
     items: [
-      { id: "cms", label: "Nội dung Mobile", icon: "book", href: "/cms", moduleKey: "cms" },
+      { id: "cms", label: "Nội dung Mini App", icon: "book", href: "/cms", moduleKey: "cms" },
       { id: "users", label: "Người dùng Mini App", icon: "users", href: "/users", moduleKey: "users" },
       { id: "settings", label: "Cấu hình", icon: "gear", href: "/settings", moduleKey: "settings" },
     ],

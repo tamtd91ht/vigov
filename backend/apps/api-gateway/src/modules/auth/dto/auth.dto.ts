@@ -12,7 +12,7 @@ export class StaffLoginDto {
   password: string;
 }
 
-/** Công dân yêu cầu mã OTP theo số điện thoại (app Flutter) */
+/** Công dân yêu cầu mã OTP theo số điện thoại (Zalo Mini App) */
 export class RequestOtpDto {
   @IsString()
   @Matches(/^0\d{9}$/, { message: 'Số điện thoại không hợp lệ' })

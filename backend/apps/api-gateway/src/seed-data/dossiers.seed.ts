@@ -1,7 +1,7 @@
 /**
  * Dữ liệu seed phân hệ Hồ sơ một cửa (WBS #15)
  * — port từ zalo-miniapp/src/mocks/dossier.mock.ts và
- *   mobile/lib/mocks/dossier_mock.dart (3 hồ sơ mẫu, ngữ cảnh xã Đại Thắng).
+ *   zalo-miniapp/src/mocks/dossier.mock.ts (3 hồ sơ mẫu, ngữ cảnh xã Đại Thắng).
  *
  * Giữ NGUYÊN mã hồ sơ, tên thủ tục, người nộp, cán bộ phụ trách và mốc thời
  * gian của mock để bản demo trước và sau khi nối API cho cùng kết quả.

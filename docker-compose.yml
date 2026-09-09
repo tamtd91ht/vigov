@@ -95,7 +95,7 @@ services:
       - vigov-net
 
   # ───────────────────────────────────────────────────────────────────────────
-  # Backend — NestJS api-gateway (REST cho admin-web + mini app + mobile)
+  # Backend — NestJS api-gateway (REST cho admin-web + Zalo Mini App)
   # ───────────────────────────────────────────────────────────────────────────
   backend:
     image: ${IMAGE_REGISTRY:-}vigov-backend:${IMAGE_TAG:-local}

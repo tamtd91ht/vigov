@@ -1,0 +1,1354 @@
+<title>Cẩm nang Web Quản trị ViGov</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --ground:      #FBFAF8;
+    --surface:     #FFFFFF;
+    --surface-alt: #F4F2EF;
+    --surface-sub: #EFECE7;
+    --ink:         #1A1D21;
+    --ink-soft:    #55585F;
+    --ink-faint:   #85878D;
+    --line:        #E2DFDA;
+    --line-strong: #CFCBC4;
+    --accent:      #A6192E;
+    --accent-soft: #F6E9EA;
+    --ok:          #1F7A4D;
+    --ok-soft:     #E6F2EB;
+    --warn:        #A66A00;
+    --warn-soft:   #FAF0DC;
+    --hold:        #4A5FA5;
+    --hold-soft:   #E9ECF7;
+    --shadow:      0 1px 2px rgba(26,29,33,.05), 0 10px 28px -20px rgba(26,29,33,.3);
+
+    --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+    --body:    "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+    --mono:    "JetBrains Mono", ui-monospace, "Cascadia Mono", monospace;
+
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:      #131519;
+      --surface:     #1B1E24;
+      --surface-alt: #22262D;
+      --surface-sub: #282D35;
+      --ink:         #ECEAE6;
+      --ink-soft:    #A9ABB0;
+      --ink-faint:   #7C7E84;
+      --line:        #2C3038;
+      --line-strong: #3D424B;
+      --accent:      #E9657A;
+      --accent-soft: #34181E;
+      --ok:          #5CC08B;
+      --ok-soft:     #16301F;
+      --warn:        #DFA644;
+      --warn-soft:   #33270F;
+      --hold:        #8FA2E0;
+      --hold-soft:   #1C2136;
+      --shadow:      0 1px 2px rgba(0,0,0,.4), 0 10px 28px -20px rgba(0,0,0,.8);
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground:      #131519;
+    --surface:     #1B1E24;
+    --surface-alt: #22262D;
+    --surface-sub: #282D35;
+    --ink:         #ECEAE6;
+    --ink-soft:    #A9ABB0;
+    --ink-faint:   #7C7E84;
+    --line:        #2C3038;
+    --line-strong: #3D424B;
+    --accent:      #E9657A;
+    --accent-soft: #34181E;
+    --ok:          #5CC08B;
+    --ok-soft:     #16301F;
+    --warn:        #DFA644;
+    --warn-soft:   #33270F;
+    --hold:        #8FA2E0;
+    --hold-soft:   #1C2136;
+    --shadow:      0 1px 2px rgba(0,0,0,.4), 0 10px 28px -20px rgba(0,0,0,.8);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 15.5px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- Masthead ---------- */
+
+  .masthead { border-bottom: 1px solid var(--line); background: var(--surface); }
+  .masthead-inner {
+    max-width: 1180px; margin: 0 auto; padding: 38px 32px 30px;
+    display: flex; flex-wrap: wrap; align-items: flex-end;
+    justify-content: space-between; gap: 22px;
+  }
+  .eyebrow {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .14em;
+    text-transform: uppercase; color: var(--accent); margin: 0 0 10px;
+  }
+  h1 {
+    font-family: var(--display); font-weight: 800;
+    font-size: clamp(30px, 4.2vw, 44px); line-height: 1.06;
+    letter-spacing: -.022em; margin: 0 0 12px; text-wrap: balance;
+  }
+  .lede { margin: 0; max-width: 62ch; color: var(--ink-soft); font-size: 16.5px; }
+  .stamp {
+    border-left: 3px solid var(--accent); padding-left: 15px;
+    font-family: var(--mono); font-size: 12px; line-height: 1.85;
+    color: var(--ink-soft); white-space: nowrap;
+  }
+  .stamp b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- Sticky module nav ---------- */
+
+  .navbar {
+    position: sticky; top: 0; z-index: 40;
+    background: var(--surface-alt);
+    border-bottom: 1px solid var(--line);
+    backdrop-filter: saturate(160%) blur(6px);
+  }
+  .navbar-inner {
+    max-width: 1180px; margin: 0 auto; padding: 9px 32px;
+    display: flex; gap: 6px; overflow-x: auto; scrollbar-width: thin;
+  }
+  .navbar a {
+    flex: none; font-family: var(--mono); font-size: 11.5px; font-weight: 500;
+    color: var(--ink-soft); text-decoration: none; padding: 5px 10px;
+    border-radius: 3px; border: 1px solid transparent; white-space: nowrap;
+  }
+  .navbar a:hover { background: var(--surface); border-color: var(--line); color: var(--ink); }
+  .navbar a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 0 32px 100px; }
+
+  /* ---------- Intro grid ---------- */
+
+  .intro {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
+    gap: 1px; background: var(--line); border: 1px solid var(--line);
+    border-radius: 4px; overflow: hidden; margin-top: 40px;
+  }
+  .intro-cell { background: var(--surface); padding: 16px 18px; }
+  .intro-cell h4 {
+    font-family: var(--display); font-size: 14.5px; font-weight: 700; margin: 0 0 4px;
+  }
+  .intro-cell p { margin: 0; font-size: 13.8px; color: var(--ink-soft); }
+
+  /* ---------- Module chapter ---------- */
+
+  .mod { padding-top: 56px; scroll-margin-top: 56px; }
+
+  .mod-head {
+    display: flex; align-items: baseline; gap: 12px;
+    flex-wrap: wrap; margin-bottom: 4px;
+  }
+  .mod-num {
+    font-family: var(--mono); font-size: 12px; font-weight: 600;
+    color: var(--accent); letter-spacing: .06em;
+  }
+  .mod-head h2 {
+    font-family: var(--display); font-weight: 700; font-size: 25px;
+    letter-spacing: -.015em; margin: 0; text-wrap: balance;
+  }
+  .route {
+    font-family: var(--mono); font-size: 12px; color: var(--ink-faint);
+    background: var(--surface-alt); border: 1px solid var(--line);
+    border-radius: 3px; padding: 2px 7px;
+  }
+  .purpose { margin: 0 0 20px; color: var(--ink-soft); max-width: 82ch; }
+
+  .panel {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 4px; box-shadow: var(--shadow);
+    overflow: hidden; margin-bottom: 16px;
+  }
+  .panel-head {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint);
+    padding: 11px 18px; border-bottom: 1px solid var(--line);
+    background: var(--surface-alt);
+  }
+  .panel-body { padding: 16px 18px; }
+  .panel-body > :first-child { margin-top: 0; }
+  .panel-body > :last-child { margin-bottom: 0; }
+
+  /* screen inventory */
+  .screen { display: grid; gap: 14px; }
+  .screen-row {
+    display: grid; grid-template-columns: 132px 1fr; gap: 4px 20px;
+    align-items: baseline;
+  }
+  .screen-row dt {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--ink-faint); font-weight: 600;
+    padding-top: 2px;
+  }
+  .screen-row dd { margin: 0; font-size: 14.6px; }
+  .screen-row dd ul { margin: 0; padding-left: 17px; }
+  .screen-row dd li { margin-bottom: 3px; }
+  .screen-row dd li:last-child { margin-bottom: 0; }
+
+  /* column list */
+  .cols { display: flex; flex-wrap: wrap; gap: 5px; }
+  .col {
+    font-family: var(--mono); font-size: 11.5px;
+    background: var(--surface-alt); border: 1px solid var(--line);
+    border-radius: 3px; padding: 2.5px 8px; color: var(--ink);
+  }
+  .col.k { background: var(--accent-soft); border-color: transparent; color: var(--accent); font-weight: 500; }
+
+  /* ops table */
+  .tablebox { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.3px; min-width: 620px; }
+  th, td { text-align: left; padding: 9px 18px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  thead th {
+    font-family: var(--mono); font-size: 10px; letter-spacing: .09em;
+    text-transform: uppercase; color: var(--ink-faint); font-weight: 600;
+    background: var(--surface-alt); white-space: nowrap;
+  }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.act { font-weight: 600; white-space: nowrap; }
+  td.act .btnlike {
+    display: inline-block; font-size: 13.5px; font-weight: 600;
+    padding: 1px 8px; border-radius: 3px;
+    background: var(--surface-sub); border: 1px solid var(--line-strong);
+  }
+  td.act .btnlike.pri { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+  td.act .btnlike.dgr { background: var(--warn-soft); border-color: transparent; color: var(--warn); }
+  .ep { font-family: var(--mono); font-size: 11.5px; color: var(--ink-faint); white-space: nowrap; }
+
+  /* form fields */
+  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(268px, 1fr)); gap: 10px; }
+  .field {
+    border: 1px solid var(--line); border-left: 3px solid var(--line-strong);
+    border-radius: 3px; padding: 9px 12px; background: var(--surface);
+  }
+  .field.req { border-left-color: var(--accent); }
+  .field b { font-size: 14.2px; display: block; }
+  .field span { font-size: 13.2px; color: var(--ink-soft); }
+  .field .req-mark { color: var(--accent); font-weight: 700; }
+
+  /* inline chips */
+  .chip {
+    display: inline-block; font-family: var(--mono); font-size: 11px;
+    padding: 1.5px 7px; border-radius: 3px; font-weight: 500;
+    border: 1px solid var(--line); background: var(--surface-alt); color: var(--ink-soft);
+  }
+  .chip.g { background: var(--ok-soft);   color: var(--ok);   border-color: transparent; }
+  .chip.o { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+  .chip.r { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+  .chip.b { background: var(--hold-soft); color: var(--hold); border-color: transparent; }
+
+  code, .ic {
+    font-family: var(--mono); font-size: 12.4px;
+    background: var(--surface-alt); border: 1px solid var(--line);
+    border-radius: 3px; padding: 0.5px 5px; color: var(--ink);
+  }
+
+  .note {
+    font-size: 13.8px; color: var(--ink-soft);
+    border-left: 3px solid var(--hold); background: var(--hold-soft);
+    padding: 9px 14px; border-radius: 0 3px 3px 0; margin: 0;
+  }
+  .note.w { border-left-color: var(--warn); background: var(--warn-soft); }
+  .note b { color: var(--ink); }
+
+  h3.sec {
+    font-family: var(--display); font-weight: 700; font-size: 20px;
+    letter-spacing: -.012em; margin: 44px 0 6px;
+  }
+  .sec-sub { margin: 0 0 20px; color: var(--ink-soft); max-width: 80ch; }
+
+  .perm {
+    display: inline-block; font-family: var(--mono); font-size: 11px;
+    padding: 2px 7px; border-radius: 3px; background: var(--surface-alt);
+    color: var(--ink-soft); border: 1px solid var(--line);
+  }
+  .perm.p-admin   { background: var(--accent-soft); color: var(--accent); border-color: transparent; font-weight: 600; }
+  .perm.p-approve { background: var(--hold-soft);   color: var(--hold);   border-color: transparent; font-weight: 600; }
+  .perm.p-edit    { background: var(--ok-soft);     color: var(--ok);     border-color: transparent; font-weight: 600; }
+
+  footer {
+    margin-top: 72px; padding-top: 20px; border-top: 1px solid var(--line);
+    font-size: 12.8px; color: var(--ink-faint);
+    display: flex; flex-wrap: wrap; gap: 8px 24px; justify-content: space-between;
+  }
+  footer span { font-family: var(--mono); }
+
+  @media (max-width: 820px) {
+    .wrap, .masthead-inner, .navbar-inner { padding-left: 18px; padding-right: 18px; }
+    .screen-row { grid-template-columns: 1fr; }
+    .screen-row dt { padding-top: 6px; }
+    .stamp { white-space: normal; }
+  }
+
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<header class="masthead">
+  <div class="masthead-inner">
+    <div>
+      <p class="eyebrow">ViGov Phase 1 · Web Quản trị dành cho cán bộ UBND xã</p>
+      <h1>Cẩm nang Web Quản trị</h1>
+      <p class="lede">
+        Mười ba phân hệ, mô tả theo đúng những gì màn hình hiển thị và những thao tác cán bộ
+        thực hiện được. Mỗi thao tác ghi rõ nút bấm và kết quả trả về.
+      </p>
+    </div>
+    <div class="stamp">
+      Bản demo đối tác<br>
+      Cập nhật <b>09/09/2026</b><br>
+      Next.js 16 · <b>88</b> test pass
+    </div>
+  </div>
+</header>
+
+<nav class="navbar" aria-label="Điều hướng phân hệ">
+  <div class="navbar-inner">
+    <a href="#chung">Khung chung</a>
+    <a href="#tongquan">01 Tổng quan</a>
+    <a href="#nhiemvu">02 Nhiệm vụ</a>
+    <a href="#vanban">03 Văn bản &amp; Đơn thư</a>
+    <a href="#giaingan">04 Giải ngân</a>
+    <a href="#phananh">05 Phản ánh</a>
+    <a href="#bando">06 Bản đồ</a>
+    <a href="#baocao">07 Báo cáo</a>
+    <a href="#cms">08 Nội dung Mini App</a>
+    <a href="#nguoidung">09 Người dùng Mini App</a>
+    <a href="#cauhinh">10 Cấu hình</a>
+    <a href="#hoso">11 Hồ sơ cá nhân</a>
+    <a href="#trogiup">12 Trợ giúp</a>
+    <a href="#quyen">Phân quyền</a>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <!-- ============ KHUNG CHUNG ============ -->
+  <section id="chung" class="mod" style="padding-top:0">
+    <h3 class="sec" style="margin-top:40px">Khung chung mọi phân hệ</h3>
+    <p class="sec-sub">
+      Bốn thành phần có mặt trên mọi trang, làm nền cho các phân hệ bên dưới.
+    </p>
+
+    <div class="intro">
+      <div class="intro-cell">
+        <h4>Tìm kiếm toàn cục</h4>
+        <p>Ô tìm trên thanh trên cùng, tối thiểu 2 ký tự, chờ gõ 300 ms. Tìm ba loại: nhiệm vụ, văn bản – đơn thư, phản ánh. Điều hướng bằng phím ↑ ↓ và Enter. Hồ sơ công dân cố ý nằm ngoài phạm vi tìm vì là dữ liệu cá nhân.</p>
+      </div>
+      <div class="intro-cell">
+        <h4>Khay thông báo</h4>
+        <p>Chuông có badge số chưa đọc, khay hiện tối đa 10 thông báo. Bấm một dòng là mở thẳng bản ghi liên quan rồi đánh dấu đã đọc. Có nút “Đánh dấu đã đọc” cho cả khay. Thông báo mới đẩy về theo thời gian thực.</p>
+      </div>
+      <div class="intro-cell">
+        <h4>Link chia sẻ được</h4>
+        <p>Ba phân hệ đọc mã bản ghi trên thanh địa chỉ — <span class="ic">/tasks?code=NV-2601</span>, <span class="ic">/documents?arrivalNo=128</span>, <span class="ic">/feedback?code=PA-2608</span> — và tự bung ngăn chi tiết. Gửi link cho đồng nghiệp là họ mở đúng bản ghi đó.</p>
+      </div>
+      <div class="intro-cell">
+        <h4>Cưỡng chế đổi mật khẩu tạm</h4>
+        <p>Tài khoản mới tạo hoặc vừa được quản trị viên đặt lại mật khẩu sẽ gặp một lớp phủ bắt buộc đổi mật khẩu trước khi vào bất kỳ phân hệ nào. Chặn thật nằm ở backend, lớp phủ chỉ là phần giải thích.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 01 TỔNG QUAN ============ -->
+  <section id="tongquan" class="mod">
+    <div class="mod-head">
+      <span class="mod-num">01</span>
+      <h2>Tổng quan điều hành</h2>
+      <span class="route">/</span>
+    </div>
+    <p class="purpose">
+      Bảng điều khiển mở đầu ca làm việc: sáu chỉ số then chốt, hai biểu đồ xu hướng và danh sách
+      việc cần xử lý gấp. Toàn bộ số liệu lấy từ một lời gọi tổng hợp phía máy chủ.
+    </p>
+
+    <div class="panel">
+      <div class="panel-head">Trên màn hình</div>
+      <div class="panel-body">
+        <dl class="screen">
+          <div class="screen-row">
+            <dt>6 thẻ KPI</dt>
+            <dd class="cols">
+              <span class="col k">Nhiệm vụ đang thực hiện</span>
+              <span class="col k">Nhiệm vụ quá hạn</span>
+              <span class="col k">Văn bản chưa xử lý</span>
+              <span class="col k">Tỷ lệ giải ngân</span>
+              <span class="col k">Phản ánh đúng hạn</span>
+              <span class="col k">Mức hài lòng người dân</span>
+            </dd>
+          </div>
+          <div class="screen-row">
+            <dt>Biểu đồ 1</dt>
+            <dd><b>Nhiệm vụ hoàn thành theo tháng</b> — cột đôi T1…T12, so sánh “Đã hoàn thành” với “Được giao”.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Biểu đồ 2</dt>
+            <dd><b>Luỹ kế giải ngân: kế hoạch và thực tế</b> — đường kế hoạch nét đứt và đường thực tế nét liền, trục tung tính bằng tỷ đồng, tháng chưa có số liệu thì đường ngắt quãng chứ không nối bừa.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Danh sách</dt>
+            <dd><b>Cần xử lý ngay</b> — mỗi dòng có chấm mức ưu tiên và chip hạn: <span class="chip r">Quá hạn N ngày</span> <span class="chip o">Đến hạn hôm nay</span> <span class="chip">Còn N ngày</span></dd>
+          </div>
+          <div class="screen-row">
+            <dt>Bộ chọn kỳ</dt>
+            <dd>Tháng này · Quý này · Năm hiện hành</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Thao tác</div>
+      <div class="tablebox">
+        <table>
+          <thead><tr><th>Thao tác</th><th>Kết quả</th></tr></thead>
+          <tbody>
+            <tr><td class="act">Chọn kỳ báo cáo</td><td>Đổi nhãn kỳ trên phụ đề và tải lại số liệu theo năm tương ứng.</td></tr>
+            <tr><td class="act">Bấm một thẻ KPI</td><td>Nhảy thẳng sang phân hệ tương ứng — thẻ nhiệm vụ mở <span class="ic">/tasks</span>, thẻ giải ngân mở <span class="ic">/disbursement</span>…</td></tr>
+            <tr><td class="act">Bấm dòng “Cần xử lý ngay”</td><td>Mở phân hệ Nhiệm vụ.</td></tr>
+            <tr><td class="act"><span class="btnlike pri">Xem báo cáo tổng hợp</span></td><td>Chuyển sang phân hệ Báo cáo.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 02 NHIỆM VỤ ============ -->
+  <section id="nhiemvu" class="mod">
+    <div class="mod-head">
+      <span class="mod-num">02</span>
+      <h2>Quản lý nhiệm vụ</h2>
+      <span class="route">/tasks</span>
+    </div>
+    <p class="purpose">
+      Theo dõi nhiệm vụ giao từ ba nguồn: kết luận họp, văn bản đến và phản ánh của người dân.
+      Nhiệm vụ sinh từ văn bản hoặc phản ánh giữ liên kết ngược về bản ghi gốc.
+    </p>
+
+    <div class="panel">
+      <div class="panel-head">Trên màn hình</div>
+      <div class="panel-body">
+        <dl class="screen">
+          <div class="screen-row">
+            <dt>Hai chế độ xem</dt>
+            <dd><b>Kanban</b> 5 cột theo trạng thái — <span class="chip">Mới giao</span> <span class="chip b">Đang thực hiện</span> <span class="chip o">Chờ duyệt</span> <span class="chip r">Quá hạn</span> <span class="chip g">Hoàn thành</span> — hoặc <b>Bảng</b> 20 dòng mỗi trang.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Cột bảng</dt>
+            <dd class="cols">
+              <span class="col">Mã</span><span class="col">Tên việc</span><span class="col">Người thực hiện</span>
+              <span class="col">Bộ phận</span><span class="col">Hạn</span><span class="col">Tiến độ</span>
+              <span class="col">Ưu tiên</span><span class="col">Trạng thái</span>
+            </dd>
+          </div>
+          <div class="screen-row">
+            <dt>Bộ lọc</dt>
+            <dd>Chip bộ phận · chọn người thực hiện · chọn mức ưu tiên (Cao / Trung bình / Thấp). Có nút <span class="ic">Xoá bộ lọc</span> khi đang lọc. Lọc và phân trang đều gửi lên máy chủ.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Ngăn chi tiết</dt>
+            <dd>Hai tab: <b>Chi tiết</b> (checklist việc con, thanh tiến độ, nguồn phát sinh kèm nút mở phân hệ gốc, tệp minh chứng) và <b>Trao đổi &amp; Nhật ký</b>.</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Thao tác</div>
+      <div class="tablebox">
+        <table>
+          <thead><tr><th>Thao tác</th><th>Kết quả</th></tr></thead>
+          <tbody>
+            <tr><td class="act"><span class="btnlike pri">Giao việc mới</span></td><td>Mở biểu mẫu giao việc; máy chủ cấp mã <span class="ic">NV-…</span> rồi hiện thông báo đã giao việc cho ai.</td></tr>
+            <tr><td class="act">Tick một việc con</td><td>Máy chủ tính lại phần trăm tiến độ và trả về nhiệm vụ đã cập nhật.</td></tr>
+            <tr><td class="act">Đổi trạng thái + lưu tiến độ</td><td>Đồng bộ tiến độ theo checklist cùng trạng thái cán bộ chọn.</td></tr>
+            <tr><td class="act">Gửi ý kiến trao đổi</td><td>Thêm bình luận vào nhật ký nhiệm vụ.</td></tr>
+            <tr><td class="act">Đính kèm tệp minh chứng</td><td>Tải tệp ở chế độ riêng tư rồi gắn vào nhiệm vụ. Mở xem phải qua liên kết ký sẵn có hạn.</td></tr>
+            <tr><td class="act"><span class="btnlike dgr">Gỡ tệp</span></td><td>Bỏ tệp khỏi nhiệm vụ (tệp vẫn còn trong kho tệp).</td></tr>
+            <tr><td class="act">Mở phân hệ gốc</td><td>Nhiệm vụ sinh từ văn bản hoặc phản ánh có nút nhảy thẳng về phân hệ nguồn.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Biểu mẫu giao việc mới</div>
+      <div class="panel-body">
+        <div class="fields">
+          <div class="field req"><b>Tiêu đề nhiệm vụ <span class="req-mark">*</span></b><span>Ví dụ: Rà soát hồ sơ đất đai Thôn Đông</span></div>
+          <div class="field req"><b>Người thực hiện <span class="req-mark">*</span></b><span>Chọn từ danh bạ cán bộ, hiện kèm chức danh</span></div>
+          <div class="field req"><b>Bộ phận chủ trì <span class="req-mark">*</span></b><span>Chọn từ danh mục bộ phận</span></div>
+          <div class="field req"><b>Hạn xử lý <span class="req-mark">*</span></b><span>Chọn ngày</span></div>
+          <div class="field"><b>Mức ưu tiên</b><span>Cao · Trung bình · Thấp</span></div>
+          <div class="field"><b>Mô tả nhiệm vụ</b><span>Nội dung, yêu cầu, kết quả cần đạt</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 03 VĂN BẢN ============ -->
+  <section id="vanban" class="mod">
+    <div class="mod-head">
+      <span class="mod-num">03</span>
+      <h2>Văn bản &amp; Đơn thư</h2>
+      <span class="route">/documents</span>
+    </div>
+    <p class="purpose">
+      Sổ văn bản đến và sổ đơn thư công dân: vào sổ, đính kèm bản scan, chạy OCR bóc tách thông tin
+      để cán bộ xác nhận, luân chuyển giữa các bộ phận và chuyển thành nhiệm vụ theo dõi.
+    </p>
+
+    <div class="panel">
+      <div class="panel-head">Trên màn hình</div>
+      <div class="panel-body">
+        <dl class="screen">
+          <div class="screen-row">
+            <dt>Hai sổ</dt>
+            <dd><b>Văn bản đến</b> và <b>Đơn thư công dân</b>, mỗi tab hiện số lượng. Đổi tab thì bộ lọc trả về mặc định.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Cột bảng</dt>
+            <dd class="cols">
+              <span class="col">Số đến</span><span class="col">Số/Ký hiệu</span><span class="col">Ngày đến</span>
+              <span class="col">Cơ quan ban hành</span><span class="col">Trích yếu</span><span class="col">Bộ phận đang giữ</span>
+              <span class="col">Hạn xử lý</span><span class="col">Khẩn/Mật</span><span class="col">Trạng thái</span>
+            </dd>
+          </div>
+          <div class="screen-row">
+            <dt>Nhãn nghiệp vụ</dt>
+            <dd>Độ khẩn <span class="chip r">Khẩn</span> <span class="chip r">Hoả tốc</span> · Độ mật <span class="chip b">Mật</span> <span class="chip b">Tối mật</span> — chỉ hiện khi khác mức Thường. Dòng quá hạn được tô nổi.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Bộ lọc</dt>
+            <dd>Chip bộ phận · trạng thái · loại văn bản. Phân trang 20 dòng mỗi trang.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Ngăn chi tiết</dt>
+            <dd>Ba tab: <b>Thông tin &amp; OCR</b>, <b>Luân chuyển</b> (dòng thời gian chuyển tiếp), <b>Tệp đính kèm</b>.</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Luồng OCR — bảy trường được bóc tách</div>
+      <div class="panel-body">
+        <p style="margin-top:0">
+          Điều kiện chạy OCR là văn bản đã có bản scan. Máy đọc xong thì mỗi trường mang nhãn
+          <span class="chip">OCR</span> kèm một nút xác nhận; cán bộ phải kiểm tra đối chiếu bản gốc rồi tick từng trường,
+          hoặc bấm <b>Xác nhận tất cả</b>. Thanh đếm hiện <span class="ic">Đã xác nhận 3/7 trường</span>.
+        </p>
+        <div class="cols" style="margin-bottom:12px">
+          <span class="col k">Số/Ký hiệu</span>
+          <span class="col k">Ngày ban hành</span>
+          <span class="col k">Độ khẩn</span>
+          <span class="col k">Độ mật</span>
+          <span class="col k">Cơ quan ban hành</span>
+          <span class="col k">Trích yếu nội dung</span>
+          <span class="col k">Hạn xử lý</span>
+        </div>
+        <p class="note">
+          <b>Ghi chú trung thực:</b> nhà cung cấp OCR chưa được khách chốt nên adapter đang chạy bản mô phỏng.
+          Giao diện xác nhận từng trường, thanh đếm và luồng chạy lại OCR đã hoàn thiện — cắm provider thật vào là dùng được ngay.
+        </p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Thao tác</div>
+      <div class="tablebox">
+        <table>
+          <thead><tr><th>Thao tác</th><th>Kết quả</th></tr></thead>
+          <tbody>
+            <tr><td class="act"><span class="btnlike pri">Tiếp nhận văn bản</span></td><td>Mở biểu mẫu vào sổ; số đến do máy chủ cấp, không nhập tay.</td></tr>
+            <tr><td class="act">Tải bản scan</td><td>Đính kèm ở chế độ riêng tư; sau đó mới chạy được OCR.</td></tr>
+            <tr><td class="act"><span class="btnlike">Mở bản scan</span></td><td>Xin liên kết ký sẵn rồi mở tab mới — tệp riêng tư không mở được bằng link thường.</td></tr>
+            <tr><td class="act"><span class="btnlike">Chạy OCR</span></td><td>Bóc tách 7 trường từ bản scan. Bấm lại thì ghi đè kết quả và đặt lại trạng thái xác nhận.</td></tr>
+            <tr><td class="act">Tick xác nhận một trường</td><td>Đánh dấu trường đó khớp bản gốc; nút chuyển xanh và khoá lại.</td></tr>
+            <tr><td class="act"><span class="btnlike">Xác nhận tất cả</span></td><td>Xác nhận cả 7 trường trong một lượt.</td></tr>
+            <tr><td class="act">Đính kèm phụ lục</td><td>Thêm biên bản, phụ lục vào tab Tệp đính kèm (chế độ riêng tư).</td></tr>
+            <tr><td class="act"><span class="btnlike dgr">Gỡ tệp</span></td><td>Hỏi xác nhận rồi gỡ khỏi văn bản; tệp vẫn còn trong kho.</td></tr>
+            <tr><td class="act"><span class="btnlike">Chuyển bộ phận</span></td><td>Chuyển văn bản sang bộ phận khác; máy chủ tự ghi mốc vào dòng thời gian luân chuyển.</td></tr>
+            <tr><td class="act"><span class="btnlike pri">Chuyển thành công việc</span></td><td>Sinh nhiệm vụ theo dõi từ văn bản. Thao tác lặp lại trả đúng mã nhiệm vụ cũ, không tạo trùng.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Biểu mẫu tiếp nhận văn bản đến</div>
+      <div class="panel-body">
+        <div class="fields">
+          <div class="field req"><b>Số/Ký hiệu <span class="req-mark">*</span></b><span>Ví dụ: 214/UBND-VP</span></div>
+          <div class="field req"><b>Ngày đến <span class="req-mark">*</span></b><span>Chọn ngày</span></div>
+          <div class="field req"><b>Cơ quan ban hành <span class="req-mark">*</span></b><span>Ví dụ: UBND huyện Phú Xuyên</span></div>
+          <div class="field req"><b>Trích yếu nội dung <span class="req-mark">*</span></b><span>Tóm tắt nội dung chính của văn bản</span></div>
+          <div class="field"><b>Loại văn bản</b><span>Chọn từ danh mục</span></div>
+          <div class="field"><b>Hạn xử lý</b><span>Bỏ trống nếu văn bản không yêu cầu hạn</span></div>
+          <div class="field"><b>Bộ phận chủ trì</b><span>Chọn từ danh mục bộ phận</span></div>
+          <div class="field"><b>Người ký</b><span>Chức danh và họ tên người ký</span></div>
+          <div class="field"><b>Độ mật</b><span>Thường · Mật · Tối mật</span></div>
+          <div class="field"><b>Độ khẩn</b><span>Thường · Khẩn · Hoả tốc</span></div>
+          <div class="field"><b>Bản scan văn bản</b><span>Đính kèm ngay để chạy OCR, hoặc vào sổ trước rồi tải sau</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 04 GIẢI NGÂN ============ -->
+  <section id="giaingan" class="mod">
+    <div class="mod-head">
+      <span class="mod-num">04</span>
+      <h2>Theo dõi giải ngân vốn đầu tư</h2>
+      <span class="route">/disbursement</span>
+    </div>
+    <p class="purpose">
+      Theo dõi tiến độ giải ngân từng hạng mục đầu tư công và vốn sự nghiệp trên địa bàn xã theo
+      năm ngân sách, kèm ghi nhận từng lần chi, vướng mắc và đề nghị giải ngân đợt tiếp theo.
+    </p>
+
+    <div class="panel">
+      <div class="panel-head">Trên màn hình</div>
+      <div class="panel-body">
+        <dl class="screen">
+          <div class="screen-row">
+            <dt>4 thẻ tóm tắt</dt>
+            <dd class="cols">
+              <span class="col k">Tổng kế hoạch vốn năm</span>
+              <span class="col k">Đã giải ngân</span>
+              <span class="col k">Tỷ lệ giải ngân</span>
+              <span class="col k">Hạng mục chậm tiến độ</span>
+            </dd>
+          </div>
+          <div class="screen-row">
+            <dt>Danh sách hạng mục</dt>
+            <dd>Mỗi hạng mục một thẻ: tên, chip nguồn vốn, người phụ trách, số đã giải ngân trên kế hoạch, thanh tiến độ kèm phần trăm. Hạng mục chậm có viền đỏ và chip <span class="chip r">Chậm tiến độ</span>.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Màu thanh tiến độ</dt>
+            <dd>Từ 80% trở lên xanh lá · từ 50% xanh dương · từ 30% cam · dưới 30% đỏ. Hạng mục bị đánh dấu chậm luôn hiện đỏ.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Ngăn chi tiết</dt>
+            <dd>Ba tab: <b>Lịch sử giải ngân</b> (bảng Ngày · Nội dung chi · Số tiền · Đơn vị thụ hưởng · Người thực hiện · Chứng từ), <b>Vướng mắc</b>, <b>Thảo luận</b>.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Bộ lọc</dt>
+            <dd>Chọn năm ngân sách.</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Thao tác</div>
+      <div class="tablebox">
+        <table>
+          <thead><tr><th>Thao tác</th><th>Kết quả</th></tr></thead>
+          <tbody>
+            <tr><td class="act"><span class="btnlike pri">Thêm hạng mục</span></td><td>Ghi nhận kế hoạch vốn được giao; mã hạng mục do máy chủ cấp.</td></tr>
+            <tr><td class="act"><span class="btnlike">Ghi nhận giải ngân</span></td><td>Thêm một lần chi; máy chủ cộng luỹ kế rồi trả về phần trăm và cờ chậm tiến độ mới.</td></tr>
+            <tr><td class="act"><span class="btnlike pri">Đề nghị giải ngân</span></td><td>Gửi đề nghị đợt tiếp theo, chuyển sang trạng thái chờ duyệt. Biểu mẫu chặn số tiền vượt phần vốn còn lại.</td></tr>
+            <tr><td class="act"><span class="btnlike">Thêm vướng mắc</span></td><td>Ghi nhận vướng mắc kèm người phụ trách tháo gỡ và hạn.</td></tr>
+            <tr><td class="act"><span class="btnlike">Đã tháo gỡ</span></td><td>Đánh dấu vướng mắc đã xử lý; máy chủ ghi một bình luận hệ thống vào tab Thảo luận.</td></tr>
+            <tr><td class="act"><span class="btnlike">Nhắc tháo gỡ vướng mắc</span></td><td>Gửi lời nhắc tới người phụ trách. Nút khoá khi hạng mục không còn vướng mắc nào.</td></tr>
+            <tr><td class="act">Gửi trao đổi</td><td>Thêm ý kiến vào tab Thảo luận giữa các bộ phận.</td></tr>
+            <tr><td class="act"><span class="btnlike">Xuất Excel</span></td><td>Tải báo cáo giải ngân của năm đang xem về máy.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Bốn biểu mẫu</div>
+      <div class="panel-body">
+        <p style="margin-top:0;font-size:14px;color:var(--ink-soft)"><b>Thêm hạng mục ngân sách</b></p>
+        <div class="fields" style="margin-bottom:16px">
+          <div class="field req"><b>Tên hạng mục <span class="req-mark">*</span></b><span>Ví dụ: Cải tạo đường trục thôn Đông</span></div>
+          <div class="field req"><b>Nguồn vốn <span class="req-mark">*</span></b><span>Đầu tư công · Sự nghiệp · Ngân sách xã · CTMT quốc gia · Khác (tự nhập)</span></div>
+          <div class="field req"><b>Năm ngân sách <span class="req-mark">*</span></b><span>Chọn năm</span></div>
+          <div class="field req"><b>Đơn vị chủ trì <span class="req-mark">*</span></b><span>Chọn từ danh mục bộ phận</span></div>
+          <div class="field req"><b>Kế hoạch vốn <span class="req-mark">*</span></b><span>Đơn vị tỷ đồng; nhận cả dấu phẩy và dấu chấm</span></div>
+        </div>
+
+        <p style="margin-top:0;font-size:14px;color:var(--ink-soft)"><b>Ghi nhận lần giải ngân</b></p>
+        <div class="fields" style="margin-bottom:16px">
+          <div class="field req"><b>Ngày giải ngân <span class="req-mark">*</span></b><span>Mặc định hôm nay</span></div>
+          <div class="field req"><b>Số tiền <span class="req-mark">*</span></b><span>Ví dụ: 1,25 tỷ</span></div>
+          <div class="field req"><b>Nội dung chi <span class="req-mark">*</span></b><span>Ví dụ: Thanh toán khối lượng hoàn thành đợt 2</span></div>
+          <div class="field"><b>Đơn vị thụ hưởng</b><span>Không bắt buộc</span></div>
+          <div class="field"><b>Số chứng từ</b><span>Ví dụ: UNC 118/2026</span></div>
+        </div>
+
+        <p style="margin-top:0;font-size:14px;color:var(--ink-soft)"><b>Thêm vướng mắc</b></p>
+        <div class="fields" style="margin-bottom:16px">
+          <div class="field req"><b>Nội dung vướng mắc <span class="req-mark">*</span></b><span>Ví dụ: Chờ thu hoạch vụ lúa mùa mới thi công được</span></div>
+          <div class="field"><b>Phụ trách tháo gỡ</b><span>Chọn từ danh bạ cán bộ</span></div>
+          <div class="field"><b>Hạn tháo gỡ</b><span>Không bắt buộc</span></div>
+        </div>
+
+        <p style="margin-top:0;font-size:14px;color:var(--ink-soft)"><b>Đề nghị giải ngân</b></p>
+        <div class="fields">
+          <div class="field req"><b>Số tiền đề nghị <span class="req-mark">*</span></b><span>Tỷ đồng — chặn vượt phần vốn còn lại</span></div>
+          <div class="field req"><b>Nội dung chi <span class="req-mark">*</span></b><span>Ví dụ: Thanh toán khối lượng hoàn thành đợt 3</span></div>
+          <div class="field req"><b>Đơn vị thụ hưởng <span class="req-mark">*</span></b><span>Tên đơn vị nhận tiền</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 05 PHẢN ÁNH ============ -->
+  <section id="phananh" class="mod">
+    <div class="mod-head">
+      <span class="mod-num">05</span>
+      <h2>Phản ánh, kiến nghị của người dân</h2>
+      <span class="route">/feedback</span>
+    </div>
+    <p class="purpose">
+      Tiếp nhận, phân loại và xử lý phản ánh gửi từ Zalo Mini App, theo dõi theo
+      cam kết thời hạn của từng lĩnh vực, có ảnh hiện trường trước – sau và đánh giá của người dân.
+    </p>
+
+    <div class="panel">
+      <div class="panel-head">Trên màn hình</div>
+      <div class="panel-body">
+        <dl class="screen">
+          <div class="screen-row">
+            <dt>4 thẻ thống kê</dt>
+            <dd class="cols">
+              <span class="col k">Tiếp nhận trong tháng</span>
+              <span class="col k">Đã xử lý xong</span>
+              <span class="col k">Tỷ lệ đúng hạn</span>
+              <span class="col k">Điểm hài lòng</span>
+            </dd>
+          </div>
+          <div class="screen-row">
+            <dt>Lưới phiếu</dt>
+            <dd>Mỗi phản ánh một thẻ: ảnh hiện trường, mã phiếu, trạng thái, trích nội dung, chip lĩnh vực, tên thôn/tổ. Phiếu chưa giao người xử lý hiện cảnh báo cam <b>Chưa phân công cán bộ xử lý</b>.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Ba trạng thái</dt>
+            <dd><span class="chip">Mới tiếp nhận</span> <span class="chip b">Đang xử lý</span> <span class="chip g">Đã xử lý</span></dd>
+          </div>
+          <div class="screen-row">
+            <dt>Bộ lọc</dt>
+            <dd>Chip lĩnh vực · thanh chọn trạng thái.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Ngăn chi tiết</dt>
+            <dd>Nội dung, người gửi (số điện thoại đã che), thời điểm, thôn/tổ, cán bộ xử lý, SLA cam kết của lĩnh vực; hai tab <b>Tiến trình xử lý</b> và <b>Đánh giá</b>.</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Đồng hồ SLA đếm ngược</div>
+      <div class="panel-body">
+        <p style="margin-top:0">
+          Mỗi lĩnh vực có một cặp thời hạn riêng — số ngày làm việc để <b>tiếp nhận, phân loại</b> và số ngày để
+          <b>xử lý xong</b> — cùng mốc cảnh báo trước hạn. Thời hạn tính theo giờ hành chính, không tính ngày nghỉ và ngày lễ.
+          Nhãn trên phiếu đổi theo số giờ còn lại:
+        </p>
+        <p style="margin-bottom:12px">
+          <span class="chip g">Còn 36 giờ</span> còn nhiều thời gian ·
+          <span class="chip o">Còn 8 giờ</span> sắp tới hạn ·
+          <span class="chip r">Quá hạn 5 giờ</span> đã trễ ·
+          <span class="chip g">Hoàn thành</span> đã xử lý xong
+        </p>
+        <p class="note">
+          Ví dụ cấu hình mặc định: <b>An ninh</b> tiếp nhận 2 ngày / xử lý 2 ngày, cảnh báo trước 4 giờ ·
+          <b>Rác thải</b> 4 / 3 ngày, cảnh báo trước 8 giờ · <b>Xây dựng</b> 8 / 7 ngày, cảnh báo trước 24 giờ.
+          Sửa bảng SLA ở phân hệ Cấu hình, và thay đổi chỉ áp cho phiếu phát sinh sau đó — không tính lại phiếu cũ.
+        </p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Thao tác</div>
+      <div class="tablebox">
+        <table>
+          <thead><tr><th>Thao tác</th><th>Kết quả</th></tr></thead>
+          <tbody>
+            <tr><td class="act"><span class="btnlike">Phân công cán bộ</span></td><td>Chọn cán bộ xử lý; phiếu chuyển sang Đang xử lý và bộ phận suy ra từ danh bạ.</td></tr>
+            <tr><td class="act"><span class="btnlike">Chuyển bộ phận</span></td><td>Chuyển sang bộ phận khác, bắt buộc nêu lý do.</td></tr>
+            <tr><td class="act"><span class="btnlike pri">Xác nhận đã xử lý</span></td><td>Nhập kết quả xử lý và tải ảnh nghiệm thu; hệ thống gửi thông báo kết quả cho công dân.</td></tr>
+            <tr><td class="act"><span class="btnlike">Chuyển thành công việc</span></td><td>Sinh nhiệm vụ theo dõi từ phiếu phản ánh; thao tác lặp lại không tạo trùng.</td></tr>
+            <tr><td class="act">Xem ảnh trước – sau</td><td>Hai ô đối chiếu: ảnh người dân gửi và ảnh nghiệm thu sau xử lý.</td></tr>
+            <tr><td class="act">Xem vị trí phản ánh</td><td>Ghim trên bản đồ nền thật khi có toạ độ, hoặc sơ đồ mô phỏng thôn/tổ khi chưa cấu hình bản đồ.</td></tr>
+            <tr><td class="act">Xem đánh giá</td><td>Số sao và nhận xét người dân để lại sau khi phiếu được xử lý.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Trường nhập khi xử lý</div>
+      <div class="panel-body">
+        <div class="fields">
+          <div class="field req"><b>Kết quả xử lý <span class="req-mark">*</span></b><span>Ví dụ: Đã thu gom rác, cắm biển cấm đổ rác, bàn giao thôn quản lý</span></div>
+          <div class="field"><b>Ảnh sau xử lý</b><span>Ảnh nghiệm thu, tải ở chế độ riêng tư theo quy định bảo vệ dữ liệu cá nhân</span></div>
+          <div class="field req"><b>Lý do chuyển bộ phận <span class="req-mark">*</span></b><span>Bắt buộc khi chuyển phiếu sang bộ phận khác</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 06 BẢN ĐỒ ============ -->
+  <section id="bando" class="mod">
+    <div class="mod-head">
+      <span class="mod-num">06</span>
+      <h2>Bản đồ kinh tế số</h2>
+      <span class="route">/map</span>
+    </div>
+    <p class="purpose">
+      Cơ sở dữ liệu không gian về doanh nghiệp, hộ kinh doanh và hạ tầng trên địa bàn xã, kèm
+      panel phân tích cơ cấu ngành kinh tế.
+    </p>
+
+    <div class="panel">
+      <div class="panel-head">Trên màn hình</div>
+      <div class="panel-body">
+        <dl class="screen">
+          <div class="screen-row">
+            <dt>Panel trái</dt>
+            <dd><b>Lớp dữ liệu</b> — mỗi lớp một công tắc bật/tắt kèm chấm màu và số lượng ghim thuộc lớp.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Panel phải</dt>
+            <dd><b>Phân tích kinh tế</b> — biểu đồ tròn cơ cấu ngành, chú giải theo phần trăm, ô chọn ngành để soi, và khối chỉ số tổng hợp.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Popup ghim</dt>
+            <dd class="cols">
+              <span class="col">Ngành nghề</span><span class="col">Địa chỉ</span><span class="col">Số lao động</span>
+              <span class="col">Đại diện</span><span class="col">Điện thoại</span>
+            </dd>
+          </div>
+          <div class="screen-row">
+            <dt>Nền bản đồ</dt>
+            <dd>Chọn bằng biến môi trường: nền thật qua MapLibre (có thu phóng, thanh tỉ lệ) hoặc bản mô phỏng thôn/tổ khi chưa chốt nhà cung cấp. Chip trên đầu trang cho biết đang chạy nền nào.</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Thao tác</div>
+      <div class="tablebox">
+        <table>
+          <thead><tr><th>Thao tác</th><th>Kết quả</th></tr></thead>
+          <tbody>
+            <tr><td class="act">Bật/tắt một lớp</td><td>Ẩn hoặc hiện toàn bộ ghim thuộc lớp đó.</td></tr>
+            <tr><td class="act"><span class="btnlike">Bật tất cả</span> / <span class="btnlike">Tắt tất cả</span></td><td>Bật hoặc tắt toàn bộ lớp trong một lượt.</td></tr>
+            <tr><td class="act">Bấm một ghim</td><td>Mở popup thông tin cơ sở; trên nền thật bản đồ tự dịch chuyển và phóng tới ghim.</td></tr>
+            <tr><td class="act">Chọn ngành phân tích</td><td>Tô đậm ngành trong chú giải và hiện tỷ trọng của ngành đó trong cơ cấu kinh tế.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="panel-body" style="border-top:1px solid var(--line)">
+        <p class="note w" style="margin:0">
+          <b>Chưa chốt:</b> định dạng và phạm vi xuất dữ liệu bản đồ (Excel hay GeoJSON) đang chờ khách quyết định,
+          nên nút Xuất dữ liệu hiện mới là bản mô phỏng. Thêm/sửa/xoá ghim và lớp đã có API sẵn nhưng chưa mở trên giao diện.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 07 BÁO CÁO ============ -->
+  <section id="baocao" class="mod">
+    <div class="mod-head">
+      <span class="mod-num">07</span>
+      <h2>Báo cáo tổng hợp</h2>
+      <span class="route">/reports</span>
+    </div>
+    <p class="purpose">
+      Tổng hợp số liệu điều hành theo kỳ — nhiệm vụ, tỷ lệ đúng hạn, phản ánh, giải ngân và xếp hạng
+      bộ phận — có tuỳ chọn so sánh cùng kỳ năm trước.
+    </p>
+
+    <div class="panel">
+      <div class="panel-head">Bốn biểu đồ</div>
+      <div class="panel-body">
+        <dl class="screen">
+          <div class="screen-row">
+            <dt>Nhiệm vụ</dt>
+            <dd><b>Nhiệm vụ theo bộ phận</b> — thanh ngang, mỗi bộ phận một thanh, đo tổng số nhiệm vụ trong kỳ.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Đúng hạn</dt>
+            <dd><b>Tỷ lệ xử lý đúng hạn theo tháng</b> — đường theo tháng, trục tung là phần trăm. Bật so sánh thì thêm một đường nét đứt của cùng kỳ năm trước.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Phản ánh</dt>
+            <dd><b>Phản ánh theo lĩnh vực</b> — thanh ngang, màu lấy theo màu lĩnh vực đã cấu hình.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Giải ngân</dt>
+            <dd><b>Giải ngân theo nguồn vốn</b> — cột đôi kế hoạch và thực hiện, đơn vị tỷ đồng.</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Bảng xếp hạng bộ phận theo tỷ lệ đúng hạn</div>
+      <div class="panel-body">
+        <div class="cols" style="margin-bottom:10px">
+          <span class="col">Hạng</span><span class="col">Bộ phận</span><span class="col">Tổng nhiệm vụ</span>
+          <span class="col">Đúng hạn</span><span class="col">Trễ hạn</span><span class="col">Tỷ lệ đúng hạn</span>
+          <span class="col">Thời gian xử lý TB</span>
+        </div>
+        <p style="margin:0;font-size:14px;color:var(--ink-soft)">
+          Ba hạng đầu có huy chương vàng – bạc – đồng. Chip tỷ lệ đổi màu: từ 90% xanh, từ 80% cam, dưới nữa đỏ.
+          Cột <b>Thời gian xử lý TB</b> hiện dấu gạch vì máy chủ chưa thống kê chỉ số này — cố ý để trống thay vì bịa số.
+        </p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Thao tác và kết xuất</div>
+      <div class="tablebox">
+        <table>
+          <thead><tr><th>Thao tác</th><th>Kết quả</th></tr></thead>
+          <tbody>
+            <tr><td class="act">Chọn kỳ báo cáo</td><td>Tháng · Quý · 6 tháng · Năm — tải lại toàn bộ số liệu.</td></tr>
+            <tr><td class="act">So sánh cùng kỳ</td><td>Gọi thêm số liệu năm trước và vẽ đường nét đứt đối chiếu trên biểu đồ đúng hạn.</td></tr>
+            <tr><td class="act"><span class="btnlike pri">Xuất Excel</span></td><td>Tải tệp <span class="ic">.xlsx</span> thật về máy, tên tệp theo kỳ và năm.</td></tr>
+            <tr><td class="act"><span class="btnlike">Xuất PDF</span> · <span class="btnlike">Xuất PPT</span></td><td>Backend đã hỗ trợ kết xuất PDF (nhúng phông Roboto để đủ dấu tiếng Việt) và PowerPoint; hai nút này trên trang Báo cáo còn đang nối nốt.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 08 CMS ============ -->
+  <section id="cms" class="mod">
+    <div class="mod-head">
+      <span class="mod-num">08</span>
+      <h2>Nội dung Mini App</h2>
+      <span class="route">/cms</span>
+    </div>
+    <p class="purpose">
+      Quản lý tin bài, video, bản tin truyền thanh hiển thị trên Zalo Mini App,
+      cùng công cụ gửi thông báo hàng loạt tới người dân.
+    </p>
+
+    <div class="panel">
+      <div class="panel-head">Năm tab</div>
+      <div class="panel-body">
+        <dl class="screen">
+          <div class="screen-row">
+            <dt>Tin tức &amp; Sự kiện</dt>
+            <dd>
+              Bảng bài viết: <span class="cols" style="display:inline-flex"><span class="col">Tiêu đề</span><span class="col">Loại</span><span class="col">Chuyên mục</span><span class="col">Tác giả</span><span class="col">Ngày đăng</span><span class="col">Lượt xem</span><span class="col">Trạng thái</span></span><br>
+              Ba loại bài: <span class="chip b">Tin tức</span> <span class="chip b">Sự kiện</span> <span class="chip o">Thông báo</span> · Hai trạng thái: <span class="chip">Nháp</span> <span class="chip g">Đã đăng</span>. Lọc theo loại, phân trang 20 bài.
+            </dd>
+          </div>
+          <div class="screen-row">
+            <dt>Video</dt>
+            <dd>Lưới thẻ video có ảnh đại diện, thời lượng, lượt xem, nguồn <span class="chip r">YouTube</span> hoặc <span class="chip g">Tự host</span>. Bấm thẻ là xem ngay trong trang.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Truyền thanh</dt>
+            <dd>Bản tin nhóm theo ngày phát, mỗi dòng có nút phát, thời lượng, lượt nghe, chuyên mục và trạng thái.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Gửi thông báo</dt>
+            <dd>Biểu mẫu soạn thông báo hàng loạt, kèm thẻ lưu ý về giới hạn từng kênh gửi.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Lịch sử gửi</dt>
+            <dd>Bảng các lượt đã gửi: <span class="cols" style="display:inline-flex"><span class="col">Tiêu đề</span><span class="col">Kênh</span><span class="col">Người gửi</span><span class="col">Thời điểm</span><span class="col">Đã nhận / Tổng</span><span class="col">Trạng thái</span></span> — lọc theo nhóm gửi công dân hay nội bộ.</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Thao tác</div>
+      <div class="tablebox">
+        <table>
+          <thead><tr><th>Thao tác</th><th>Kết quả</th></tr></thead>
+          <tbody>
+            <tr><td class="act"><span class="btnlike pri">Viết bài mới</span></td><td>Soạn bài, chọn chuyên mục, tải ảnh bìa, lưu nháp hoặc đăng thẳng.</td></tr>
+            <tr><td class="act"><span class="btnlike">Đăng bài</span> / <span class="btnlike">Gỡ bài</span></td><td>Đưa bài lên Mini App hoặc gỡ khỏi Mini App.</td></tr>
+            <tr><td class="act"><span class="btnlike dgr">Xoá bài viết</span></td><td>Hỏi xác nhận rồi xoá vĩnh viễn.</td></tr>
+            <tr><td class="act"><span class="btnlike">Thêm video</span></td><td>Nhúng link YouTube hoặc tải tệp lên; tải tệp thì thời lượng đọc tự động từ chính tệp đó. Video mới luôn ở trạng thái nháp.</td></tr>
+            <tr><td class="act">Bấm thẻ video</td><td>Phát ngay trong trang, đóng ngăn là dừng phát.</td></tr>
+            <tr><td class="act"><span class="btnlike">Thêm bản tin</span></td><td>Tải tệp âm thanh, thời lượng đọc tự động từ tệp; ngày phát mặc định là hôm nay.</td></tr>
+            <tr><td class="act"><span class="btnlike">Phát hành bản tin</span> / <span class="btnlike">Chuyển về nháp</span></td><td>Đổi trạng thái bản tin truyền thanh.</td></tr>
+            <tr><td class="act"><span class="btnlike pri">Gửi thông báo</span></td><td>Gửi hàng loạt rồi tự chuyển sang tab Lịch sử gửi, báo số người đã nhận trên tổng số.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Biểu mẫu gửi thông báo hàng loạt</div>
+      <div class="panel-body">
+        <div class="fields" style="margin-bottom:14px">
+          <div class="field"><b>Kênh gửi</b><span>Zalo ZNS hoặc Push Mini App</span></div>
+          <div class="field"><b>Đối tượng nhận</b><span>Toàn bộ công dân hoặc cán bộ nội bộ; số người nhận do máy chủ xác định lúc gửi</span></div>
+          <div class="field req"><b>Tiêu đề <span class="req-mark">*</span></b><span>Ví dụ: Lịch cắt điện bảo trì trạm biến áp Thôn Đông</span></div>
+          <div class="field req"><b>Nội dung <span class="req-mark">*</span></b><span>Tối đa 200 ký tự, có đếm ký tự — ràng buộc của template ZNS</span></div>
+        </div>
+        <p class="note w" style="margin:0">
+          <b>Điều kiện gửi thật:</b> kênh ZNS yêu cầu nội dung khớp template đã được Zalo phê duyệt trước (thường mất 1–3 ngày làm việc),
+          nên khách cần đăng ký Zalo Business và duyệt template. Kênh Push chỉ tới được công dân đã cài app và bật nhận thông báo —
+          tin khẩn nên gửi kèm cả hai kênh.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 09 NGƯỜI DÙNG ============ -->
+  <section id="nguoidung" class="mod">
+    <div class="mod-head">
+      <span class="mod-num">09</span>
+      <h2>Người dùng Mini App &amp; Bảo mật</h2>
+      <span class="route">/users</span>
+    </div>
+    <p class="purpose">
+      Quản lý tài khoản công dân trên Zalo Mini App, giám sát phiên đăng nhập
+      toàn cơ quan, và danh sách chặn.
+    </p>
+
+    <div class="panel">
+      <div class="panel-head">Trên màn hình</div>
+      <div class="panel-body">
+        <dl class="screen">
+          <div class="screen-row">
+            <dt>3 thẻ thống kê</dt>
+            <dd class="cols">
+              <span class="col k">Tổng công dân đã đăng ký</span>
+              <span class="col k">Hoạt động 30 ngày qua</span>
+              <span class="col k">Tài khoản bị khoá</span>
+            </dd>
+          </div>
+          <div class="screen-row">
+            <dt>Tab Công dân</dt>
+            <dd class="cols">
+              <span class="col">Tên Zalo</span><span class="col">Số điện thoại</span><span class="col">Thôn / Tổ dân phố</span>
+              <span class="col">Phản ánh đã gửi</span><span class="col">Ngày đăng ký</span><span class="col">Kênh định danh</span><span class="col">Trạng thái</span>
+            </dd>
+          </div>
+          <div class="screen-row">
+            <dt>Tab Phiên đăng nhập</dt>
+            <dd>Hai nhóm — <b>Cán bộ (web)</b> và <b>Công dân (Mini App)</b>. Cột: <span class="cols" style="display:inline-flex"><span class="col">Người dùng</span><span class="col">Thiết bị</span><span class="col">Địa chỉ IP</span><span class="col">Bắt đầu</span><span class="col">Hoạt động cuối</span></span></dd>
+          </div>
+          <div class="screen-row">
+            <dt>Tab Blacklist</dt>
+            <dd>Ba loại đối tượng bị chặn: <span class="chip b">Công dân</span> <span class="chip b">Thiết bị</span> <span class="chip b">IP</span>. Khoá tài khoản công dân sẽ tự sinh bản ghi chặn tương ứng.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Tìm kiếm</dt>
+            <dd>Tìm theo tên Zalo hoặc số điện thoại, chip lọc thôn/tổ, phân trang 20 bản ghi.</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Thao tác</div>
+      <div class="tablebox">
+        <table>
+          <thead><tr><th>Thao tác</th><th>Kết quả</th><th>Ai làm được</th></tr></thead>
+          <tbody>
+            <tr><td class="act"><span class="btnlike dgr">Khoá</span></td><td>Bắt buộc nêu lý do. Tài khoản không đăng nhập được Mini App nữa và tự vào blacklist. Lý do hiển thị cho công dân khi họ mở Mini App.</td><td>Quản trị · Tiếp nhận một cửa</td></tr>
+            <tr><td class="act"><span class="btnlike">Mở khoá</span></td><td>Cho phép đăng nhập trở lại và gỡ luôn bản ghi chặn.</td><td>Quản trị · Tiếp nhận một cửa</td></tr>
+            <tr><td class="act"><span class="btnlike dgr">Xoá</span></td><td>Xoá mềm — tài khoản biến mất khỏi danh sách và không đăng nhập được, nhưng hồ sơ và phản ánh đã gửi vẫn được giữ nguyên.</td><td>Chỉ Quản trị</td></tr>
+            <tr><td class="act"><span class="btnlike">Khôi phục</span></td><td>Đưa tài khoản đã xoá trở lại, tìm ở bộ lọc “Đã xoá”.</td><td>Chỉ Quản trị</td></tr>
+            <tr><td class="act"><span class="btnlike dgr">Thu hồi phiên</span></td><td>Đăng xuất một thiết bị cụ thể khỏi hệ thống.</td><td>Có quyền xem phân hệ</td></tr>
+            <tr><td class="act"><span class="btnlike">Gỡ chặn</span></td><td>Bỏ một đối tượng khỏi danh sách chặn.</td><td>Có quyền xem phân hệ</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="panel-body" style="border-top:1px solid var(--line)">
+        <p class="note" style="margin:0">
+          <b>Bảo vệ dữ liệu cá nhân:</b> số điện thoại công dân luôn hiển thị dạng che (<span class="ic">098•••321</span>)
+          với mọi vai trò, kể cả quản trị viên. Nút Xoá và Khôi phục được ẩn hẳn với vai trò không đủ quyền
+          thay vì để bấm rồi nhận lỗi từ chối.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 10 CẤU HÌNH ============ -->
+  <section id="cauhinh" class="mod">
+    <div class="mod-head">
+      <span class="mod-num">10</span>
+      <h2>Cấu hình hệ thống</h2>
+      <span class="route">/settings</span>
+    </div>
+    <p class="purpose">
+      Nơi đặt luật chơi của toàn hệ: thời hạn xử lý phản ánh, sơ đồ tổ chức, tài khoản cán bộ kèm
+      phân quyền, và danh mục lĩnh vực phản ánh.
+    </p>
+
+    <div class="panel">
+      <div class="panel-head">Tab 1 — SLA phản ánh</div>
+      <div class="panel-body">
+        <div class="cols" style="margin-bottom:10px">
+          <span class="col">Lĩnh vực phản ánh</span><span class="col">Tiếp nhận, phân loại</span>
+          <span class="col">Thời hạn xử lý</span><span class="col">Đơn vị</span>
+          <span class="col">Cảnh báo trước hạn</span><span class="col">Trạng thái</span>
+        </div>
+        <p style="margin:0 0 12px;font-size:14.3px">
+          Sửa số ngày trực tiếp ngay trên bảng, nút <b>Lưu cấu hình</b> chỉ bật khi có thay đổi.
+          Có nút <b>Khôi phục mặc định</b> (hỏi xác nhận trước khi ghi đè).
+        </p>
+        <p class="note" style="margin:0">
+          Thời hạn tính theo giờ hành chính, không tính ngày nghỉ và ngày lễ. Thay đổi chỉ có hiệu lực
+          với phiếu phản ánh tiếp nhận <b>sau</b> thời điểm lưu — phiếu cũ không bị tính lại.
+        </p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Tab 2 — Sơ đồ tổ chức</div>
+      <div class="panel-body">
+        <p style="margin:0 0 10px;font-size:14.3px">Cây đơn vị nhiều cấp, thu gọn – mở rộng từng nhánh.</p>
+        <div class="tablebox">
+          <table style="min-width:520px">
+            <tbody>
+              <tr><td class="act"><span class="btnlike pri">Thêm đơn vị</span></td><td>Thêm đơn vị cấp cao nhất hoặc đơn vị trực thuộc một nhánh cụ thể.</td></tr>
+              <tr><td class="act"><span class="btnlike">Sửa</span></td><td>Đổi tên đơn vị / chức danh và phụ đề (người phụ trách, quân số).</td></tr>
+              <tr><td class="act"><span class="btnlike dgr">Xoá</span></td><td>Hỏi xác nhận; máy chủ chặn xoá khi đơn vị còn cấp dưới trực thuộc.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Tab 3 — Tài khoản &amp; phân quyền</div>
+      <div class="panel-body">
+        <div class="cols" style="margin-bottom:12px">
+          <span class="col">Họ và tên</span><span class="col">Tài khoản</span><span class="col">Bộ phận</span>
+          <span class="col">Vai trò</span><span class="col">Đăng nhập gần nhất</span><span class="col">Trạng thái</span>
+        </div>
+        <div class="tablebox" style="margin-bottom:14px">
+          <table style="min-width:520px">
+            <tbody>
+              <tr><td class="act"><span class="btnlike pri">Thêm tài khoản</span></td><td>Nhập họ tên, tên đăng nhập, bộ phận, vai trò. Hệ thống sinh mật khẩu tạm 12 ký tự.</td></tr>
+              <tr><td class="act">Đổi vai trò</td><td>Chọn vai trò mới ngay trên dòng của bảng.</td></tr>
+              <tr><td class="act"><span class="btnlike dgr">Khoá</span> / <span class="btnlike">Mở khoá</span></td><td>Tạm khoá tài khoản cán bộ hoặc mở lại. Khoá là thu hồi token ngay lập tức.</td></tr>
+              <tr><td class="act"><span class="btnlike">Đặt lại mật khẩu</span></td><td>Cấp mật khẩu tạm mới, mật khẩu cũ mất hiệu lực ngay.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note w" style="margin:0">
+          <b>Mật khẩu tạm chỉ hiển thị đúng một lần.</b> Màn hình có nút sao chép và yêu cầu bàn giao trực tiếp cho cán bộ.
+          Tài khoản nhận mật khẩu tạm bị buộc đổi mật khẩu ở lần đăng nhập kế tiếp trước khi vào được bất kỳ phân hệ nào.
+          Không có chức năng xoá tài khoản cán bộ — chỉ khoá.
+        </p>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Tab 4 — Danh mục lĩnh vực phản ánh</div>
+      <div class="panel-body">
+        <p style="margin:0 0 10px;font-size:14.3px">
+          Bảng hai cột: <b>Lĩnh vực</b> và <b>SLA hiện hành</b>. Thêm lĩnh vực mới cần nhập tên và chọn màu nhận diện
+          (8 màu), mã lĩnh vực sinh tự động từ tên và không đổi được sau khi tạo.
+        </p>
+        <p class="note" style="margin:0">
+          Lĩnh vực mới chưa có SLA nên phải sang tab <b>SLA phản ánh</b> thiết lập thời hạn ngay sau khi thêm.
+          Máy chủ chặn xoá lĩnh vực đang có phiếu phản ánh tham chiếu và báo rõ số phiếu.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 11 HỒ SƠ ============ -->
+  <section id="hoso" class="mod">
+    <div class="mod-head">
+      <span class="mod-num">11</span>
+      <h2>Hồ sơ cá nhân</h2>
+      <span class="route">/profile</span>
+    </div>
+    <p class="purpose">
+      Ba việc cán bộ tự làm được mà không cần nhờ quản trị viên: xem mình là ai và có quyền gì,
+      xem thiết bị nào đang mở tài khoản của mình, và tự đổi mật khẩu.
+    </p>
+
+    <div class="panel">
+      <div class="panel-head">Trên màn hình</div>
+      <div class="panel-body">
+        <dl class="screen">
+          <div class="screen-row">
+            <dt>Tài khoản</dt>
+            <dd>Họ tên, chức danh, tên đăng nhập, vai trò, thời điểm đăng nhập.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Thiết bị</dt>
+            <dd>Bảng phiên của <b>chính mình</b>: <span class="cols" style="display:inline-flex"><span class="col">Thiết bị</span><span class="col">Địa chỉ IP</span><span class="col">Bắt đầu</span><span class="col">Hoạt động cuối</span></span> — thiết bị đang dùng có nhãn riêng và không tự thu hồi được.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Đổi mật khẩu</dt>
+            <dd>Ba ô: mật khẩu hiện tại, mật khẩu mới, nhập lại mật khẩu mới.</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">Chính sách mật khẩu và thao tác</div>
+      <div class="panel-body">
+        <p style="margin:0 0 12px;font-size:14.3px">
+          Yêu cầu hiển thị ngay dưới ô nhập: <b>ít nhất 10 ký tự, phải có cả chữ và số, không chứa tên đăng nhập</b>.
+          Máy chủ kiểm thêm: không trùng mật khẩu phổ biến, không có dấu cách ở đầu hoặc cuối.
+        </p>
+        <div class="tablebox">
+          <table style="min-width:520px">
+            <tbody>
+              <tr><td class="act"><span class="btnlike pri">Đổi mật khẩu</span></td><td>Đổi xong thì mọi thiết bị khác đang mở tài khoản này bị đăng xuất, thiết bị đang dùng giữ nguyên phiên.</td></tr>
+              <tr><td class="act"><span class="btnlike dgr">Đăng xuất</span></td><td>Đăng xuất một thiết bị cụ thể trong danh sách.</td></tr>
+              <tr><td class="act"><span class="btnlike">Đăng xuất các thiết bị khác</span></td><td>Đóng mọi phiên khác của chính mình trong một lượt.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 12 TRỢ GIÚP ============ -->
+  <section id="trogiup" class="mod">
+    <div class="mod-head">
+      <span class="mod-num">12</span>
+      <h2>Trợ giúp</h2>
+      <span class="route">/help</span>
+    </div>
+    <p class="purpose">
+      Hướng dẫn sử dụng đọc trực tiếp từ cấu hình thật của hệ thống, nên luôn khớp với hành vi
+      đang chạy chứ không phải bản chép tay dễ lạc hậu.
+    </p>
+
+    <div class="panel">
+      <div class="panel-head">Ba tab</div>
+      <div class="panel-body">
+        <dl class="screen">
+          <div class="screen-row">
+            <dt>Theo phân hệ</dt>
+            <dd>Mỗi phân hệ một thẻ mẹo sử dụng kèm nút mở thẳng phân hệ đó.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Vai trò &amp; quyền</dt>
+            <dd>Giải thích bốn mức quyền và ma trận đầy đủ 5 vai trò × 10 phân hệ, dựng từ chính khung phân quyền của hệ thống.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Câu hỏi thường gặp</dt>
+            <dd>Tám câu, gồm cả bảng SLA mặc định, cách xử lý khi bị đăng xuất bất ngờ, giới hạn tệp đính kèm, phạm vi tìm kiếm toàn cục, và tin số nào khi Tổng quan lệch bảng chi tiết.</dd>
+          </div>
+          <div class="screen-row">
+            <dt>Liên hệ hỗ trợ</dt>
+            <dd>Điện thoại, thư điện tử, thời gian hỗ trợ — cấu hình bằng biến môi trường lúc triển khai.</dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PHÂN QUYỀN ============ -->
+  <section id="quyen" class="mod">
+    <h3 class="sec" style="margin-top:0">Ma trận phân quyền đầy đủ</h3>
+    <p class="sec-sub">
+      Năm vai trò × mười phân hệ × bốn mức quyền <span class="ic">view &lt; edit &lt; approve &lt; admin</span>.
+      Định nghĩa một lần ở backend và đồng bộ sang giao diện; guard toàn cục chặn ở tầng API,
+      nên ẩn nút trên màn hình không phải biện pháp bảo vệ duy nhất.
+    </p>
+
+    <div class="panel">
+      <div class="tablebox">
+        <table>
+          <thead>
+            <tr>
+              <th>Vai trò</th><th>Tổng quan</th><th>Nhiệm vụ</th><th>Văn bản</th><th>Giải ngân</th>
+              <th>Phản ánh</th><th>Bản đồ</th><th>Báo cáo</th><th>Nội dung</th><th>Người dùng</th><th>Cấu hình</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="act">Quản trị hệ thống</td>
+              <td><span class="perm p-admin">admin</span></td><td><span class="perm p-admin">admin</span></td>
+              <td><span class="perm p-admin">admin</span></td><td><span class="perm p-admin">admin</span></td>
+              <td><span class="perm p-admin">admin</span></td><td><span class="perm p-admin">admin</span></td>
+              <td><span class="perm p-admin">admin</span></td><td><span class="perm p-admin">admin</span></td>
+              <td><span class="perm p-admin">admin</span></td><td><span class="perm p-admin">admin</span></td>
+            </tr>
+            <tr>
+              <td class="act">Lãnh đạo phê duyệt</td>
+              <td><span class="perm">view</span></td><td><span class="perm p-approve">approve</span></td>
+              <td><span class="perm p-approve">approve</span></td><td><span class="perm p-approve">approve</span></td>
+              <td><span class="perm p-approve">approve</span></td><td><span class="perm">view</span></td>
+              <td><span class="perm">view</span></td><td><span class="perm">view</span></td>
+              <td><span class="perm">view</span></td><td><span class="perm">view</span></td>
+            </tr>
+            <tr>
+              <td class="act">Chuyên viên xử lý</td>
+              <td><span class="perm">view</span></td><td><span class="perm p-edit">edit</span></td>
+              <td><span class="perm p-edit">edit</span></td><td><span class="perm">view</span></td>
+              <td><span class="perm p-edit">edit</span></td><td><span class="perm">view</span></td>
+              <td><span class="perm">view</span></td><td><span class="perm">view</span></td>
+              <td><span class="perm">view</span></td><td><span class="perm">view</span></td>
+            </tr>
+            <tr>
+              <td class="act">Kế toán – giải ngân</td>
+              <td><span class="perm">view</span></td><td><span class="perm">view</span></td>
+              <td><span class="perm">view</span></td><td><span class="perm p-edit">edit</span></td>
+              <td><span class="perm">view</span></td><td><span class="perm">view</span></td>
+              <td><span class="perm">view</span></td><td><span class="perm">view</span></td>
+              <td><span class="perm">view</span></td><td><span class="perm">view</span></td>
+            </tr>
+            <tr>
+              <td class="act">Tiếp nhận một cửa</td>
+              <td><span class="perm">view</span></td><td><span class="perm">view</span></td>
+              <td><span class="perm p-edit">edit</span></td><td><span class="perm">view</span></td>
+              <td><span class="perm p-edit">edit</span></td><td><span class="perm">view</span></td>
+              <td><span class="perm">view</span></td><td><span class="perm">view</span></td>
+              <td><span class="perm p-edit">edit</span></td><td><span class="perm">view</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="panel-body" style="border-top:1px solid var(--line)">
+        <p style="margin:0;font-size:14.2px;color:var(--ink-soft)">
+          <b style="color:var(--ink)">Bốn mức quyền.</b>
+          <span class="perm">view</span> chỉ đọc — mở danh sách, ngăn chi tiết, báo cáo ·
+          <span class="perm p-edit">edit</span> thêm và cập nhật bản ghi của phân hệ ·
+          <span class="perm p-approve">approve</span> thêm quyền duyệt kết quả ·
+          <span class="perm p-admin">admin</span> toàn quyền, gồm cả việc không hoàn lại được như xoá tài khoản công dân.
+        </p>
+      </div>
+    </div>
+
+    <p class="note" style="margin-top:16px">
+      <b>Còn chờ khách chốt:</b> Phase 1 phân quyền theo <b>phân hệ</b> — mỗi vai trò một mức quyền tối đa trên từng phân hệ.
+      Phân quyền chi tiết tới từng <b>hành động</b> (ví dụ: ai được duyệt đề nghị giải ngân, ai được đăng bài trực tiếp
+      thay vì chỉ soạn nháp chờ lãnh đạo duyệt) đang chờ khách xác nhận để triển khai ở giai đoạn sau.
+    </p>
+  </section>
+
+  <footer>
+    <span>ViGov Phase 1 · Cẩm nang Web Quản trị · 09/09/2026</span>
+    <span>13 phân hệ · Next.js 16 · 88 test pass</span>
+  </footer>
+
+</div>

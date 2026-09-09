@@ -18,7 +18,7 @@ import {
 
 /**
  * CMS nội dung (WBS #10) — soạn bài viết, video, bản tin truyền thanh
- * và đẩy sang app Flutter / Zalo Mini App qua nhóm endpoint /public.
+ * và đẩy sang Zalo Mini App qua nhóm endpoint /public.
  */
 @Controller('content')
 export class ContentController {

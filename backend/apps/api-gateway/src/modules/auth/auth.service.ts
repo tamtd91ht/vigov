@@ -260,7 +260,7 @@ export class AuthService {
   }
 
   /**
-   * Gửi mã OTP định danh công dân (app Flutter).
+   * Gửi mã OTP định danh công dân (Zalo Mini App).
    * Phase 1 chỉ ghi log; gửi SMS/ZNS thật thuộc hệ số tích hợp bên ngoài.
    */
   async requestOtp(phone: string) {

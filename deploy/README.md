@@ -1,8 +1,7 @@
 # ViGov — Hướng dẫn triển khai (P4-34 · WBS #34–35)
 
-Tài liệu vận hành cho hệ thống ViGov gồm 4 thành phần: **backend** (NestJS),
-**admin-web** (Next.js), **zalo-miniapp** (Vite + nginx) và **mobile** (Flutter —
-phát hành qua CH Play/App Store, không nằm trong compose).
+Tài liệu vận hành cho hệ thống ViGov gồm 3 thành phần: **backend** (NestJS),
+**admin-web** (Next.js) và **zalo-miniapp** (Vite + nginx).
 
 Toàn bộ hạ tầng dựng bằng `docker-compose.yml` ở thư mục gốc dự án.
 
@@ -14,7 +13,7 @@ Toàn bộ hạ tầng dựng bằng `docker-compose.yml` ở thư mục gốc d
 | `Jenkinsfile` | Pipeline CI/CD (Jenkins) |
 | `.github/workflows/ci.yml` | CI tương đương cho GitHub Actions |
 | `deploy/backup-mongo.sh` | Sao lưu MongoDB bằng `mongodump` |
-| `deploy/RELEASE.md` | Phát hành app công dân lên 3 store (P4-37) |
+| `deploy/RELEASE.md` | Phát hành Zalo Mini App lên Zalo Mini App Store (P4-37) |
 | `deploy/UAT.md` | Kế hoạch kiểm thử hồi quy & UAT trên staging (P4-38) |
 | `deploy/huong-dan-trien-khai.html` | Bản trang đơn để gửi khách — mở bằng trình duyệt, không cần công cụ |
 
@@ -509,8 +508,8 @@ Phần việc phát sinh:
 
 - Khảo sát hạ tầng sẵn có, xin cấp máy ảo/quyền truy cập, mở luồng firewall.
 - Cấu hình mạng: NAT, DNS nội bộ, proxy đi ra (nhiều mạng chuyên dùng chặn
-  Internet ⇒ phải dựng **registry Docker nội bộ** và mirror npm/pub, vì
-  `npm ci`, `flutter pub get`, `docker pull` đều cần tải từ ngoài).
+  Internet ⇒ phải dựng **registry Docker nội bộ** và mirror npm, vì
+  `npm ci` và `docker pull` đều cần tải từ ngoài).
 - Xin và cài chứng thư số nội bộ/Ban Cơ yếu thay cho Let's Encrypt.
 - Dựng cơ chế sao lưu ngoài site và giám sát cơ bản.
 - Bàn giao + đào tạo vận hành cho cán bộ CNTT của đơn vị.

@@ -11,7 +11,7 @@ import {
 } from './dto/feedback.dto';
 import { FeedbackService } from './feedback.service';
 
-/** Vai trò của tài khoản công dân (app Flutter / Zalo Mini App) */
+/** Vai trò của tài khoản công dân (Zalo Mini App) */
 const CITIZEN_ROLE_KEY = 'citizen';
 
 /**

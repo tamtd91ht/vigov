@@ -41,7 +41,7 @@ export class AuthController {
     return this.auth.staffLogin(dto.username, dto.password, ip, device);
   }
 
-  /** Công dân yêu cầu mã OTP (app Flutter) */
+  /** Công dân yêu cầu mã OTP (Zalo Mini App) */
   @Public()
   @Throttle(AUTH_THROTTLE)
   @Post('citizen/otp/request')

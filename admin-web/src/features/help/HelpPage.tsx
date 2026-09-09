@@ -62,7 +62,7 @@ const MODULE_GUIDE: Record<string, string[]> = {
     "Kỳ báo cáo đổi thì mọi biểu đồ trong trang đổi theo — số liệu lấy cùng một lượt gọi.",
   ],
   cms: [
-    "Bài viết, video và bản tin truyền thanh là nội dung cho app công dân; ảnh bìa và tệp phát tải lên kho tệp dùng chung.",
+    "Bài viết, video và bản tin truyền thanh là nội dung cho Zalo Mini App công dân; ảnh bìa và tệp phát tải lên kho tệp dùng chung.",
     "Gửi thông báo hàng loạt tách hai đối tượng: công dân và nội bộ cán bộ. Đã gửi thì không thu hồi được.",
   ],
   users: [

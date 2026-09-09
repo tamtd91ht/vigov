@@ -1,7 +1,7 @@
 import type { BroadcastLog, CmsArticle, CmsVideo, RadioBulletin } from "@/types";
 
 /* ============================================================
-   Mock CMS nội dung Mobile — UBND xã Đại Thắng (demo 7-8/2026)
+   Mock CMS nội dung Zalo Mini App — UBND xã Đại Thắng (demo 7-8/2026)
    Nguồn thật: API CMS (P2). Danh mục dưới đây sẽ lấy từ API
    cấu hình — đặt tập trung để không rải chuỗi trong component.
    ============================================================ */

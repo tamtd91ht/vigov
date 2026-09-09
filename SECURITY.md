@@ -1,7 +1,12 @@
 # ViGov — Rà soát & gia cố bảo mật (task P4-36, WBS #36)
 
 Phạm vi: nền tảng ViGov Phase 1 gồm `backend/` (NestJS 11 + MongoDB + JWT),
-`admin-web/` (Next.js 16), `mobile/` (Flutter), `zalo-miniapp/` (Vite + React).
+`admin-web/` (Next.js 16), `zalo-miniapp/` (Vite + React).
+
+> **Cập nhật 09/09/2026** — module `mobile/` (app Flutter) đã được **bỏ khỏi dự án**:
+> kênh công dân chỉ còn Zalo Mini App. Các phát hiện nhắc tới `mobile` bên dưới
+> (**C-03**, **T-06**, mục 10) được giữ nguyên vì đây là biên bản rà soát ngày
+> 28/08/2026 — chúng không còn áp dụng, không cần xử lý lại.
 
 Ngày rà soát: 28/08/2026 · Người thực hiện: đội phát triển ViGov
 Kiểm chứng sau khi sửa: `npx tsc --noEmit -p apps/api-gateway/tsconfig.app.json` sạch lỗi,

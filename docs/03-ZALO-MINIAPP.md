@@ -208,18 +208,7 @@ Mini App nằm ở `app-config.json`.
 
 ---
 
-## 9. Quan hệ với app Flutter
-
-`../mobile/` là ứng dụng công dân bản gốc (Android + iOS), **dùng chung nghiệp vụ
-và endpoint** với Mini App. Hai kênh có cùng bộ màn hình và cùng hạn chế ở phần
-tra cứu hồ sơ.
-
-Khi sửa hợp đồng dữ liệu, phải kiểm cả hai: `../zalo-miniapp/src/types/` và
-`../mobile/lib/models/models.dart`.
-
----
-
-## 10. Tài liệu liên quan
+## 9. Tài liệu liên quan
 
 `01-BACKEND.md` · `02-ADMIN-WEB.md` · `04-TRIEN-KHAI.md` ·
-`../deploy/RELEASE.md` (hồ sơ phát hành 3 store)
+`../deploy/RELEASE.md` (hồ sơ phát hành Zalo Mini App Store)

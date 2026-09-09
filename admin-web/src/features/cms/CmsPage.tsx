@@ -1,8 +1,8 @@
 "use client";
 
 /* ============================================================
-   CMS nội dung Mobile — WBS #10
-   Quản lý tin bài / video / truyền thanh hiển thị trên Mini App
+   CMS nội dung Zalo Mini App — WBS #10
+   Quản lý tin bài / video / truyền thanh hiển thị trên Zalo Mini App
    công dân và gửi thông báo broadcast (ZNS / Push).
 
    Nguồn dữ liệu: /content/* và /notifications/broadcast.
@@ -174,8 +174,8 @@ export function CmsPage() {
   return (
     <div className="pg">
       <PageHead
-        title="Nội dung Mobile"
-        sub="Quản lý tin bài, video, truyền thanh và thông báo gửi công dân trên Mini App"
+        title="Nội dung Mini App"
+        sub="Quản lý tin bài, video, truyền thanh và thông báo gửi công dân trên Zalo Mini App"
         actions={
           tab === "articles" ? (
             <button className="btn pri" type="button" onClick={openCreate}>

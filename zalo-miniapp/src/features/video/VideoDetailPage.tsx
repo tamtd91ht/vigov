@@ -20,7 +20,7 @@ const TOPIC_COLOR = "var(--pink)";
 const NEUTRAL_COVER = "var(--navy)";
 /** Link YouTube hỏng hoặc thiếu tệp — nói rõ để cán bộ CMS biết đường sửa */
 const BROKEN_YOUTUBE =
-  "Link YouTube không hợp lệ. Cán bộ kiểm tra lại ở Web Quản trị → Nội dung Mobile → Video.";
+  "Link YouTube không hợp lệ. Cán bộ kiểm tra lại ở Web Quản trị → Nội dung Mini App → Video.";
 const BROKEN_HOSTED = "Video chưa có tệp đính kèm.";
 
 /**
