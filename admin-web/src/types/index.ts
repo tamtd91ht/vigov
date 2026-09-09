@@ -70,6 +70,10 @@ export interface IncomingDocument {
   signer: string;
   pageCount: number;
   timeline: TimelineItem[];
+  /** Có giá trị nghĩa là đã xoá mềm: ẩn khỏi sổ văn bản, dữ liệu vẫn còn */
+  deletedAt?: string;
+  deletedBy?: string;
+  deleteReason?: string;
 }
 
 /** Lần giải ngân của một hạng mục */

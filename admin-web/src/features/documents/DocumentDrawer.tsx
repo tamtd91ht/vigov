@@ -87,6 +87,9 @@ export function DocumentDrawer({
   onAttachScan,
   onAttachFiles,
   onRemoveFile,
+  onDelete,
+  onRestore,
+  canDelete,
 }: {
   doc: DocumentDetail | null;
   loading: boolean;
@@ -106,6 +109,12 @@ export function DocumentDrawer({
   onConfirmAll: () => Promise<void>;
   /** Đính kèm bản scan vừa tải lên — gọi PATCH /documents/:arrivalNo */
   onAttachScan: (scanFileId: string) => Promise<void>;
+  /** Xoá mềm văn bản khỏi sổ — mở bước xác nhận ở trang cha */
+  onDelete: () => void;
+  /** Khôi phục văn bản đã xoá mềm */
+  onRestore: () => Promise<void>;
+  /** Chỉ vai trò có quyền `documents:admin` mới thấy nút Xoá / Khôi phục */
+  canDelete: boolean;
 }) {
   // Danh mục bộ phận lấy từ API (GET /catalogs/departments)
   const departments = useCatalog(fetchDepartments);
@@ -180,6 +189,8 @@ export function DocumentDrawer({
     void action().finally(() => setSaving(false));
   };
 
+  /** Văn bản đã xoá mềm — chỉ xem, không sửa được nữa */
+  const deleted = !!doc?.deletedAt;
   const ocrFields = doc?.ocrFields ?? [];
   const confirmedCount = ocrFields.filter((f) => f.confirmed).length;
   const allConfirmed = ocrFields.length > 0 && confirmedCount === ocrFields.length;
@@ -196,46 +207,88 @@ export function DocumentDrawer({
       title={doc?.summary ?? "Chi tiết văn bản"}
       meta={doc ? `Số đến ${doc.arrivalNo} · ${doc.refNo} · ${doc.sender}` : "Đang tải dữ liệu từ máy chủ…"}
       footer={
-        <>
-          <button
-            type="button"
-            className="btn pri"
-            disabled={!doc || saving}
-            onClick={() => doc && run(() => onCreateTask(doc))}
-          >
-            <Icon name="right" size={15} />
-            Chuyển thành công việc
-          </button>
-          <select
-            className="sel"
-            value={targetDept}
-            disabled={!doc || saving}
-            onChange={(e) => setDeptChoice(e.target.value)}
-          >
-            {departments.map((d) => (
-              <option key={d} value={d}>
-                {d}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            className="btn"
-            disabled={!doc || saving || targetDept === doc?.department}
-            onClick={() => run(() => onMoveDepartment(targetDept))}
-          >
-            <Icon name="send" size={15} />
-            Chuyển bộ phận
-          </button>
-          <button type="button" className="btn" onClick={onClose}>
-            Đóng
-          </button>
-        </>
+        /* Văn bản đã xoá mềm là bản ghi chỉ-đọc: mọi đường ghi ở backend đều
+           báo 404, nên ở đây chỉ còn Khôi phục và Đóng. */
+        deleted ? (
+          <>
+            {canDelete && (
+              <button
+                type="button"
+                className="btn pri"
+                disabled={saving}
+                onClick={() => run(onRestore)}
+              >
+                <Icon name="ok" size={15} />
+                Khôi phục vào sổ
+              </button>
+            )}
+            <button type="button" className="btn" style={{ marginLeft: "auto" }} onClick={onClose}>
+              Đóng
+            </button>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              className="btn pri"
+              disabled={!doc || saving}
+              onClick={() => doc && run(() => onCreateTask(doc))}
+            >
+              <Icon name="right" size={15} />
+              Chuyển thành công việc
+            </button>
+            <select
+              className="sel"
+              value={targetDept}
+              disabled={!doc || saving}
+              onChange={(e) => setDeptChoice(e.target.value)}
+            >
+              {departments.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className="btn"
+              disabled={!doc || saving || targetDept === doc?.department}
+              onClick={() => run(() => onMoveDepartment(targetDept))}
+            >
+              <Icon name="send" size={15} />
+              Chuyển bộ phận
+            </button>
+            {canDelete && (
+              <button
+                type="button"
+                className="btn danger"
+                title="Xoá mềm — số đến, nhật ký và bản scan vẫn được giữ lại"
+                disabled={!doc || saving}
+                onClick={onDelete}
+              >
+                <Icon name="trash" size={15} />
+                Xoá
+              </button>
+            )}
+            <button type="button" className="btn" style={{ marginLeft: "auto" }} onClick={onClose}>
+              Đóng
+            </button>
+          </>
+        )
       }
     >
       <DataState loading={loading} error={error} onRetry={onRetry} empty={!doc} emptyMessage="Chưa chọn văn bản">
         {doc && (
           <div className={saving ? "saving" : undefined}>
+            {deleted && (
+              <div className="note" style={{ marginBottom: 16, borderColor: "var(--red)" }}>
+                <b>Văn bản đã bị xoá khỏi sổ.</b> Bản ghi được giữ lại để truy vết nên số đến, nhật ký
+                xử lý, bản scan và các trường OCR đã xác nhận vẫn đọc được, nhưng không sửa được nữa.
+                {doc.deletedBy && <> Người xoá: {doc.deletedBy}.</>}
+                {doc.deleteReason && <> Lý do: {doc.deleteReason}.</>}
+              </div>
+            )}
+
             <Tabs items={DRAWER_TABS} active={tab} onChange={setTab} />
 
             {tab === "info" && (
@@ -258,7 +311,7 @@ export function DocumentDrawer({
                       <Icon name="eye" size={14} />
                       {openingScan ? "Đang mở…" : "Mở bản scan"}
                     </button>
-                    <button type="button" className="btn sm pri" disabled={saving} onClick={() => run(onRunOcr)}>
+                    <button type="button" className="btn sm pri" disabled={saving || deleted} onClick={() => run(onRunOcr)}>
                       <Icon name="layer" size={14} />
                       {ocrFields.length ? "Chạy lại OCR" : "Chạy OCR"}
                     </button>
@@ -272,7 +325,7 @@ export function DocumentDrawer({
                       height={150}
                       placeholder="Kéo-thả bản scan vào đây hoặc bấm để chọn"
                       onUploaded={(fileId) => run(() => onAttachScan(fileId))}
-                      disabled={saving}
+                      disabled={saving || deleted}
                     />
                     <div className="fhint">
                       Văn bản chưa có bản scan nên chưa chạy được OCR. Tải tệp lên để đính kèm ngay tại đây.
@@ -310,7 +363,7 @@ export function DocumentDrawer({
                   <button
                     type="button"
                     className="btn sm"
-                    disabled={saving || allConfirmed || ocrFields.length === 0}
+                    disabled={saving || deleted || allConfirmed || ocrFields.length === 0}
                     onClick={() => run(onConfirmAll)}
                   >
                     <Icon name="ok" size={14} />
@@ -335,7 +388,7 @@ export function DocumentDrawer({
                       <OcrFieldRow
                         key={key}
                         field={field}
-                        disabled={saving}
+                        disabled={saving || deleted}
                         onConfirm={(f) => run(() => onConfirmField(f.key))}
                       />
                     ) : null;
@@ -347,7 +400,7 @@ export function DocumentDrawer({
                     <OcrFieldRow
                       key={key}
                       field={field}
-                      disabled={saving}
+                      disabled={saving || deleted}
                       onConfirm={(f) => run(() => onConfirmField(f.key))}
                     />
                   ) : null;
@@ -416,7 +469,7 @@ export function DocumentDrawer({
                           <button
                             type="button"
                             className="btn sm danger"
-                            disabled={busyFileId === file.fileId}
+                            disabled={busyFileId === file.fileId || deleted}
                             onClick={() => void removeFile(file.fileId, file.name)}
                           >
                             <Icon name="trash" size={12} />
@@ -431,19 +484,25 @@ export function DocumentDrawer({
                     Văn bản chưa có tệp đính kèm nào ngoài bản scan gốc.
                   </div>
                 )}
-                <FileUpload
-                  key={`att-${attachments.length}`}
-                  purpose="other"
-                  isPrivate
-                  height={92}
-                  placeholder="Kéo-thả phụ lục, biên bản vào đây hoặc bấm để chọn"
-                  onUploaded={(fileId) => run(() => onAttachFiles([fileId]))}
-                  disabled={saving}
-                />
-                <div className="fhint" style={{ marginTop: 10 }}>
-                  Tệp văn thư là tài liệu nội bộ nên được tải lên ở chế độ riêng tư — mở xem phải qua link
-                  ký sẵn, không ai đọc được chỉ bằng mã tệp.
-                </div>
+                {/* Văn bản đã xoá thì ẩn hẳn ô tải lên: backend từ chối gắn tệp vào
+                    bản ghi đã xoá, để lại ô trống chỉ gây tải lên rồi báo lỗi. */}
+                {!deleted && (
+                  <>
+                    <FileUpload
+                      key={`att-${attachments.length}`}
+                      purpose="other"
+                      isPrivate
+                      height={92}
+                      placeholder="Kéo-thả phụ lục, biên bản vào đây hoặc bấm để chọn"
+                      onUploaded={(fileId) => run(() => onAttachFiles([fileId]))}
+                      disabled={saving}
+                    />
+                    <div className="fhint" style={{ marginTop: 10 }}>
+                      Tệp văn thư là tài liệu nội bộ nên được tải lên ở chế độ riêng tư — mở xem phải qua
+                      link ký sẵn, không ai đọc được chỉ bằng mã tệp.
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>

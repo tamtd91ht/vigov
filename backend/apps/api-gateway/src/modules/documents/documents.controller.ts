@@ -5,6 +5,7 @@ import {
   AttachDocumentFilesDto,
   ConfirmOcrFieldDto,
   CreateDocumentDto,
+  DeleteDocumentDto,
   QueryDocumentsDto,
   UpdateDocumentDto,
 } from './dto/document.dto';
@@ -96,10 +97,26 @@ export class DocumentsController {
     return this.documents.removeAttachment(arrivalNo, fileId, req.user);
   }
 
-  /** Xoá văn bản khỏi sổ — chỉ quản trị hệ thống */
+  /**
+   * Xoá MỀM văn bản khỏi sổ: ẩn khỏi mọi danh sách và chặn mọi thao tác ghi,
+   * dữ liệu vẫn nằm nguyên trong CSDL. Dùng PATCH chứ không phải DELETE để nói
+   * đúng việc đang làm (đổi trạng thái bản ghi) và để mang được lý do xoá trong
+   * body — cùng quy ước với xoá nhiệm vụ và xoá tài khoản công dân.
+   */
   @RequirePermission('documents', 'admin')
-  @Delete(':arrivalNo')
-  remove(@Param('arrivalNo') arrivalNo: string) {
-    return this.documents.remove(arrivalNo);
+  @Patch(':arrivalNo/delete')
+  remove(
+    @Param('arrivalNo') arrivalNo: string,
+    @Body() dto: DeleteDocumentDto,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.documents.remove(arrivalNo, req.user, dto.reason);
+  }
+
+  /** Khôi phục văn bản đã xoá mềm — chỉ quản trị hệ thống */
+  @RequirePermission('documents', 'admin')
+  @Patch(':arrivalNo/restore')
+  restore(@Param('arrivalNo') arrivalNo: string, @Req() req: AuthedRequest) {
+    return this.documents.restore(arrivalNo, req.user);
   }
 }

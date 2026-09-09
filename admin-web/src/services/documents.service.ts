@@ -56,6 +56,8 @@ export interface DocumentQuery {
   docType?: string;
   /** Từ khoá tìm toàn văn theo trích yếu / số ký hiệu / nơi gửi */
   q?: string;
+  /** `true` thì CHỈ lấy văn bản đã xoá mềm (thùng "Đã xoá") */
+  deleted?: boolean;
   page?: number;
   limit?: number;
 }
@@ -205,6 +207,8 @@ export async function listDocuments(query: DocumentQuery = {}): Promise<Paged<Do
     const keyword = query.q?.trim().toLowerCase() ?? "";
     const matched = store().filter(
       (d) =>
+        // Thùng "Đã xoá" và sổ văn bản đang dùng loại trừ nhau, giống bộ lọc backend
+        (query.deleted ? !!d.deletedAt : !d.deletedAt) &&
         (!query.kind || d.kind === query.kind) &&
         (!query.status || d.status === query.status) &&
         (!query.department || d.department === query.department) &&
@@ -229,6 +233,7 @@ export async function listDocuments(query: DocumentQuery = {}): Promise<Paged<Do
       department: query.department,
       docType: query.docType,
       q: query.q,
+      deleted: query.deleted ? "true" : undefined,
       page,
       limit,
     })}`,
@@ -418,5 +423,43 @@ export async function removeDocumentAttachment(
     await apiClient.delete<RawDocument>(
       `/documents/${encodeURIComponent(arrivalNo)}/attachments/${encodeURIComponent(fileId)}`,
     ),
+  );
+}
+
+/**
+ * Xoá MỀM văn bản khỏi sổ — chỉ tài khoản quản trị hệ thống dùng được.
+ *
+ * Backend chỉ đặt cờ `deletedAt`: văn bản biến mất khỏi sổ nhưng số đến, nhật ký
+ * xử lý, bản scan và các trường OCR đã xác nhận vẫn còn, khôi phục được ở thùng
+ * "Đã xoá". Dùng PATCH .../delete chứ không phải DELETE để mang được lý do xoá.
+ */
+export async function deleteDocument(arrivalNo: string, reason?: string): Promise<DocumentDetail> {
+  if (appConfig.api.useMocks) {
+    await mockDelay();
+    const doc = mockFind(arrivalNo);
+    doc.deletedAt = new Date().toISOString();
+    doc.deletedBy = "Nguyễn Văn Bình";
+    doc.deleteReason = reason?.trim() || undefined;
+    return { ...doc };
+  }
+  return toDocumentDetail(
+    await apiClient.patch<RawDocument>(`/documents/${encodeURIComponent(arrivalNo)}/delete`, {
+      reason: reason?.trim() || undefined,
+    }),
+  );
+}
+
+/** Khôi phục văn bản đã xoá mềm — dữ liệu còn nguyên nên chỉ cần bỏ cờ xoá */
+export async function restoreDocument(arrivalNo: string): Promise<DocumentDetail> {
+  if (appConfig.api.useMocks) {
+    await mockDelay();
+    const doc = mockFind(arrivalNo);
+    doc.deletedAt = undefined;
+    doc.deletedBy = undefined;
+    doc.deleteReason = undefined;
+    return { ...doc };
+  }
+  return toDocumentDetail(
+    await apiClient.patch<RawDocument>(`/documents/${encodeURIComponent(arrivalNo)}/restore`, {}),
   );
 }

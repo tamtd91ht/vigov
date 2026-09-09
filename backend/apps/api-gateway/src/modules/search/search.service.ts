@@ -61,7 +61,8 @@ export class SearchService {
         : Promise.resolve([]),
       types.includes('documents')
         ? this.documentModel
-            .find(textFilter, TEXT_SCORE)
+            // `deletedAt: null` — văn bản đã xoá mềm không hiện trong tìm kiếm toàn cục
+            .find({ ...textFilter, deletedAt: null }, TEXT_SCORE)
             .sort(TEXT_SCORE)
             .limit(limit)
             .select('arrivalNo refNo summary department')

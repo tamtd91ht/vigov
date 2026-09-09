@@ -64,7 +64,8 @@ export class DashboardService {
     const [tasks, documents, feedbacks, budgets] = await Promise.all([
       // `deletedAt: null` — nhiệm vụ đã xoá mềm không được tính vào thẻ thống kê
       this.taskModel.find({ deletedAt: null }).lean().exec(),
-      this.docModel.find().lean().exec(),
+      // `deletedAt: null` — văn bản đã xoá mềm không tính vào thẻ thống kê
+      this.docModel.find({ deletedAt: null }).lean().exec(),
       this.feedbackModel.find().lean().exec(),
       this.budgetModel.find({ year }).lean().exec(),
     ]);

@@ -8,6 +8,9 @@ import { deadlineLabel } from "@/lib/format";
 
 const NORMAL_LEVEL_KEY = "Thường";
 
+/** Nhãn văn bản đã xoá mềm — dùng lại tông màu của phân hệ Người dùng */
+const DELETED_CHIP = { label: "Đã xoá", color: "var(--mut)", tint: "rgba(136,150,166,.12)" };
+
 /** Chip độ khẩn / độ mật — chỉ hiển thị khi khác mức "Thường" */
 function LevelChips({ doc }: { doc: IncomingDocument }) {
   const urgency = doc.urgency !== NORMAL_LEVEL_KEY ? findStatus(urgencyLevels, doc.urgency) : null;
@@ -116,9 +119,16 @@ export function DocumentTable({
                   <LevelChips doc={doc} />
                 </td>
                 <td>
-                  <Chip color={status.color} tint={status.tint} dot>
-                    {status.label}
-                  </Chip>
+                  {/* Thùng "Đã xoá": cờ xoá là thông tin quan trọng hơn trạng thái xử lý */}
+                  {doc.deletedAt ? (
+                    <Chip color={DELETED_CHIP.color} tint={DELETED_CHIP.tint} dot>
+                      {DELETED_CHIP.label}
+                    </Chip>
+                  ) : (
+                    <Chip color={status.color} tint={status.tint} dot>
+                      {status.label}
+                    </Chip>
+                  )}
                 </td>
               </tr>
             );

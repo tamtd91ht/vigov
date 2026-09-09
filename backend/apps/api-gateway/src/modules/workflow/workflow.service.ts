@@ -200,7 +200,10 @@ export class WorkflowService {
     if (!task.sourceRefId) return; // nhiệm vụ nội bộ, không có nguồn
 
     if (task.sourceType === SOURCE_TYPE_DOCUMENT) {
-      const doc = await this.documentModel.findById(task.sourceRefId).exec();
+      // `deletedAt: null` — văn bản đã xoá khỏi sổ thì không đồng bộ trạng thái nữa
+      const doc = await this.documentModel
+        .findOne({ _id: task.sourceRefId, deletedAt: null })
+        .exec();
       if (!doc) return;
       doc.status = DOCUMENT_STATUS_DONE;
       doc.timeline.push(step(`Hoàn thành xử lý theo nhiệm vụ ${taskCode}`, SYSTEM_ACTOR, 'cur'));
@@ -329,10 +332,13 @@ export class WorkflowService {
     } satisfies TaskDeadlineWarningEvent);
   }
 
-  /** Lấy văn bản theo id, báo lỗi tiếng Việt khi id sai hoặc không tồn tại */
+  /**
+   * Lấy văn bản theo id, báo lỗi tiếng Việt khi id sai hoặc không tồn tại.
+   * `deletedAt: null` — không giao việc từ văn bản đã bị xoá khỏi sổ.
+   */
   private async loadDocument(documentId: string): Promise<IncomingDocumentDocument> {
     if (!isValidObjectId(documentId)) throw new BadRequestException('Mã văn bản không hợp lệ');
-    const doc = await this.documentModel.findById(documentId).exec();
+    const doc = await this.documentModel.findOne({ _id: documentId, deletedAt: null }).exec();
     if (!doc) throw new NotFoundException('Không tìm thấy văn bản đến');
     return doc;
   }

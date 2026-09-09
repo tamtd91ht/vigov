@@ -105,6 +105,25 @@ export class IncomingDocument {
   /** Mã nhiệm vụ đã tạo từ văn bản này (workflow P3-30) */
   @Prop()
   linkedTaskCode?: string;
+
+  /**
+   * Mốc xoá MỀM. `null`/thiếu trường = văn bản còn hiệu lực.
+   *
+   * Sổ văn bản đến là hồ sơ pháp lý: số đến đã cấp phải giữ nguyên vết, nhật ký
+   * xử lý và bản scan còn là bằng chứng phục vụ thanh tra, và nhiệm vụ sinh ra
+   * từ văn bản đã dẫn chiếu ngược lại qua `sourceRefId`. Xoá cứng là để lại
+   * lỗ trong sổ và liên kết chết.
+   */
+  @Prop({ type: Date, default: null, index: true })
+  deletedAt?: Date | null;
+
+  /** Cán bộ thực hiện việc xoá — hiển thị ở thùng "Đã xoá" của Web Quản trị */
+  @Prop()
+  deletedBy?: string;
+
+  /** Lý do xoá (không bắt buộc) — chỉ lưu để truy vết nội bộ */
+  @Prop()
+  deleteReason?: string;
 }
 
 export const IncomingDocumentSchema = SchemaFactory.createForClass(IncomingDocument);

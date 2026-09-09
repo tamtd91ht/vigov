@@ -48,6 +48,15 @@ const STATUS_LABELS: Record<string, string> = {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+/**
+ * Điều kiện "chưa bị xoá mềm". `deletedAt: null` khớp CẢ tài liệu thiếu hẳn
+ * trường này (bản ghi vào sổ trước khi có tính năng xoá) lẫn tài liệu đã khôi phục.
+ */
+const NOT_DELETED: FilterQuery<IncomingDocumentDocument> = { deletedAt: null };
+
+/** Điều kiện "đã bị xoá mềm" — dùng cho bộ lọc "Đã xoá" của Web Quản trị */
+const IS_DELETED: FilterQuery<IncomingDocumentDocument> = { deletedAt: { $ne: null } };
+
 @Injectable()
 export class DocumentsService {
   private readonly logger = new Logger(DocumentsService.name);
@@ -158,7 +167,10 @@ export class DocumentsService {
     const page = Math.max(query.page ?? DEFAULT_PAGE, DEFAULT_PAGE);
     const limit = Math.min(query.limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
 
-    const filter: FilterQuery<IncomingDocumentDocument> = {};
+    // Mặc định ẩn văn bản đã xoá mềm; `deleted=true` là bộ lọc xem riêng thùng đã xoá
+    const filter: FilterQuery<IncomingDocumentDocument> = {
+      ...(query.deleted === 'true' ? IS_DELETED : NOT_DELETED),
+    };
     if (query.kind) filter.kind = query.kind;
     if (query.status) filter.status = query.status;
     if (query.department) filter.department = query.department;
@@ -185,9 +197,15 @@ export class DocumentsService {
     };
   }
 
-  /** Bản ghi ghi được (không lean) — dùng cho các thao tác cần save() */
+  /**
+   * Bản ghi ghi được (không lean) — dùng cho các thao tác cần save().
+   *
+   * Văn bản đã xoá mềm coi như không tồn tại với mọi đường ghi (sửa, chạy OCR,
+   * xác nhận trường, đính kèm tệp) — nếu không thì bản ghi trong thùng đã xoá
+   * vẫn sửa được qua API dù giao diện không còn chỗ bấm.
+   */
   private async findWritable(arrivalNo: string): Promise<IncomingDocumentDocument> {
-    const doc = await this.docModel.findOne({ arrivalNo }).exec();
+    const doc = await this.docModel.findOne({ arrivalNo, ...NOT_DELETED }).exec();
     if (!doc) throw new NotFoundException(`Không tìm thấy văn bản có số đến ${arrivalNo}`);
     return doc;
   }
@@ -201,6 +219,8 @@ export class DocumentsService {
   /* Kiểu trả về khai TƯỜNG MINH: kiểu suy ra từ bản lean của Mongoose cộng
      thêm trường mới vượt giới hạn TS7056 mà compiler chịu tuần tự hoá được. */
   async findOne(arrivalNo: string): Promise<Record<string, unknown>> {
+    // KHÔNG lọc `deletedAt`: bản đã xoá mềm vẫn phải mở xem được để cán bộ
+    // kiểm tra trước khi khôi phục (mọi đường GHI thì đi qua `findWritable`).
     const doc = await this.docModel.findOne({ arrivalNo }).lean().exec();
     if (!doc) throw new NotFoundException(`Không tìm thấy văn bản có số đến ${arrivalNo}`);
     const fresh = this.withFreshDaysLeft(doc);
@@ -354,12 +374,55 @@ export class DocumentsService {
     return { arrivalNo: doc.arrivalNo, ocrFields: doc.ocrFields };
   }
 
-  /** Xoá văn bản khỏi sổ (chỉ quản trị) */
-  async remove(arrivalNo: string) {
-    const deleted = await this.docModel.findOneAndDelete({ arrivalNo }).lean().exec();
-    if (!deleted) throw new NotFoundException(`Không tìm thấy văn bản có số đến ${arrivalNo}`);
-    this.logger.warn(`Đã xoá văn bản số đến ${arrivalNo}`);
-    return { deleted: true, arrivalNo };
+  /**
+   * Xoá MỀM văn bản khỏi sổ (chỉ quản trị).
+   *
+   * Chỉ đặt cờ `deletedAt`: văn bản biến mất khỏi sổ và mọi đường ghi báo 404,
+   * nhưng số đến, nhật ký xử lý, bản scan và các trường OCR đã xác nhận vẫn còn
+   * để truy vết. Mốc xoá cũng ghi vào nhật ký của chính văn bản, nên khi khôi
+   * phục thì lý do và người xoá còn đọc lại được.
+   *
+   * Số đến KHÔNG được cấp lại cho văn bản mới: `nextArrivalNo` vẫn đếm cả bản
+   * đã xoá, nếu không thì hai văn bản khác nhau trùng số đến trong sổ.
+   */
+  async remove(arrivalNo: string, actor?: JwtPayload, reason?: string) {
+    const doc = await this.findWritable(arrivalNo);
+    const who = actor?.displayName ?? 'Hệ thống';
+    const trimmed = reason?.trim();
+
+    doc.deletedAt = new Date();
+    doc.deletedBy = who;
+    if (trimmed) doc.deleteReason = trimmed;
+    doc.timeline.push({
+      title: trimmed ? `Xoá văn bản khỏi sổ: ${trimmed}` : 'Xoá văn bản khỏi sổ',
+      meta: timelineMeta(actor),
+      state: 'done',
+    });
+    await doc.save();
+
+    this.logger.warn(`Đã xoá mềm văn bản số đến ${arrivalNo} bởi ${who}`);
+    return this.withAttachmentFiles(doc);
+  }
+
+  /** Khôi phục văn bản đã xoá mềm — dữ liệu còn nguyên nên chỉ cần bỏ cờ xoá */
+  async restore(arrivalNo: string, actor?: JwtPayload) {
+    const doc = await this.docModel.findOne({ arrivalNo, ...IS_DELETED }).exec();
+    if (!doc) {
+      throw new NotFoundException(`Không tìm thấy văn bản số đến ${arrivalNo} trong thùng đã xoá`);
+    }
+
+    doc.deletedAt = null;
+    doc.deletedBy = undefined;
+    doc.deleteReason = undefined;
+    doc.timeline.push({
+      title: 'Khôi phục văn bản vào sổ',
+      meta: timelineMeta(actor),
+      state: 'done',
+    });
+    await doc.save();
+
+    this.logger.log(`Đã khôi phục văn bản số đến ${arrivalNo}`);
+    return this.withAttachmentFiles(doc);
   }
 
   /**

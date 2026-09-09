@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import { Icon } from "@/lib/icons";
 import { Card } from "@/components/ui/Card";
@@ -20,15 +20,20 @@ import {
   confirmOcrField,
   createDocument,
   createTaskFromDocument,
+  deleteDocument,
   getDocument,
   listDocuments,
   removeDocumentAttachment,
+  restoreDocument,
   runDocumentOcr,
   updateDocument,
   type CreateDocumentInput,
   type DocumentDetail,
   type DocumentKind,
 } from "@/services/documents.service";
+import { authService, getServerSession } from "@/services/auth";
+import { findRole } from "@/config/roles.config";
+import { Drawer } from "@/components/ui/Drawer";
 import { DocumentTable } from "./DocumentTable";
 import { DocumentDrawer } from "./DocumentDrawer";
 import { ReceiveDocForm } from "./ReceiveDocForm";
@@ -42,6 +47,17 @@ const KIND_BY_TAB: Record<DocTab, DocumentKind> = {
 };
 
 const PAGE_SIZE = 20;
+
+/** Hai thùng dữ liệu loại trừ nhau: đang dùng / đã xoá mềm */
+const SCOPE_OPTIONS = [
+  { key: "active", label: "Đang dùng" },
+  { key: "deleted", label: "Đã xoá" },
+];
+
+const DELETE_NOTE =
+  "Xoá mềm: văn bản biến mất khỏi sổ văn bản đến, thống kê và tìm kiếm, nhưng bản ghi vẫn nằm " +
+  "trong cơ sở dữ liệu — số đến, nhật ký xử lý, bản scan và các trường OCR đã xác nhận đều còn. " +
+  'Số đến KHÔNG được cấp lại cho văn bản mới. Khôi phục lại được ở bộ lọc "Đã xoá".';
 
 export function DocumentsPage() {
   const { showToast } = useToast();
@@ -64,6 +80,18 @@ export function DocumentsPage() {
   const [selectedNo, setSelectedNo] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
+  /** Đang xem thùng văn bản đã xoá mềm thay vì sổ đang dùng */
+  const [deletedView, setDeletedView] = useState(false);
+  /** Văn bản chờ xác nhận xoá — mở drawer nhập lý do */
+  const [deleteTarget, setDeleteTarget] = useState<DocumentDetail | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
+
+  /**
+   * Xoá / khôi phục văn bản yêu cầu quyền `documents:admin` ở backend.
+   * Ẩn hẳn nút với vai trò không đủ quyền thay vì để bấm rồi nhận 403.
+   */
+  const session = useSyncExternalStore(authService.subscribe, authService.getSession, getServerSession);
+  const canDelete = findRole(session?.roleKey ?? "")?.modules.documents === "admin";
 
   const kind = KIND_BY_TAB[tab];
 
@@ -74,10 +102,11 @@ export function DocumentsPage() {
         status: status === "all" ? undefined : status,
         department: dept === "all" ? undefined : dept,
         docType: docType === "all" ? undefined : docType,
+        deleted: deletedView || undefined,
         page,
         limit: PAGE_SIZE,
       }),
-    [kind, status, dept, docType, page],
+    [kind, status, dept, docType, deletedView, page],
   );
 
   // Số lượng hai sổ để hiển thị trên tab — chỉ lấy tổng, không tải cả danh sách
@@ -195,6 +224,39 @@ export function DocumentsPage() {
     }
   };
 
+  /** Xoá MỀM văn bản khỏi sổ: đặt cờ xoá, số đến và nhật ký vẫn còn */
+  const submitDelete = async () => {
+    const target = deleteTarget;
+    if (!target) return;
+    try {
+      await deleteDocument(target.arrivalNo, deleteReason);
+      setDeleteTarget(null);
+      setDeleteReason("");
+      setDrawerOpen(false);
+      list.reload();
+      counts.reload();
+      showToast(
+        `Đã xoá văn bản số đến ${target.arrivalNo}. Dữ liệu vẫn được giữ, khôi phục ở bộ lọc "Đã xoá".`,
+      );
+    } catch (err) {
+      showToast(apiErrorMessage(err));
+    }
+  };
+
+  /** Khôi phục văn bản đã xoá mềm — bản ghi trở lại sổ đang dùng */
+  const restore = async () => {
+    if (!selectedNo) return;
+    try {
+      const restored = await restoreDocument(selectedNo);
+      setDrawerOpen(false);
+      list.reload();
+      counts.reload();
+      showToast(`Đã khôi phục văn bản số đến ${restored.arrivalNo} vào sổ`);
+    } catch (err) {
+      showToast(apiErrorMessage(err));
+    }
+  };
+
   /** Nút "Chuyển thành công việc" — gọi /workflow/document-to-task */
   const createTaskFromDoc = async (doc: DocumentDetail) => {
     try {
@@ -273,10 +335,13 @@ export function DocumentsPage() {
               <Icon name="filter" size={15} />
               Bộ lọc nâng cao
             </button>
-            <button type="button" className="btn pri" onClick={() => setFormOpen(true)}>
-              <Icon name="plus" size={15} />
-              Tiếp nhận văn bản
-            </button>
+            {/* Thùng "Đã xoá" là chỗ khôi phục, không phải chỗ vào sổ văn bản mới */}
+            {!deletedView && (
+              <button type="button" className="btn pri" onClick={() => setFormOpen(true)}>
+                <Icon name="plus" size={15} />
+                Tiếp nhận văn bản
+              </button>
+            )}
           </>
         }
       />
@@ -296,6 +361,13 @@ export function DocumentsPage() {
           value={tab}
           onChange={switchTab}
         />
+        <div style={{ marginLeft: 10 }}>
+          <SegmentControl
+            options={SCOPE_OPTIONS}
+            value={deletedView ? "deleted" : "active"}
+            onChange={(key) => changeFilter(() => setDeletedView(key === "deleted"))}
+          />
+        </div>
       </div>
 
       <div
@@ -367,7 +439,9 @@ export function DocumentsPage() {
           error={list.error}
           onRetry={list.reload}
           empty={items.length === 0}
-          emptyMessage="Không có văn bản nào khớp bộ lọc hiện tại"
+          emptyMessage={
+            deletedView ? "Chưa có văn bản nào bị xoá" : "Không có văn bản nào khớp bộ lọc hiện tại"
+          }
         >
           <DocumentTable
             docs={items}
@@ -414,9 +488,67 @@ export function DocumentsPage() {
         onAttachScan={attachScan}
         onAttachFiles={attachFiles}
         onRemoveFile={removeFile}
+        onDelete={() => {
+          setDeleteReason("");
+          setDeleteTarget(detail.data ?? null);
+        }}
+        onRestore={restore}
+        canDelete={canDelete}
       />
 
       <ReceiveDocForm open={formOpen} onClose={() => setFormOpen(false)} onSubmit={receiveDoc} />
+
+      {/* Drawer xác nhận xoá mềm văn bản */}
+      <Drawer
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        title="Xoá văn bản khỏi sổ"
+        meta={
+          deleteTarget
+            ? `Số đến ${deleteTarget.arrivalNo} · ${deleteTarget.refNo} · ${deleteTarget.sender}`
+            : undefined
+        }
+        footer={
+          <>
+            <button type="button" className="btn danger" onClick={() => void submitDelete()}>
+              <Icon name="trash" size={15} />
+              Xác nhận xoá
+            </button>
+            <button
+              type="button"
+              className="btn"
+              style={{ marginLeft: "auto" }}
+              onClick={() => setDeleteTarget(null)}
+            >
+              Huỷ
+            </button>
+          </>
+        }
+      >
+        <div className="note" style={{ marginBottom: 16 }}>
+          {DELETE_NOTE}
+        </div>
+        {deleteTarget?.linkedTaskCode && (
+          <div className="note" style={{ marginBottom: 16, borderColor: "var(--orange)" }}>
+            <Icon name="alert" size={15} /> Văn bản này đã sinh ra nhiệm vụ{" "}
+            <b>{deleteTarget.linkedTaskCode}</b>. Nhiệm vụ đó KHÔNG bị xoá theo, nhưng khi hoàn thành sẽ
+            không còn đồng bộ trạng thái về văn bản nữa.
+          </div>
+        )}
+        <div className="fgroup">
+          <label htmlFor="doc-delete-reason">Lý do xoá</label>
+          <textarea
+            id="doc-delete-reason"
+            className="finp"
+            value={deleteReason}
+            placeholder="Ví dụ: Vào sổ trùng số đến, văn bản gửi sai địa chỉ…"
+            onChange={(e) => setDeleteReason(e.target.value)}
+          />
+          <div className="fhint">
+            Không bắt buộc. Lý do được ghi vào nhật ký xử lý của văn bản để truy vết.
+          </div>
+        </div>
+      </Drawer>
     </div>
   );
 }
