@@ -1,7 +1,14 @@
 import { appConfig } from "@/config/app.config";
 import { exportDisbursementCsv } from "@/features/disbursement/exportCsv";
 import { budgetItems } from "@/mocks/disbursement";
-import type { BudgetItem, Comment, DisbursementEntry, Obstacle } from "@/types";
+import type {
+  BudgetItem,
+  Comment,
+  DisbursementEntry,
+  DisbursementRequest,
+  DisbursementRequestStatus,
+  Obstacle,
+} from "@/types";
 import { ApiError, apiClient, buildQuery } from "./api";
 import { authService } from "./auth";
 
@@ -38,6 +45,33 @@ export interface DisbursementListFilter {
   /** true: chỉ lấy hạng mục chậm tiến độ */
   delayed?: boolean;
   owner?: string;
+  /** true: xem các hạng mục ĐÃ xoá mềm (bộ lọc "Đã xoá") */
+  deleted?: boolean;
+}
+
+/** Một dòng trong màn hình quản lý đề nghị giải ngân — kèm thông tin hạng mục */
+export interface DisbursementRequestRow extends DisbursementRequest {
+  budgetCode: string;
+  budgetName: string;
+  fundingSource: string;
+  owner: string;
+}
+
+/** Số liệu tổng hợp của màn hình quản lý đề nghị */
+export interface RequestSummary {
+  pending: number;
+  approved: number;
+  rejected: number;
+  disbursed: number;
+  /** Tổng tiền đang chờ duyệt (tỷ đồng) */
+  pendingAmount: number;
+}
+
+/** Kết quả danh sách đề nghị giải ngân toàn xã */
+export interface RequestListResult {
+  year: number;
+  items: DisbursementRequestRow[];
+  summary: RequestSummary;
 }
 
 /** Hạng mục ngân sách do backend trả về */
@@ -54,6 +88,11 @@ interface BudgetApiItem {
   entries?: DisbursementEntry[];
   comments?: Comment[];
   obstacles?: Obstacle[];
+  requests?: DisbursementRequest[];
+  isDeleted?: boolean;
+  deletedAt?: string;
+  deletedBy?: string;
+  deleteReason?: string;
 }
 
 /** Phản hồi của GET /disbursement */
@@ -117,7 +156,22 @@ export interface RequestResult {
   amount: string;
   amountTyDong: number;
   requestedBy: string;
+  /** Đề nghị vừa tạo, kèm mã DN-xx do server cấp */
+  request: DisbursementRequest;
+  /** Phần vốn còn đề nghị được sau lần này (tỷ đồng) */
+  remaining: number;
   comment: Comment;
+}
+
+/** Kết quả sau khi ghi nhận đề nghị đã chi — luỹ kế do server tính lại */
+export interface DisburseResult {
+  code: string;
+  request: DisbursementRequest;
+  planned: number;
+  actual: number;
+  percent: number;
+  delayed: boolean;
+  entry: DisbursementEntry;
 }
 
 /** Đường dẫn tải báo cáo Excel của kỳ báo cáo năm */
@@ -137,6 +191,11 @@ function toBudgetItem(raw: BudgetApiItem): BudgetItem {
     entries: raw.entries ?? [],
     comments: raw.comments ?? [],
     obstacles: raw.obstacles ?? [],
+    requests: raw.requests ?? [],
+    isDeleted: raw.isDeleted,
+    deletedAt: raw.deletedAt,
+    deletedBy: raw.deletedBy,
+    deleteReason: raw.deleteReason,
   };
 }
 
@@ -178,6 +237,27 @@ function mockComment(content: string): Comment {
   };
 }
 
+/** Nhãn thời gian "14:05 27/08/2026" dùng ở nhánh mock */
+function mockStamp(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getHours())}:${p(d.getMinutes())} ${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
+/** Ngày "27/08/2026" dùng ở nhánh mock */
+function mockToday(): string {
+  const d = new Date();
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
+}
+
+/** Tìm đề nghị trong dữ liệu mock, báo lỗi giống backend khi không có */
+function mockRequest(code: string, requestCode: string): DisbursementRequest {
+  const found = mockDetail(code).requests.find((r) => r.code === requestCode);
+  if (!found) throw new Error(`Không tìm thấy đề nghị ${requestCode} trong hạng mục ${code}`);
+  return found;
+}
+
 /** Tên tệp trong header Content-Disposition; rỗng thì dùng tên mặc định */
 function fileNameFrom(disposition: string | null, fallback: string): string {
   const match = disposition?.match(/filename="?([^"]+)"?/i);
@@ -200,7 +280,9 @@ export const disbursementService = {
   /** Danh sách hạng mục theo năm + số liệu tổng hợp do server tính */
   async list(filter: DisbursementListFilter = {}): Promise<DisbursementListResult> {
     if (appConfig.api.useMocks) {
-      const items = filter.delayed ? budgetItems.filter((it) => it.delayed) : budgetItems;
+      /* Dữ liệu mẫu không có hạng mục đã xoá nên bộ lọc "Đã xoá" trả danh sách rỗng */
+      const live = filter.deleted ? [] : budgetItems;
+      const items = filter.delayed ? live.filter((it) => it.delayed) : live;
       const scoped = filter.owner ? items.filter((it) => it.owner === filter.owner) : items;
       return mockDelay({
         year: filter.year ?? new Date().getFullYear(),
@@ -209,7 +291,12 @@ export const disbursementService = {
       });
     }
 
-    const qs = buildQuery({ year: filter.year, delayed: filter.delayed, owner: filter.owner });
+    const qs = buildQuery({
+      year: filter.year,
+      delayed: filter.delayed,
+      owner: filter.owner,
+      deleted: filter.deleted,
+    });
     const res = await apiClient.get<DisbursementApiList>(`/disbursement${qs}`);
     return {
       year: res.year,
@@ -239,6 +326,7 @@ export const disbursementService = {
         entries: [],
         comments: [],
         obstacles: [],
+        requests: [],
       });
     }
     return toBudgetItem(await apiClient.post<BudgetApiItem>("/disbursement", input));
@@ -310,20 +398,171 @@ export const disbursementService = {
     return { resolved: res.resolved, obstacles: res.obstacles };
   },
 
-  /** Gửi đề nghị giải ngân đợt tiếp theo (Phase 1 ghi nhận ở trạng thái chờ duyệt) */
+  /** Gửi đề nghị giải ngân đợt tiếp theo — vào trạng thái chờ duyệt */
   async createRequest(code: string, input: CreateRequestInput): Promise<RequestResult> {
     if (appConfig.api.useMocks) {
+      const item = mockDetail(code);
+      const amountTyDong = Number(input.amount.replace(",", ".")) || 0;
+      const request: DisbursementRequest = {
+        code: `DN-${String(item.requests.length + 1).padStart(2, "0")}`,
+        amount: input.amount,
+        amountTyDong,
+        content: input.content,
+        vendor: input.vendor ?? "",
+        status: "pending",
+        requestedBy: "Cán bộ xã",
+        requestedAt: mockStamp(),
+        decidedBy: "",
+        decidedAt: "",
+        rejectReason: "",
+        voucherNo: "",
+        disbursedAt: "",
+      };
       return mockDelay<RequestResult>({
         code,
         status: "pending",
         message: "Đề nghị giải ngân chờ duyệt",
         amount: input.amount,
-        amountTyDong: Number(input.amount.replace(",", ".")) || 0,
-        requestedBy: "Cán bộ xã",
-        comment: mockComment(`Đề nghị giải ngân chờ duyệt: ${input.amount} cho "${input.content}"`),
+        amountTyDong,
+        requestedBy: request.requestedBy,
+        request,
+        remaining: Math.max(0, item.planned - item.actual - amountTyDong),
+        comment: mockComment(`Gửi đề nghị giải ngân ${request.code}: ${input.amount} cho "${input.content}"`),
       });
     }
     return apiClient.post<RequestResult>(`/disbursement/${encodeURIComponent(code)}/requests`, input);
+  },
+
+  /** Danh sách đề nghị giải ngân toàn xã — màn hình quản lý đề nghị */
+  async listRequests(
+    filter: { year?: number; status?: DisbursementRequestStatus } = {},
+  ): Promise<RequestListResult> {
+    if (appConfig.api.useMocks) {
+      const rows: DisbursementRequestRow[] = budgetItems.flatMap((item) =>
+        item.requests
+          .filter((r) => !filter.status || r.status === filter.status)
+          .map((r) => ({
+            ...r,
+            budgetCode: item.id,
+            budgetName: item.name,
+            fundingSource: item.fundingSource,
+            owner: item.owner,
+          })),
+      );
+      const all = budgetItems.flatMap((it) => it.requests);
+      return mockDelay({
+        year: filter.year ?? new Date().getFullYear(),
+        items: rows,
+        summary: {
+          pending: all.filter((r) => r.status === "pending").length,
+          approved: all.filter((r) => r.status === "approved").length,
+          rejected: all.filter((r) => r.status === "rejected").length,
+          disbursed: all.filter((r) => r.status === "disbursed").length,
+          pendingAmount:
+            Math.round(
+              all
+                .filter((r) => r.status === "pending")
+                .reduce((s, r) => s + r.amountTyDong, 0) * 100,
+            ) / 100,
+        },
+      });
+    }
+    const qs = buildQuery({ year: filter.year, status: filter.status });
+    return apiClient.get<RequestListResult>(`/disbursement/requests${qs}`);
+  },
+
+  /** Duyệt đề nghị (quyền approve) — chưa cộng tiền vào luỹ kế */
+  async approveRequest(code: string, requestCode: string): Promise<DisbursementRequest> {
+    if (appConfig.api.useMocks) {
+      return mockDelay<DisbursementRequest>({
+        ...mockRequest(code, requestCode),
+        status: "approved",
+        decidedBy: "Cán bộ xã",
+        decidedAt: mockStamp(),
+      });
+    }
+    const res = await apiClient.patch<{ code: string; request: DisbursementRequest }>(
+      `/disbursement/${encodeURIComponent(code)}/requests/${encodeURIComponent(requestCode)}/approve`,
+      undefined,
+    );
+    return res.request;
+  },
+
+  /** Từ chối đề nghị kèm lý do (quyền approve) */
+  async rejectRequest(
+    code: string,
+    requestCode: string,
+    reason: string,
+  ): Promise<DisbursementRequest> {
+    if (appConfig.api.useMocks) {
+      return mockDelay<DisbursementRequest>({
+        ...mockRequest(code, requestCode),
+        status: "rejected",
+        rejectReason: reason,
+        decidedBy: "Cán bộ xã",
+        decidedAt: mockStamp(),
+      });
+    }
+    const res = await apiClient.patch<{ code: string; request: DisbursementRequest }>(
+      `/disbursement/${encodeURIComponent(code)}/requests/${encodeURIComponent(requestCode)}/reject`,
+      { reason },
+    );
+    return res.request;
+  },
+
+  /**
+   * Ghi nhận đề nghị đã chi thật — bước cộng tiền vào luỹ kế và sinh một dòng
+   * trong Lịch sử giải ngân. Số chứng từ bắt buộc để đối chiếu sổ kế toán.
+   */
+  async disburseRequest(
+    code: string,
+    requestCode: string,
+    input: { voucherNo: string; date?: string },
+  ): Promise<DisburseResult> {
+    if (appConfig.api.useMocks) {
+      const item = mockDetail(code);
+      const request = mockRequest(code, requestCode);
+      const date = input.date?.trim() || mockToday();
+      return mockDelay<DisburseResult>({
+        code,
+        request: { ...request, status: "disbursed", voucherNo: input.voucherNo, disbursedAt: date },
+        planned: item.planned,
+        actual: item.actual,
+        percent: item.planned > 0 ? Math.round((item.actual / item.planned) * 100) : 0,
+        delayed: item.delayed,
+        entry: {
+          date,
+          content: request.content,
+          amount: request.amount,
+          vendor: request.vendor,
+          by: "Cán bộ xã",
+          voucherNo: input.voucherNo,
+        },
+      });
+    }
+    return apiClient.patch<DisburseResult>(
+      `/disbursement/${encodeURIComponent(code)}/requests/${encodeURIComponent(requestCode)}/disburse`,
+      input,
+    );
+  },
+
+  /** Xoá mềm hạng mục (quyền admin) — dữ liệu vẫn giữ, khôi phục được */
+  async softDelete(code: string, reason?: string): Promise<BudgetItem> {
+    if (appConfig.api.useMocks) return mockDelay(mockDetail(code));
+    return toBudgetItem(
+      await apiClient.patch<BudgetApiItem>(
+        `/disbursement/${encodeURIComponent(code)}/delete`,
+        reason ? { reason } : {},
+      ),
+    );
+  },
+
+  /** Khôi phục hạng mục đã xoá mềm (quyền admin) */
+  async restore(code: string): Promise<BudgetItem> {
+    if (appConfig.api.useMocks) return mockDelay(mockDetail(code));
+    return toBudgetItem(
+      await apiClient.patch<BudgetApiItem>(`/disbursement/${encodeURIComponent(code)}/restore`, undefined),
+    );
   },
 
   /**

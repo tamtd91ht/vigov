@@ -12,15 +12,23 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Icon } from "@/lib/icons";
 import type { CreateEntryInput, CreateObstacleInput } from "@/services/disbursement.service";
 import { itemColor, itemPercent } from "./percent";
+import { findRequestStatus } from "./requestStatus";
 import { DisburseRequestForm, DISBURSE_REQUEST_FORM_ID, type DisburseRequestValues } from "./DisburseRequestForm";
 import { AddEntryForm } from "./AddEntryForm";
 import { AddObstacleForm } from "./AddObstacleForm";
 
 const TAB_ITEMS = [
+  { key: "requests", label: "Đề nghị giải ngân" },
   { key: "history", label: "Lịch sử giải ngân" },
   { key: "obstacles", label: "Vướng mắc" },
   { key: "discussion", label: "Thảo luận" },
 ];
+
+const REJECT_REASON_ERROR = "Vui lòng nhập lý do từ chối đề nghị";
+const VOUCHER_ERROR = "Vui lòng nhập số chứng từ của lần chi";
+const DELETE_NOTE =
+  "Xoá mềm: hạng mục biến mất khỏi danh sách và khỏi mọi số liệu tổng hợp, nhưng các lần " +
+  'giải ngân và chứng từ đã ghi vẫn được giữ nguyên trong hệ thống. Khôi phục ở bộ lọc "Đã xoá".';
 
 interface BudgetDrawerProps {
   item: BudgetItem | null;
@@ -38,6 +46,19 @@ interface BudgetDrawerProps {
   onAddObstacle: (values: CreateObstacleInput) => void;
   /** Đánh dấu vướng mắc thứ `index` đã tháo gỡ */
   onResolveObstacle: (index: number) => void;
+  /** Vai trò có quyền `approve` — thấy nút Duyệt / Từ chối đề nghị */
+  canApprove?: boolean;
+  /** Vai trò có quyền `edit` — gửi đề nghị và ghi nhận đã chi */
+  canEdit?: boolean;
+  /** Vai trò có quyền `admin` — xoá mềm và khôi phục hạng mục */
+  canDelete?: boolean;
+  onApproveRequest: (budgetCode: string, requestCode: string) => void;
+  onRejectRequest: (budgetCode: string, requestCode: string, reason: string) => void;
+  onDisburseRequest: (budgetCode: string, requestCode: string, voucherNo: string) => void;
+  /** Xoá mềm hạng mục kèm lý do (tuỳ chọn) */
+  onSoftDelete: (item: BudgetItem, reason: string) => void;
+  /** Khôi phục hạng mục đã xoá mềm */
+  onRestore: (item: BudgetItem) => void;
   /** true khi đang gửi yêu cầu lên máy chủ — khoá các nút thao tác */
   saving?: boolean;
 }
@@ -58,24 +79,44 @@ export function BudgetDrawer({
   onAddEntry,
   onAddObstacle,
   onResolveObstacle,
+  canApprove = false,
+  canEdit = false,
+  canDelete = false,
+  onApproveRequest,
+  onRejectRequest,
+  onDisburseRequest,
+  onSoftDelete,
+  onRestore,
   saving = false,
 }: BudgetDrawerProps) {
-  const [tab, setTab] = useState("history");
+  const [tab, setTab] = useState("requests");
   const [formOpen, setFormOpen] = useState(false);
   const [entryFormOpen, setEntryFormOpen] = useState(false);
   const [obstacleFormOpen, setObstacleFormOpen] = useState(false);
   const [draft, setDraft] = useState("");
+  /** Mã đề nghị đang mở ô nhập lý do từ chối / số chứng từ, và nội dung đang gõ */
+  const [acting, setActing] = useState<{ code: string; kind: "reject" | "disburse" } | null>(null);
+  const [actingText, setActingText] = useState("");
+  const [actingError, setActingError] = useState("");
+  /** Hộp xác nhận xoá mềm */
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteReason, setDeleteReason] = useState("");
 
   // Đổi hạng mục / đóng-mở drawer: quay về tab đầu, đóng form, xoá nháp (điều chỉnh state trong render)
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
   const currentKey = `${item?.id ?? ""}:${open}`;
   if (currentKey !== loadedKey) {
     setLoadedKey(currentKey);
-    setTab("history");
+    setTab("requests");
     setFormOpen(false);
     setEntryFormOpen(false);
     setObstacleFormOpen(false);
     setDraft("");
+    setActing(null);
+    setActingText("");
+    setActingError("");
+    setDeleteOpen(false);
+    setDeleteReason("");
   }
 
   if (!item) return null;
@@ -90,6 +131,12 @@ export function BudgetDrawer({
     setDraft("");
   }
 
+  /**
+   * Hạng mục đã xoá mềm: chỉ xem và khôi phục, không cho ghi thêm gì.
+   * Đọc cờ `isDeleted`; ngoặc `?? Boolean(deletedAt)` đỡ bản ghi cũ chưa backfill.
+   */
+  const isDeleted = item.isDeleted ?? Boolean(item.deletedAt);
+
   const footer = formOpen ? (
     <>
       <button className="btn pri" type="submit" form={DISBURSE_REQUEST_FORM_ID} disabled={saving}>
@@ -100,16 +147,54 @@ export function BudgetDrawer({
         Huỷ
       </button>
     </>
+  ) : deleteOpen ? (
+    <>
+      <button
+        className="btn pri danger"
+        type="button"
+        onClick={() => {
+          onSoftDelete(item, deleteReason.trim());
+          setDeleteOpen(false);
+        }}
+        disabled={saving}
+      >
+        <Icon name="trash" size={15} />
+        Xác nhận xoá
+      </button>
+      <button className="btn" type="button" onClick={() => setDeleteOpen(false)} disabled={saving}>
+        Huỷ
+      </button>
+    </>
+  ) : isDeleted ? (
+    <>
+      {canDelete && (
+        <button className="btn pri" type="button" onClick={() => onRestore(item)} disabled={saving}>
+          <Icon name="ok" size={15} />
+          Khôi phục hạng mục
+        </button>
+      )}
+      <button className="btn" type="button" onClick={onClose}>
+        Đóng
+      </button>
+    </>
   ) : (
     <>
-      <button className="btn pri" type="button" onClick={() => setFormOpen(true)} disabled={saving}>
-        <Icon name="send" size={15} />
-        Đề nghị giải ngân
-      </button>
+      {canEdit && (
+        <button className="btn pri" type="button" onClick={() => setFormOpen(true)} disabled={saving}>
+          <Icon name="send" size={15} />
+          Đề nghị giải ngân
+        </button>
+      )}
       <button className="btn" type="button" onClick={onRemindObstacles} disabled={saving || item.obstacles.length === 0}>
         <Icon name="alert" size={15} />
         Nhắc tháo gỡ vướng mắc
       </button>
+      {canDelete && (
+        <button className="btn danger" type="button" onClick={() => setDeleteOpen(true)} disabled={saving}>
+          <Icon name="trash" size={15} />
+          Xoá hạng mục
+        </button>
+      )}
       <button className="btn" type="button" onClick={onClose}>
         Đóng
       </button>
@@ -132,6 +217,22 @@ export function BudgetDrawer({
             setFormOpen(false);
           }}
         />
+      ) : deleteOpen ? (
+        <div>
+          <div className="note" style={{ marginBottom: 14 }}>{DELETE_NOTE}</div>
+          <div className="fgroup">
+            <label>Lý do xoá</label>
+            <textarea
+              className="finp"
+              placeholder="Ví dụ: Hạng mục nhập trùng, đã có ở HM-04"
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+            />
+            <div className="fhint">
+              Không bắt buộc. Lý do được lưu lại để truy vết, hiển thị ở bộ lọc &quot;Đã xoá&quot;.
+            </div>
+          </div>
+        </div>
       ) : (
         <>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
@@ -145,7 +246,25 @@ export function BudgetDrawer({
                 Đúng tiến độ
               </Chip>
             )}
+            {isDeleted && (
+              <Chip color="var(--mut)" tint="rgba(136,150,166,.12)">
+                Đã xoá
+              </Chip>
+            )}
           </div>
+
+          {isDeleted && (
+            <div className="note" style={{ marginBottom: 14 }}>
+              Hạng mục đã bị xoá{item.deletedBy ? ` bởi ${item.deletedBy}` : ""}. Không ghi thêm được
+              lần chi hay đề nghị mới.
+              {item.deleteReason && (
+                <>
+                  <br />
+                  Lý do: {item.deleteReason}
+                </>
+              )}
+            </div>
+          )}
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
             <div className="fld">
@@ -165,6 +284,168 @@ export function BudgetDrawer({
           </div>
 
           <Tabs items={TAB_ITEMS} active={tab} onChange={setTab} />
+
+          {tab === "requests" && (
+            <div>
+              <h4 style={{ fontSize: 12.5, marginBottom: 12 }}>
+                Tiến trình đề nghị giải ngân ({item.requests.length})
+              </h4>
+              {item.requests.length === 0 ? (
+                <div className="empty">Hạng mục chưa có đề nghị giải ngân nào</div>
+              ) : (
+                <div style={{ display: "grid", gap: 10 }}>
+                  {item.requests.map((r) => {
+                    const meta = findRequestStatus(r.status);
+                    const openHere = acting?.code === r.code;
+                    return (
+                      <div
+                        key={r.code}
+                        style={{
+                          border: "1px solid var(--bd)",
+                          borderLeft: `3px solid ${meta.color}`,
+                          borderRadius: 10,
+                          padding: "10px 12px",
+                        }}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                          <b style={{ fontSize: 12.5 }}>{r.code}</b>
+                          <Chip color={meta.color} tint={meta.tint} dot>
+                            {meta.label}
+                          </Chip>
+                          <span style={{ marginLeft: "auto", fontWeight: 700 }}>{r.amount}</span>
+                        </div>
+                        <div style={{ fontSize: 12.5, marginBottom: 4 }}>{r.content}</div>
+                        {r.vendor && <div className="tiny muted">Đơn vị thụ hưởng: {r.vendor}</div>}
+
+                        {/* Bốn mốc của vòng đời — mốc nào đã qua thì hiện thời điểm và người thực hiện */}
+                        <div className="tiny muted" style={{ marginTop: 6, lineHeight: 1.8 }}>
+                          <div>
+                            Gửi: {r.requestedBy} · {r.requestedAt}
+                          </div>
+                          {r.decidedAt && (
+                            <div style={{ color: r.status === "rejected" ? "var(--red)" : undefined }}>
+                              {r.status === "rejected" ? "Từ chối" : "Duyệt"}: {r.decidedBy} · {r.decidedAt}
+                            </div>
+                          )}
+                          {r.rejectReason && (
+                            <div style={{ color: "var(--red)" }}>Lý do: {r.rejectReason}</div>
+                          )}
+                          {r.disbursedAt && (
+                            <div style={{ color: "var(--green)" }}>
+                              Đã chi ngày {r.disbursedAt} · chứng từ {r.voucherNo}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Ô nhập tại chỗ cho từ chối / ghi nhận chi */}
+                        {openHere ? (
+                          <div style={{ marginTop: 8 }}>
+                            <input
+                              className={`finp ${actingError ? "err" : ""}`}
+                              placeholder={
+                                acting?.kind === "reject"
+                                  ? "Lý do từ chối đề nghị"
+                                  : "Số chứng từ, ví dụ UNC 118/2026"
+                              }
+                              value={actingText}
+                              onChange={(e) => {
+                                setActingText(e.target.value);
+                                if (actingError) setActingError("");
+                              }}
+                            />
+                            {actingError && <div className="ferr">{actingError}</div>}
+                            <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+                              <button
+                                className={acting?.kind === "reject" ? "btn sm pri danger" : "btn sm pri"}
+                                type="button"
+                                disabled={saving}
+                                onClick={() => {
+                                  const text = actingText.trim();
+                                  if (!text) {
+                                    setActingError(
+                                      acting?.kind === "reject" ? REJECT_REASON_ERROR : VOUCHER_ERROR,
+                                    );
+                                    return;
+                                  }
+                                  if (acting?.kind === "reject") {
+                                    onRejectRequest(item.id, r.code, text);
+                                  } else {
+                                    onDisburseRequest(item.id, r.code, text);
+                                  }
+                                  setActing(null);
+                                  setActingText("");
+                                }}
+                              >
+                                Xác nhận
+                              </button>
+                              <button
+                                className="btn sm"
+                                type="button"
+                                disabled={saving}
+                                onClick={() => {
+                                  setActing(null);
+                                  setActingText("");
+                                  setActingError("");
+                                }}
+                              >
+                                Huỷ
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          !isDeleted && (
+                            <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                              {r.status === "pending" && canApprove && (
+                                <>
+                                  <button
+                                    className="btn sm pri"
+                                    type="button"
+                                    disabled={saving}
+                                    onClick={() => onApproveRequest(item.id, r.code)}
+                                  >
+                                    <Icon name="check" size={13} />
+                                    Duyệt
+                                  </button>
+                                  <button
+                                    className="btn sm danger"
+                                    type="button"
+                                    disabled={saving}
+                                    onClick={() => {
+                                      setActing({ code: r.code, kind: "reject" });
+                                      setActingText("");
+                                      setActingError("");
+                                    }}
+                                  >
+                                    Từ chối
+                                  </button>
+                                </>
+                              )}
+                              {r.status === "approved" && canEdit && (
+                                <button
+                                  className="btn sm pri"
+                                  type="button"
+                                  disabled={saving}
+                                  onClick={() => {
+                                    setActing({ code: r.code, kind: "disburse" });
+                                    setActingText("");
+                                    setActingError("");
+                                  }}
+                                  title="Xác nhận tiền đã chuyển, cộng vào luỹ kế"
+                                >
+                                  <Icon name="wallet" size={13} />
+                                  Ghi nhận đã chi
+                                </button>
+                              )}
+                            </div>
+                          )
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {tab === "history" && (
             <div>

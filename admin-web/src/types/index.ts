@@ -93,6 +93,36 @@ export interface Obstacle {
   deadline: string;
 }
 
+/**
+ * Trạng thái một đề nghị giải ngân — luồng một cấp duyệt:
+ * `pending` → `approved` → `disbursed`, hoặc `pending` → `rejected`.
+ * Chỉ khi sang `disbursed` tiền mới cộng vào luỹ kế của hạng mục.
+ */
+export type DisbursementRequestStatus = "pending" | "approved" | "rejected" | "disbursed";
+
+/** Đề nghị giải ngân một đợt của hạng mục */
+export interface DisbursementRequest {
+  /** Mã đề nghị trong phạm vi hạng mục: DN-01, DN-02… */
+  code: string;
+  /** Số tiền dạng chuỗi người dùng nhập, ví dụ "0,8 tỷ" */
+  amount: string;
+  /** Số tiền đã quy đổi về tỷ đồng, do server tính */
+  amountTyDong: number;
+  content: string;
+  vendor: string;
+  status: DisbursementRequestStatus;
+  requestedBy: string;
+  requestedAt: string;
+  /** Người duyệt/từ chối; rỗng khi còn chờ duyệt */
+  decidedBy: string;
+  decidedAt: string;
+  /** Lý do từ chối — chỉ có khi status = rejected */
+  rejectReason: string;
+  /** Số chứng từ lúc ghi nhận đã chi */
+  voucherNo: string;
+  disbursedAt: string;
+}
+
 /** Hạng mục ngân sách / giải ngân */
 export interface BudgetItem {
   id: string;
@@ -106,6 +136,14 @@ export interface BudgetItem {
   entries: DisbursementEntry[];
   comments: Comment[];
   obstacles: Obstacle[];
+  requests: DisbursementRequest[];
+  /** Cờ xoá mềm — trường dùng để lọc; bản ghi cũ có thể chưa có trường này */
+  isDeleted?: boolean;
+  /** Mốc thời gian xoá, chỉ để hiển thị ở bộ lọc "Đã xoá" — không dùng để lọc */
+  deletedAt?: string;
+  /** Tên đăng nhập cán bộ đã xoá */
+  deletedBy?: string;
+  deleteReason?: string;
 }
 
 /** Phiếu phản ánh của người dân */

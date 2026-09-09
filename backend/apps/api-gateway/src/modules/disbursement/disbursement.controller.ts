@@ -7,7 +7,11 @@ import {
   CreateDisbursementRequestDto,
   CreateEntryDto,
   CreateObstacleDto,
+  DeleteBudgetItemDto,
+  DisburseRequestDto,
   ListBudgetQueryDto,
+  ListRequestQueryDto,
+  RejectRequestDto,
 } from './dto/disbursement.dto';
 
 /** Ngân sách – Giải ngân (WBS #5) */
@@ -20,6 +24,18 @@ export class DisbursementController {
   @RequirePermission('disbursement', 'view')
   list(@Query() query: ListBudgetQueryDto) {
     return this.disbursement.list(query);
+  }
+
+  /**
+   * Danh sách đề nghị giải ngân toàn xã (màn hình quản lý đề nghị).
+   *
+   * PHẢI khai TRƯỚC `@Get(':code')`, nếu không Nest khớp "requests" thành mã
+   * hạng mục và trả 404.
+   */
+  @Get('requests')
+  @RequirePermission('disbursement', 'view')
+  listRequests(@Query() query: ListRequestQueryDto) {
+    return this.disbursement.listRequests(query);
   }
 
   /** Chi tiết hạng mục theo mã HM-xx */
@@ -69,9 +85,8 @@ export class DisbursementController {
   }
 
   /**
-   * Gửi đề nghị giải ngân.
-   * Phase 1 mới ghi nhận đề nghị chờ duyệt — luồng duyệt chi tiết chờ khách chốt
-   * (câu hỏi mở #8).
+   * Gửi đề nghị giải ngân đợt tiếp theo (bước 1 của luồng một cấp duyệt).
+   * Quyền `edit` — kế toán gửi, lãnh đạo duyệt ở endpoint riêng bên dưới.
    */
   @Post(':code/requests')
   @RequirePermission('disbursement', 'edit')
@@ -81,5 +96,61 @@ export class DisbursementController {
     @Req() req: AuthedRequest,
   ) {
     return this.disbursement.createRequest(code, dto, req.user);
+  }
+
+  /** Duyệt đề nghị — quyền `approve`, dành cho lãnh đạo */
+  @Patch(':code/requests/:requestCode/approve')
+  @RequirePermission('disbursement', 'approve')
+  approveRequest(
+    @Param('code') code: string,
+    @Param('requestCode') requestCode: string,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.disbursement.approveRequest(code, requestCode, req.user);
+  }
+
+  /** Từ chối đề nghị kèm lý do — quyền `approve` */
+  @Patch(':code/requests/:requestCode/reject')
+  @RequirePermission('disbursement', 'approve')
+  rejectRequest(
+    @Param('code') code: string,
+    @Param('requestCode') requestCode: string,
+    @Body() dto: RejectRequestDto,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.disbursement.rejectRequest(code, requestCode, dto, req.user);
+  }
+
+  /**
+   * Ghi nhận đề nghị đã chi thật — quyền `edit` vì đây là việc của kế toán
+   * sau khi kho bạc chuyển tiền, không phải một lần duyệt nữa.
+   */
+  @Patch(':code/requests/:requestCode/disburse')
+  @RequirePermission('disbursement', 'edit')
+  disburseRequest(
+    @Param('code') code: string,
+    @Param('requestCode') requestCode: string,
+    @Body() dto: DisburseRequestDto,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.disbursement.disburseRequest(code, requestCode, dto, req.user);
+  }
+
+  /** Xoá mềm hạng mục — quyền `admin`, dữ liệu vẫn giữ và khôi phục được */
+  @Patch(':code/delete')
+  @RequirePermission('disbursement', 'admin')
+  softDelete(
+    @Param('code') code: string,
+    @Body() dto: DeleteBudgetItemDto,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.disbursement.softDelete(code, dto, req.user);
+  }
+
+  /** Khôi phục hạng mục đã xoá mềm — quyền `admin` */
+  @Patch(':code/restore')
+  @RequirePermission('disbursement', 'admin')
+  restore(@Param('code') code: string) {
+    return this.disbursement.restore(code);
   }
 }

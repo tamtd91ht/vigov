@@ -1,10 +1,15 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { FilterQuery, Model } from 'mongoose';
 import {
   BudgetItem,
+  IS_DELETED,
+  NOT_DELETED,
+  softDeleteUpdate,
+  softRestoreUpdate,
   type BudgetItemDocument,
   type Comment,
+  type DisbursementRequest,
   type JwtPayload,
 } from '@vigov/shared';
 import {
@@ -13,7 +18,11 @@ import {
   CreateDisbursementRequestDto,
   CreateEntryDto,
   CreateObstacleDto,
+  DeleteBudgetItemDto,
+  DisburseRequestDto,
   ListBudgetQueryDto,
+  ListRequestQueryDto,
+  RejectRequestDto,
 } from './dto/disbursement.dto';
 
 /** Tiền tố mã hạng mục và số chữ số của phần tăng dần: HM-01, HM-02… */
@@ -35,6 +44,10 @@ const DEFAULT_FUNDING_COLOR = 'var(--blue)';
 
 /** Tên hiển thị dùng cho bình luận do hệ thống tự sinh */
 const SYSTEM_AUTHOR = 'Hệ thống';
+
+/** Tiền tố mã đề nghị giải ngân trong phạm vi một hạng mục: DN-01, DN-02… */
+const REQUEST_PREFIX = 'DN-';
+const REQUEST_DIGITS = 2;
 
 /** Hệ số quy đổi đơn vị tiền về "tỷ đồng" — đơn vị lưu trong BudgetItem */
 const UNIT_TO_TY: Record<string, number> = {
@@ -88,7 +101,15 @@ export class DisbursementService {
   /** Danh sách hạng mục theo bộ lọc + số liệu tổng hợp phục vụ dashboard */
   async list(query: ListBudgetQueryDto) {
     const year = query.year ?? new Date().getFullYear();
-    const filter: Record<string, unknown> = { year };
+    /*
+     * Hạng mục đã xoá mềm nằm ngoài mọi số liệu tổng hợp: tổng kế hoạch vốn và
+     * tỷ lệ giải ngân phải phản ánh đúng phần ngân sách còn hiệu lực. Muốn xem
+     * lại thì dùng bộ lọc "Đã xoá" (deleted=true).
+     */
+    const filter: FilterQuery<BudgetItemDocument> = {
+      year,
+      ...(query.deleted ? IS_DELETED : NOT_DELETED),
+    };
     if (typeof query.delayed === 'boolean') filter.delayed = query.delayed;
     if (query.owner) filter.owner = query.owner;
 
@@ -204,43 +225,313 @@ export class DisbursementService {
   }
 
   /**
-   * Đề nghị giải ngân.
-   * Phase 1 chỉ ghi nhận đề nghị dưới dạng bình luận chờ lãnh đạo xem xét —
-   * luồng duyệt nhiều cấp (ai duyệt, mấy bước, có ký số không) chờ khách chốt
-   * (câu hỏi mở #8), khi đó sẽ tách thành collection riêng + trạng thái duyệt.
+   * Gửi đề nghị giải ngân đợt tiếp theo — bước đầu của luồng một cấp duyệt.
+   *
+   * Chặn tổng đề nghị vượt kế hoạch vốn: phần vốn còn lại tính theo cả số đã
+   * chi (`actual`) LẪN các đề nghị đang treo (pending + approved). Nếu chỉ trừ
+   * `actual` thì gửi ba đề nghị liên tiếp, mỗi cái vừa đúng phần còn lại, sẽ
+   * lọt hết và tổng cam kết vượt vốn giao.
    */
   async createRequest(code: string, dto: CreateDisbursementRequestDto, user?: JwtPayload) {
     const item = await this.findOrFail(code);
     const amountTy = this.parseAmountToTyDong(dto.amount);
-    const vendorLabel = dto.vendor ? ` — đơn vị thụ hưởng: ${dto.vendor}` : '';
+    if (amountTy <= 0) throw new BadRequestException('Số tiền đề nghị phải lớn hơn 0');
 
+    const remaining = this.remainingBudget(item);
+    if (amountTy > remaining + 1e-9) {
+      throw new BadRequestException(
+        `Số tiền đề nghị vượt phần vốn còn lại (${this.round(remaining)} tỷ đồng, đã trừ các đề nghị đang chờ duyệt)`,
+      );
+    }
+
+    const request: DisbursementRequest = {
+      code: this.nextRequestCode(item),
+      amount: dto.amount,
+      amountTyDong: this.round(amountTy),
+      content: dto.content,
+      vendor: dto.vendor ?? '',
+      status: 'pending',
+      requestedBy: user?.displayName ?? SYSTEM_AUTHOR,
+      requestedAt: this.nowLabel(),
+      decidedBy: '',
+      decidedAt: '',
+      rejectReason: '',
+      voucherNo: '',
+      disbursedAt: '',
+    };
+    item.requests.push(request);
+
+    const vendorLabel = dto.vendor ? ` — đơn vị thụ hưởng: ${dto.vendor}` : '';
     const comment = this.buildComment(
-      `Đề nghị giải ngân chờ duyệt: ${dto.amount} cho "${dto.content}"${vendorLabel}`,
+      `Gửi đề nghị giải ngân ${request.code}: ${dto.amount} cho "${dto.content}"${vendorLabel}`,
       user,
     );
     item.comments.push(comment);
     await item.save();
 
-    this.logger.log(`Đề nghị giải ngân ${code}: ${dto.amount} (~${amountTy} tỷ đồng)`);
+    this.logger.log(`Đề nghị giải ngân ${code}/${request.code}: ${dto.amount} (~${amountTy} tỷ đồng)`);
 
     return {
       code: item.code,
-      status: 'pending',
+      request,
+      status: request.status,
       message: 'Đề nghị giải ngân chờ duyệt',
-      amount: dto.amount,
-      amountTyDong: this.round(amountTy),
-      content: dto.content,
-      vendor: dto.vendor ?? '',
-      requestedBy: user?.displayName ?? SYSTEM_AUTHOR,
+      amount: request.amount,
+      amountTyDong: request.amountTyDong,
+      content: request.content,
+      vendor: request.vendor,
+      requestedBy: request.requestedBy,
+      remaining: this.round(this.remainingBudget(item)),
       comment,
     };
   }
 
-  /** Lấy document (không lean) để cập nhật, báo lỗi rõ ràng nếu không có */
+  /**
+   * Danh sách đề nghị giải ngân của TOÀN XÃ, gộp từ mọi hạng mục.
+   *
+   * Đề nghị lưu lồng trong hạng mục (mỗi hạng mục vài đề nghị, không phải hàng
+   * nghìn) nên gộp ở tầng ứng dụng đủ nhanh và giữ được một nguồn sự thật duy
+   * nhất. Tách collection riêng chỉ cần khi số đề nghị lớn tới mức phải phân trang.
+   */
+  async listRequests(query: ListRequestQueryDto) {
+    const year = query.year ?? new Date().getFullYear();
+    const items = await this.budgetModel
+      .find({ year, ...NOT_DELETED })
+      .sort({ code: 1 })
+      .lean()
+      .exec();
+
+    const rows = items.flatMap((item) =>
+      ((item.requests ?? []) as DisbursementRequest[])
+        .filter((r) => !query.status || r.status === query.status)
+        .map((r) => ({
+          ...r,
+          budgetCode: item.code,
+          budgetName: item.name,
+          fundingSource: item.fundingSource,
+          owner: item.owner,
+        })),
+    );
+
+    /* Mới gửi lên đầu: người duyệt quan tâm đề nghị vừa tới, không phải cái cũ nhất */
+    rows.sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
+
+    const all = items.flatMap((it) => (it.requests ?? []) as DisbursementRequest[]);
+    return {
+      year,
+      items: rows,
+      summary: {
+        pending: all.filter((r) => r.status === 'pending').length,
+        approved: all.filter((r) => r.status === 'approved').length,
+        rejected: all.filter((r) => r.status === 'rejected').length,
+        disbursed: all.filter((r) => r.status === 'disbursed').length,
+        /** Tổng tiền đang chờ duyệt (tỷ đồng) — phần ngân sách đã cam kết nhưng chưa quyết */
+        pendingAmount: this.round(
+          all.filter((r) => r.status === 'pending').reduce((s, r) => s + (r.amountTyDong ?? 0), 0),
+        ),
+      },
+    };
+  }
+
+  /** Duyệt đề nghị: chuyển pending → approved. Chưa cộng tiền vào luỹ kế. */
+  async approveRequest(code: string, requestCode: string, user?: JwtPayload) {
+    const item = await this.findOrFail(code);
+    const request = this.findRequestOrFail(item, requestCode);
+    this.assertStatus(request, 'pending', 'duyệt');
+
+    request.status = 'approved';
+    request.decidedBy = user?.displayName ?? SYSTEM_AUTHOR;
+    request.decidedAt = this.nowLabel();
+
+    item.comments.push(
+      this.buildComment(
+        `Đã duyệt đề nghị giải ngân ${request.code}: ${request.amount} cho "${request.content}"`,
+        user,
+      ),
+    );
+    await item.save();
+
+    return { code: item.code, request };
+  }
+
+  /** Từ chối đề nghị: chuyển pending → rejected, bắt buộc kèm lý do */
+  async rejectRequest(
+    code: string,
+    requestCode: string,
+    dto: RejectRequestDto,
+    user?: JwtPayload,
+  ) {
+    const item = await this.findOrFail(code);
+    const request = this.findRequestOrFail(item, requestCode);
+    this.assertStatus(request, 'pending', 'từ chối');
+
+    request.status = 'rejected';
+    request.rejectReason = dto.reason;
+    request.decidedBy = user?.displayName ?? SYSTEM_AUTHOR;
+    request.decidedAt = this.nowLabel();
+
+    item.comments.push(
+      this.buildComment(
+        `Đã từ chối đề nghị giải ngân ${request.code}. Lý do: ${dto.reason}`,
+        user,
+      ),
+    );
+    await item.save();
+
+    return { code: item.code, request };
+  }
+
+  /**
+   * Ghi nhận đề nghị đã chi thật: approved → disbursed.
+   *
+   * ĐÂY là chỗ duy nhất tiền của một đề nghị được cộng vào luỹ kế `actual`, và
+   * cùng lúc sinh một dòng trong Lịch sử giải ngân — nhờ vậy mỗi khoản chi
+   * trong sổ đều truy ngược được về đề nghị đã duyệt sinh ra nó.
+   */
+  async disburseRequest(
+    code: string,
+    requestCode: string,
+    dto: DisburseRequestDto,
+    user?: JwtPayload,
+  ) {
+    const item = await this.findOrFail(code);
+    const request = this.findRequestOrFail(item, requestCode);
+    this.assertStatus(request, 'approved', 'ghi nhận đã chi');
+
+    const date = dto.date?.trim() || this.todayLabel();
+    request.status = 'disbursed';
+    request.voucherNo = dto.voucherNo;
+    request.disbursedAt = date;
+
+    item.entries.push({
+      date,
+      content: request.content,
+      amount: request.amount,
+      vendor: request.vendor,
+      voucherNo: dto.voucherNo,
+      by: user?.displayName ?? SYSTEM_AUTHOR,
+    });
+
+    item.actual = this.round(item.actual + request.amountTyDong);
+    item.delayed = this.isDelayed(item.planned, item.actual);
+
+    item.comments.push(
+      this.buildComment(
+        `Đã giải ngân đề nghị ${request.code}: ${request.amount}, chứng từ ${dto.voucherNo}`,
+        user,
+      ),
+    );
+    await item.save();
+
+    return {
+      code: item.code,
+      request,
+      planned: item.planned,
+      actual: item.actual,
+      percent: item.planned > 0 ? this.round((item.actual / item.planned) * 100) : 0,
+      delayed: item.delayed,
+      entry: item.entries[item.entries.length - 1],
+    };
+  }
+
+  /**
+   * Xoá mềm hạng mục: bật cờ `isDeleted` chứ KHÔNG xoá tài liệu.
+   *
+   * Hạng mục đã phát sinh lần chi là số liệu quyết toán ngân sách — xoá cứng
+   * là mất dấu tiền đã giải ngân. Bản ghi biến mất khỏi danh sách và khỏi mọi
+   * số liệu tổng hợp, nhưng khôi phục lại được từ bộ lọc "Đã xoá".
+   *
+   * `deletedBy` lưu TÊN ĐĂNG NHẬP (không phải displayName) để khớp nhật ký
+   * kiểm toán — quy ước dùng chung cả 4 phân hệ, xem `SoftDeletable`.
+   */
+  async softDelete(code: string, dto: DeleteBudgetItemDto, user?: JwtPayload) {
+    const actor = user?.username ?? SYSTEM_AUTHOR;
+    const updated = await this.budgetModel
+      .findOneAndUpdate({ code, ...NOT_DELETED }, softDeleteUpdate(actor, dto.reason), { new: true })
+      .lean()
+      .exec();
+
+    if (!updated) throw new NotFoundException(`Không tìm thấy hạng mục ${code}`);
+    this.logger.log(`Xoá mềm hạng mục ${code} bởi ${actor}`);
+    return updated;
+  }
+
+  /** Khôi phục hạng mục đã xoá mềm về lại danh sách đang dùng */
+  async restore(code: string) {
+    const updated = await this.budgetModel
+      .findOneAndUpdate({ code, ...IS_DELETED }, softRestoreUpdate(), { new: true })
+      .lean()
+      .exec();
+
+    if (!updated) throw new NotFoundException(`Không tìm thấy hạng mục đã xoá ${code}`);
+    return updated;
+  }
+
+  /**
+   * Lấy document (không lean) để cập nhật, báo lỗi rõ ràng nếu không có.
+   * Loại luôn hạng mục đã xoá mềm: không cho ghi thêm vào bản ghi đã bỏ.
+   */
   private async findOrFail(code: string): Promise<BudgetItemDocument> {
-    const item = await this.budgetModel.findOne({ code }).exec();
+    const item = await this.budgetModel.findOne({ code, ...NOT_DELETED }).exec();
     if (!item) throw new NotFoundException(`Không tìm thấy hạng mục ${code}`);
     return item;
+  }
+
+  /** Tìm đề nghị theo mã DN-xx trong hạng mục */
+  private findRequestOrFail(item: BudgetItemDocument, requestCode: string): DisbursementRequest {
+    const request = item.requests.find((r) => r.code === requestCode);
+    if (!request) {
+      throw new NotFoundException(`Không tìm thấy đề nghị ${requestCode} trong hạng mục ${item.code}`);
+    }
+    return request;
+  }
+
+  /**
+   * Chặn chuyển trạng thái sai luồng — ví dụ duyệt một đề nghị đã bị từ chối,
+   * hoặc ghi nhận chi hai lần cho cùng một đề nghị (sẽ cộng tiền hai lượt).
+   */
+  private assertStatus(
+    request: DisbursementRequest,
+    expected: DisbursementRequest['status'],
+    action: string,
+  ): void {
+    if (request.status !== expected) {
+      throw new BadRequestException(
+        `Đề nghị ${request.code} đang ở trạng thái "${this.statusLabel(request.status)}" nên không ${action} được`,
+      );
+    }
+  }
+
+  /** Nhãn tiếng Việt của trạng thái đề nghị, dùng trong thông báo lỗi */
+  private statusLabel(status: DisbursementRequest['status']): string {
+    const labels: Record<DisbursementRequest['status'], string> = {
+      pending: 'Chờ duyệt',
+      approved: 'Đã duyệt',
+      rejected: 'Từ chối',
+      disbursed: 'Đã giải ngân',
+    };
+    return labels[status] ?? status;
+  }
+
+  /**
+   * Phần vốn còn có thể đề nghị: kế hoạch trừ đi số đã chi và các đề nghị đang
+   * treo (chờ duyệt + đã duyệt chưa chi). Đề nghị đã chi nằm trong `actual` rồi
+   * nên không trừ lần nữa; đề nghị bị từ chối không chiếm vốn.
+   */
+  private remainingBudget(item: BudgetItemDocument): number {
+    const committed = item.requests
+      .filter((r) => r.status === 'pending' || r.status === 'approved')
+      .reduce((sum, r) => sum + (r.amountTyDong ?? 0), 0);
+    return Math.max(0, item.planned - item.actual - committed);
+  }
+
+  /** Sinh mã đề nghị kế tiếp trong phạm vi hạng mục: DN-01, DN-02… */
+  private nextRequestCode(item: BudgetItemDocument): string {
+    const numbers = item.requests
+      .map((r) => Number.parseInt(r.code.slice(REQUEST_PREFIX.length), 10))
+      .filter((n) => Number.isFinite(n));
+    const next = numbers.length > 0 ? Math.max(...numbers) + 1 : 1;
+    return `${REQUEST_PREFIX}${String(next).padStart(REQUEST_DIGITS, '0')}`;
   }
 
   /** Sinh mã hạng mục kế tiếp theo số thứ tự lớn nhất đang có */
@@ -287,6 +578,13 @@ export class DisbursementService {
     const d = new Date();
     const p = (n: number) => String(n).padStart(2, '0');
     return `${p(d.getHours())}:${p(d.getMinutes())} ${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
+  }
+
+  /** Ngày hôm nay dạng "27/08/2026" — khớp định dạng ngày của lần giải ngân */
+  private todayLabel(): string {
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()}`;
   }
 
   /** Làm tròn 2 chữ số thập phân cho số liệu tiền tỷ */
