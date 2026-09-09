@@ -1,13 +1,27 @@
-import { Body, Controller, ForbiddenException, Get, Param, Patch, Post, Query, Req } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Req,
+} from '@nestjs/common';
 import { RequirePermission, type AuthedRequest, type JwtPayload } from '@vigov/shared';
 import {
   AssignFeedbackDto,
   CreateCitizenFeedbackDto,
   CreateStaffFeedbackDto,
+  DecideWithdrawDto,
   ListFeedbackQueryDto,
   RateFeedbackDto,
   ResolveFeedbackDto,
   TransferFeedbackDto,
+  UpdateCitizenFeedbackDto,
+  WithdrawFeedbackDto,
 } from './dto/feedback.dto';
 import { FeedbackService } from './feedback.service';
 
@@ -96,6 +110,31 @@ export class FeedbackController {
     return this.feedback.rateMine(code, citizenOf(req).username, dto);
   }
 
+  /** Công dân sửa tiêu đề / nội dung — chỉ khi chưa có cán bộ tiếp nhận */
+  @Patch('citizen/mine/:code')
+  updateMine(
+    @Param('code') code: string,
+    @Body() dto: UpdateCitizenFeedbackDto,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.feedback.updateMine(code, citizenOf(req).username, dto);
+  }
+
+  /**
+   * Công dân xin thu hồi phiếu của chính mình.
+   *
+   * Chưa ai tiếp nhận thì gỡ ngay (`removed: true`); đã có người tiếp nhận thì
+   * chuyển sang chờ cán bộ xác nhận (`removed: false`, `withdrawStatus: 'pending'`).
+   */
+  @Post('citizen/mine/:code/withdraw')
+  withdrawMine(
+    @Param('code') code: string,
+    @Body() dto: WithdrawFeedbackDto,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.feedback.requestWithdraw(code, citizenOf(req).username, dto);
+  }
+
   // --- Cán bộ: chi tiết & xử lý ---------------------------------------------
 
   /** Chi tiết phiếu phản ánh */
@@ -124,5 +163,42 @@ export class FeedbackController {
   @Patch(':code/transfer')
   transfer(@Param('code') code: string, @Body() dto: TransferFeedbackDto, @Req() req: AuthedRequest) {
     return this.feedback.transfer(code, dto, actorOf(req));
+  }
+
+  // --- Cán bộ: quyết định yêu cầu thu hồi của công dân -----------------------
+  //
+  // Dùng quyền 'approve' chứ KHÔNG phải 'edit': gỡ một phiếu phản ánh khỏi hàng
+  // đợi là quyết định về một tài liệu hành chính, không phải thao tác xử lý
+  // thường ngày. Theo bảng vai trò hiện hành thì chỉ 'leader' và 'admin' được
+  // quyết — chuyên viên đang xử lý phiếu không tự đóng phiếu của mình được.
+
+  /** Đồng ý cho công dân thu hồi — phiếu được gỡ (xoá mềm) */
+  @RequirePermission('feedback', 'approve')
+  @Patch(':code/withdraw/approve')
+  approveWithdraw(
+    @Param('code') code: string,
+    @Body() dto: DecideWithdrawDto,
+    @Req() req: AuthedRequest,
+  ) {
+    return this.feedback.approveWithdraw(code, dto, actorOf(req));
+  }
+
+  /**
+   * Từ chối yêu cầu thu hồi — phiếu quay lại xử lý bình thường.
+   *
+   * Lý do BẮT BUỘC: người dân đọc được lý do này trên Mini App. Không có nó thì
+   * yêu cầu của họ chỉ im lặng biến mất và họ sẽ gửi lại.
+   */
+  @RequirePermission('feedback', 'approve')
+  @Patch(':code/withdraw/reject')
+  rejectWithdraw(
+    @Param('code') code: string,
+    @Body() dto: DecideWithdrawDto,
+    @Req() req: AuthedRequest,
+  ) {
+    if (!dto.note?.trim()) {
+      throw new BadRequestException('Vui lòng nêu lý do từ chối để người dân được biết');
+    }
+    return this.feedback.rejectWithdraw(code, dto, actorOf(req));
   }
 }

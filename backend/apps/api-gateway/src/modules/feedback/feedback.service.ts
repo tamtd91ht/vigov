@@ -5,7 +5,10 @@ import { FilterQuery, Model } from 'mongoose';
 import {
   EVENTS,
   Feedback,
+  IS_DELETED,
+  NOT_DELETED,
   SlaRule,
+  markDeleted,
   type FeedbackAssignedEvent,
   type FeedbackCreatedEvent,
   type FeedbackDocument,
@@ -19,10 +22,13 @@ import {
   AssignFeedbackDto,
   CreateCitizenFeedbackDto,
   CreateStaffFeedbackDto,
+  DecideWithdrawDto,
   ListFeedbackQueryDto,
   RateFeedbackDto,
   ResolveFeedbackDto,
   TransferFeedbackDto,
+  UpdateCitizenFeedbackDto,
+  WithdrawFeedbackDto,
 } from './dto/feedback.dto';
 
 /** Phân trang danh sách phản ánh */
@@ -58,7 +64,11 @@ const CITIZEN_IMAGE_URL_TTL_SECONDS = 60 * 60;
 
 /** Trường trả về cho công dân — ẩn thông tin điều hành nội bộ */
 const CITIZEN_PROJECTION =
-  'code categoryKey title description location lat lng sentAt status slaDueAt imageFileIds resultImageFileIds channel timeline rating ratingComment createdAt updatedAt';
+  'code categoryKey title description location lat lng sentAt status slaDueAt imageFileIds resultImageFileIds channel timeline rating ratingComment createdAt updatedAt ' +
+  // Mini App cần biết yêu cầu thu hồi đang ở đâu để hiện đúng ghi chú cho người dân.
+  // `assignee`/`department` chỉ để TÍNH cờ "đã có người tiếp nhận" — `citizenView`
+  // xoá hai trường này trước khi trả ra, chúng là thông tin điều hành nội bộ.
+  'withdrawStatus withdrawRequestedAt withdrawReason withdrawDecidedAt withdrawDecisionNote assignee department';
 
 /**
  * Che số điện thoại công dân trước khi trả ra Web Quản trị — giữ 3 số đầu và 3 số
@@ -115,15 +125,42 @@ export class FeedbackService {
    * lọc theo `citizenPhone`), nên ở đây chỉ còn việc ký link — xem chú thích
    * `FilesService.mintSignedUrl` về việc vì sao không đi qua `assertCanSign`.
    */
-  private citizenView<T extends { slaDueAt?: Date | null; imageFileIds?: string[]; resultImageFileIds?: string[] }>(
-    doc: T,
-  ) {
+  private citizenView<
+    T extends {
+      slaDueAt?: Date | null;
+      imageFileIds?: string[];
+      resultImageFileIds?: string[];
+      status?: string;
+      assignee?: string;
+      department?: string;
+      withdrawStatus?: string;
+    },
+  >(doc: T) {
     const sign = (ids?: string[]) =>
       (ids ?? []).map((id) => this.files.mintSignedUrl(id, CITIZEN_IMAGE_URL_TTL_SECONDS));
+
+    /*
+     * `assignee` và `department` là thông tin điều hành nội bộ — công dân không
+     * cần biết phiếu đang nằm trên bàn ai. Nhưng Mini App PHẢI biết phiếu đã có
+     * người tiếp nhận chưa, để hiện đúng nút: "Sửa / Thu hồi ngay" hay "Xin thu
+     * hồi". Vì vậy rút gọn thành một cờ boolean rồi bỏ hai trường gốc đi.
+     */
+    const { assignee, department, ...rest } = doc as T & { assignee?: string; department?: string };
+    const accepted =
+      (doc.status ?? 'received') !== 'received' ||
+      Boolean(assignee?.trim()) ||
+      Boolean(department?.trim());
+
     return {
-      ...withSlaHoursLeft(doc),
+      ...withSlaHoursLeft(rest as T),
       imageUrls: sign(doc.imageFileIds),
       resultImageUrls: sign(doc.resultImageFileIds),
+      /** Đã có cán bộ tiếp nhận — Mini App khoá sửa và chuyển sang đường xin thu hồi */
+      accepted,
+      /** Sửa tiêu đề / nội dung được không (chỉ khi chưa ai tiếp nhận, chưa xin thu hồi) */
+      canEdit: !accepted && (doc.withdrawStatus ?? 'none') !== 'pending',
+      /** Gỡ được ngay không, hay phải chờ cán bộ duyệt */
+      canWithdrawDirectly: !accepted,
     };
   }
 
@@ -136,11 +173,17 @@ export class FeedbackService {
     const page = Math.max(1, query.page ?? DEFAULT_PAGE);
     const limit = Math.min(Math.max(1, query.limit ?? DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
 
-    const filter: FilterQuery<FeedbackDocument> = {};
+    /*
+     * Mặc định CHỈ hiện phiếu chưa gỡ. `deleted=true` mở bộ lọc "đã gỡ" để cán bộ
+     * tra lại phiếu công dân đã thu hồi — phiếu vẫn là tài liệu hành chính, chỉ
+     * không còn nằm trong hàng đợi xử lý.
+     */
+    const filter: FilterQuery<FeedbackDocument> = query.deleted ? IS_DELETED : { ...NOT_DELETED };
     if (query.categoryKey) filter.categoryKey = query.categoryKey;
     if (query.status) filter.status = query.status;
     if (query.department) filter.department = query.department;
     if (query.assignee) filter.assignee = query.assignee;
+    if (query.withdrawStatus) filter.withdrawStatus = query.withdrawStatus;
     if (query.q?.trim()) {
       const keyword = new RegExp(escapeRegex(query.q.trim()), 'i');
       filter.$or = [{ code: keyword }, { title: keyword }, { description: keyword }, { location: keyword }];
@@ -168,7 +211,10 @@ export class FeedbackService {
     const now = new Date();
     const from = new Date(now.getFullYear(), now.getMonth(), 1);
     const to = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-    const inMonth: FilterQuery<FeedbackDocument> = { createdAt: { $gte: from, $lt: to } };
+    const inMonth: FilterQuery<FeedbackDocument> = {
+      ...NOT_DELETED,
+      createdAt: { $gte: from, $lt: to },
+    };
 
     const [received, resolved, onTime, rating] = await Promise.all([
       this.feedbackModel.countDocuments(inMonth).exec(),
@@ -222,7 +268,7 @@ export class FeedbackService {
 
   /** Chi tiết một phiếu phản ánh */
   async detail(code: string) {
-    const doc = await this.feedbackModel.findOne({ code }).lean().exec();
+    const doc = await this.feedbackModel.findOne({ code, ...NOT_DELETED }).lean().exec();
     if (!doc) throw new NotFoundException(`Không tìm thấy phiếu phản ánh ${code}`);
     return toStaffView(doc);
   }
@@ -469,7 +515,7 @@ export class FeedbackService {
     const page = Math.max(1, query.page ?? DEFAULT_PAGE);
     const limit = Math.min(Math.max(1, query.limit ?? DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
 
-    const filter: FilterQuery<FeedbackDocument> = { citizenPhone };
+    const filter: FilterQuery<FeedbackDocument> = { citizenPhone, ...NOT_DELETED };
     if (query.status) filter.status = query.status;
     if (query.categoryKey) filter.categoryKey = query.categoryKey;
 
@@ -491,7 +537,7 @@ export class FeedbackService {
   /** Chi tiết phiếu của chính công dân — không phải của mình thì coi như không tồn tại */
   async detailMine(code: string, citizenPhone: string) {
     const doc = await this.feedbackModel
-      .findOne({ code, citizenPhone })
+      .findOne({ code, citizenPhone, ...NOT_DELETED })
       .select(CITIZEN_PROJECTION)
       .lean()
       .exec();
@@ -501,8 +547,7 @@ export class FeedbackService {
 
   /** Công dân đánh giá 1–5 sao, chỉ mở khi phiếu đã xử lý xong */
   async rateMine(code: string, citizenPhone: string, dto: RateFeedbackDto) {
-    const fb = await this.feedbackModel.findOne({ code, citizenPhone }).exec();
-    if (!fb) throw new NotFoundException(`Không tìm thấy phiếu phản ánh ${code}`);
+    const fb = await this.findOwnActive(code, citizenPhone);
     if (fb.status !== 'resolved') {
       throw new HttpException(
         'Chỉ đánh giá được khi phản ánh đã xử lý xong',
@@ -518,9 +563,184 @@ export class FeedbackService {
     return { code: fb.code, rating: fb.rating, ratingComment: fb.ratingComment };
   }
 
+  /**
+   * Sửa tiêu đề / mô tả phiếu của chính công dân — CHỈ khi chưa ai tiếp nhận.
+   *
+   * Mở cửa sổ sửa sau khi đã có cán bộ tiếp nhận là cho phép đổi nội dung dưới
+   * chân người đang xử lý: cán bộ đọc một đằng, phiếu ghi một nẻo, và bản ghi
+   * mất giá trị đối chứng. Vì vậy điều kiện giống hệt điều kiện gỡ thẳng.
+   *
+   * Mọi lần sửa đều ghi timeline — phiếu phản ánh là tài liệu hành chính, nội
+   * dung đổi lúc nào và đổi những trường nào phải truy được.
+   */
+  async updateMine(code: string, citizenPhone: string, dto: UpdateCitizenFeedbackDto) {
+    const fb = await this.findOwnActive(code, citizenPhone);
+    this.assertNotAccepted(fb, 'sửa');
+
+    const changed: string[] = [];
+    if (dto.title !== undefined && dto.title !== fb.title) {
+      fb.title = dto.title;
+      changed.push('tiêu đề');
+    }
+    if (dto.description !== undefined && dto.description !== fb.description) {
+      fb.description = dto.description;
+      changed.push('nội dung');
+    }
+    if (changed.length === 0) return this.citizenView(fb.toObject());
+
+    pushTimeline(
+      fb,
+      `Công dân sửa ${changed.join(' và ')}`,
+      timeLabel(new Date()),
+    );
+    await fb.save();
+    return this.citizenView(fb.toObject());
+  }
+
+  /**
+   * Công dân xin thu hồi phiếu của chính mình.
+   *
+   * Hai đường, quyết định bởi phiếu ĐÃ có người tiếp nhận hay chưa:
+   *
+   *   • CHƯA ai tiếp nhận → gỡ ngay. Chưa cán bộ nào bỏ công vào phiếu, giữ lại
+   *     chỉ làm nhiễu hàng đợi tiếp nhận.
+   *   • ĐÃ có người tiếp nhận → chuyển `pending`, chờ cán bộ có quyền duyệt.
+   *     Đã có người bỏ công xác minh, và phiếu có thể đang là căn cứ cho một
+   *     nhiệm vụ đã giao — người dân không được đơn phương rút.
+   *
+   * "Gỡ" ở đây là XOÁ MỀM, không phải xoá cứng: phiếu phản ánh là tài liệu hành
+   * chính có thời hạn lưu theo quy định. Người dân không còn thấy phiếu, cán bộ
+   * vẫn tra được ở bộ lọc "đã gỡ", và nhật ký giữ nguyên.
+   */
+  async requestWithdraw(code: string, citizenPhone: string, dto: WithdrawFeedbackDto) {
+    const fb = await this.findOwnActive(code, citizenPhone);
+
+    if (fb.withdrawStatus === 'pending') {
+      throw new HttpException(
+        'Yêu cầu thu hồi của phiếu này đang chờ cán bộ xác nhận',
+        HttpStatus.CONFLICT,
+      );
+    }
+
+    const reason = dto.reason?.trim() ?? '';
+    const now = new Date();
+    fb.withdrawReason = reason;
+    fb.withdrawRequestedAt = now;
+    const reasonSuffix = reason ? ` · Lý do: ${reason}` : '';
+
+    // Chưa ai tiếp nhận → gỡ ngay, không cần cán bộ duyệt
+    if (!this.isAccepted(fb)) {
+      fb.withdrawStatus = 'approved';
+      fb.withdrawDecidedAt = now;
+      pushTimeline(fb, 'Công dân thu hồi phản ánh', `${timeLabel(now)}${reasonSuffix}`);
+      markDeleted(fb, citizenPhone, reason || 'Công dân tự thu hồi khi chưa có người tiếp nhận');
+      await fb.save();
+      this.emitChanged('withdrawn', fb);
+      return { code: fb.code, removed: true, withdrawStatus: fb.withdrawStatus };
+    }
+
+    // Đã có người tiếp nhận → chờ cán bộ xác nhận
+    fb.withdrawStatus = 'pending';
+    pushTimeline(
+      fb,
+      'Công dân xin thu hồi phản ánh — chờ cán bộ xác nhận',
+      `${timeLabel(now)}${reasonSuffix}`,
+    );
+    await fb.save();
+    this.emitChanged('withdraw-requested', fb);
+    return { code: fb.code, removed: false, withdrawStatus: fb.withdrawStatus };
+  }
+
+  /** Cán bộ ĐỒNG Ý thu hồi — phiếu được gỡ khỏi màn hình người dân (xoá mềm) */
+  async approveWithdraw(code: string, dto: DecideWithdrawDto, actor: string) {
+    const fb = await this.findPendingWithdraw(code);
+    const note = dto.note?.trim() ?? '';
+    const now = new Date();
+
+    fb.withdrawStatus = 'approved';
+    fb.withdrawDecidedAt = now;
+    fb.withdrawDecidedBy = actor;
+    fb.withdrawDecisionNote = note;
+    pushTimeline(
+      fb,
+      'Cán bộ đồng ý thu hồi — phiếu đã gỡ',
+      `${timeLabel(now)} · ${actor}${note ? ` · ${note}` : ''}`,
+    );
+    markDeleted(fb, actor, fb.withdrawReason || 'Công dân xin thu hồi, cán bộ đồng ý');
+    await fb.save();
+
+    this.emitChanged('withdrawn', fb);
+    return { code: fb.code, withdrawStatus: fb.withdrawStatus, removed: true };
+  }
+
+  /**
+   * Cán bộ TỪ CHỐI thu hồi — phiếu quay lại xử lý bình thường.
+   *
+   * `note` bắt buộc ở DTO: người dân phải đọc được vì sao đơn của mình không
+   * được gỡ, nếu không họ chỉ thấy yêu cầu im lặng biến mất rồi gửi lại.
+   */
+  async rejectWithdraw(code: string, dto: DecideWithdrawDto, actor: string) {
+    const fb = await this.findPendingWithdraw(code);
+    const note = (dto.note ?? '').trim();
+    const now = new Date();
+
+    fb.withdrawStatus = 'rejected';
+    fb.withdrawDecidedAt = now;
+    fb.withdrawDecidedBy = actor;
+    fb.withdrawDecisionNote = note;
+    pushTimeline(fb, 'Cán bộ từ chối thu hồi', `${timeLabel(now)} · ${actor} · ${note}`);
+    await fb.save();
+
+    this.emitChanged('withdraw-rejected', fb);
+    return { code: fb.code, withdrawStatus: fb.withdrawStatus, removed: false };
+  }
+
   // ---------------------------------------------------------------------------
   // Hỗ trợ nội bộ
   // ---------------------------------------------------------------------------
+
+  /**
+   * Phiếu ĐÃ có người tiếp nhận hay chưa.
+   *
+   * "Chưa ai tiếp nhận" = còn nguyên trạng thái `received` VÀ chưa phân công ai.
+   * Kiểm cả hai chứ không riêng trạng thái: `assign()` có nhánh giữ nguyên
+   * `received` khi phiếu được giao mà chưa ai bắt tay làm, nên chỉ nhìn trạng
+   * thái sẽ cho người dân gỡ mất phiếu đã nằm trên bàn một cán bộ.
+   */
+  private isAccepted(fb: FeedbackDocument): boolean {
+    return fb.status !== 'received' || Boolean(fb.assignee?.trim()) || Boolean(fb.department?.trim());
+  }
+
+  /** Chặn thao tác chỉ dành cho phiếu chưa ai tiếp nhận, kèm lời giải thích cho dân */
+  private assertNotAccepted(fb: FeedbackDocument, action: string): void {
+    if (this.isAccepted(fb)) {
+      throw new HttpException(
+        `Phản ánh đã có cán bộ tiếp nhận nên không ${action} trực tiếp được. ` +
+          'Quý vị có thể gửi yêu cầu thu hồi để cán bộ xem xét.',
+        HttpStatus.CONFLICT,
+      );
+    }
+  }
+
+  /** Phiếu của chính công dân và CHƯA bị gỡ — không thoả thì coi như không tồn tại */
+  private async findOwnActive(code: string, citizenPhone: string): Promise<FeedbackDocument> {
+    const fb = await this.feedbackModel.findOne({ code, citizenPhone, ...NOT_DELETED }).exec();
+    if (!fb) throw new NotFoundException(`Không tìm thấy phiếu phản ánh ${code}`);
+    return fb;
+  }
+
+  /** Phiếu đang chờ duyệt thu hồi — dùng cho hai đường quyết định của cán bộ */
+  private async findPendingWithdraw(code: string): Promise<FeedbackDocument> {
+    const fb = await this.feedbackModel.findOne({ code, ...NOT_DELETED }).exec();
+    if (!fb) throw new NotFoundException(`Không tìm thấy phiếu phản ánh ${code}`);
+    if (fb.withdrawStatus !== 'pending') {
+      throw new HttpException(
+        'Phiếu này không có yêu cầu thu hồi nào đang chờ xác nhận',
+        HttpStatus.CONFLICT,
+      );
+    }
+    return fb;
+  }
 
   /**
    * Phát tín hiệu "phiếu phản ánh vừa đổi" qua Socket.IO (P5-05).
@@ -529,7 +749,16 @@ export class FeedbackService {
    * đã lọc theo quyền, nhờ vậy không rò rỉ SĐT công dân qua kênh WebSocket.
    * RealtimeService nuốt mọi lỗi nên lời gọi này không thể làm hỏng nghiệp vụ.
    */
-  private emitChanged(type: 'created' | 'assigned' | 'resolved', fb: FeedbackDocument): void {
+  private emitChanged(
+    type:
+      | 'created'
+      | 'assigned'
+      | 'resolved'
+      | 'withdraw-requested'
+      | 'withdraw-rejected'
+      | 'withdrawn',
+    fb: FeedbackDocument,
+  ): void {
     this.realtime.emitChange(
       REALTIME_EVENTS.FEEDBACK_CHANGED,
       { type, code: fb.code, status: fb.status, at: new Date().toISOString() },

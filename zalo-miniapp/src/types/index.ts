@@ -32,7 +32,28 @@ export interface FeedbackTicket {
   timeline: TimelineStep[];
   rating: number;
   ratingComment?: string;
+
+  // ---- Thu hồi phiếu ---------------------------------------------------------
+
+  /**
+   * Đã có cán bộ tiếp nhận chưa. Máy chủ tính hộ và chỉ trả cờ này — Mini App
+   * KHÔNG nhận tên cán bộ hay bộ phận, đó là thông tin điều hành nội bộ.
+   */
+  accepted: boolean;
+  /** Sửa được tiêu đề / nội dung không (chưa ai tiếp nhận và chưa xin thu hồi) */
+  canEdit: boolean;
+  /** Gỡ được ngay không, hay phải chờ cán bộ duyệt */
+  canWithdrawDirectly: boolean;
+  /** Trạng thái yêu cầu thu hồi: none | pending | approved | rejected */
+  withdrawStatus: WithdrawStatus;
+  /** Lý do người dân đã nêu khi xin thu hồi */
+  withdrawReason?: string;
+  /** Lý do cán bộ nêu khi TỪ CHỐI thu hồi — người dân cần đọc được */
+  withdrawDecisionNote?: string;
 }
+
+/** Trạng thái yêu cầu thu hồi phiếu — khớp WITHDRAW_STATUSES của backend */
+export type WithdrawStatus = "none" | "pending" | "approved" | "rejected";
 
 export type ArticleType = "news" | "event" | "notice";
 

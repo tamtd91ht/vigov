@@ -44,6 +44,11 @@ export const initialTickets: FeedbackTicket[] = [
       { title: "Đang khảo sát, chuẩn bị vật liệu vá đường", meta: "Từ 22/08/2026", current: true },
     ],
     rating: 0,
+    // Phiếu mẫu đều đã có cán bộ tiếp nhận: khoá sửa, thu hồi phải xin duyệt
+    accepted: true,
+    canEdit: false,
+    canWithdrawDirectly: false,
+    withdrawStatus: "none",
   },
   {
     code: "#PA-2026-0128",
@@ -63,6 +68,11 @@ export const initialTickets: FeedbackTicket[] = [
       { title: "Đang tổ chức thu gom, cắm biển cấm đổ rác", meta: "Từ 21/08/2026", current: true },
     ],
     rating: 0,
+    // Phiếu mẫu đều đã có cán bộ tiếp nhận: khoá sửa, thu hồi phải xin duyệt
+    accepted: true,
+    canEdit: false,
+    canWithdrawDirectly: false,
+    withdrawStatus: "none",
   },
   {
     code: "#PA-2026-0096",
@@ -82,6 +92,11 @@ export const initialTickets: FeedbackTicket[] = [
       { title: "Hoàn thành — đã đánh giá 5 sao", meta: "08/08/2026 17:10" },
     ],
     rating: 5,
+    // Phiếu mẫu đều đã có cán bộ tiếp nhận: khoá sửa, thu hồi phải xin duyệt
+    accepted: true,
+    canEdit: false,
+    canWithdrawDirectly: false,
+    withdrawStatus: "none",
     ratingComment: "Cán bộ xã xử lý rất nhanh, chỉ sau 5 ngày đã thay xong toàn bộ đèn.",
   },
 ];

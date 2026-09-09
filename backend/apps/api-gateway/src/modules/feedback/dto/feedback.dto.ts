@@ -1,7 +1,8 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
   IsIn,
   IsInt,
   IsNotEmpty,
@@ -23,6 +24,9 @@ export const FEEDBACK_STATUSES = ['received', 'processing', 'resolved'] as const
 
 /** Kênh gửi phản ánh */
 export const FEEDBACK_CHANNELS = ['app', 'zalo', 'web'] as const;
+
+/** Trạng thái yêu cầu thu hồi — khớp enum WITHDRAW_STATUSES trong Feedback schema */
+export const WITHDRAW_STATUSES = ['none', 'pending', 'approved', 'rejected'] as const;
 
 const MAX_TITLE_LENGTH = 200;
 const MIN_TITLE_LENGTH = 5;
@@ -52,6 +56,24 @@ export class ListFeedbackQueryDto {
   @IsOptional()
   @IsString()
   assignee?: string;
+
+  /** Lọc theo trạng thái yêu cầu thu hồi — Web Quản trị dùng để lọc "chờ duyệt" */
+  @IsOptional()
+  @IsIn(WITHDRAW_STATUSES, {
+    message: 'Trạng thái thu hồi chỉ nhận none, pending, approved hoặc rejected',
+  })
+  withdrawStatus?: string;
+
+  /**
+   * `true` = xem các phiếu ĐÃ gỡ thay vì danh sách đang xử lý.
+   *
+   * Query string luôn là chuỗi nên phải `Transform` tay: `@Type(() => Boolean)`
+   * biến mọi chuỗi khác rỗng thành `true`, kể cả `"false"`.
+   */
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  deleted?: boolean;
 
   /** Từ khoá tìm trong mã phiếu / tiêu đề / nội dung */
   @IsOptional()
@@ -236,4 +258,52 @@ export class RateFeedbackDto {
   @IsString()
   @MaxLength(MAX_NOTE_LENGTH, { message: `Nhận xét không vượt quá ${MAX_NOTE_LENGTH} ký tự` })
   ratingComment?: string;
+}
+
+/**
+ * Công dân sửa phiếu của chính mình — CHỈ tiêu đề và nội dung.
+ *
+ * KHÔNG cho sửa lĩnh vực, địa điểm, toạ độ hay ảnh: những trường đó quyết định
+ * SLA, bộ phận chủ trì và giá trị đối chứng của phiếu. Đổi chúng sau khi gửi là
+ * đổi cả hạn xử lý lẫn căn cứ xác minh, mà phiếu thì đã vào sổ tiếp nhận.
+ * Cần đổi thật thì thu hồi rồi gửi phiếu mới.
+ *
+ * Cả hai trường đều tuỳ chọn để người dân sửa riêng một thứ; service bỏ qua
+ * lượt gọi không đổi gì.
+ */
+export class UpdateCitizenFeedbackDto {
+  @IsOptional()
+  @IsString()
+  @MinLength(MIN_TITLE_LENGTH, { message: `Tiêu đề phải có ít nhất ${MIN_TITLE_LENGTH} ký tự` })
+  @MaxLength(MAX_TITLE_LENGTH, { message: `Tiêu đề không vượt quá ${MAX_TITLE_LENGTH} ký tự` })
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty({ message: 'Vui lòng mô tả nội dung phản ánh' })
+  @MaxLength(MAX_DESCRIPTION_LENGTH, { message: `Nội dung không vượt quá ${MAX_DESCRIPTION_LENGTH} ký tự` })
+  description?: string;
+}
+
+/** Công dân xin thu hồi phiếu của chính mình */
+export class WithdrawFeedbackDto {
+  /** Lý do thu hồi — không bắt buộc, người dân có quyền không nêu */
+  @IsOptional()
+  @IsString()
+  @MaxLength(MAX_NOTE_LENGTH, { message: `Lý do thu hồi không vượt quá ${MAX_NOTE_LENGTH} ký tự` })
+  reason?: string;
+}
+
+/**
+ * Cán bộ quyết định một yêu cầu thu hồi.
+ *
+ * `note` để tuỳ chọn ở đây vì đường ĐỒNG Ý không cần giải thích; đường TỪ CHỐI
+ * bắt buộc phải có, và controller kiểm riêng — người dân phải đọc được vì sao
+ * đơn của mình không được gỡ.
+ */
+export class DecideWithdrawDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(MAX_NOTE_LENGTH, { message: `Ghi chú không vượt quá ${MAX_NOTE_LENGTH} ký tự` })
+  note?: string;
 }

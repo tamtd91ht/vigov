@@ -199,7 +199,7 @@ export class ReportsService {
         .lean<TaskLean[]>()
         .exec(),
       this.feedbackModel
-        .find({}, 'code categoryKey status department sentAt createdAt')
+        .find(NOT_DELETED, 'code categoryKey status department sentAt createdAt')
         .lean<FeedbackLean[]>()
         .exec(),
       this.budgetModel

@@ -214,7 +214,9 @@ export class WorkflowService {
     }
 
     if (task.sourceType === SOURCE_TYPE_FEEDBACK) {
-      const feedback = await this.feedbackModel.findById(task.sourceRefId).exec();
+      const feedback = await this.feedbackModel
+        .findOne({ _id: task.sourceRefId, ...NOT_DELETED })
+        .exec();
       if (!feedback) return;
       feedback.status = FEEDBACK_STATUS_RESOLVED;
       feedback.timeline.push(step(`Hoàn thành xử lý theo nhiệm vụ ${taskCode}`, SYSTEM_ACTOR, 'cur'));
@@ -266,6 +268,7 @@ export class WorkflowService {
 
     const items = await this.feedbackModel
       .find({
+        ...NOT_DELETED,
         status: { $ne: FEEDBACK_STATUS_RESOLVED },
         slaDueAt: { $ne: null, $lte: threshold },
       })
@@ -347,7 +350,7 @@ export class WorkflowService {
   /** Lấy phiếu phản ánh theo id, báo lỗi tiếng Việt khi id sai hoặc không tồn tại */
   private async loadFeedback(feedbackId: string): Promise<FeedbackDocument> {
     if (!isValidObjectId(feedbackId)) throw new BadRequestException('Mã phiếu phản ánh không hợp lệ');
-    const feedback = await this.feedbackModel.findById(feedbackId).exec();
+    const feedback = await this.feedbackModel.findOne({ _id: feedbackId, ...NOT_DELETED }).exec();
     if (!feedback) throw new NotFoundException('Không tìm thấy phiếu phản ánh');
     return feedback;
   }

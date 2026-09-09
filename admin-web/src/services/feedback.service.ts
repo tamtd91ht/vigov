@@ -63,6 +63,11 @@ interface FeedbackApiItem {
   resultImageFileIds?: string[];
   /** Mã nhiệm vụ đã sinh ra từ phiếu này — backend đặt khi chuyển thành công việc */
   linkedTaskCode?: string;
+  /** Yêu cầu thu hồi của người dân — 'pending' là đang chờ cán bộ xác nhận */
+  withdrawStatus?: string;
+  withdrawReason?: string;
+  withdrawRequestedAt?: string;
+  withdrawDecisionNote?: string;
 }
 
 /** Bộ lọc danh sách gửi lên server */
@@ -160,6 +165,10 @@ function toCitizenFeedback(raw: FeedbackApiItem): CitizenFeedback {
     imageFileIds: raw.imageFileIds ?? [],
     resultImageFileIds: raw.resultImageFileIds ?? [],
     linkedTaskCode: raw.linkedTaskCode || undefined,
+    withdrawStatus: (raw.withdrawStatus as CitizenFeedback["withdrawStatus"]) ?? "none",
+    withdrawReason: raw.withdrawReason || undefined,
+    withdrawRequestedAt: raw.withdrawRequestedAt || undefined,
+    withdrawDecisionNote: raw.withdrawDecisionNote || undefined,
   };
 }
 
@@ -272,6 +281,41 @@ export const feedbackService = {
       });
     }
     return toCitizenFeedback(await apiClient.patch<FeedbackApiItem>(`/feedback/${codePath(code)}/resolve`, input));
+  },
+
+  /**
+   * Đồng ý cho người dân thu hồi phiếu — phiếu được gỡ khỏi hàng đợi xử lý.
+   *
+   * "Gỡ" là XOÁ MỀM: phiếu phản ánh là tài liệu hành chính có thời hạn lưu theo
+   * quy định, nên nó biến mất khỏi danh sách của cả hai bên nhưng vẫn tra lại
+   * được ở bộ lọc "Đã gỡ", kèm nguyên vẹn nhật ký xử lý.
+   */
+  async approveWithdraw(code: string, note?: string): Promise<CitizenFeedback> {
+    if (appConfig.api.useMocks) {
+      return mockDelay({ ...mockDetail(code), withdrawStatus: "approved" as const });
+    }
+    return toCitizenFeedback(
+      await apiClient.patch<FeedbackApiItem>(`/feedback/${codePath(code)}/withdraw/approve`, { note }),
+    );
+  },
+
+  /**
+   * Từ chối yêu cầu thu hồi — phiếu quay lại xử lý bình thường.
+   *
+   * `note` BẮT BUỘC (backend trả 400 nếu thiếu): người dân đọc lý do này trên
+   * Mini App. Không có nó thì yêu cầu của họ chỉ im lặng biến mất.
+   */
+  async rejectWithdraw(code: string, note: string): Promise<CitizenFeedback> {
+    if (appConfig.api.useMocks) {
+      return mockDelay({
+        ...mockDetail(code),
+        withdrawStatus: "rejected" as const,
+        withdrawDecisionNote: note,
+      });
+    }
+    return toCitizenFeedback(
+      await apiClient.patch<FeedbackApiItem>(`/feedback/${codePath(code)}/withdraw/reject`, { note }),
+    );
   },
 
   /**

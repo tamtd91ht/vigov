@@ -1,7 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Feedback, type FeedbackDocument, ROLES, SlaRule, type SlaRuleDocument } from '@vigov/shared';
+import { Feedback, type FeedbackDocument, ROLES, SlaRule, type SlaRuleDocument,
+  NOT_DELETED,
+} from '@vigov/shared';
 import {
   CreateFeedbackCategoryDto,
   CreateOrgNodeDto,
@@ -267,7 +269,7 @@ export class SettingsService {
    * Quy tắc SLA gắn kèm thì xoá theo, vì nó vô nghĩa khi không còn lĩnh vực.
    */
   async removeCategory(key: string) {
-    const used = await this.feedbackModel.countDocuments({ categoryKey: key }).exec();
+    const used = await this.feedbackModel.countDocuments({ categoryKey: key, ...NOT_DELETED }).exec();
     if (used > 0) {
       throw new BadRequestException(
         `Không thể xoá lĩnh vực đang có ${used} phiếu phản ánh. Hãy chuyển các phiếu sang lĩnh vực khác trước.`,

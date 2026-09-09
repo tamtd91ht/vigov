@@ -552,3 +552,64 @@ Chi tiết rủi ro bảo mật và 12 việc bắt buộc trước production: 
 
 `02-ADMIN-WEB.md` · `03-ZALO-MINIAPP.md` · `04-TRIEN-KHAI.md` ·
 `../SECURITY.md` · `../deploy/README.md` · `../plans/` (plan chi tiết từng task)
+
+---
+
+## Thu hồi và sửa phản ánh (người dân)
+
+Người dân gửi nhầm, gửi trùng, hoặc sự việc đã tự giải quyết — cần đường rút phiếu lại.
+Nhưng phiếu phản ánh là **tài liệu hành chính**, và có thể đã có cán bộ bỏ công xác minh,
+nên không thể để người dân đơn phương xoá bất cứ lúc nào.
+
+### Ranh giới: "đã có người tiếp nhận" hay chưa
+
+```
+đã tiếp nhận = status !== 'received'  HOẶC  có assignee  HOẶC  có department
+```
+
+Kiểm cả ba chứ không riêng trạng thái: `assign()` có nhánh giữ nguyên `received` khi phiếu
+được giao mà chưa ai bắt tay làm, nên chỉ nhìn trạng thái sẽ cho người dân gỡ mất phiếu đã
+nằm trên bàn một cán bộ.
+
+### Hai nhánh nghiệp vụ
+
+| Tình huống | Người dân làm được gì | Kết quả |
+|---|---|---|
+| **CHƯA ai tiếp nhận** | Sửa tiêu đề / nội dung · Gỡ thẳng | Phiếu bị **xoá mềm** ngay, `withdrawStatus = 'approved'` |
+| **ĐÃ có người tiếp nhận** | Chỉ xin thu hồi | `withdrawStatus = 'pending'`, chờ cán bộ quyết |
+
+### Endpoint
+
+| Method | Đường dẫn | Quyền | Việc |
+|---|---|---|---|
+| `PATCH` | `/feedback/citizen/mine/:code` | Công dân (chủ phiếu) | Sửa `title` / `description`; 409 nếu đã có người tiếp nhận |
+| `POST` | `/feedback/citizen/mine/:code/withdraw` | Công dân (chủ phiếu) | Xin thu hồi. Trả `{ removed, withdrawStatus }` |
+| `PATCH` | `/feedback/:code/withdraw/approve` | `feedback:approve` | Đồng ý → phiếu bị xoá mềm |
+| `PATCH` | `/feedback/:code/withdraw/reject` | `feedback:approve` | Từ chối; `note` **bắt buộc** (400 nếu thiếu) |
+
+Quyền duyệt là `approve` chứ không phải `edit`: gỡ một phiếu khỏi hàng đợi là quyết định
+về tài liệu hành chính, không phải thao tác xử lý thường ngày. Theo bảng vai trò hiện
+hành, chỉ `leader` và `admin` quyết được — chuyên viên đang xử lý không tự đóng phiếu
+của mình.
+
+### Trường mới trên phiếu
+
+`withdrawStatus` (`none|pending|approved|rejected`, có index) · `withdrawRequestedAt` ·
+`withdrawReason` · `withdrawDecidedAt` · `withdrawDecidedBy` · `withdrawDecisionNote`.
+
+Nhóm endpoint công dân còn trả ba **cờ suy ra** để Mini App hiện đúng nút:
+`accepted` · `canEdit` · `canWithdrawDirectly`. Máy chủ tính hộ và **không** trả
+`assignee`/`department` cho công dân — đó là thông tin điều hành nội bộ.
+
+### "Gỡ" là XOÁ MỀM, không phải xoá cứng
+
+`Feedback` nay `extends SoftDeletable`. Phiếu đã gỡ biến mất khỏi danh sách của **cả hai
+bên** và khỏi thống kê, nhưng cán bộ tra lại được bằng `GET /feedback?deleted=true`, kèm
+nguyên vẹn nhật ký xử lý. Sáu module truy vấn `feedbacks` (feedback, reports, dashboard,
+search, settings, workflow) đều đã thêm bộ lọc `NOT_DELETED` — sót một chỗ là phiếu đã gỡ
+hiện lại trên báo cáo cuối tháng.
+
+Chốt chống spam `FEEDBACK_MAX_PER_DAY` vẫn đếm **cả phiếu đã gỡ**, có chủ ý: nếu không,
+gửi 5 phiếu rồi thu hồi cả 5 là lại gửi được tiếp.
+
+Kiểm chứng: `test/feedback-withdraw.e2e-spec.ts` (20 test).

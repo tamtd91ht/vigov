@@ -72,7 +72,7 @@ export class SearchService {
         : Promise.resolve([]),
       types.includes('feedback')
         ? this.feedbackModel
-            .find(textFilter, TEXT_SCORE)
+            .find({ ...textFilter, ...NOT_DELETED }, TEXT_SCORE)
             .sort(TEXT_SCORE)
             .limit(limit)
             .select('code title status categoryKey')

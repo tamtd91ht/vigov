@@ -75,6 +75,123 @@ function ImagePanel({
   );
 }
 
+/**
+ * Khối quyết định yêu cầu thu hồi của người dân.
+ *
+ * Đồng ý thì phiếu bị gỡ khỏi hàng đợi — việc không tự hoàn tác được từ giao
+ * diện, nên nút Đồng ý phải qua một bước xác nhận. Từ chối thì bắt buộc nêu lý
+ * do: người dân đọc đúng dòng đó trên Mini App, thiếu nó thì với họ yêu cầu chỉ
+ * im lặng biến mất và họ sẽ gửi lại.
+ */
+function WithdrawRequestPanel({
+  item,
+  saving,
+  onApprove,
+  onReject,
+}: {
+  item: CitizenFeedback;
+  saving: boolean;
+  onApprove: (note: string) => void;
+  onReject: (note: string) => void;
+}) {
+  const { showToast } = useToast();
+  const [note, setNote] = useState("");
+  const [confirmingApprove, setConfirmingApprove] = useState(false);
+
+  return (
+    <div
+      style={{
+        background: "rgba(231,76,60,.06)",
+        border: "1px solid rgba(231,76,60,.32)",
+        borderRadius: 10,
+        padding: "13px 15px",
+        marginBottom: 16,
+      }}
+    >
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
+        <Icon name="alert" size={16} />
+        <strong style={{ color: "var(--red)", fontSize: 13 }}>
+          Người dân xin thu hồi phản ánh này
+        </strong>
+      </div>
+
+      <div style={{ fontSize: 12.5, lineHeight: 1.65, marginBottom: 10 }}>
+        {item.withdrawReason ? (
+          <>
+            <span className="muted">Lý do người dân nêu: </span>
+            {item.withdrawReason}
+          </>
+        ) : (
+          <span className="muted">Người dân không nêu lý do.</span>
+        )}
+        <div className="muted" style={{ marginTop: 4 }}>
+          Đồng ý thì phiếu được gỡ khỏi danh sách xử lý và khỏi màn hình của người dân.
+          Hồ sơ vẫn lưu và tra lại được ở bộ lọc “Đã gỡ”.
+        </div>
+      </div>
+
+      <div className="fgroup" style={{ marginBottom: 10 }}>
+        <label htmlFor="fb-withdraw-note">
+          Ý kiến của cán bộ <span className="muted">(bắt buộc khi từ chối)</span>
+        </label>
+        <textarea
+          id="fb-withdraw-note"
+          className="finp"
+          rows={2}
+          value={note}
+          maxLength={1000}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="Ví dụ: sự việc đang được xử lý, đề nghị giữ phiếu để theo dõi kết quả."
+        />
+      </div>
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button
+          className="btn"
+          type="button"
+          disabled={saving}
+          onClick={() => {
+            if (!note.trim()) {
+              showToast("Vui lòng nêu lý do từ chối để người dân được biết");
+              return;
+            }
+            onReject(note.trim());
+          }}
+        >
+          Từ chối thu hồi
+        </button>
+
+        {confirmingApprove ? (
+          <>
+            <button
+              className="btn pri"
+              type="button"
+              disabled={saving}
+              onClick={() => onApprove(note.trim())}
+            >
+              <Icon name="check" size={15} />
+              Xác nhận gỡ phiếu
+            </button>
+            <button className="btn" type="button" disabled={saving} onClick={() => setConfirmingApprove(false)}>
+              Huỷ
+            </button>
+          </>
+        ) : (
+          <button
+            className="btn"
+            type="button"
+            disabled={saving}
+            style={{ marginLeft: "auto" }}
+            onClick={() => setConfirmingApprove(true)}
+          >
+            Đồng ý thu hồi
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export interface FeedbackDrawerProps {
   item: CitizenFeedback | null;
   onClose: () => void;
@@ -86,6 +203,10 @@ export interface FeedbackDrawerProps {
   onResolve: (code: string, note: string, resultImageFileIds: string[]) => void;
   /** Bấm "Chuyển thành công việc" — gọi POST /workflow/feedback-to-task */
   onCreateTask: (item: CitizenFeedback) => void;
+  /** Đồng ý cho người dân thu hồi phiếu — phiếu được gỡ (xoá mềm) */
+  onApproveWithdraw: (code: string, note: string) => void;
+  /** Từ chối thu hồi; lý do BẮT BUỘC vì người dân đọc được trên Mini App */
+  onRejectWithdraw: (code: string, note: string) => void;
   /** true khi đang gửi yêu cầu lên máy chủ — khoá các nút thao tác */
   saving?: boolean;
 }
@@ -98,6 +219,8 @@ export function FeedbackDrawer({
   onTransfer,
   onResolve,
   onCreateTask,
+  onApproveWithdraw,
+  onRejectWithdraw,
   saving = false,
 }: FeedbackDrawerProps) {
   const { showToast } = useToast();
@@ -326,7 +449,22 @@ export function FeedbackDrawer({
               {status.label}
             </Chip>
             <Chip color={sla.color}>{sla.text}</Chip>
+            {item.withdrawStatus === "pending" && <Chip color="var(--red)">Xin thu hồi</Chip>}
           </div>
+
+          {/*
+            Yêu cầu thu hồi của người dân — đặt TRÊN CÙNG, trước cả cảnh báo chưa
+            phân công. Đây là việc chặn: người dân đang chờ trả lời, và mọi thao
+            tác xử lý khác trên phiếu đều vô nghĩa cho tới khi cán bộ quyết.
+          */}
+          {item.withdrawStatus === "pending" && (
+            <WithdrawRequestPanel
+              item={item}
+              saving={saving}
+              onApprove={(note) => onApproveWithdraw(item.code, note)}
+              onReject={(note) => onRejectWithdraw(item.code, note)}
+            />
+          )}
 
           {unassigned && (
             <div

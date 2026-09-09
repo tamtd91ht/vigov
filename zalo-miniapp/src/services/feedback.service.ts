@@ -3,7 +3,7 @@ import type { FeedbackCategory } from "@/config/categories";
 import { apiClient, buildQuery, mockDelay, resolveApiUrl, type Paged } from "@/services/api";
 import { filesService } from "@/services/files.service";
 import { initialTickets } from "@/mocks/feedback.mock";
-import type { FeedbackTicket, TicketStatus, TimelineStep } from "@/types";
+import type { FeedbackTicket, TicketStatus, TimelineStep, WithdrawStatus } from "@/types";
 
 /**
  * Phản ánh của công dân — nhóm endpoint /feedback/citizen/** (cần JWT công dân).
@@ -35,6 +35,12 @@ interface ApiFeedback {
   timeline?: { title: string; meta?: string; state?: string }[];
   rating?: number;
   ratingComment?: string;
+  accepted?: boolean;
+  canEdit?: boolean;
+  canWithdrawDirectly?: boolean;
+  withdrawStatus?: string;
+  withdrawReason?: string;
+  withdrawDecisionNote?: string;
 }
 
 export interface CreateFeedbackInput {
@@ -93,7 +99,25 @@ function toTicket(raw: ApiFeedback): FeedbackTicket {
     timeline: toTimeline(raw.timeline),
     rating: raw.rating ?? 0,
     ratingComment: raw.ratingComment || undefined,
+    /*
+     * Mặc định AN TOÀN khi máy chủ chưa trả cờ (bản backend cũ, hoặc nhánh mock):
+     * coi như ĐÃ tiếp nhận, tức KHÔNG cho sửa và KHÔNG cho gỡ thẳng. Đoán sai
+     * theo hướng này thì người dân phải xin duyệt một lần thừa; đoán sai theo
+     * hướng ngược lại thì họ gỡ mất phiếu cán bộ đang xử lý.
+     */
+    accepted: raw.accepted ?? true,
+    canEdit: raw.canEdit ?? false,
+    canWithdrawDirectly: raw.canWithdrawDirectly ?? false,
+    withdrawStatus: toWithdrawStatus(raw.withdrawStatus),
+    withdrawReason: raw.withdrawReason || undefined,
+    withdrawDecisionNote: raw.withdrawDecisionNote || undefined,
   };
+}
+
+const WITHDRAW_STATUSES: WithdrawStatus[] = ["none", "pending", "approved", "rejected"];
+
+function toWithdrawStatus(value: string | undefined): WithdrawStatus {
+  return WITHDRAW_STATUSES.includes(value as WithdrawStatus) ? (value as WithdrawStatus) : "none";
 }
 
 /** Mã phiếu chứa '#' nên luôn phải mã hoá trước khi ghép vào URL */
@@ -131,6 +155,11 @@ function createMockTicket(input: CreateFeedbackInput): FeedbackTicket {
       { title: "Chờ tiếp nhận & phân công", meta: "Trong giờ hành chính", current: true },
     ],
     rating: 0,
+    // Phiếu vừa gửi thì chưa ai tiếp nhận — sửa và gỡ thẳng được
+    accepted: false,
+    canEdit: true,
+    canWithdrawDirectly: true,
+    withdrawStatus: "none",
   };
   mockSeq += 1;
   mockStore.unshift(ticket);
@@ -211,5 +240,57 @@ export const feedbackService = {
       rating,
       ratingComment: ratingComment.trim() || undefined,
     });
+  },
+
+  /**
+   * Sửa tiêu đề / nội dung phiếu — máy chủ chỉ nhận khi CHƯA có cán bộ tiếp nhận.
+   *
+   * Không tự kiểm điều kiện ở đây: giao diện ẩn nút dựa trên `canEdit`, nhưng
+   * người dân có thể mở màn từ lúc phiếu chưa ai nhận rồi bấm Lưu sau khi cán bộ
+   * vừa tiếp nhận. Máy chủ là nơi quyết định, giao diện chỉ hiển thị lỗi trả về.
+   */
+  async updateMine(code: string, input: { title: string; description: string }): Promise<FeedbackTicket> {
+    if (appConfig.api.useMocks) {
+      await mockDelay();
+      const found = mockStore.find((t) => t.code === code);
+      if (!found) throw new Error("Không tìm thấy phiếu phản ánh");
+      found.title = input.title;
+      found.description = input.description;
+      return found;
+    }
+    return toTicket(
+      await apiClient.patch<ApiFeedback>(`/feedback/citizen/mine/${codePath(code)}`, {
+        title: input.title,
+        description: input.description,
+      }),
+    );
+  },
+
+  /**
+   * Xin thu hồi phiếu.
+   *
+   * `removed: true` — phiếu đã gỡ ngay (chưa ai tiếp nhận), màn danh sách sẽ
+   * không còn phiếu này. `removed: false` — yêu cầu chuyển sang chờ cán bộ xác
+   * nhận, phiếu vẫn hiện kèm ghi chú.
+   */
+  async withdrawMine(code: string, reason: string): Promise<{ removed: boolean; withdrawStatus: WithdrawStatus }> {
+    if (appConfig.api.useMocks) {
+      await mockDelay();
+      const index = mockStore.findIndex((t) => t.code === code);
+      if (index < 0) throw new Error("Không tìm thấy phiếu phản ánh");
+      const ticket = mockStore[index];
+      if (ticket.canWithdrawDirectly) {
+        mockStore.splice(index, 1);
+        return { removed: true, withdrawStatus: "approved" };
+      }
+      ticket.withdrawStatus = "pending";
+      ticket.withdrawReason = reason.trim() || undefined;
+      return { removed: false, withdrawStatus: "pending" };
+    }
+    const res = await apiClient.post<{ removed: boolean; withdrawStatus: string }>(
+      `/feedback/citizen/mine/${codePath(code)}/withdraw`,
+      { reason: reason.trim() || undefined },
+    );
+    return { removed: res.removed, withdrawStatus: toWithdrawStatus(res.withdrawStatus) };
   },
 };

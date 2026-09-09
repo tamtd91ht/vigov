@@ -1,8 +1,24 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { SoftDeletable } from './soft-delete';
 import { TimelineStep, TimelineStepSchema } from './task.schema';
 
 export type FeedbackDocument = HydratedDocument<Feedback>;
+
+/**
+ * Trạng thái yêu cầu THU HỒI phiếu do chính người dân gửi.
+ *
+ *   • `none`     — không có yêu cầu nào (mặc định, và là giá trị của mọi phiếu cũ)
+ *   • `pending`  — người dân đã xin thu hồi, phiếu ĐÃ có người tiếp nhận nên chờ
+ *                  cán bộ có quyền duyệt quyết định
+ *   • `approved` — cán bộ đồng ý; phiếu được xoá mềm ngay trong cùng lượt ghi
+ *   • `rejected` — cán bộ từ chối; phiếu quay lại xử lý bình thường
+ *
+ * Phiếu CHƯA ai tiếp nhận thì người dân gỡ được ngay, không đi qua `pending` —
+ * xem `FeedbackService.requestWithdraw`.
+ */
+export const WITHDRAW_STATUSES = ['none', 'pending', 'approved', 'rejected'] as const;
+export type WithdrawStatus = (typeof WITHDRAW_STATUSES)[number];
 
 /**
  * Phiếu phản ánh của người dân (WBS #6/#13) — nguồn gửi từ Zalo Mini App
@@ -10,7 +26,7 @@ export type FeedbackDocument = HydratedDocument<Feedback>;
  * và FeedbackTicket (mobile / zalo-miniapp).
  */
 @Schema({ collection: 'feedbacks', timestamps: true })
-export class Feedback {
+export class Feedback extends SoftDeletable {
   /** Mã phiếu hiển thị: #PA-2026-0141 */
   @Prop({ required: true, unique: true, index: true })
   code: string;
@@ -111,6 +127,44 @@ export class Feedback {
   /** Mã nhiệm vụ đã tạo từ phản ánh này (workflow P3-30) */
   @Prop()
   linkedTaskCode?: string;
+
+  // ---- Thu hồi phiếu theo yêu cầu của người dân -----------------------------
+
+  /**
+   * Trạng thái yêu cầu thu hồi. Có index vì Web Quản trị lọc "chờ duyệt thu hồi"
+   * để cán bộ không phải mở từng phiếu mới biết có ai xin gỡ.
+   */
+  @Prop({ enum: WITHDRAW_STATUSES, default: 'none', index: true })
+  withdrawStatus: WithdrawStatus;
+
+  /** Lúc người dân bấm xin thu hồi */
+  @Prop()
+  withdrawRequestedAt?: Date;
+
+  /** Lý do người dân nêu khi xin thu hồi (không bắt buộc) */
+  @Prop({ default: '' })
+  withdrawReason: string;
+
+  /** Lúc cán bộ duyệt hoặc từ chối */
+  @Prop()
+  withdrawDecidedAt?: Date;
+
+  /**
+   * TÊN ĐĂNG NHẬP (`JwtPayload.username`) của cán bộ đã quyết định — KHÔNG phải
+   * `displayName`, thống nhất với `SoftDeletable.deletedBy`: hai cán bộ có thể
+   * trùng họ tên, nhật ký kiểm toán tra theo tên đăng nhập.
+   */
+  @Prop({ default: '' })
+  withdrawDecidedBy: string;
+
+  /**
+   * Lý do cán bộ nêu khi TỪ CHỐI thu hồi.
+   *
+   * Bắt buộc ở tầng DTO cho đường từ chối: người dân phải biết vì sao đơn của
+   * mình không được gỡ, nếu không họ chỉ thấy yêu cầu im lặng biến mất.
+   */
+  @Prop({ default: '' })
+  withdrawDecisionNote: string;
 }
 
 export const FeedbackSchema = SchemaFactory.createForClass(Feedback);

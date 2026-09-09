@@ -14,6 +14,8 @@ import request from 'supertest';
 import { SlaRule, type SlaRuleDocument, StaffUser, type StaffUserDocument } from '@vigov/shared';
 
 const ADMIN = { username: 'binh.nv', password: 'ViGov@2026' };
+/** Mã tạm thời dùng để định danh công dân trong test */
+const OTP_BYPASS = '246810';
 const CITIZEN_PHONE = '0987654321';
 const TEST_TIMEOUT_MS = 180_000;
 
@@ -30,6 +32,16 @@ describe('ViGov API — smoke Phase 1', () => {
     process.env.MONGO_URI = mongo.getUri('vigov-test');
     process.env.JWT_SECRET = 'test-secret';
     process.env.NODE_ENV = 'test';
+    /* Định danh công dân bằng mã tạm thời có sẵn của ứng dụng
+       (CITIZEN_OTP_BYPASS_CODE) thay vì đọc mã thật.
+
+       VÌ SAO ĐỔI: hai test này trước đây thò vào `AuthService.otpStore` và coi
+       nó là một `Map`. Từ khi kho OTP được viết lại cho chạy nhiều instance
+       (TB-08) thì nó là một lớp có driver memory|mongo và CHỈ lưu HMAC của mã —
+       không còn đọc ngược ra mã rõ được nữa, nên cả hai tệp test đỏ. Dùng mã
+       tạm là dùng đúng cơ chế ứng dụng đã có, không phải cửa sau riêng cho test. */
+    process.env.CITIZEN_OTP_BYPASS_CODE = OTP_BYPASS;
+
 
     // Import sau khi đặt biến môi trường để ConfigModule đọc đúng URI
     const { AppModule } = await import('../apps/api-gateway/src/app.module');
@@ -141,16 +153,9 @@ describe('ViGov API — smoke Phase 1', () => {
   it('công dân định danh bằng OTP rồi gửi phản ánh', async () => {
     await api().post('/api/v1/auth/citizen/otp/request').send({ phone: CITIZEN_PHONE }).expect(201);
 
-    // Lấy mã OTP từ AuthService (Phase 1 chưa gửi SMS thật)
-    const { AuthService } = await import('../apps/api-gateway/src/modules/auth/auth.service');
-    const auth = app.get(AuthService);
-    const otpStore = (auth as unknown as { otpStore: Map<string, { code: string }> }).otpStore;
-    const otp = otpStore.get(CITIZEN_PHONE)?.code;
-    expect(otp).toBeDefined();
-
     const verified = await api()
       .post('/api/v1/auth/citizen/otp/verify')
-      .send({ phone: CITIZEN_PHONE, otp })
+      .send({ phone: CITIZEN_PHONE, otp: OTP_BYPASS })
       .expect(201);
     citizenToken = verified.body.accessToken;
     expect(citizenToken).toBeDefined();

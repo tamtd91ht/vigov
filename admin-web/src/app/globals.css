@@ -430,3 +430,12 @@ textarea.finp{resize:vertical;min-height:88px}
 video.vplay-fill{object-fit:contain;background:#000}
 .vplay-msg{position:absolute;inset:0;display:grid;place-items:center;
   color:rgba(255,255,255,.72);font-size:13px}
+
+/* ---------- TRÌNH XEM ẢNH ĐẦY ĐỦ (lightbox) ---------- */
+/* Ảnh hiện trường là căn cứ nghiệm thu: phải xem được ở tỉ lệ GỐC, không bị
+   khung nào bó chiều rộng. max-width/max-height theo khung nhìn + width/height
+   auto ⇒ ảnh vuông ra vuông, ảnh dọc ra dọc, ảnh nhỏ không bị phóng to vỡ hạt. */
+.lightbox{position:fixed;inset:0;z-index:1000;background:rgba(8,12,18,.92);display:grid;place-items:center;padding:24px;cursor:zoom-out}
+.lightbox img{max-width:96vw;max-height:92vh;width:auto;height:auto;object-fit:contain;display:block;cursor:default;border-radius:4px}
+.lightbox-close{position:fixed;top:14px;right:18px;width:44px;height:44px;border:0;border-radius:50%;background:rgba(255,255,255,.14);color:#fff;font-size:26px;line-height:1;cursor:pointer}
+.lightbox-close:hover{background:rgba(255,255,255,.24)}

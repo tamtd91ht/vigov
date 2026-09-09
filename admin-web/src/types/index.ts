@@ -189,7 +189,22 @@ export interface CitizenFeedback {
   resultImageFileIds?: string[];
   /** Mã nhiệm vụ đã sinh ra từ phiếu này (nếu đã bấm "Chuyển thành công việc") */
   linkedTaskCode?: string;
+
+  /**
+   * Trạng thái yêu cầu THU HỒI do người dân gửi từ Zalo Mini App.
+   * `pending` = đang chờ cán bộ xác nhận; xem `FeedbackDrawer`.
+   */
+  withdrawStatus?: WithdrawStatus;
+  /** Lý do người dân nêu khi xin thu hồi */
+  withdrawReason?: string;
+  /** Lúc người dân gửi yêu cầu (chuỗi ISO) */
+  withdrawRequestedAt?: string;
+  /** Lý do cán bộ nêu khi từ chối — người dân đọc được trên Mini App */
+  withdrawDecisionNote?: string;
 }
+
+/** Trạng thái yêu cầu thu hồi phiếu — khớp WITHDRAW_STATUSES của backend */
+export type WithdrawStatus = "none" | "pending" | "approved" | "rejected";
 
 /** Lớp bản đồ kinh tế số */
 export interface MapLayer {

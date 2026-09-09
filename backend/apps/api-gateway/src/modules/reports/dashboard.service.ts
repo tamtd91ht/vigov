@@ -66,7 +66,7 @@ export class DashboardService {
       // NOT_DELETED — nhiệm vụ / văn bản đã xoá mềm không tính vào thẻ thống kê
       this.taskModel.find(NOT_DELETED).lean().exec(),
       this.docModel.find(NOT_DELETED).lean().exec(),
-      this.feedbackModel.find().lean().exec(),
+      this.feedbackModel.find(NOT_DELETED).lean().exec(),
       this.budgetModel.find({ year }).lean().exec(),
     ]);
 

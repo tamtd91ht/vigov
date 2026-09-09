@@ -151,6 +151,39 @@ export function FeedbackPage() {
     );
   }
 
+  /**
+   * Đồng ý cho người dân thu hồi — phiếu bị gỡ khỏi hàng đợi.
+   *
+   * Không dùng `runWrite`: phiếu đã gỡ KHÔNG còn trong danh sách mặc định nữa,
+   * nên vá tại chỗ như các thao tác khác sẽ để lại một dòng ma. Phải đóng drawer
+   * rồi tải lại cả danh sách và thống kê từ máy chủ.
+   */
+  function handleApproveWithdraw(code: string, note: string) {
+    setSaving(true);
+    void (async () => {
+      try {
+        await feedbackService.approveWithdraw(code, note || undefined);
+        showToast(`Đã gỡ phiếu ${code} theo yêu cầu của người dân`);
+        setOpenCode(null);
+        list.reload();
+        stats.reload();
+      } catch (err) {
+        showToast(errorMessage(err, "Không gỡ được phiếu phản ánh"));
+      } finally {
+        setSaving(false);
+      }
+    })();
+  }
+
+  /** Từ chối thu hồi — phiếu ở lại hàng đợi, người dân đọc được lý do trên Mini App */
+  function handleRejectWithdraw(code: string, note: string) {
+    void runWrite(
+      () => feedbackService.rejectWithdraw(code, note),
+      (updated) => `Đã từ chối thu hồi phiếu ${updated.code} · Người dân sẽ thấy lý do trên Mini App`,
+      "Không gửi được quyết định từ chối",
+    );
+  }
+
   /** Nút "Chuyển thành công việc" — gọi /workflow/feedback-to-task */
   function handleCreateTask(item: CitizenFeedback) {
     if (!item.id) return;
@@ -226,6 +259,8 @@ export function FeedbackPage() {
         onTransfer={handleTransfer}
         onResolve={handleResolve}
         onCreateTask={handleCreateTask}
+        onApproveWithdraw={handleApproveWithdraw}
+        onRejectWithdraw={handleRejectWithdraw}
         saving={saving}
       />
     </div>
