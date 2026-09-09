@@ -28,6 +28,9 @@ interface ApiFeedback {
   status: string;
   slaHoursLeft?: number | null;
   imageFileIds?: string[];
+  /** Link đọc ảnh đã ký sẵn — chỉ có ở nhóm endpoint của công dân */
+  imageUrls?: string[];
+  resultImageUrls?: string[];
   timeline?: { title: string; meta?: string; state?: string }[];
   rating?: number;
   ratingComment?: string;
@@ -41,11 +44,11 @@ export interface CreateFeedbackInput {
   lat?: number;
   lng?: number;
   /**
-   * Ô màu giữ chỗ cho ảnh đã đính kèm ở bước 2 — KHÔNG phải đường dẫn ảnh.
-   * Ảnh thật chỉ xem trước được trong lúc soạn (đường dẫn tạm của Zalo);
-   * gửi lên máy chủ phải qua module Files, chưa mở cho Mini App (WBS #24).
+   * Mã tệp ảnh hiện trường đã tải lên kho tệp dùng chung.
+   * Ảnh được tải lên ngay khi người dùng chọn (xem usePickedImages), nên tới
+   * lúc gửi phiếu chỉ còn việc kèm mã.
    */
-  imageColors: string[];
+  imageFileIds: string[];
 }
 
 function toStatus(value: string): TicketStatus {
@@ -54,16 +57,6 @@ function toStatus(value: string): TicketStatus {
 
 function toTimeline(steps: ApiFeedback["timeline"]): TimelineStep[] {
   return (steps ?? []).map((s) => ({ title: s.title, meta: s.meta ?? "", current: s.state === "cur" }));
-}
-
-/**
- * Ảnh hiện trường: backend chỉ trả mã tệp (imageFileIds). Đường dẫn tải ảnh
- * cho công dân thuộc module Files (WBS #24) và chưa mở cho Mini App, nên
- * Phase 1 vẫn hiển thị bằng ô màu — đúng số ảnh đã đính kèm.
- */
-function toImageColors(fileIds: string[] | undefined): string[] {
-  const palette = appConfig.imagePlaceholderColors;
-  return (fileIds ?? []).map((_, i) => palette[i % palette.length]);
 }
 
 function toTicket(raw: ApiFeedback): FeedbackTicket {
@@ -76,7 +69,8 @@ function toTicket(raw: ApiFeedback): FeedbackTicket {
     sentAt: raw.sentAt ?? "",
     status: toStatus(raw.status),
     slaHoursLeft: Math.round(raw.slaHoursLeft ?? 0),
-    imageColors: toImageColors(raw.imageFileIds),
+    imageUrls: raw.imageUrls ?? [],
+    resultImageUrls: raw.resultImageUrls ?? [],
     timeline: toTimeline(raw.timeline),
     rating: raw.rating ?? 0,
     ratingComment: raw.ratingComment || undefined,
@@ -108,7 +102,11 @@ function createMockTicket(input: CreateFeedbackInput): FeedbackTicket {
     sentAt: stamp(now),
     status: "received",
     slaHoursLeft: input.category.resolveDays * 24,
-    imageColors: input.imageColors,
+    /* Nhánh mock: `uploadFeedbackImage` trả về chính đường dẫn tạm của Zalo
+       làm "mã tệp", nên dùng thẳng làm link xem ảnh — ảnh vẫn hiện đúng trong
+       phiên đang chạy, đủ để trình diễn luồng gửi phiếu khi không có backend. */
+    imageUrls: input.imageFileIds,
+    resultImageUrls: [],
     timeline: [
       { title: "Công dân gửi phản ánh", meta: `${stamp(now)} · Zalo Mini App` },
       { title: "Chờ tiếp nhận & phân công", meta: "Trong giờ hành chính", current: true },
@@ -157,8 +155,9 @@ export const feedbackService = {
       location: input.location,
       lat: input.lat,
       lng: input.lng,
-      // Upload ảnh lên module Files chưa mở cho Mini App (WBS #24) nên chưa gửi
-      // imageFileIds; ô màu người dùng chọn chỉ là placeholder phía giao diện.
+      // Backend đòi ảnh phải là tệp riêng tư (TB-09) — files.service đã tải lên
+      // với isPrivate=true, nên chỉ còn gửi mã tệp
+      imageFileIds: input.imageFileIds.length ? input.imageFileIds : undefined,
       channel: "zalo",
     });
     return toTicket(created);

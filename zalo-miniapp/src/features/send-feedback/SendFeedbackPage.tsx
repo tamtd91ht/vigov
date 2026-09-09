@@ -15,6 +15,7 @@ import { StepProgress } from "./StepProgress";
 import { CategoryStep } from "./CategoryStep";
 import { DetailStep, type DetailErrors, type LocationState } from "./DetailStep";
 import { ConfirmStep } from "./ConfirmStep";
+import { usePickedImages } from "./usePickedImages";
 import { ResultView } from "./ResultView";
 
 const TOTAL_STEPS = 3;
@@ -24,6 +25,8 @@ const FALLBACK_LOCATION = "Chưa xác định vị trí";
 const TOAST_INVALID = "Vui lòng kiểm tra lại thông tin";
 const TOAST_SENT = "Đã gửi phản ánh";
 const TOAST_FAILED = "Gửi phản ánh không thành công, vui lòng thử lại";
+const TOAST_UPLOADING = "Ảnh đang được tải lên, vui lòng đợi giây lát";
+const TOAST_IMAGE_FAILED = "Có ảnh chưa tải lên được — bấm “Thử lại” trên ảnh, hoặc xoá ảnh đó";
 
 /**
  * Nhờ máy chủ tra địa chỉ cho vị trí đã có (P3-26).
@@ -73,7 +76,9 @@ export function SendFeedbackPage() {
   const [category, setCategory] = useState<FeedbackCategory | null>(null);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [images, setImages] = useState<string[]>([]);
+  /* Ảnh được tải lên NGAY khi chọn (xem usePickedImages), nên tới bước gửi chỉ
+     còn việc kèm mã tệp — không phải chờ tải trong lúc tạo phiếu. */
+  const pickedImages = usePickedImages();
   const [location, setLocation] = useState<LocationState>({ status: "idle", address: "" });
   const [editingAddress, setEditingAddress] = useState(false);
   const [errors, setErrors] = useState<DetailErrors>({});
@@ -146,7 +151,11 @@ export function SendFeedbackPage() {
     window.scrollTo(0, 0);
   }, [step, ticket]);
 
-  const dirty = category !== null || title.trim() !== "" || description.trim() !== "" || images.length > 0;
+  const dirty =
+    category !== null ||
+    title.trim() !== "" ||
+    description.trim() !== "" ||
+    pickedImages.images.length > 0;
 
   function handleBack() {
     if (dirty) setAskLeave(true);
@@ -182,6 +191,19 @@ export function SendFeedbackPage() {
         showToast(TOAST_INVALID);
         return;
       }
+      /*
+       * Chặn ở đây thay vì ở bước gửi: sang bước 3 rồi mới báo "ảnh chưa xong"
+       * thì người dùng phải quay lại một bước để sửa. Ảnh lỗi buộc phải thử lại
+       * hoặc xoá — im lặng bỏ ảnh là gửi thiếu bằng chứng mà người gửi không biết.
+       */
+      if (pickedImages.uploading) {
+        showToast(TOAST_UPLOADING);
+        return;
+      }
+      if (pickedImages.hasFailed) {
+        showToast(TOAST_IMAGE_FAILED);
+        return;
+      }
       setStep(3);
     }
   }
@@ -198,13 +220,9 @@ export function SendFeedbackPage() {
         location: location.address.trim() || FALLBACK_LOCATION,
         lat: location.lat,
         lng: location.lng,
-        // Đường dẫn ảnh của Zalo chỉ sống trong lúc soạn phiếu: là tệp tạm của
-        // webview, không gửi được lên máy chủ (module Files chưa mở cho Mini
-        // App — WBS #24) và hết hiệu lực khi mở lại app. Nên phiếu đã gửi giữ
-        // đúng SỐ ảnh dưới dạng ô màu, khớp cách backend trả về imageFileIds.
-        imageColors: images.map(
-          (_, i) => appConfig.imagePlaceholderColors[i % appConfig.imagePlaceholderColors.length],
-        ),
+        // Mã tệp của ảnh đã nằm sẵn trong kho tệp — ảnh được tải lên từ lúc
+        // người dùng chọn, không phải lúc bấm gửi.
+        imageFileIds: pickedImages.fileIds,
       });
       setTicket(created);
       showToast(TOAST_SENT);
@@ -248,8 +266,11 @@ export function SendFeedbackPage() {
             onTitleChange={setTitle}
             description={description}
             onDescriptionChange={setDescription}
-            images={images}
-            onImagesChange={setImages}
+            images={pickedImages.images}
+            onPickImages={() => void pickedImages.pick()}
+            onRetryImage={(key) => void pickedImages.retry(key)}
+            onRemoveImage={pickedImages.remove}
+            picking={pickedImages.picking}
             location={location}
             onAddressChange={(value) => setLocation((prev) => ({ ...prev, address: value }))}
             editingAddress={editingAddress}
@@ -264,7 +285,7 @@ export function SendFeedbackPage() {
             category={category}
             title={title}
             description={description}
-            images={images}
+            images={pickedImages.images}
             location={location}
           />
         )}

@@ -85,6 +85,7 @@ thẳng SDK.
 | `scanQrCode()` | Quét mã tra cứu hồ sơ |
 | `getLocation()` | Toạ độ GPS đính kèm phản ánh |
 | `chooseImage()` | Chọn ảnh hiện trường |
+| `readImageBlob(uri)` | Đọc ảnh đã chọn thành Blob để tải lên máy chủ |
 | `call(phone)` / `openChat(phone)` | Gọi và nhắn cán bộ từ danh bạ |
 
 **Vì sao cần adapter:** `zmp-sdk` chỉ chạy được bên trong Zalo. Adapter cho phép
@@ -94,6 +95,31 @@ có nhánh mô phỏng khi `appConfig.api.useMocks = true`.
 > **Hệ quả khi kiểm thử.** Chạy trên trình duyệt thì các tính năng gốc của Zalo
 > đều là mô phỏng. Muốn nghiệm thu thật (lấy số điện thoại, quét QR, GPS, chọn
 > ảnh, gọi điện) **bắt buộc chạy trong ứng dụng Zalo trên máy thật**.
+
+### 4b. Ảnh hiện trường — từ máy người dân tới phiếu phản ánh
+
+Ảnh đi qua bốn bước, và bước nào cũng có lý do riêng:
+
+1. **Chọn** — `chooseImage()` trả `filePaths`, dùng trực tiếp làm `src` thẻ `<img>`
+   để xem trước. Đây là tệp **tạm** của webview: hết hiệu lực khi đóng app.
+2. **Đọc thành Blob** — `readImageBlob(uri)`. Thử `fetch` trước; nhiều webview chặn
+   `fetch` trên `file://` dù thẻ `<img>` vẫn tải được, nên khi trượt thì rơi sang
+   **canvas**: nạp bằng `<img>` rồi `toBlob`. Đường canvas đồng thời **thu nhỏ ảnh về
+   cạnh dài 1600px** (ảnh camera nay 4–12MB, vượt hạn mức tệp và tốn 4G của người dân)
+   và **bỏ EXIF** — thẻ EXIF chứa toạ độ GPS nơi chụp, dữ liệu cá nhân theo NĐ 13/2023
+   mà người gửi không biết mình đang gửi.
+3. **Tải lên NGAY khi chọn**, không dồn tới lúc bấm gửi — `services/files.service.ts`
+   + `usePickedImages`. Mỗi ô ảnh có trạng thái riêng (`uploading` / `done` / `error`),
+   ảnh lỗi hiện viền đỏ kèm nút "Thử lại" và lý do bằng chữ. Còn ảnh đang tải hoặc còn
+   ảnh lỗi thì **không cho sang bước 3** — im lặng bỏ ảnh là gửi thiếu bằng chứng mà
+   người gửi không biết.
+4. **Gửi phiếu** với `imageFileIds`; xem lại thì đọc `imageUrls` / `resultImageUrls`.
+
+> **Cần nghiệm thu trên máy thật.** Bước 2 là chỗ duy nhất còn rủi ro: hình dạng
+> `filePaths` khác nhau theo phiên bản Zalo và hệ điều hành, mà cả `fetch` lẫn canvas
+> đều có thể trượt (canvas bị "nhiễm" nếu nguồn ảnh khác gốc mà không có CORS). Trên
+> trình duyệt thường và bản mock thì đường `fetch` luôn chạy, nên **lỗi ở đây không
+> lộ ra khi kiểm thử trên máy tính**.
 
 ---
 
@@ -115,6 +141,7 @@ có nhánh mô phỏng khi `appConfig.api.useMocks = true`.
 | `VITE_MAP_CENTER_LAT` · `VITE_MAP_CENTER_LNG` · `VITE_MAP_ZOOM` | Tâm và mức thu phóng lúc mở màn Bản đồ |
 | `VITE_USE_MOCKS` | Mặc định `false`. `true` để trình diễn offline |
 | `VITE_ZALO_APP_ID`, `VITE_ZALO_OA_ID` | Điền sau khi khách đăng ký Zalo OA |
+| `VITE_MAX_FILE_SIZE` | Dung lượng tối đa mỗi ảnh (byte). **Phải khớp `STORAGE_MAX_FILE_SIZE`** của backend — lệch thì người dân chờ tải hết ảnh rồi mới nhận 413 |
 | `VITE_DEMO_MODE` | Mặc định `true` — bản demo. Xem mục 5b |
 
 ### 5b. Chế độ demo
@@ -150,8 +177,11 @@ Nhóm công khai, **không cần token**:
 Nhóm cần token công dân:
 
 - `POST /auth/citizen/otp/request` → `/verify`, hoặc `/auth/citizen/zalo/identify`
-- `POST /feedback/citizen` — gửi phản ánh kèm ảnh và toạ độ GPS
-- `GET /feedback/citizen/mine`, `/citizen/mine/:code`
+- `POST /files/upload` — tải ảnh hiện trường lên kho tệp (`purpose=feedback`,
+  `isPrivate=true`); trả mã tệp để gửi kèm phiếu
+- `POST /feedback/citizen` — gửi phản ánh kèm `imageFileIds` và toạ độ GPS
+- `GET /feedback/citizen/mine`, `/citizen/mine/:code` — trả kèm `imageUrls` và
+  `resultImageUrls` là link đọc ảnh đã ký sẵn, hiệu lực 1 giờ
 
 ### 6b. Gia hạn phiên khi token hết hạn
 

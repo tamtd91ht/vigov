@@ -150,11 +150,17 @@ export function buildQuery(params: Record<string, string | number | boolean | un
 
 /** Một lượt gửi yêu cầu với token cho trước */
 async function send(path: string, token: string | null, init?: RequestInit): Promise<Response> {
+  /*
+   * Thân multipart PHẢI để trình duyệt tự đặt Content-Type, vì chỉ nó biết
+   * chuỗi `boundary` ngăn các phần. Đặt "application/json" như mặc định bên
+   * dưới là máy chủ không tách được phần tệp và trả 400.
+   */
+  const isMultipart = init?.body instanceof FormData;
   try {
     return await fetch(`${appConfig.api.baseUrl}${path}`, {
       ...init,
       headers: {
-        "Content-Type": "application/json",
+        ...(isMultipart ? {} : { "Content-Type": "application/json" }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...init?.headers,
       },
@@ -207,6 +213,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const apiClient = {
   get: <T>(path: string) => request<T>(path),
+  /**
+   * Gửi multipart/form-data (tải tệp lên `/files/upload`).
+   *
+   * Đi qua đúng `request()` như mọi lời gọi khác để dùng lại cơ chế gia hạn
+   * token: tải ảnh là việc người dùng làm sau khi app đã mở một lúc, đúng lúc
+   * access token dễ hết hạn nhất.
+   */
+  upload: <T>(path: string, form: FormData) => request<T>(path, { method: "POST", body: form }),
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) }),
   patch: <T>(path: string, body?: unknown) =>

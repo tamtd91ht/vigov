@@ -340,6 +340,11 @@ song có chủ ý:
   còn trong kho, chỉ gỡ liên kết).
 - `GET /tasks/:code` trả thêm `attachmentFiles: [{ fileId, name, size, contentType }]`
   tra từ `FilesService`, đồng thời **giữ nguyên** `attachments`.
+- **MỌI phản hồi chi tiết nhiệm vụ đều kèm `attachmentFiles`**, kể cả các endpoint
+  ghi không liên quan tệp: `PATCH /tasks/:code`, `PATCH /tasks/:code/checklist/:index`,
+  `POST /tasks/:code/comments`. Web Quản trị thay NGUYÊN bản ghi đang mở bằng phản hồi
+  này, nên một phản hồi thiếu trường đó làm danh sách tệp biến mất khỏi ngăn chi tiết
+  cho tới lần tải lại trang.
 - Quyền: `tasks:edit`, cùng mức với mọi thao tác sửa nhiệm vụ khác.
 - Tệp phải được tải lên với **`isPrivate = true`** (quy ước **TB-09** trong
   `../SECURITY.md`) — hồ sơ minh chứng là tài liệu nội bộ, mà `GET /files/:id`
@@ -359,6 +364,15 @@ song có chủ ý:
 - `GET /documents/:arrivalNo` trả thêm `attachmentFiles`; **danh sách
   `GET /documents` KHÔNG kèm** — mỗi tệp là một lượt tra kho tệp, gắn vào danh
   sách là N+1 truy vấn cho thông tin không hiện ở bảng.
+- `POST /documents` và `PATCH /documents/:arrivalNo` cũng kèm `attachmentFiles`, cùng
+  lý do như bên nhiệm vụ.
+- Mốc dòng thời gian ghi khi gắn/gỡ tệp phải dùng `state: 'ok' | 'cur'` — enum của
+  `TimelineStep` chỉ có hai giá trị đó. Giá trị ngoài enum làm Mongoose ném
+  `ValidationError` ở `save()`, và vì đó không phải `HttpException` nên cả lời gọi
+  trả **500** thay vì lỗi có nghĩa.
+- `deadline` của văn bản **không** đặt `required` trong schema: form "Tiếp nhận văn
+  bản" cho bỏ trống ô hạn (vào sổ trước, ấn định hạn sau), mà Mongoose không cho chuỗi
+  rỗng vượt qua `required`.
 
 **Cưỡng chế tệp riêng tư.** `FilesService.findPrivateById(id, label)` là chỗ duy
 nhất kiểm quy ước TB-09, dùng ở tất cả các đường gắn tệp vào bản ghi nghiệp vụ:
@@ -367,6 +381,35 @@ kèm văn bản. Trước đây đó chỉ là quy ước ghi trong tài liệu,
 trong giao diện quên đặt `isPrivate` là tệp lọt ra ngoài mà không ai biết. Tệp
 nội dung CMS (ảnh bìa, audio, video) vẫn công khai **có chủ ý** — đó là nội dung
 đăng cho công dân xem.
+
+**Hai đường cấp link đọc tệp riêng tư.** Tệp riêng tư chỉ đọc được qua link ký sẵn,
+và có đúng hai cách lấy link — khác nhau ở chỗ ai kiểm quyền:
+
+| Đường | Dùng khi | Kiểm quyền |
+|---|---|---|
+| `GET /files/:id/signed-url` | Client cầm sẵn mã tệp và tự xin link (Web Quản trị) | `FilesService.assertCanSign` — cán bộ ký được mọi tệp; **công dân chỉ ký được tệp do chính mình tải lên** (`uploadedBy`) |
+| `FilesService.mintSignedUrl(id, ttl)` | Service đã tự kiểm quyền trên **bản ghi nghiệp vụ** rồi tự cấp link kèm phản hồi | Không kiểm lại — nơi gọi chịu trách nhiệm |
+
+Vì sao cần đường thứ hai: `assertCanSign` phân quyền theo *người tải lên*, nên ảnh
+nghiệm thu do **cán bộ** chụp bị chặn với chính **công dân** chủ phiếu. Quyền đúng ở
+đây là quyền trên *phiếu*, mà chỉ `FeedbackService` biết. Nên
+`GET /feedback/citizen/mine` và `GET /feedback/citizen/mine/:code` — hai endpoint đã
+lọc `{ code, citizenPhone }` ngay trong truy vấn — trả kèm:
+
+- `imageUrls: string[]` — link đọc ảnh hiện trường
+- `resultImageUrls: string[]` — link đọc ảnh nghiệm thu
+
+Hiệu lực `CITIZEN_IMAGE_URL_TTL_SECONDS` = 1 giờ (dài hơn mặc định 5 phút của kho tệp:
+người dân mở màn "Phản ánh của tôi" rồi để đó, cuộn lại sau vài chục phút vẫn phải thấy
+ảnh). `POST /feedback/citizen` cũng trả kèm hai trường này.
+
+`mintSignedUrl` **không** tra bản ghi tệp: `listMine` trả tới 50 phiếu × 3 ảnh, tra từng
+mã là 150 lượt truy vấn cho một việc chỉ cần một phép HMAC. Mã tệp sai chỉ dẫn tới link
+trả 404 khi mở, còn `isPrivate` vẫn được kiểm ở `openForStream` lúc đọc tệp thật.
+
+> ⚠️ **Chỉ gọi `mintSignedUrl` với mã tệp lấy ra từ một bản ghi đã lọc theo chủ sở hữu.**
+> Endpoint nhận mã tệp thẳng từ client thì phải dùng `signedUrl()` để đi qua
+> `assertCanSign`. Xem **TB-16** trong `../SECURITY.md`.
 
 **Tiếp nhận phản ánh trực tiếp tại xã (WBS #6).** `POST /feedback`
 (`feedback:edit`) cho cán bộ lập phiếu hộ người dân đến trình bày tại trụ sở;

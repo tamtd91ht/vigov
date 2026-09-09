@@ -347,8 +347,14 @@ export class TasksService {
     });
   }
 
-  /** Cập nhật nhiệm vụ; đổi trạng thái / tiến độ sẽ ghi thêm mục nhật ký */
-  async update(code: string, dto: UpdateTaskDto, user?: JwtPayload): Promise<TaskDocument> {
+  /**
+   * Cập nhật nhiệm vụ; đổi trạng thái / tiến độ sẽ ghi thêm mục nhật ký.
+   *
+   * Trả về qua `withAttachmentFiles` như endpoint chi tiết: Web Quản trị thay
+   * NGUYÊN bản ghi đang mở bằng phản hồi này, nên thiếu `attachmentFiles` là
+   * danh sách tệp minh chứng biến mất khỏi ngăn chi tiết ngay sau khi lưu.
+   */
+  async update(code: string, dto: UpdateTaskDto, user?: JwtPayload): Promise<Record<string, unknown>> {
     const task = await this.findByCode(code);
     const actor = user?.displayName ?? SYSTEM_ACTOR;
 
@@ -389,7 +395,7 @@ export class TasksService {
     await task.save();
     // Cập nhật thời gian thực (P5-05): chỉ báo khi trạng thái đổi, tránh làm phiền client
     if (statusChanged) this.emitTaskChanged('status', task);
-    return task;
+    return this.withAttachmentFiles(task);
   }
 
   /**
@@ -401,7 +407,7 @@ export class TasksService {
     index: number,
     done: boolean | undefined,
     user?: JwtPayload,
-  ): Promise<TaskDocument> {
+  ): Promise<Record<string, unknown>> {
     const task = await this.findByCode(code);
     if (!Number.isInteger(index) || index < 0 || index >= task.checklist.length) {
       throw new NotFoundException(`Không tìm thấy việc con số ${index} trong nhiệm vụ ${code}`);
@@ -425,11 +431,15 @@ export class TasksService {
     await task.save();
     // Tick hết việc con làm nhiệm vụ chuyển sang "chờ duyệt" — lãnh đạo cần biết ngay (P5-05)
     if (statusChanged) this.emitTaskChanged('status', task);
-    return task;
+    return this.withAttachmentFiles(task);
   }
 
   /** Thêm bình luận trao đổi trong nhiệm vụ */
-  async addComment(code: string, dto: CreateCommentDto, user?: JwtPayload): Promise<TaskDocument> {
+  async addComment(
+    code: string,
+    dto: CreateCommentDto,
+    user?: JwtPayload,
+  ): Promise<Record<string, unknown>> {
     const task = await this.findByCode(code);
     const authorName = user?.displayName ?? SYSTEM_ACTOR;
 
@@ -442,7 +452,7 @@ export class TasksService {
     });
 
     await task.save();
-    return task;
+    return this.withAttachmentFiles(task);
   }
 
   /** Xoá nhiệm vụ — chỉ quản trị hệ thống */

@@ -90,6 +90,15 @@ const MOCK_IMAGE_URI =
       "</svg>",
   );
 
+/**
+ * Cạnh dài nhất của ảnh sau khi thu nhỏ để gửi (điểm ảnh), cùng định dạng và
+ * mức nén. 1600px đủ để cán bộ đọc được biển số, mặt đường, vết nứt trên màn
+ * hình Web Quản trị; giữ nguyên ảnh gốc 12MP chỉ làm người dân tốn 4G.
+ */
+const IMAGE_MAX_EDGE = 1600;
+const IMAGE_MIME = "image/jpeg";
+const IMAGE_QUALITY = 0.85;
+
 /** Kết quả quét — mang theo lỗi để màn hình nói được vì sao hỏng */
 export interface ScanResult {
   content: string | null;
@@ -593,17 +602,10 @@ export const zaloService = {
   },
 
   /**
-   * Chọn ảnh từ album hoặc camera.
-   *
-   * Trả về đường dẫn các tệp đã chọn, mảng rỗng nghĩa là người dùng huỷ hoặc
-   * không gọi được. Tải ảnh lên máy chủ thuộc phần đính kèm phản ánh, chưa làm.
-   */
-  /**
    * Mở trình chọn ảnh của Zalo, trả về đường dẫn các tệp đã chọn.
    *
-   * `filePaths` của zmp-sdk dùng được trực tiếp làm `src` của thẻ `<img>` —
-   * đó là cách duy nhất hiện có để xem trước ảnh, vì module Files chưa mở cho
-   * Mini App (WBS #24) nên không upload rồi lấy URL về được.
+   * `filePaths` dùng được trực tiếp làm `src` của thẻ `<img>` để xem trước;
+   * muốn gửi lên máy chủ thì đọc thành Blob bằng `readImageBlob` bên dưới.
    *
    * Nhánh mock trả về một data-URI SVG thật, không phải chuỗi giả: chuỗi giả
    * làm thẻ img hỏng ảnh khi phát triển trên trình duyệt thường.
@@ -619,4 +621,84 @@ export const zaloService = {
       [],
     );
   },
+
+  /**
+   * Đọc một đường dẫn ảnh của Zalo thành Blob để gửi lên `/files/upload`.
+   *
+   * VÌ SAO CẦN HAI ĐƯỜNG: `filePaths` không phải URL http — tuỳ phiên bản
+   * Zalo và hệ điều hành, nó là `blob:`, `file://` hay một scheme riêng của
+   * webview. `fetch` đọc được `blob:` và data-URI, nhưng nhiều webview chặn
+   * `fetch` trên `file://` (trả TypeError) trong khi thẻ `<img>` vẫn tải được
+   * chính đường dẫn đó. Nên khi `fetch` trượt thì vẽ ảnh qua canvas rồi lấy
+   * Blob — đường này chạy được với mọi thứ `<img>` hiển thị nổi.
+   *
+   * Canvas làm ảnh mất dữ liệu EXIF và mã lại thành JPEG. Đổi lại là ảnh gửi
+   * được; và với ảnh phản ánh thì bỏ EXIF là điều NÊN làm — thẻ EXIF chứa toạ
+   * độ GPS nơi chụp, dữ liệu cá nhân theo NĐ 13/2023 mà người gửi không biết
+   * mình đang gửi.
+   *
+   * Ném lỗi khi cả hai đường đều trượt — nơi gọi phải nói cho người dùng biết
+   * ảnh nào không gửi được, không được lặng lẽ bỏ ảnh.
+   */
+  async readImageBlob(uri: string): Promise<Blob> {
+    try {
+      const res = await fetch(uri);
+      if (res.ok) {
+        const blob = await res.blob();
+        if (blob.size > 0) return blob;
+      }
+      console.debug(`[zalo] fetch ảnh trả ${res.status}, chuyển sang canvas`);
+    } catch (err: unknown) {
+      console.debug("[zalo] fetch ảnh thất bại, chuyển sang canvas", err);
+    }
+    return drawToBlob(uri);
+  },
 };
+
+/**
+ * Nạp ảnh bằng thẻ `<img>` rồi vẽ lên canvas để lấy Blob.
+ *
+ * Đồng thời THU NHỎ ảnh về `IMAGE_MAX_EDGE`: ảnh camera điện thoại nay 4–12MB,
+ * vượt hạn mức tệp của máy chủ và tốn dữ liệu di động của người dân, trong khi
+ * cán bộ xem trên màn hình chỉ cần cỡ 1600px là rõ mọi chi tiết cần thiết.
+ */
+async function drawToBlob(uri: string): Promise<Blob> {
+  const image = await loadImageElement(uri);
+
+  const scale = Math.min(1, IMAGE_MAX_EDGE / Math.max(image.naturalWidth, image.naturalHeight));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Thiết bị không dựng được ảnh để gửi");
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+  return new Promise<Blob>((resolve, reject) => {
+    /*
+     * `toBlob` gọi lại với `null` khi canvas bị "nhiễm" (tainted) vì ảnh đến từ
+     * nguồn khác gốc mà không có CORS. Không bắt trường hợp này thì lời hứa
+     * treo mãi và người dùng thấy vòng xoay không bao giờ dừng.
+     */
+    canvas.toBlob(
+      (blob) => {
+        if (blob && blob.size > 0) resolve(blob);
+        else reject(new Error("Không đọc được ảnh đã chọn trên thiết bị này"));
+      },
+      IMAGE_MIME,
+      IMAGE_QUALITY,
+    );
+  });
+}
+
+/** Nạp một đường dẫn ảnh thành thẻ `<img>` đã sẵn kích thước */
+function loadImageElement(uri: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    // Xin CORS để canvas không bị nhiễm nếu nguồn ảnh có trả header phù hợp
+    image.crossOrigin = "anonymous";
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Không mở được ảnh đã chọn"));
+    image.src = uri;
+  });
+}

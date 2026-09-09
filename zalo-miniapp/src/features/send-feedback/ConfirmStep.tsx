@@ -3,6 +3,7 @@ import { Chip, Note } from "@/components/common";
 import { slaText, type FeedbackCategory } from "@/config/categories";
 import { appConfig } from "@/config/app.config";
 import { AttachmentThumb, type LocationState } from "./DetailStep";
+import type { PickedImage } from "./usePickedImages";
 
 /** Số ký tự mô tả hiển thị rút gọn ở màn xác nhận */
 const DESC_PREVIEW_LEN = 180;
@@ -35,7 +36,7 @@ export function ConfirmStep({
   category: FeedbackCategory;
   title: string;
   description: string;
-  images: string[];
+  images: PickedImage[];
   location: LocationState;
 }) {
   return (
@@ -62,10 +63,10 @@ export function ConfirmStep({
             <div className="sm muted">Không đính kèm ảnh</div>
           ) : (
             <div style={{ display: "flex", gap: 8 }}>
-              {images.map((uri, i) => (
+              {images.map((image, i) => (
                 <AttachmentThumb
-                  key={`${uri}-${i}`}
-                  uri={uri}
+                  key={image.key}
+                  uri={image.uri}
                   index={i}
                   style={{ width: SWATCH_SIZE, height: SWATCH_SIZE }}
                 />

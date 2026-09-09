@@ -48,7 +48,14 @@ export class IncomingDocument {
   @Prop({ required: true })
   summary: string;
 
-  @Prop({ required: true })
+  /**
+   * Hạn xử lý dd/MM/yyyy, RỖNG khi văn bản không có hạn.
+   *
+   * Không đặt `required` được: form "Tiếp nhận văn bản" cho phép bỏ trống ô hạn
+   * (vào sổ trước, ấn định hạn sau), mà với Mongoose chuỗi rỗng KHÔNG vượt qua
+   * `required` — cả lời gọi đổ thành 500 ngay ở bước vào sổ.
+   */
+  @Prop({ default: '' })
   deadline: string;
 
   @Prop({ index: true })

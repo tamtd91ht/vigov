@@ -46,6 +46,16 @@ const SPAM_WINDOW_HOURS = 24;
 const MS_PER_HOUR = 3_600_000;
 const MS_PER_DAY = 24 * MS_PER_HOUR;
 
+/**
+ * Hiệu lực link đọc ảnh cấp cho công dân (giây).
+ *
+ * 1 giờ, dài hơn mặc định 5 phút của kho tệp: người dân mở màn "Phản ánh của
+ * tôi" rồi để đó, cuộn lại sau vài chục phút vẫn phải thấy ảnh chứ không phải
+ * ô ảnh vỡ. Vẫn ngắn hơn nhiều một phiên đăng nhập, nên link lỡ bị chia sẻ ra
+ * ngoài cũng tự hết hiệu lực.
+ */
+const CITIZEN_IMAGE_URL_TTL_SECONDS = 60 * 60;
+
 /** Trường trả về cho công dân — ẩn thông tin điều hành nội bộ */
 const CITIZEN_PROJECTION =
   'code categoryKey title description location lat lng sentAt status slaDueAt imageFileIds resultImageFileIds channel timeline rating ratingComment createdAt updatedAt';
@@ -91,6 +101,30 @@ export class FeedbackService {
     for (const fileId of fileIds ?? []) {
       await this.files.findPrivateById(fileId, label);
     }
+  }
+
+  /**
+   * Bản ghi trả cho CÔNG DÂN, kèm link đọc ảnh dùng được ngay.
+   *
+   * Bản ghi chỉ lưu MÃ tệp, mà ảnh phản ánh đều là tệp riêng tư nên `<img src>`
+   * trỏ vào `/files/<id>` sẽ bị từ chối. Trước đây Mini App không có đường nào
+   * lấy ảnh về nên vẽ ô màu giữ chỗ — người dân gửi ảnh xong không bao giờ xem
+   * lại được chính ảnh mình gửi.
+   *
+   * Quyền đã được kiểm ngay ở truy vấn (`{ code, citizenPhone }` / `listMine`
+   * lọc theo `citizenPhone`), nên ở đây chỉ còn việc ký link — xem chú thích
+   * `FilesService.mintSignedUrl` về việc vì sao không đi qua `assertCanSign`.
+   */
+  private citizenView<T extends { slaDueAt?: Date | null; imageFileIds?: string[]; resultImageFileIds?: string[] }>(
+    doc: T,
+  ) {
+    const sign = (ids?: string[]) =>
+      (ids ?? []).map((id) => this.files.mintSignedUrl(id, CITIZEN_IMAGE_URL_TTL_SECONDS));
+    return {
+      ...withSlaHoursLeft(doc),
+      imageUrls: sign(doc.imageFileIds),
+      resultImageUrls: sign(doc.resultImageFileIds),
+    };
   }
 
   // ---------------------------------------------------------------------------
@@ -241,6 +275,14 @@ export class FeedbackService {
 
   /** Xác nhận đã xử lý xong + gửi kết quả cho công dân */
   async resolve(code: string, dto: ResolveFeedbackDto, actor: string) {
+    /*
+     * Ảnh nghiệm thu cũng phải là tệp riêng tư, y như ảnh hiện trường: "đã tháo
+     * biển quảng cáo nhà số 12" là ảnh của một căn nhà cụ thể, không phải ảnh vô
+     * danh của hạ tầng công. Công dân vẫn xem được vì `citizenView` tự cấp link
+     * ký sẵn cho phiếu của chính họ — không tệp nào cần để công khai.
+     */
+    await this.assertImagesPrivate(dto.resultImageFileIds, 'Ảnh nghiệm thu');
+
     const fb = await this.findOrFail(code);
     const resolvedAt = new Date();
     fb.status = 'resolved';
@@ -419,7 +461,7 @@ export class FeedbackService {
     // Cập nhật thời gian thực (P5-05): cán bộ tiếp nhận thấy phiếu mới ngay trên màn hình
     this.emitChanged('created', created);
 
-    return withSlaHoursLeft(created.toObject());
+    return this.citizenView(created.toObject());
   }
 
   /** Danh sách phản ánh của chính công dân đang đăng nhập */
@@ -443,7 +485,7 @@ export class FeedbackService {
       this.feedbackModel.countDocuments(filter).exec(),
     ]);
 
-    return { items: items.map((item) => withSlaHoursLeft(item)), total, page, limit };
+    return { items: items.map((item) => this.citizenView(item)), total, page, limit };
   }
 
   /** Chi tiết phiếu của chính công dân — không phải của mình thì coi như không tồn tại */
@@ -454,7 +496,7 @@ export class FeedbackService {
       .lean()
       .exec();
     if (!doc) throw new NotFoundException(`Không tìm thấy phiếu phản ánh ${code}`);
-    return withSlaHoursLeft(doc);
+    return this.citizenView(doc);
   }
 
   /** Công dân đánh giá 1–5 sao, chỉ mở khi phiếu đã xử lý xong */

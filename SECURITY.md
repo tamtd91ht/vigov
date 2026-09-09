@@ -28,6 +28,8 @@ Kiểm chứng sau khi sửa: `npx tsc --noEmit -p apps/api-gateway/tsconfig.app
 | 13 | `trust proxy` cấu hình được | ✅ Đã làm | `TRUST_PROXY`; nếu không đặt, sau nginx rate-limit sẽ đếm nhầm IP |
 | 14 | Rate-limit toàn cục | ✅ Có sẵn | `ThrottlerModule` 120 lượt/60 giây |
 | 15 | Rate-limit riêng cho nhóm xác thực | ✅ Đã làm | 5 lượt/phút cho login, OTP, định danh Zalo |
+| 16 | Tệp nghiệp vụ bắt buộc `isPrivate` ở MỌI đường gắn | ✅ Đã làm | `findPrivateById` — gồm cả `resultImageFileIds` của phản ánh (bổ sung sau khi rà TB-09) |
+| 17 | Công dân chỉ đọc được tệp của phiếu CHÍNH MÌNH | ✅ Đã làm | `mintSignedUrl` chỉ được gọi với mã tệp lấy từ bản ghi đã lọc theo `citizenPhone` (TB-16) |
 | 16 | Giới hạn số lần nhập sai OTP | ✅ Đã làm | 5 lần sai → huỷ mã, phải xin mã mới |
 | 17 | Sinh OTP bằng nguồn ngẫu nhiên mật mã | ✅ Đã làm | Thay `Math.random()` bằng `crypto.randomInt()` |
 | 18 | Băm mật khẩu | ✅ Có sẵn | bcrypt, 10 vòng; `passwordHash` khai báo `select: false` |
@@ -73,7 +75,8 @@ Kiểm chứng sau khi sửa: `npx tsc --noEmit -p apps/api-gateway/tsconfig.app
 | **TB-06** | **CORS mở cho mọi nguồn** (`app.enableCors()` không tham số). | ✅ **ĐÃ SỬA** (whitelist `CORS_ORIGINS`) |
 | **TB-07** | **Thiếu toàn bộ security header** (nosniff, X-Frame-Options, HSTS, Referrer-Policy, Permissions-Policy, CSP) và vẫn để lộ `X-Powered-By: Express`. | ✅ **ĐÃ SỬA** |
 | **TB-08** | **Kho OTP nằm trong bộ nhớ tiến trình.** Khi chạy nhiều instance sau load balancer, mã sinh ở instance A không xác thực được ở instance B; đồng thời bộ đếm nhập sai cũng không dùng chung. | ✅ **ĐÃ SỬA** — `OtpStore` có hai driver chọn bằng `OTP_STORE`: `memory` (mặc định, một instance) và `mongo` (bảng `otp_codes` có TTL index). Dùng Mongo chứ không Redis để không thêm một dịch vụ phải dựng/bảo mật/sao lưu. Cả hai driver chỉ lưu **HMAC** của mã, không lưu mã dạng rõ. **Chạy nhiều instance thì BẮT BUỘC đặt `OTP_STORE=mongo`** |
-| **TB-09** | **Tệp công khai đọc được không cần đăng nhập.** `GET /files/:id` để `@Public()`; tệp `isPrivate = false` chỉ được bảo vệ bằng độ khó đoán của ObjectId — mà ObjectId chứa dấu thời gian và bộ đếm nên đoán được một phần. | ⚠️ Còn tồn đọng — quy ước: mọi tệp nghiệp vụ (scan văn bản, ảnh phản ánh) phải tải lên với `isPrivate = true`. Quy ước này nay được **cưỡng chế bằng mã** ở MỌI đường gắn tệp vào bản ghi nghiệp vụ, qua `FilesService.findPrivateById`: tệp đính kèm nhiệm vụ, ảnh hiện trường và ảnh nghiệm thu của phản ánh, bản scan và tệp đính kèm văn bản — tệp công khai bị từ chối 400. Tệp nội dung CMS (ảnh bìa, audio truyền thanh, video) vẫn công khai **có chủ ý**: đó là nội dung đăng cho công dân xem |
+| **TB-09** | **Tệp công khai đọc được không cần đăng nhập.** `GET /files/:id` để `@Public()`; tệp `isPrivate = false` chỉ được bảo vệ bằng độ khó đoán của ObjectId — mà ObjectId chứa dấu thời gian và bộ đếm nên đoán được một phần. | ⚠️ Còn tồn đọng — quy ước: mọi tệp nghiệp vụ (scan văn bản, ảnh phản ánh) phải tải lên với `isPrivate = true`. Quy ước này nay được **cưỡng chế bằng mã** ở MỌI đường gắn tệp vào bản ghi nghiệp vụ, qua `FilesService.findPrivateById`: tệp đính kèm nhiệm vụ, ảnh hiện trường và ảnh nghiệm thu của phản ánh, bản scan và tệp đính kèm văn bản — tệp công khai bị từ chối 400. Tệp nội dung CMS (ảnh bìa, audio truyền thanh, video) vẫn công khai **có chủ ý**: đó là nội dung đăng cho công dân xem. **Cập nhật:** trước đây `FeedbackService.resolve` là lỗ hở duy nhất còn lại — nó nhận `resultImageFileIds` mà KHÔNG kiểm tệp riêng tư, nên tài liệu này khai quá thực tế. Nay đã kiểm; xem thêm TB-16 về đường cấp link cho công dân |
+| **TB-16** | **Công dân không xem được ảnh nghiệm thu của phiếu mình gửi.** `FilesService.assertCanSign` phân quyền ký link theo **người tải lên** (`uploadedBy`), nên ảnh nghiệm thu do cán bộ chụp bị chặn với chính công dân chủ phiếu. Cách dễ nhất để "chữa" là đặt ảnh nghiệm thu thành công khai — và đó là cách sai: ảnh "đã tháo biển quảng cáo nhà số 12" là ảnh một căn nhà cụ thể, dữ liệu cá nhân theo NĐ 13/2023. | ✅ Đã sửa — phân quyền theo **bản ghi nghiệp vụ** thay vì theo người tải lên. `GET /feedback/citizen/mine/**` (đã lọc `{ code, citizenPhone }` ngay trong truy vấn) tự cấp link ký sẵn cho cả `imageUrls` và `resultImageUrls` qua `FilesService.mintSignedUrl`, hiệu lực 1 giờ. Không tệp nào phải để công khai. `assertCanSign` **giữ nguyên** cho `GET /files/:id/signed-url` — endpoint nhận mã tệp thẳng từ client vẫn chặn công dân ký tệp của cán bộ (có test e2e xác nhận 403) |
 | **TB-10** | **Dò tài khoản qua thời gian phản hồi.** `staffLogin` chỉ chạy `bcrypt.compare` khi tìm thấy tài khoản, nên sai tên đăng nhập trả lời nhanh hơn hẳn sai mật khẩu. | ⚠️ Còn tồn đọng — mức rủi ro thấp sau khi đã siết 5 lượt/phút; xử lý bằng cách luôn so sánh với một hash giả |
 
 ### Mức THẤP
@@ -156,7 +159,9 @@ Lệnh chạy: `npm audit --production` (chỉ đọc kết quả, **không** ch
 11. **Bổ sung thu hồi phiên** (phát hiện **TB-01**) trước khi phát hành cho người dùng thật —
     nếu không, thao tác "khoá tài khoản" trên Web Quản trị chỉ có tác dụng sau tối đa 8 giờ.
 11. **Quy ước tệp riêng tư**: mọi bản scan văn bản, ảnh phản ánh tải lên phải đặt `isPrivate = true`
-    (phát hiện **TB-09**).
+    (phát hiện **TB-09**). Nay đã được mã cưỡng chế ở mọi đường gắn tệp, **không** còn là quy ước suông.
+    Đi kèm: rà lại `CITIZEN_IMAGE_URL_TTL_SECONDS` (mặc định 1 giờ) — link ký sẵn là **giấy thông hành**,
+    ai giữ được link là đọc được tệp trong khoảng đó, nên đừng nâng thời hạn này lên để "tiện" (**TB-16**).
 12. **Bật ghi log tập trung** và giữ nhật ký thao tác (`AuditInterceptor`) tối thiểu 12 tháng.
 
 ---

@@ -20,8 +20,15 @@ export interface FeedbackTicket {
   status: TicketStatus;
   /** Giờ còn lại theo SLA; âm = quá hạn; bỏ qua khi đã xử lý */
   slaHoursLeft: number;
-  /** Ảnh hiện trường — Phase 1 mock bằng màu placeholder */
-  imageColors: string[];
+  /**
+   * Link đọc ảnh hiện trường, đã ký sẵn bởi máy chủ.
+   *
+   * Ảnh phản ánh là tệp RIÊNG TƯ (TB-09) nên `/files/<id>` trơn bị từ chối;
+   * `/feedback/citizen/mine/**` cấp kèm link có chữ ký, hết hạn sau một giờ.
+   */
+  imageUrls: string[];
+  /** Link đọc ảnh nghiệm thu do cán bộ chụp sau khi xử lý xong */
+  resultImageUrls: string[];
   timeline: TimelineStep[];
   rating: number;
   ratingComment?: string;

@@ -222,6 +222,8 @@ services:
         NEXT_PUBLIC_SUPPORT_EMAIL: ${NEXT_PUBLIC_SUPPORT_EMAIL:-}
         NEXT_PUBLIC_SUPPORT_PHONE: ${NEXT_PUBLIC_SUPPORT_PHONE:-}
         NEXT_PUBLIC_SUPPORT_HOURS: ${NEXT_PUBLIC_SUPPORT_HOURS:-}
+        # Phải khớp STORAGE_MAX_FILE_SIZE của backend, cùng lý do như bên Mini App
+        NEXT_PUBLIC_MAX_FILE_SIZE: ${NEXT_PUBLIC_MAX_FILE_SIZE:-20971520}
     container_name: ${COMPOSE_PROJECT_NAME:-vigov}-admin-web
     <<: *default-restart
     logging: *default-logging
@@ -267,6 +269,9 @@ services:
         VITE_MAP_CENTER_LAT: ${VITE_MAP_CENTER_LAT:-}
         VITE_MAP_CENTER_LNG: ${VITE_MAP_CENTER_LNG:-}
         VITE_MAP_ZOOM: ${VITE_MAP_ZOOM:-}
+        # Phải khớp STORAGE_MAX_FILE_SIZE của backend — lệch thì người dân chờ
+        # tải hết ảnh rồi mới nhận 413 từ máy chủ
+        VITE_MAX_FILE_SIZE: ${VITE_MAX_FILE_SIZE:-20971520}
         VITE_APP_VERSION: ${VITE_APP_VERSION:-0.0.0}
     container_name: ${COMPOSE_PROJECT_NAME:-vigov}-zalo-miniapp
     <<: *default-restart

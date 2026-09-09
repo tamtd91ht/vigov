@@ -2,8 +2,8 @@ import { useState, type CSSProperties, type ReactNode } from "react";
 import { Icon } from "@/components/Icon";
 import { Note } from "@/components/common";
 import { appConfig } from "@/config/app.config";
-import { zaloService } from "@/services/zalo";
 import { LocationPreviewMap } from "@/components/LocationPreviewMap";
+import type { PickedImage } from "./usePickedImages";
 
 /** Giới hạn nhập liệu — thống nhất với Web Quản trị */
 export const MAX_TITLE_LEN = 120;
@@ -50,8 +50,15 @@ interface DetailStepProps {
   onTitleChange: (value: string) => void;
   description: string;
   onDescriptionChange: (value: string) => void;
-  images: string[];
-  onImagesChange: (next: string[]) => void;
+  /** Ảnh đã chọn kèm trạng thái tải lên của từng ảnh */
+  images: PickedImage[];
+  /** Mở trình chọn ảnh của Zalo rồi tải những ảnh vừa chọn */
+  onPickImages: () => void;
+  /** Tải lại một ảnh đã thất bại */
+  onRetryImage: (key: string) => void;
+  onRemoveImage: (key: string) => void;
+  /** Đang mở trình chọn ảnh */
+  picking: boolean;
   location: LocationState;
   onAddressChange: (value: string) => void;
   editingAddress: boolean;
@@ -67,7 +74,10 @@ export function DetailStep({
   description,
   onDescriptionChange,
   images,
-  onImagesChange,
+  onPickImages,
+  onRetryImage,
+  onRemoveImage,
+  picking,
   location,
   onAddressChange,
   editingAddress,
@@ -75,26 +85,8 @@ export function DetailStep({
   onRetryLocation,
   errors,
 }: DetailStepProps) {
-  const [adding, setAdding] = useState(false);
   const canAddImage = images.length < appConfig.maxFeedbackImages;
   const hasPoint = location.lat !== undefined && location.lng !== undefined;
-
-  /**
-   * Mở trình chọn ảnh của Zalo và giữ đúng đường dẫn tệp trả về, để ô thumbnail
-   * hiện ảnh thật thay vì một ô màu. Mảng rỗng nghĩa là người dùng huỷ.
-   *
-   * Số lượng xin đúng bằng số ô còn trống, nên chọn một lượt được nhiều ảnh.
-   * Cắt lại bằng `slice` vì trình chọn của Zalo có thể trả nhiều hơn `count`.
-   */
-  async function handleAddImage() {
-    if (adding || !canAddImage) return;
-    const room = appConfig.maxFeedbackImages - images.length;
-    setAdding(true);
-    const picked = await zaloService.chooseImage(room);
-    setAdding(false);
-    if (picked.length === 0) return;
-    onImagesChange([...images, ...picked.slice(0, room)]);
-  }
 
   return (
     <>
@@ -134,17 +126,41 @@ export function DetailStep({
       <div className="fgroup">
         <label>Ảnh hiện trường</label>
         <div className="grid3">
-          {images.map((uri, i) => (
+          {images.map((image, i) => (
             <AttachmentThumb
-              key={`${uri}-${i}`}
-              uri={uri}
+              key={image.key}
+              uri={image.uri}
               index={i}
-              style={{ aspectRatio: THUMB_RATIO, position: "relative" }}
+              style={{
+                aspectRatio: THUMB_RATIO,
+                position: "relative",
+                // Viền đỏ để thấy ngay ô nào hỏng, không phải đọc chữ mới biết
+                outline: image.status === "error" ? "2px solid var(--red)" : undefined,
+              }}
             >
+              {/* Lớp phủ trạng thái: đang tải thì làm mờ ảnh và quay vòng,
+                  thất bại thì cho bấm để thử lại đúng ảnh đó */}
+              {image.status === "uploading" && <ThumbOverlay><span className="spin" /></ThumbOverlay>}
+              {image.status === "error" && (
+                <ThumbOverlay>
+                  <button
+                    type="button"
+                    aria-label={`Thử tải lại ảnh ${i + 1}`}
+                    onClick={() => onRetryImage(image.key)}
+                    style={{ color: "#fff", display: "grid", placeItems: "center", gap: 2 }}
+                  >
+                    <Icon name="refresh" size={20} color="#fff" />
+                    <span className="tiny" style={{ fontWeight: 700 }}>
+                      Thử lại
+                    </span>
+                  </button>
+                </ThumbOverlay>
+              )}
+
               <button
                 type="button"
                 aria-label={`Xoá ảnh ${i + 1}`}
-                onClick={() => onImagesChange(images.filter((_, idx) => idx !== i))}
+                onClick={() => onRemoveImage(image.key)}
                 style={{
                   position: "absolute",
                   top: 5,
@@ -156,7 +172,7 @@ export function DetailStep({
                   color: "#fff",
                   display: "grid",
                   placeItems: "center",
-                  zIndex: 2,
+                  zIndex: 3,
                 }}
               >
                 <Icon name="close" size={14} strokeWidth={2.4} />
@@ -167,8 +183,8 @@ export function DetailStep({
           {canAddImage && (
             <button
               type="button"
-              onClick={handleAddImage}
-              disabled={adding}
+              onClick={onPickImages}
+              disabled={picking}
               style={{
                 aspectRatio: THUMB_RATIO,
                 border: "1.5px dashed var(--bd)",
@@ -182,7 +198,7 @@ export function DetailStep({
                 gap: 5,
               }}
             >
-              {adding ? (
+              {picking ? (
                 <span className="spin dark" />
               ) : (
                 <>
@@ -195,8 +211,21 @@ export function DetailStep({
             </button>
           )}
         </div>
+
+        {/* Lý do thất bại phải hiện thành chữ: người dân cầm điện thoại không
+            mở được console, mà "thử lại" mãi không xong thì cần biết vì sao */}
+        {images
+          .filter((image) => image.status === "error")
+          .map((image, i) => (
+            <div className="ferr" key={image.key}>
+              Ảnh {images.indexOf(image) + 1}: {image.error ?? "không tải lên được"}
+              {i === 0 && " — bấm “Thử lại” trên ảnh, hoặc xoá ảnh để gửi phiếu."}
+            </div>
+          ))}
+
         <div className="fhint">
           Tối đa {appConfig.maxFeedbackImages} ảnh · đã chọn {images.length}
+          {images.some((image) => image.status === "uploading") && " · đang tải lên…"}
         </div>
       </div>
 
@@ -320,6 +349,24 @@ export function DetailStep({
  * webview mới), lúc đó thẻ img báo lỗi tải. Bắt `onError` để rơi về ô màu giữ
  * chỗ kèm icon, thay vì để lại một ô ảnh vỡ trên màn hình.
  */
+/** Lớp phủ mờ trên ô ảnh, dùng cho trạng thái đang tải và tải lỗi */
+function ThumbOverlay({ children }: { children: ReactNode }) {
+  return (
+    <div
+      style={{
+        position: "absolute",
+        inset: 0,
+        background: "rgba(0,0,0,.45)",
+        display: "grid",
+        placeItems: "center",
+        zIndex: 2,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
 export function AttachmentThumb({
   uri,
   index,
