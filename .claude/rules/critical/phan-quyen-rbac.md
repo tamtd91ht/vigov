@@ -24,10 +24,11 @@ Phân hệ: `overview` `tasks` `documents` `disbursement` `feedback` `map` `repo
 
 | # | Luật |
 |---|------|
-| 1 | **Mọi** endpoint mới khai báo tường minh một trong hai: `@RequirePermission(phân_hệ, quyền)` hoặc `@Public()`. Không có mặc định ngầm |
+| 1 | **Mọi** endpoint mới khai báo tường minh một trong BA: `@RequirePermission(phân_hệ, quyền)`, `@Public()`, hoặc `@AnyAuthenticated('<lý do>')`. Không có mặc định ngầm |
 | 2 | `@Public()` chỉ dành cho: đăng nhập, xin OTP, health check, đọc nội dung CMS công khai, tra cứu công khai đã che dữ liệu. Kèm comment `// CÔNG KHAI — <vì sao>` |
+| 2b | `@AnyAuthenticated('<lý do>')` chỉ dành cho endpoint mà **công dân cũng phải gọi được**: kho tệp (tải ảnh phản ánh, xin link đọc ảnh của chính mình), tra địa chỉ từ toạ độ, đọc thông tin phiên của chính mình. Lý do là **tham số bắt buộc**, không phải comment |
 | 3 | Danh tính (`sub`, `username`, `roleKey`) **chỉ** lấy từ `req.user` do `JwtAuthGuard` gán. Không đọc từ body/header khác |
-| 4 | Endpoint công dân dùng cách ly theo `citizenPhone`, không dùng RBAC → `cach-ly-du-lieu-cong-dan.md` |
+| 4 | Endpoint công dân dùng cách ly theo `citizenPhone`, không dùng RBAC → `cach-ly-du-lieu-cong-dan.md`. `roleKey` 'citizen' KHÔNG có trong `roles.ts`, nên `hasPermission` luôn trả false: gắn `@RequirePermission` vào một endpoint công dân cần dùng là chặn đúng người cần dùng nó |
 | 5 | Token mang `sid`; `JwtAuthGuard` tra `SessionRegistry.isActive(sid)` mỗi request. Thêm đường phát token mới thì **phải** phát kèm `sid` |
 | 6 | Thu hồi phiên khi: khoá tài khoản, xoá tài khoản, đổi vai trò, đổi mật khẩu, phát hiện dùng lại refresh token cũ |
 | 7 | `mustChangePassword = true` thì chặn mọi endpoint trừ đường tự đổi mật khẩu (`@AllowPendingPassword`) |

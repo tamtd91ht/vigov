@@ -14,7 +14,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Request, Response } from 'express';
-import { Public, RequirePermission, type AuthedRequest } from '@vigov/shared';
+import { AnyAuthenticated, Public, RequirePermission, type AuthedRequest } from '@vigov/shared';
 import { FilesService, DEFAULT_SIGNED_URL_TTL_SECONDS, type FileRequester } from './files.service';
 import type { ByteRange } from './drivers/storage.driver';
 import { FileAccessQueryDto, SignedUrlQueryDto, UploadFileDto } from './dto/file.dto';
@@ -43,9 +43,11 @@ function requesterOf(req: AuthedRequest): FileRequester | undefined {
 /**
  * API lưu trữ tệp (WBS #24 — task P3-24).
  *
- * Tải lên: mọi tài khoản đã đăng nhập, kể cả công dân (roleKey 'citizen') vì
- * app công dân cần đính kèm ảnh/video khi gửi phản ánh — do đó KHÔNG gắn
- * @RequirePermission, chỉ dựa vào JwtAuthGuard toàn cục.
+ * Tải lên và cấp link ký sẵn: mọi tài khoản đã đăng nhập, KỂ CẢ công dân
+ * (roleKey 'citizen'), vì app công dân cần đính kèm ảnh khi gửi phản ánh. Hai
+ * route đó khai `@AnyAuthenticated(<lý do>)` — bảng RBAC chỉ có vai trò cán bộ
+ * nên `@RequirePermission` sẽ chặn đúng người cần dùng, còn `@Public()` thì bỏ
+ * luôn xác thực. Cách ly giữa các công dân do `FilesService.assertCanSign` lo.
  */
 @Controller('files')
 export class FilesController {
@@ -54,6 +56,7 @@ export class FilesController {
   constructor(private readonly files: FilesService) {}
 
   /** Tải tệp lên (multipart/form-data: file + purpose + isPrivate) */
+  @AnyAuthenticated('Công dân phải tải được ảnh hiện trường khi gửi phản ánh từ Mini App')
   @Post('upload')
   @UseInterceptors(FileInterceptor(FILE_FIELD))
   upload(
@@ -70,6 +73,7 @@ export class FilesController {
    * Cán bộ ký được mọi tệp phục vụ tác nghiệp; công dân chỉ ký được tệp do
    * chính mình tải lên (xem FilesService.assertCanSign).
    */
+  @AnyAuthenticated('Công dân phải mở được ảnh do chính mình tải lên; assertCanSign chặn tệp của người khác')
   @Get(':id/signed-url')
   signedUrl(@Param('id') id: string, @Query() query: SignedUrlQueryDto, @Req() req: AuthedRequest) {
     return this.files.signedUrl(id, query.ttl ?? DEFAULT_SIGNED_URL_TTL_SECONDS, requesterOf(req));

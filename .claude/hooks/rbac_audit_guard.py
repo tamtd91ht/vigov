@@ -6,7 +6,9 @@ VÌ SAO LÀ POST CHỨ KHÔNG PHẢI PRE: một lần Edit có thể mới viế
 Pre sẽ chặn công việc đang làm dở. Ở Post, thông báo đi vào ngữ cảnh của Claude như một
 việc phải sửa nốt trước khi kết thúc.
 
-Luật gốc: mọi endpoint khai báo TƯỜNG MINH `@RequirePermission(...)` hoặc `@Public()`.
+Luật gốc: mọi endpoint khai báo TƯỜNG MINH `@RequirePermission(...)`, `@Public()`
+hoặc `@AnyAuthenticated('<lý do>')` (mở cho mọi tài khoản đã đăng nhập, kể cả công dân —
+bảng RBAC không có vai trò công dân nên @RequirePermission sẽ chặn đúng người cần dùng).
 Không có mặc định ngầm. Guard toàn cục sẽ chặn nếu thiếu token, nhưng KHÔNG kiểm quyền
 nếu không có decorator — nghĩa là mọi cán bộ, mọi vai trò đều gọi được.
 """
@@ -23,7 +25,7 @@ ROUTE_DECORATOR = re.compile(
     r"""^\s*@(Get|Post|Patch|Put|Delete|All)\s*\(""", re.MULTILINE
 )
 AUTH_DECORATOR = re.compile(
-    r"""@(RequirePermission|Public|AllowPendingPassword)\s*\("""
+    r"""@(RequirePermission|Public|AllowPendingPassword|AnyAuthenticated)\s*\("""
 )
 # Cửa sổ dòng phía trên/dưới decorator route để tìm khai báo quyền
 WINDOW = 6
@@ -103,6 +105,7 @@ def main() -> None:
         "  Mọi endpoint phải khai TƯỜNG MINH một trong hai:",
         "    @RequirePermission('<phân-hệ>', 'view'|'edit'|'approve'|'admin')",
         "    @Public()   // CÔNG KHAI — <lý do cụ thể>",
+        "    @AnyAuthenticated('<vì sao công dân cũng phải gọi được>')",
         "",
         "  Thiếu decorator: guard vẫn chặn người chưa đăng nhập, nhưng MỌI vai trò cán bộ",
         "  đều gọi được — kể cả vai trò không liên quan tới phân hệ đó.",

@@ -136,6 +136,26 @@ describe('ViGov API — luồng đính kèm tệp', () => {
       expect(res.body.isPrivate).toBe(true);
     });
 
+    /*
+     * Hai route của kho tệp khai `@AnyAuthenticated` — mở cho mọi tài khoản đã
+     * đăng nhập, kể cả công dân. Bộ test dưới đây khoá đúng ba điều đó lại:
+     * chưa đăng nhập thì 401, cán bộ gọi được, công dân cũng gọi được. Nếu ai
+     * đổi sang `@RequirePermission` thì test công dân sẽ đỏ ngay — vì bảng RBAC
+     * không có vai trò công dân nên họ sẽ nhận 403.
+     */
+    it('chưa đăng nhập thì 401, không phải tải lên ẩn danh', async () => {
+      await api()
+        .post(`${API}/files/upload`)
+        .field('purpose', 'other')
+        .attach('file', Buffer.from('x'), { filename: 'a.pdf', contentType: 'application/pdf' })
+        .expect(401);
+    });
+
+    it('chưa đăng nhập thì không xin được link ký sẵn', async () => {
+      const fileId = await uploadPrivate();
+      await api().get(`${API}/files/${fileId}/signed-url`).expect(401);
+    });
+
     it('không chọn tệp thì báo lỗi tiếng Việt, không phải 500', async () => {
       const res = await asAdmin(api().post(`${API}/files/upload`))
         .field('purpose', 'other')
@@ -388,6 +408,14 @@ describe('ViGov API — luồng đính kèm tệp', () => {
       citizenToken = await loginCitizen(CITIZEN_PHONE);
       imageId = await uploadAsCitizen(citizenToken);
       expect(imageId).toBeTruthy();
+    });
+
+    it('công dân xin được link ký sẵn cho ảnh CỦA MÌNH', async () => {
+      const signed = await api()
+        .get(`${API}/files/${imageId}/signed-url`)
+        .set('Authorization', `Bearer ${citizenToken}`)
+        .expect(200);
+      expect(signed.body.url).toContain('sig=');
     });
 
     it('gửi phiếu kèm mã ảnh, phản hồi có link đọc ảnh dùng được ngay', async () => {

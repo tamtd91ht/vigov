@@ -382,6 +382,25 @@ trong giao diện quên đặt `isPrivate` là tệp lọt ra ngoài mà không 
 nội dung CMS (ảnh bìa, audio, video) vẫn công khai **có chủ ý** — đó là nội dung
 đăng cho công dân xem.
 
+**Khai quyền cho endpoint công dân cũng gọi được.** `roleKey` `'citizen'` KHÔNG có
+trong bảng `roles.ts`, nên `hasPermission` luôn trả `false`: gắn `@RequirePermission`
+vào một endpoint công dân cần dùng là chặn đúng người cần dùng nó, còn `@Public()` thì
+bỏ luôn xác thực. Vì vậy có decorator thứ ba:
+
+```ts
+@AnyAuthenticated('Công dân phải tải được ảnh hiện trường khi gửi phản ánh từ Mini App')
+@Post('upload')
+```
+
+`@AnyAuthenticated(reason)` **không đổi** hành vi kiểm tra — hành vi mặc định của
+`JwtAuthGuard` khi không có `@RequirePermission` vốn đã là "đã đăng nhập, vai trò nào
+cũng qua". Nó biến hành vi mặc định đó thành một lựa chọn **tường minh và soi được bằng
+công cụ** (`.claude/hooks/rbac_audit_guard.py`), thay vì để trống decorator và không ai
+đọc mã mà biết được là cố tình hay bỏ sót. `reason` là tham số **bắt buộc**.
+
+Cách ly giữa các công dân vẫn do tầng dưới lo, không phải do decorator này: kho tệp dùng
+`assertCanSign`, phân hệ Phản ánh lọc `{ code, citizenPhone }` ngay trong truy vấn.
+
 **Hai đường cấp link đọc tệp riêng tư.** Tệp riêng tư chỉ đọc được qua link ký sẵn,
 và có đúng hai cách lấy link — khác nhau ở chỗ ai kiểm quyền:
 
