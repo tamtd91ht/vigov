@@ -148,6 +148,30 @@ export function buildQuery(params: Record<string, string | number | boolean | un
   return qs ? `?${qs}` : "";
 }
 
+/**
+ * Đổi đường dẫn tương đối do máy chủ trả về thành URL tuyệt đối.
+ *
+ * VÌ SAO CẦN: `FilesService.publicUrl` trả đường dẫn TƯƠNG ĐỐI
+ * (`/api/v1/files/<id>?exp=&sig=`). Web Quản trị gọi API cùng origin nên đường
+ * dẫn đó dùng được ngay. Mini App thì KHÁC: mã chạy trên tên miền của Zalo
+ * (`h5.zdn.vn`), còn API ở tên miền khác trong `VITE_API_BASE_URL`. Thẻ
+ * `<img src="/api/v1/files/...">` vì thế phân giải về chính tên miền Zalo, trả
+ * 404, và ô ảnh thành ô trống — người dân gửi ảnh xong không xem lại được.
+ *
+ * Máy chủ trả URL tuyệt đối thì `new URL` giữ nguyên, nên hàm này an toàn cả
+ * khi backend đổi cách sinh link về sau.
+ */
+export function resolveApiUrl(pathOrUrl: string): string {
+  if (!pathOrUrl) return pathOrUrl;
+  try {
+    // Cơ sở phải tuyệt đối; baseUrl tương đối (chế độ dev cùng origin) thì lấy origin hiện tại
+    const base = new URL(appConfig.api.baseUrl, window.location.origin);
+    return new URL(pathOrUrl, base).href;
+  } catch {
+    return pathOrUrl;
+  }
+}
+
 /** Một lượt gửi yêu cầu với token cho trước */
 async function send(path: string, token: string | null, init?: RequestInit): Promise<Response> {
   /*

@@ -25,4 +25,20 @@ module.exports = async () => {
   process.env.TMPDIR = tmpDir;
   process.env.TEMP = tmpDir;
   process.env.TMP = tmpDir;
+
+  /*
+   * Kho tệp của lần chạy test cũng phải nằm trong thư mục tạm.
+   *
+   * VÌ SAO: `configuration.ts` để `STORAGE_LOCAL_DIR` mặc định là `./uploads` —
+   * đúng thư mục mà máy đang phát triển (và máy chủ thật) dùng để lưu tệp
+   * nghiệp vụ. Test tải tệp lên bằng `Buffer.from('anh hien truong')` nên mỗi
+   * lần chạy `npm run test:e2e` lại bỏ thêm vào `backend/uploads/feedback/` mấy
+   * tệp .jpg 15 byte KHÔNG PHẢI ảnh. Chúng nằm lẫn với ảnh thật, trình duyệt
+   * không giải mã được nên hiện thành ô ảnh vỡ, và người rà lỗi ảnh sau này
+   * tưởng luồng tải ảnh hỏng.
+   */
+  const uploadsDir = path.join(tmpDir, 'uploads');
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  process.env.STORAGE_DRIVER = 'local';
+  process.env.STORAGE_LOCAL_DIR = uploadsDir;
 };

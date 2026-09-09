@@ -29,9 +29,10 @@ export function SignedImage({
   /**
    * Bấm vào ảnh để mở bản đầy đủ ở tab mới.
    *
-   * Ô thumbnail dùng `object-fit: cover` nên ảnh dọc của điện thoại bị cắt gần
-   * hết — cán bộ phải xem được khung đầy đủ mới đánh giá được hiện trường. Dùng
-   * lại link ký sẵn component đang giữ, không xin thêm một lượt nữa.
+   * Ô thumbnail dùng `object-fit: contain` nên thấy đủ khung, nhưng ảnh 1600px
+   * thu về ô 150px thì mất chi tiết — cán bộ vẫn cần mở bản đầy đủ để đọc biển
+   * số, số nhà, mốc giới. Dùng lại link ký sẵn component đang giữ, không xin
+   * thêm một lượt nữa.
    */
   zoomable?: boolean;
 }) {

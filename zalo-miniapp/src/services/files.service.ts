@@ -1,5 +1,6 @@
 import { appConfig } from "@/config/app.config";
 import { ApiError, getAccessToken } from "./api";
+import { compressImage } from "./image";
 import { zaloService } from "./zalo";
 
 /**
@@ -24,19 +25,6 @@ const FEEDBACK_PURPOSE = "feedback";
  */
 const FEEDBACK_IS_PRIVATE = true;
 
-/**
- * Cạnh dài tối đa sau khi nén. Ảnh điện thoại thường 3000–4000px / 3–8MB; cán
- * bộ chỉ cần nhìn rõ hiện trường nên 1600px là đủ, mà mỗi ảnh còn ~200–500KB.
- * Người dân gửi phản ánh phần lớn bằng 3G/4G ngoài đường.
- */
-const MAX_EDGE_PX = 1600;
-
-/** Chất lượng JPEG khi nén — 0.8 là mức gần như không thấy khác bằng mắt */
-const JPEG_QUALITY = 0.8;
-
-/** Kiểu ảnh sau khi nén; backend chấp nhận image/jpeg cho purpose 'feedback' */
-const OUTPUT_MIME = "image/jpeg";
-
 /** Phản hồi của POST /files/upload (FilesService.UploadedFileResult) */
 interface UploadedFileResult {
   id: string;
@@ -44,41 +32,6 @@ interface UploadedFileResult {
   originalName: string;
   mimeType: string;
   size: number;
-}
-
-/**
- * Nén một ảnh bằng canvas: thu nhỏ về `MAX_EDGE_PX` rồi xuất JPEG.
- *
- * Ảnh nhỏ hơn ngưỡng thì KHÔNG phóng to (tỉ lệ chặn ở 1) — phóng to chỉ làm
- * tệp nặng thêm mà không rõ hơn.
- *
- * Nén thất bại (canvas bị chặn, ảnh hỏng, hết bộ nhớ) thì trả về `null` để bên
- * gọi tải nguyên bản Blob gốc: thà ảnh nặng còn hơn mất ảnh minh chứng.
- */
-async function compress(blob: Blob): Promise<Blob | null> {
-  let bitmap: ImageBitmap | null = null;
-  try {
-    bitmap = await createImageBitmap(blob);
-    const scale = Math.min(1, MAX_EDGE_PX / Math.max(bitmap.width, bitmap.height));
-    const width = Math.max(1, Math.round(bitmap.width * scale));
-    const height = Math.max(1, Math.round(bitmap.height * scale));
-
-    const canvas = document.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
-    ctx.drawImage(bitmap, 0, 0, width, height);
-
-    return await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob((out) => resolve(out), OUTPUT_MIME, JPEG_QUALITY);
-    });
-  } catch {
-    return null;
-  } finally {
-    // Giải phóng bộ nhớ ảnh ngay: gửi 3 ảnh 4000px liên tiếp trên máy yếu dễ tràn
-    bitmap?.close();
-  }
 }
 
 /**
@@ -167,7 +120,7 @@ export const filesService = {
     const fileIds: string[] = [];
     for (const [index, filePath] of filePaths.entries()) {
       const original = await readAsBlob(filePath);
-      const compressed = await compress(original);
+      const compressed = await compressImage(original);
       fileIds.push(await uploadOne(compressed ?? original, index));
     }
     return fileIds;

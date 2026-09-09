@@ -1,6 +1,6 @@
 import { appConfig } from "@/config/app.config";
 import type { FeedbackCategory } from "@/config/categories";
-import { apiClient, buildQuery, mockDelay, type Paged } from "@/services/api";
+import { apiClient, buildQuery, mockDelay, resolveApiUrl, type Paged } from "@/services/api";
 import { filesService } from "@/services/files.service";
 import { initialTickets } from "@/mocks/feedback.mock";
 import type { FeedbackTicket, TicketStatus, TimelineStep } from "@/types";
@@ -83,9 +83,13 @@ function toTicket(raw: ApiFeedback): FeedbackTicket {
      * Mini App vẽ ô màu giữ chỗ — người dân gửi ảnh xong không bao giờ xem lại
      * được ảnh mình gửi. Nay `GET /feedback/citizen/mine/**` (đã lọc theo
      * citizenPhone ngay trong truy vấn) trả kèm link đã ký, hiệu lực 1 giờ.
+     *
+     * Link máy chủ trả về là đường dẫn TƯƠNG ĐỐI, phải đổi sang tuyệt đối theo
+     * origin của API — xem `resolveApiUrl`. Thiếu bước này thì `<img>` phân giải
+     * về tên miền của Zalo và ô ảnh thành ô trống.
      */
-    imageUrls: raw.imageUrls ?? [],
-    resultImageUrls: raw.resultImageUrls ?? [],
+    imageUrls: (raw.imageUrls ?? []).map(resolveApiUrl),
+    resultImageUrls: (raw.resultImageUrls ?? []).map(resolveApiUrl),
     timeline: toTimeline(raw.timeline),
     rating: raw.rating ?? 0,
     ratingComment: raw.ratingComment || undefined,

@@ -1,4 +1,5 @@
 import { appConfig } from "@/config/app.config";
+import { JPEG_QUALITY, MAX_EDGE_PX, OUTPUT_MIME } from "./image";
 
 /**
  * Adapter Zalo Mini App SDK.
@@ -90,14 +91,17 @@ const MOCK_IMAGE_URI =
       "</svg>",
   );
 
-/**
- * Cạnh dài nhất của ảnh sau khi thu nhỏ để gửi (điểm ảnh), cùng định dạng và
- * mức nén. 1600px đủ để cán bộ đọc được biển số, mặt đường, vết nứt trên màn
- * hình Web Quản trị; giữ nguyên ảnh gốc 12MP chỉ làm người dân tốn 4G.
+/*
+ * Cạnh dài nhất của ảnh sau khi thu nhỏ, định dạng và mức nén nay dùng CHUNG với
+ * đường nén trước khi tải lên — nhập từ `./image` chứ không khai lại ở đây.
+ *
+ * VÌ SAO: hai nơi tự khai hai bộ hằng số (1600/0.85 ở đây và 1600/0.8 bên
+ * files.service) làm ảnh đi qua đường dự phòng bị thu nhỏ hai lần và nén JPEG
+ * hai lần, mất thêm một nấc chất lượng mà không ai thấy.
  */
-const IMAGE_MAX_EDGE = 1600;
-const IMAGE_MIME = "image/jpeg";
-const IMAGE_QUALITY = 0.85;
+const IMAGE_MAX_EDGE = MAX_EDGE_PX;
+const IMAGE_MIME = OUTPUT_MIME;
+const IMAGE_QUALITY = JPEG_QUALITY;
 
 /** Kết quả quét — mang theo lỗi để màn hình nói được vì sao hỏng */
 export interface ScanResult {
