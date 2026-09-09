@@ -19,23 +19,12 @@ import {
   SessionRegistry,
   StaffUser,
   type StaffUserDocument,
+  callZaloMeInfo,
   checkPasswordPolicy,
   type JwtPayload,
 } from '@vigov/shared';
 import { UsersService } from '../users/users.service';
 import { OtpStore } from './otp.store';
-
-/** Điểm cuối Zalo Open API đổi mã dùng một lần lấy số điện thoại */
-const ZALO_GRAPH_ME_INFO_URL = 'https://graph.zalo.me/v2.0/me/info';
-/** Hạn chờ gọi Zalo — quá thì coi như thất bại, để công dân rẽ sang OTP */
-const ZALO_GRAPH_TIMEOUT_MS = 8000;
-
-/** Thân phản hồi của graph.zalo.me/v2.0/me/info */
-interface ZaloMeInfoResponse {
-  data?: { number?: string };
-  error: number;
-  message?: string;
-}
 
 /**
  * Đưa số Zalo trả về đúng dạng hệ thống đang lưu: 10 chữ số bắt đầu bằng 0.
@@ -352,58 +341,23 @@ export class AuthService {
    * gọi sang Zalo, và Zalo mới là bên khẳng định số. Nhờ vậy không ai tự khai
    * được số của người khác.
    *
-   * Cần ĐỦ BA thứ, thiếu một là Zalo từ chối:
-   *   · access_token — phiên đăng nhập Zalo của chính người dùng
-   *   · code         — mã dùng một lần từ getPhoneNumber()
-   *   · secret_key   — ZALO_APP_SECRET, chỉ có ở máy chủ
+   * Chi tiết hợp đồng gọi nằm ở callZaloMeInfo() — dùng chung với luồng đổi mã
+   * vị trí, vì cùng một điểm cuối và cùng những cách sai lặng lẽ.
    */
   private async exchangeZaloToken(token: string, accessToken: string | undefined): Promise<string | null> {
-    const secret = this.config.get<string>('zalo.appSecret');
-    if (!secret) {
-      this.logger.warn('Chưa cấu hình ZALO_APP_SECRET — không đổi được token định danh');
-      return null;
-    }
-    if (!accessToken) {
-      this.logger.warn('Mini App không gửi access_token — Zalo sẽ từ chối đổi mã');
+    const secret = this.config.get<string>('zalo.appSecret', '');
+    const { data, error } = await callZaloMeInfo(token, accessToken, secret, this.logger);
+    if (error) {
+      this.logger.warn(`Không đổi được token định danh: ${error}`);
       return null;
     }
 
-    /* Đặt hạn chờ: không có thì một lần Zalo treo là giữ luôn kết nối của công
-       dân cho tới khi nginx cắt, người dùng nhìn thấy màn hình đứng im. */
-    const abort = AbortSignal.timeout(ZALO_GRAPH_TIMEOUT_MS);
-
-    try {
-      const res = await fetch(ZALO_GRAPH_ME_INFO_URL, {
-        method: 'GET',
-        headers: { access_token: accessToken, code: token, secret_key: secret },
-        signal: abort,
-      });
-
-      if (!res.ok) {
-        this.logger.error(`Zalo trả HTTP ${res.status} khi đổi mã định danh`);
-        return null;
-      }
-
-      const body = (await res.json()) as ZaloMeInfoResponse;
-
-      /* Zalo trả HTTP 200 cả khi lỗi nghiệp vụ; `error` khác 0 mới là thất bại.
-         Chỉ ghi mã và thông điệp, KHÔNG ghi token vào nhật ký. */
-      if (body.error !== 0) {
-        this.logger.error(`Zalo từ chối đổi mã định danh: [${body.error}] ${body.message ?? ''}`);
-        return null;
-      }
-
-      const phone = normalizeVnPhone(body.data?.number);
-      if (!phone) {
-        this.logger.error('Zalo trả số điện thoại không đúng định dạng Việt Nam');
-        return null;
-      }
-      return phone;
-    } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err);
-      this.logger.error(`Không gọi được Zalo Graph API: ${reason}`);
+    const phone = normalizeVnPhone(data?.number);
+    if (!phone) {
+      this.logger.error('Zalo trả số điện thoại không đúng định dạng Việt Nam');
       return null;
     }
+    return phone;
   }
 
   private async issueCitizenToken(phone: string, channel: 'app' | 'zalo', ip: string, device: string) {

@@ -21,7 +21,7 @@ trong danh sách người dùng thử:
 | ID | API | Màn hình dùng | Biểu hiện khi chưa được cấp |
 |---|---|---|---|
 | 25 | `scanQRCode` | Quét thẻ căn cước · Tra cứu hồ sơ | `[-2000] Unknown error` |
-| 38 | `getLocation` | Gửi phản ánh, bước 2 | Không hiện popup xin quyền |
+| 38 | `getLocation` | Gửi phản ánh, bước 2 | Không hiện popup xin quyền · xác nhận lại 07/09/2026 |
 | 94 | `chooseImage` | Gửi phản ánh, bước 2 | Không mở trình chọn ảnh |
 | 100 | `getPhoneNumber` | Onboarding | Không hiện popup xin quyền |
 
@@ -66,15 +66,52 @@ Console không cho đi tắt:
 
 ### Quyền 38 — Lấy thông tin vị trí hiện tại
 
-> Dùng ở chức năng **Gửi phản ánh, kiến nghị** của công dân. Khi công dân phản ánh
-> một sự việc trên địa bàn — rác tồn đọng, đèn đường hỏng, ngập úng, vi phạm trật
-> tự — cán bộ xử lý cần biết vị trí chính xác để phân công đúng bộ phận và đúng
-> thôn. Vị trí được lấy một lần tại bước 2 của biểu mẫu phản ánh, có popup xác
-> nhận của Zalo, và công dân luôn sửa hoặc nhập tay được địa chỉ trước khi gửi.
-> Từ chối cấp quyền thì biểu mẫu vẫn dùng được bình thường bằng cách nhập địa chỉ
-> thủ công.
+Bản dán vào Console (đã cập nhật cho bản demo, khớp ảnh ở mục 4):
+
+> Ứng dụng dùng vị trí ở chức năng **Gửi phản ánh, kiến nghị**. Khi người dùng
+> phản ánh một sự việc ngoài hiện trường — rác tồn đọng, đèn đường hỏng, ngập
+> úng — phiếu cần một điểm toạ độ để xác định chỗ xảy ra sự việc, thay cho việc
+> mô tả bằng lời.
+>
+> Luồng cụ thể: người dùng vào bước 2 của biểu mẫu phản ánh (ảnh 1), ứng dụng gọi
+> `getLocation` để lấy token, gửi token về máy chủ và đổi lấy toạ độ ở phía máy
+> chủ. Toạ độ được hiển thị ngay trên một bản đồ nhỏ để người dùng **tự kiểm tra
+> điểm có đúng chỗ mình đang đứng hay không** trước khi gửi, và người dùng luôn
+> sửa được địa chỉ bằng tay. Ứng dụng không lưu token, không theo dõi vị trí liên
+> tục, không chia sẻ vị trí cho bên thứ ba.
+>
+> Vị trí chỉ được lấy tại đúng bước đó, và khi người dùng chủ động bấm "Định vị
+> lại". Không lấy ở bất kỳ màn hình nào khác, không lấy khi ứng dụng chạy nền.
+>
+> Nếu người dùng từ chối, biểu mẫu vẫn dùng được bình thường: người dùng tự nhập
+> địa chỉ nơi xảy ra sự việc.
+>
+> Phiên bản hiện tại là bản demo phục vụ trải nghiệm và kiểm thử tính năng; phiếu
+> phản ánh trong ứng dụng là dữ liệu mô phỏng, không chuyển tới cơ quan nào.
 >
 > Đường vào: Trang chủ → Gửi phản ánh → bước 2.
+
+**Lý do cần chính API này, không thay được bằng `navigator.geolocation`.** Đây là
+lập luận mạnh nhất của hồ sơ 38, và nó có số liệu thật để dẫn:
+
+Mini App chạy trong webview nên `navigator.geolocation` gọi được. Nhưng khi
+webview không được cấp một điểm định vị thật, nó rơi về ước lượng theo địa chỉ
+mạng — mà dải IP di động của nhà mạng Việt Nam phần lớn đăng ký ở Hà Nội. Thử
+thật ngày 07/09/2026: thiết bị đang ở **Tuy Hoà, Phú Yên**, webview trả về một
+điểm giữa **Hà Nội**, lệch khoảng 1.000km, `accuracy` thiết bị khai hàng chục
+nghìn mét. Một toạ độ như vậy vô dụng với chức năng phản ánh hiện trường, nên
+ứng dụng đã phải chủ động loại bỏ nó (ngưỡng 500m, xem `MAX_USABLE_ACCURACY_M`
+trong `zalo-miniapp/src/services/zalo.ts`) và bắt người dùng nhập địa chỉ tay.
+
+`getLocation` của Zalo lấy vị trí bằng quyền của chính ứng dụng Zalo ở tầng hệ
+điều hành, không qua webview, nên là đường duy nhất cho ra toạ độ dùng được.
+Nêu đúng chuyện này trong ô lý do: nó chứng minh quyền là **cần thiết**, chứ
+không phải tiện thì xin.
+
+**Đừng viết** rằng vị trí dùng để "cán bộ phân công xử lý" hay "chuyển tới cơ
+quan chức năng". Điều khoản sử dụng đang phát hành nói rõ phiếu KHÔNG tới cơ
+quan nào; người xét duyệt đọc chéo hai tài liệu thấy vênh là hồ sơ trượt — đúng
+lý do Zalo từ chối ngày 05/09/2026.
 
 ### Quyền 94 — Mở cửa sổ chọn media từ thiết bị
 
@@ -88,18 +125,40 @@ Console không cho đi tắt:
 
 ### Quyền 100 — Xin người dùng cấp quyền truy cập số điện thoại
 
-> Dùng để **định danh công dân** khi truy cập ứng dụng lần đầu. Số điện thoại là
-> khoá định danh duy nhất giữa Mini App và hệ thống một cửa của UBND xã: nó liên
-> kết công dân với hồ sơ hành chính đã nộp và với các phản ánh đã gửi, để công
-> dân tra cứu lại được tiến độ của chính mình và nhận thông báo khi hồ sơ chuyển
-> trạng thái.
+Bản dán vào Console (đã cập nhật cho bản demo, khớp hai ảnh ở mục 4):
+
+> Ứng dụng dùng số điện thoại để **định danh người dùng** ngay ở màn hình đầu
+> tiên. Số điện thoại là khoá định danh duy nhất giữa Mini App và hệ thống xử lý
+> hồ sơ, phản ánh của chính quyền cấp xã: nó gắn người dùng với các phiếu phản
+> ánh đã gửi và hồ sơ hành chính đã nộp, để họ tra cứu lại tiến độ của chính
+> mình và nhận thông báo khi trạng thái thay đổi.
 >
-> Không có số điện thoại thì công dân chỉ xem được tin tức công khai, không dùng
-> được dịch vụ nào cần định danh. Ứng dụng nhận token từ Zalo và đổi lấy số điện
-> thoại ở phía máy chủ; không lưu token, không chia sẻ số điện thoại cho bên thứ
-> ba. Công dân từ chối thì vẫn định danh được bằng luồng OTP thay thế.
+> Luồng cụ thể: người dùng bấm "Liên kết số điện thoại Zalo" ở màn định danh
+> (ảnh 1). Ứng dụng gọi `getPhoneNumber` để lấy token, gửi token về máy chủ và
+> đổi lấy số điện thoại ở phía máy chủ. Ứng dụng không lưu token, không chia sẻ
+> số điện thoại cho bên thứ ba, và xoá dữ liệu khi người dùng yêu cầu.
 >
-> Đường vào: màn hình đầu tiên khi mở ứng dụng.
+> Nếu người dùng từ chối hoặc không lấy được số từ Zalo, ứng dụng chuyển sang
+> đường thay thế: người dùng tự nhập số điện thoại rồi nhận mã xác thực để hoàn
+> tất định danh (ảnh 2). Được cấp quyền truy cập số điện thoại thì bỏ được cả
+> bước nhập tay lẫn bước chờ mã xác thực này.
+>
+> Không có số điện thoại, người dùng chỉ xem được tin tức công khai, không dùng
+> được dịch vụ nào cần định danh.
+>
+> Phiên bản hiện tại là bản demo phục vụ trải nghiệm và kiểm thử tính năng; dữ
+> liệu nghiệp vụ trong ứng dụng là dữ liệu mẫu, còn số điện thoại chỉ dùng để
+> tạo phiên trải nghiệm cho chính người dùng đó.
+>
+> Đường vào: màn hình đầu tiên khi mở ứng dụng, nút "Liên kết số điện thoại Zalo".
+
+**Đừng đặt lý do là "để gửi tin OTP".** Hai chuyện ngược nhau: `getPhoneNumber`
+tồn tại để **khỏi phải** gửi OTP. Xin quyền lấy số điện thoại nhằm gửi OTP tới
+chính số đó là lý lẽ tự mâu thuẫn, người xét duyệt bắt được là hồ sơ trượt.
+Thêm nữa, `AuthService.requestOtp` ở backend hiện **chỉ ghi mã ra log, chưa gửi
+SMS/ZNS thật** (Phase 1) — nếu người xét duyệt thử luồng đó thì không có tin
+nhắn nào tới. Giữ lý do ở việc định danh, đường OTP chỉ nêu như phương án dự
+phòng đúng như mã nguồn đang làm.
 
 ---
 
@@ -111,14 +170,40 @@ chức năng chạy được mới chụp được — chỉ cần màn hình hi
 | Quyền | Màn hình cần chụp | Đường đi |
 |---|---|---|
 | 25 | Màn "Quét thẻ căn cước", thấy rõ nút *Quét mã QR trên thẻ* | Cá nhân → Tiện ích của tôi → dòng thứ 3 |
-| 38 | Bước 2 của Gửi phản ánh, thấy phần địa chỉ/vị trí | Trang chủ → Gửi phản ánh → bước 2 |
+| 38 | Bước 2 của Gửi phản ánh, thấy phần "Vị trí xảy ra sự việc" | Trang chủ → Gửi phản ánh → bước 2 |
 | 94 | Bước 2 của Gửi phản ánh, thấy nút thêm ảnh | cùng màn trên |
 | 100 | Màn onboarding, thấy nút *Liên kết số điện thoại Zalo* | mở ứng dụng khi chưa định danh |
 
 **Chụp bản sạch**: tắt bảng "Chẩn đoán tích hợp" trước khi chụp màn quét thẻ căn
 cước. Ảnh có thông báo lỗi hiện lên sẽ khiến người xét duyệt đánh giá thấp.
 
+**Vướng riêng của quyền 38.** Chính vì quyền chưa được cấp, bước 2 trên máy thật
+hiện ra nhánh thất bại — ô nhập địa chỉ kèm dòng "Chưa xác định được vị trí đủ
+chính xác". Chụp đúng cái đó rồi nộp thì tự tay đưa cho người xét duyệt một ảnh
+báo lỗi. Hai đường ra:
+
+- Chụp ở nơi webview lấy được điểm GPS thật (sai số dưới 500m) — lúc đó bản đồ
+  xem trước hiện lên và ảnh nhìn đúng như tính năng hoàn chỉnh. Bật "vị trí
+  chính xác" cho ứng dụng Zalo trong Cài đặt Android và ra chỗ thoáng.
+- Hoặc dựng ảnh từ bản build trên trình duyệt như đã làm với quyền 100: đặt
+  `VITE_USE_MOCK_SDK=true` để `getLocation` trả toạ độ mẫu, bước 2 sẽ hiện đủ
+  bản đồ và địa chỉ. Đây là ảnh minh hoạ tính năng, không phải bằng chứng
+  nghiệp vụ, nên cách này chấp nhận được — nhưng KHÔNG được để lộ nhãn nào cho
+  thấy đang chạy dữ liệu mẫu.
+
 Định dạng: JPG/PNG/JPEG, mỗi tệp tối đa 5MB.
+
+### Ảnh đã dựng sẵn cho quyền 100
+
+| Tệp | Nội dung |
+|---|---|
+| `anh-xin-quyen/quyen-100-so-dien-thoai-man-dinh-danh.png` | Ảnh 1 — màn định danh, thấy rõ nút *Liên kết số điện thoại Zalo* |
+| `anh-xin-quyen/quyen-100-duong-otp-thay-the.png` | Ảnh 2 — đường thay thế khi không lấy được số từ Zalo |
+
+Hai ảnh dựng từ bản build demo hiện tại, khung 390×812 đúng tỉ lệ điện thoại
+(604×1305 và 615×1313 điểm ảnh). Đủ dùng để nộp. Chụp được trên máy thật thì
+vẫn hơn — ảnh có thanh trạng thái, giờ, cột sóng nhìn thuyết phục hơn với người
+xét duyệt.
 
 ---
 
@@ -172,6 +257,12 @@ sử dụng. Bản dưới đây bám đúng 4 quyền đã xin ở mục 3.
 > **KHÁCH HÀNG PHẢI DUYỆT TRƯỚC KHI CÔNG BỐ.** Đây là văn bản pháp lý đứng tên
 > UBND xã, không phải nội dung kỹ thuật. Cần bổ sung tên đơn vị đầy đủ, địa chỉ,
 > và đầu mối liên hệ về dữ liệu cá nhân trước khi đăng.
+
+> **Bản nháp dưới đây dành cho BẢN CHÍNH THỨC**, đứng tên UBND xã. Bản đang phát
+> hành là bản demo, đứng tên đơn vị phát triển và có nội dung khác hẳn — xem
+> `zalo-miniapp/public/dieu-khoan-su-dung.html` (bản công bố) và `.md` (bản
+> nguồn). Đừng dán bản nháp này lên Console khi còn nộp dưới dạng demo: nó nói
+> ứng dụng do UBND xã cung cấp, ngược với những gì hồ sơ demo khai.
 
 ### Điều khoản sử dụng ứng dụng ViGov
 

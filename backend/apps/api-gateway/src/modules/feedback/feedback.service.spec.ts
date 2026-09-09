@@ -14,6 +14,9 @@ const MS_PER_DAY = 24 * MS_PER_HOUR;
 const CITIZEN_PHONE = '0987654321';
 const CITIZEN_NAME = 'Trần Thị Hoa';
 
+/** Mã ảnh nghiệm thu dùng cho nhóm test resolve() */
+const RESULT_IMAGE_IDS = ['64b7f3a2c1d4e5f6a7b8c9e0', '64b7f3a2c1d4e5f6a7b8c9e1'];
+
 const VALID_DTO = {
   categoryKey: 'giao-thong',
   title: 'Ổ gà lớn đường liên thôn Đoài – Trung',
@@ -31,6 +34,7 @@ interface Harness {
   countMock: jest.Mock;
   notifications: { [K in keyof NotificationService]: jest.Mock };
   realtime: { emitChange: jest.Mock };
+  files: { findPrivateById: jest.Mock; mintSignedUrl: jest.Mock };
 }
 
 interface HarnessOptions {
@@ -107,8 +111,13 @@ function buildHarness(options: HarnessOptions = {}): Harness {
   const realtime = { emitChange: jest.fn() };
 
   /* Ảnh gắn vào phiếu phải là tệp riêng tư (TB-09). Ở test thì mọi mã tệp đều
-     coi như hợp lệ — luật đó có bộ test riêng ở tầng FilesService. */
-  const files = { findPrivateById: jest.fn(async () => ({ isPrivate: true })) };
+     coi như hợp lệ — luật đó có bộ test riêng ở tầng FilesService.
+     `mintSignedUrl` trả một chuỗi nhận ra được để kiểm tra rằng phản hồi cho
+     công dân có link đọc ảnh, không phải chỉ có mã tệp. */
+  const files = {
+    findPrivateById: jest.fn(async () => ({ isPrivate: true })),
+    mintSignedUrl: jest.fn((id: string, ttl: number) => `/api/v1/files/${id}?exp=1&sig=sig&ttl=${ttl}`),
+  };
 
   const service = new FeedbackService(
     feedbackModel,
@@ -119,7 +128,7 @@ function buildHarness(options: HarnessOptions = {}): Harness {
     files as unknown as FilesService,
   );
 
-  return { service, created, createMock, countMock, notifications, realtime };
+  return { service, created, createMock, countMock, notifications, realtime, files };
 }
 
 /* ───────────────────────── Sinh mã #PA-YYYY-nnnn ───────────────────────── */
@@ -406,5 +415,100 @@ describe('FeedbackService.rateMine', () => {
     await expect(
       h.service.rateMine('#PA-2026-0007', CITIZEN_PHONE, { rating: 5 } as never),
     ).rejects.toBeInstanceOf(NotFoundException);
+  });
+});
+
+/**
+ * Ảnh phản ánh là tệp RIÊNG TƯ, nên `<img src="/files/<id>">` bị máy chủ từ
+ * chối. Phản hồi cho công dân phải kèm link ĐÃ KÝ, nếu không người dân gửi ảnh
+ * xong không bao giờ xem lại được chính ảnh mình gửi — và ảnh nghiệm thu do cán
+ * bộ chụp thì càng không, vì `assertCanSign` phân quyền theo người tải lên.
+ */
+describe('FeedbackService — link đọc ảnh trong phản hồi cho công dân', () => {
+  const IMAGE_IDS = ['64b7f3a2c1d4e5f6a7b8c9d0', '64b7f3a2c1d4e5f6a7b8c9d1'];
+  const RESULT_IDS = ['64b7f3a2c1d4e5f6a7b8c9d2'];
+
+  /** Bản ghi lean như CITIZEN_PROJECTION trả về */
+  const leanTicket = {
+    code: '#PA-2026-0009',
+    status: 'resolved',
+    imageFileIds: IMAGE_IDS,
+    resultImageFileIds: RESULT_IDS,
+  };
+
+  it('chi tiết phiếu kèm link cho cả ảnh hiện trường và ảnh nghiệm thu', async () => {
+    const h = buildHarness({ leanDoc: leanTicket });
+
+    const result = await h.service.detailMine('#PA-2026-0009', CITIZEN_PHONE);
+
+    expect(result.imageUrls).toHaveLength(IMAGE_IDS.length);
+    expect(result.resultImageUrls).toHaveLength(RESULT_IDS.length);
+    // Mã tệp vẫn giữ nguyên trong phản hồi — giao diện cũ dựa vào nó
+    expect(result.imageFileIds).toEqual(IMAGE_IDS);
+  });
+
+  it('link được ký cho ĐÚNG mã tệp của phiếu', async () => {
+    const h = buildHarness({ leanDoc: leanTicket });
+
+    await h.service.detailMine('#PA-2026-0009', CITIZEN_PHONE);
+
+    const signedIds = h.files.mintSignedUrl.mock.calls.map((call) => call[0]);
+    expect(signedIds).toEqual([...IMAGE_IDS, ...RESULT_IDS]);
+  });
+
+  it('danh sách phiếu cũng kèm link, không chỉ màn chi tiết', async () => {
+    const h = buildHarness({ leanDoc: leanTicket });
+
+    const page = await h.service.listMine(CITIZEN_PHONE, {} as never);
+
+    expect(page.items[0].imageUrls).toHaveLength(IMAGE_IDS.length);
+  });
+
+  it('phiếu không có ảnh thì trả mảng rỗng, không phải undefined', async () => {
+    const h = buildHarness({ leanDoc: { code: '#PA-2026-0010', status: 'received' } });
+
+    const result = await h.service.detailMine('#PA-2026-0010', CITIZEN_PHONE);
+
+    expect(result.imageUrls).toEqual([]);
+    expect(result.resultImageUrls).toEqual([]);
+    expect(h.files.mintSignedUrl).not.toHaveBeenCalled();
+  });
+
+  it('phiếu công dân vừa gửi đã có link đọc ảnh ngay trong phản hồi', async () => {
+    const h = buildHarness();
+
+    const result = await h.service.createByCitizen(
+      { ...VALID_DTO, imageFileIds: IMAGE_IDS } as never,
+      CITIZEN_PHONE,
+      CITIZEN_NAME,
+    );
+
+    expect(result.imageUrls).toHaveLength(IMAGE_IDS.length);
+  });
+});
+
+/** Ảnh nghiệm thu cũng phải riêng tư — cùng một lý do với ảnh hiện trường */
+describe('FeedbackService.resolve — ảnh nghiệm thu', () => {
+  it('kiểm tra từng mã ảnh nghiệm thu phải là tệp riêng tư', async () => {
+    const fb = fakeDoc({ code: '#PA-2026-0011', status: 'processing', timeline: [] as unknown[] });
+    const h = buildHarness({ existing: fb });
+
+    await h.service.resolve(
+      '#PA-2026-0011',
+      { note: 'Đã nạo vét cống', resultImageFileIds: RESULT_IMAGE_IDS } as never,
+      'Lê Minh Tuấn',
+    );
+
+    expect(h.files.findPrivateById).toHaveBeenCalledTimes(RESULT_IMAGE_IDS.length);
+    expect(h.files.findPrivateById).toHaveBeenCalledWith(RESULT_IMAGE_IDS[0], 'Ảnh nghiệm thu');
+  });
+
+  it('không gửi ảnh nghiệm thu thì không kiểm tra gì', async () => {
+    const fb = fakeDoc({ code: '#PA-2026-0012', status: 'processing', timeline: [] as unknown[] });
+    const h = buildHarness({ existing: fb });
+
+    await h.service.resolve('#PA-2026-0012', { note: 'Đã xử lý' } as never, 'Lê Minh Tuấn');
+
+    expect(h.files.findPrivateById).not.toHaveBeenCalled();
   });
 });

@@ -1,5 +1,6 @@
 import { appConfig } from "@/config/app.config";
 import { ApiError, getAccessToken } from "./api";
+import { zaloService } from "./zalo";
 
 /**
  * Tải ảnh hiện trường của phản ánh lên kho tệp dùng chung (WBS #24 — `/files`).
@@ -80,14 +81,25 @@ async function compress(blob: Blob): Promise<Blob | null> {
   }
 }
 
-/** Đọc đường dẫn tệp tạm của Zalo (hoặc data-URI ở chế độ mock) thành Blob */
+/**
+ * Đọc đường dẫn tệp tạm của Zalo (hoặc data-URI ở chế độ mock) thành Blob.
+ *
+ * Giao cho adapter `zaloService.readImageBlob` — đúng quy ước "mọi thứ chạm tới
+ * Zalo đi qua một tệp adapter", và quan trọng hơn: ở đó có ĐƯỜNG DỰ PHÒNG.
+ * `fetch` không đọc được `file://` trên nhiều webview (trả TypeError) trong khi
+ * thẻ `<img>` vẫn tải được chính đường dẫn đó, nên chỉ dựa vào `fetch` là mất
+ * ảnh trên đúng những máy đó — mà lỗi này không lộ ra khi thử trên máy tính.
+ */
 async function readAsBlob(filePath: string): Promise<Blob> {
   try {
-    const res = await fetch(filePath);
-    if (!res.ok) throw new Error(`đọc tệp trả về ${res.status}`);
-    return await res.blob();
-  } catch {
-    throw new ApiError("Không đọc được ảnh vừa chọn. Chọn lại ảnh rồi thử lại.", 0);
+    return await zaloService.readImageBlob(filePath);
+  } catch (err: unknown) {
+    throw new ApiError(
+      err instanceof Error && err.message
+        ? err.message
+        : "Không đọc được ảnh vừa chọn. Chọn lại ảnh rồi thử lại.",
+      0,
+    );
   }
 }
 

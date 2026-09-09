@@ -120,6 +120,14 @@ export const appConfig = {
   /** Số ảnh tối đa đính kèm một phản ánh */
   maxFeedbackImages: 3,
 
+  files: {
+    /**
+     * Dung lượng tối đa mỗi ảnh (byte) — PHẢI khớp STORAGE_MAX_FILE_SIZE của
+     * backend, nếu không người dân chờ tải hết ảnh rồi mới nhận 413.
+     */
+    maxSize: envNumber(import.meta.env.VITE_MAX_FILE_SIZE, 20 * 1024 * 1024),
+  },
+
   /**
    * Ô màu giữ chỗ cho ảnh hiện trường, xoay vòng theo số ảnh.
    *

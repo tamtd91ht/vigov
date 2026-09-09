@@ -115,6 +115,64 @@ interface ApiErrorBody {
   error?: string;
 }
 
+/* ───────────────────────── Chế độ mock ─────────────────────────
+ *
+ * Ô tải tệp có mặt ở gần như mọi phân hệ (bản scan văn bản, ảnh nghiệm thu phản
+ * ánh, tệp minh chứng nhiệm vụ, ảnh bìa bài viết, âm thanh, video). Thiếu nhánh
+ * mock thì bật NEXT_PUBLIC_USE_MOCKS=true là MỌI chỗ đính kèm đều báo
+ * "Không kết nối được máy chủ" — trong khi phần còn lại của giao diện chạy bình
+ * thường, nên rất khó đoán nguyên nhân.
+ */
+
+/** Bộ đếm cho mã tệp giả — chỉ cần duy nhất trong một phiên làm việc */
+let mockFileSeq = 0;
+
+/** Ảnh giữ chỗ khi mở tệp mock: SVG thật, không phải chuỗi giả làm hỏng thẻ img */
+const MOCK_FILE_DATA_URI =
+  "data:image/svg+xml;utf8," +
+  encodeURIComponent(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="480" height="320">' +
+      '<rect width="480" height="320" fill="#e2e8f0"/>' +
+      '<text x="240" y="168" font-family="sans-serif" font-size="20" fill="#64748b" ' +
+      'text-anchor="middle">Tep mau (che do demo)</text></svg>',
+  );
+
+/** Nhả tiến trình theo từng bước để thanh tiến trình vẫn chạy như thật */
+async function mockUpload(
+  file: File,
+  purpose: FilePurpose,
+  isPrivate: boolean,
+  onProgress?: (percent: number) => void,
+): Promise<UploadedFile> {
+  const step = Math.max(appConfig.api.mockDelayMs, 1) / 4;
+  for (const percent of [25, 50, 75, 100]) {
+    await new Promise((resolve) => setTimeout(resolve, step));
+    onProgress?.(percent);
+  }
+
+  mockFileSeq += 1;
+  const id = `mock-file-${mockFileSeq}`;
+  return {
+    id,
+    url: `/api/v1/files/${id}`,
+    originalName: file.name,
+    mimeType: file.type,
+    size: file.size,
+    purpose,
+    isPrivate,
+  };
+}
+
+/** Link "ký sẵn" giả — trả về ảnh giữ chỗ để nút "Mở tệp" vẫn mở được gì đó */
+async function mockSignedUrl(ttlSeconds: number): Promise<SignedUrl> {
+  await new Promise((resolve) => setTimeout(resolve, appConfig.api.mockDelayMs));
+  return {
+    url: MOCK_FILE_DATA_URI,
+    expiresAt: Math.floor(Date.now() / 1000) + ttlSeconds,
+    ttlSeconds,
+  };
+}
+
 /** Định dạng dung lượng cho nhãn hiển thị và thông báo lỗi */
 export function formatFileSize(bytes: number): string {
   if (bytes >= 1024 * 1024) return `${Math.round((bytes / (1024 * 1024)) * 10) / 10} MB`;
@@ -171,6 +229,9 @@ export function absoluteFileUrl(pathOrUrl: string): string {
 
 /** Cấp link ký sẵn để mở tệp riêng tư (ảnh phản ánh, bản scan văn bản) */
 export async function getSignedUrl(id: string, ttlSeconds = appConfig.files.signedUrlTtl): Promise<SignedUrl> {
+  if (appConfig.api.useMocks) {
+    return mockSignedUrl(ttlSeconds);
+  }
   const signed = await apiClient.get<SignedUrl>(
     `/files/${encodeURIComponent(id)}/signed-url?ttl=${ttlSeconds}`,
   );
@@ -204,6 +265,10 @@ export function uploadFile(
 ): Promise<UploadedFile> {
   const invalid = validateFile(file, purpose);
   if (invalid) return Promise.reject(new ApiError(invalid, 400));
+
+  if (appConfig.api.useMocks) {
+    return mockUpload(file, purpose, isPrivate, onProgress);
+  }
 
   const form = new FormData();
   form.append("file", file);

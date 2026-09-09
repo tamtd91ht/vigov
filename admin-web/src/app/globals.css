@@ -277,9 +277,14 @@ table.tb2 .tt{font-weight:600;color:var(--navy)}
 .ba{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .ba .b{border:1px solid var(--bd);border-radius:10px;overflow:hidden}
 .ba .b .h{font-size:11px;font-weight:700;padding:6px 10px;text-align:center;letter-spacing:.3px}
-.ba .b .p{height:110px;display:grid;place-items:center;color:rgba(255,255,255,.85);font-size:11px;font-weight:600;overflow:hidden}
+/* 150px chứ không 110px: ảnh hiện trường là căn cứ nghiệm thu, ô quá thấp thì
+   ảnh dọc của điện thoại bị object-fit:cover cắt còn một dải giữa */
+.ba .b .p{height:150px;display:grid;place-items:center;color:rgba(255,255,255,.85);font-size:11px;font-weight:600;overflow:hidden}
 .ba .b .p.ph{background:var(--bg2);color:var(--mut)}
 .ba .b .p img{width:100%;height:100%;object-fit:cover;display:block}
+/* Ô ảnh bấm được để mở bản đầy đủ — thumbnail luôn là ảnh đã bị cắt */
+.ba .b .p .imgzoom,.upl-grid .th .imgzoom{width:100%;height:100%;padding:0;border:0;background:none;cursor:zoom-in;display:block}
+.ba .b .p .imgzoom:hover img,.upl-grid .th .imgzoom:hover img{opacity:.88}
 .ba .b .p.multi{grid-auto-flow:column;grid-auto-columns:1fr;place-items:stretch;gap:1px;background:var(--bd)}
 
 /* ---------- MAP ---------- */

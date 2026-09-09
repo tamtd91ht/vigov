@@ -46,6 +46,7 @@ const ICON_PATHS = {
   skipFwd: '<path d="M3.5 12A8.5 8.5 0 1 0 12 3.5"/><path d="M12 .8L8.4 4 12 7.2"/>',
   text: '<path d="M4 6.5V4.5h16v2"/><path d="M12 4.5v15M8.5 19.5h7"/>',
   history: '<path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1"/><path d="M3.2 4v4h4"/><path d="M12 7.6V12l3 2"/>',
+  refresh: '<path d="M20.5 11.5a8.5 8.5 0 1 1-2.6-6.1"/><path d="M20.8 3.5v4h-4"/>',
   file: '<path d="M14 3H6.5A1.5 1.5 0 0 0 5 4.5v15A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/>',
   send: '<path d="M21 3.5L10.5 14M21 3.5l-6.6 17.2-3.9-6.7-6.7-3.9z"/>',
   users: '<circle cx="9.5" cy="8" r="3.3"/><path d="M3.5 20a6 6 0 0 1 12 0"/><path d="M16.5 5.2a3.3 3.3 0 0 1 0 6.4"/><path d="M18 20a6.2 6.2 0 0 0-2.6-4.6"/>',

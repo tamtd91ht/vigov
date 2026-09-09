@@ -1,0 +1,9 @@
+# Sinh ra lúc chạy — không commit
+__pycache__/
+*.pyc
+logs/
+state/
+settings.local.json
+
+# Ghi chú tạm của từng người
+memory/

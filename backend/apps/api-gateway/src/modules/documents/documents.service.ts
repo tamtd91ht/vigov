@@ -98,10 +98,16 @@ export class DocumentsService {
 
     if (added.length > 0) {
       doc.markModified('attachmentFileIds');
+      /*
+       * `state` chỉ nhận 'ok' | 'cur' (enum của TimelineStep). Giá trị 'done'
+       * dùng trước đây làm Mongoose ném ValidationError ngay ở `save()` dưới
+       * đây; đó không phải HttpException nên cả lời gọi đổ thành 500 — tệp
+       * không bao giờ được gắn, giao diện chỉ thấy "Internal server error".
+       */
       doc.timeline.push({
         title: `Đính kèm ${added.length} tệp: ${names.join(', ')}`,
         meta: timelineMeta(actor),
-        state: 'done',
+        state: 'ok',
       });
       await doc.save();
     }
@@ -121,7 +127,7 @@ export class DocumentsService {
     doc.timeline.push({
       title: 'Gỡ một tệp đính kèm',
       meta: timelineMeta(actor),
-      state: 'done',
+      state: 'ok',
     });
     await doc.save();
     return this.withAttachmentFiles(doc);
@@ -131,10 +137,14 @@ export class DocumentsService {
    * Bổ sung `attachmentFiles` (tên, dung lượng, kiểu) vào phản hồi chi tiết.
    * Mã tệp không tra được thì BỎ QUA — văn bản vẫn phải mở xem được khi một
    * tệp cũ đã bị dọn khỏi kho.
+   *
+   * MỌI phản hồi chi tiết đều phải đi qua đây. Web Quản trị lấy nguyên bản ghi
+   * trả về để thay thế bản đang mở trong ngăn chi tiết, nên một phản hồi thiếu
+   * `attachmentFiles` làm cột tệp đính kèm trắng xoá cho tới lần tải lại trang.
    */
   private async withAttachmentFiles(doc: IncomingDocumentDocument): Promise<Record<string, unknown>> {
     return {
-      ...doc.toObject(),
+      ...this.withFreshDaysLeft(doc.toObject()),
       attachmentFiles: await this.attachmentFilesOf(doc.attachmentFileIds ?? []),
     };
   }
@@ -260,7 +270,7 @@ export class DocumentsService {
     });
 
     this.logger.log(`Đã vào sổ văn bản số đến ${arrivalNo} (${kind})`);
-    return this.withFreshDaysLeft(created.toObject());
+    return this.withAttachmentFiles(created);
   }
 
   /** Cập nhật văn bản; đổi bộ phận chủ trì hoặc trạng thái sẽ ghi thêm timeline */
@@ -312,7 +322,7 @@ export class DocumentsService {
     }
 
     await doc.save();
-    return this.withFreshDaysLeft(doc.toObject());
+    return this.withAttachmentFiles(doc);
   }
 
   /** Chạy OCR trên bản scan và lưu 7 trường trích xuất vào văn bản */
@@ -392,7 +402,7 @@ export class DocumentsService {
     doc.timeline.push({
       title: trimmed ? `Xoá văn bản khỏi sổ: ${trimmed}` : 'Xoá văn bản khỏi sổ',
       meta: timelineMeta(actor),
-      state: 'done',
+      state: 'ok',
     });
     await doc.save();
 
@@ -411,7 +421,7 @@ export class DocumentsService {
     doc.timeline.push({
       title: 'Khôi phục văn bản vào sổ',
       meta: timelineMeta(actor),
-      state: 'done',
+      state: 'ok',
     });
     await doc.save();
 

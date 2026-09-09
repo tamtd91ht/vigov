@@ -109,7 +109,7 @@ nhiệm, không tính dòng riêng.
 | `P5-04` | RabbitMQ publisher/consumer thật | ✅ Xong |
 | `P5-05` | Socket.IO realtime | ✅ Xong — có cả phía client (trước chỉ có cổng ở backend mà không ai nối) |
 | `P5-06` | Tải tệp thật từ giao diện | ✅ Xong — kèm tệp đính kèm nhiệm vụ |
-| `P5-07` | Kiểm thử tự động | ✅ Xong — 300 test backend, 88 test Web Quản trị |
+| `P5-07` | Kiểm thử tự động | ✅ Xong — 341 test đơn vị backend + 28 test đầu-cuối luồng đính kèm, 91 test Web Quản trị |
 | `P5-08` | Thu hồi token khi khoá tài khoản | ✅ Xong |
 | `P5-09` | Nối provider thật OCR/GIS/ZNS/FCM | ⏳ Chờ khách chốt nhà cung cấp và cấp tài khoản |
 
@@ -121,6 +121,30 @@ nhiệm, không tính dòng riêng.
 - **Khối B** — sáu hạng mục thiếu ở cả hai đầu: tra cứu hồ sơ một cửa (WBS #15), tiếp
   nhận phản ánh trực tiếp tại xã (WBS #6), tệp đính kèm nhiệm vụ (WBS #3), kết xuất
   PDF/PowerPoint (WBS #8/#27), refresh token, tự đổi mật khẩu (`P6-05`).
+
+### 6.2b Rà soát luồng đính kèm tệp (09/09/2026)
+
+Luồng đính kèm được rà từ đầu tới cuối bằng một bộ test đầu-cuối mới
+(`backend/test/attachments.e2e-spec.ts`, 28 test). Bốn lỗi cùng lọt ra bản chạy thật
+vì trước đó không có test nào đi hết ba bước *tải tệp → gắn vào bản ghi → đọc lại*:
+
+| Lỗi | Hiện tượng người dùng thấy | Đã sửa |
+|---|---|---|
+| Mốc nhật ký dùng `state: 'done'` — ngoài enum `'ok' \| 'cur'` | Gắn phụ lục vào văn bản **luôn** trả 500; tệp không bao giờ được gắn | ✅ |
+| Busboy đọc tên tệp theo Latin-1 | Tên tệp tiếng Việt thành chữ rác trong cột đính kèm và khi tải về | ✅ |
+| Endpoint ghi trả bản ghi thiếu `attachmentFiles` | Tệp vừa đính kèm **biến mất** khỏi ngăn chi tiết sau khi cập nhật tiến độ / thêm ý kiến | ✅ |
+| `deadline` khai `required` nhưng form cho bỏ trống | Tiếp nhận văn bản không có hạn trả 500 | ✅ |
+
+Kèm theo, hoàn tất hai khoảng trống của luồng ảnh phản ánh:
+
+- **Zalo Mini App nay tải ảnh lên thật.** Trước đây ảnh chỉ xem trước được trong lúc
+  soạn phiếu rồi bị thay bằng ô màu giữ chỗ — người dân gửi ảnh xong không bao giờ xem
+  lại được ảnh mình gửi. Chi tiết bốn bước ở `docs/03-ZALO-MINIAPP.md` mục 4b.
+  ⚠️ **Còn tồn đọng:** bước đọc ảnh thành Blob phải nghiệm thu trên **máy thật** — trên
+  trình duyệt luôn chạy đường `fetch`, nên lỗi đặc thù webview Zalo không lộ ra khi kiểm
+  thử trên máy tính.
+- **Công dân xem được ảnh nghiệm thu** do cán bộ chụp cho phiếu của mình, mà **không**
+  phải để tệp nào ở chế độ công khai (phát hiện `TB-16` trong `SECURITY.md`).
 
 ### 6.3 Còn lại — chặn bởi bên ngoài
 

@@ -35,6 +35,10 @@ export class Comment {
 }
 export const CommentSchema = SchemaFactory.createForClass(Comment);
 
+/** Giá trị hợp lệ của `TimelineStep.state` — nguồn chuẩn cho cả enum Mongoose lẫn kiểu TS */
+export const TIMELINE_STATES = ['ok', 'cur'] as const;
+export type TimelineState = (typeof TIMELINE_STATES)[number];
+
 /** Mục nhật ký / timeline */
 @Schema({ _id: false })
 export class TimelineStep {
@@ -44,8 +48,18 @@ export class TimelineStep {
   @Prop({ required: true })
   meta: string;
 
-  @Prop({ enum: ['ok', 'cur'], default: 'ok' })
-  state: string;
+  /**
+   * Trạng thái mốc: 'ok' = đã qua, 'cur' = đang ở đây.
+   *
+   * Khai UNION chứ không phải `string` là có chủ ý. Trước đây để `string` nên
+   * TypeScript không chặn được `state: 'done'` — giá trị ngoài enum của Mongoose
+   * — và nó lọt tới lúc chạy thành `ValidationError` ở `save()`. Vì đó không
+   * phải `HttpException`, cả lời gọi trả 500: cùng một lỗi đã làm vỡ "đính kèm
+   * phụ lục văn bản" rồi vỡ tiếp "xoá mềm văn bản" (TB-19 trong SECURITY.md).
+   * Với union, sai giá trị là lỗi BIÊN DỊCH, không còn ra được bản chạy thật.
+   */
+  @Prop({ enum: TIMELINE_STATES, default: 'ok' })
+  state: TimelineState;
 }
 export const TimelineStepSchema = SchemaFactory.createForClass(TimelineStep);
 

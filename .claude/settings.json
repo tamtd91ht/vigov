@@ -1,0 +1,144 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -c \"import sys,os;n='session_start';d=os.path.abspath(os.getcwd());h=next((p for p in (os.path.join(x,'.claude','hooks',n+'.py') for x in (d,os.path.dirname(d),os.path.dirname(os.path.dirname(d)))) if os.path.exists(p)),None);exec(open(h,encoding='utf-8').read()) if h else sys.exit(0)\""
+          }
+        ]
+      }
+    ],
+
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -c \"import sys,os;n='data_safety_guard';d=os.path.abspath(os.getcwd());h=next((p for p in (os.path.join(x,'.claude','hooks',n+'.py') for x in (d,os.path.dirname(d),os.path.dirname(os.path.dirname(d)))) if os.path.exists(p)),None);exec(open(h,encoding='utf-8').read()) if h else sys.exit(0)\""
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -c \"import sys,os;n='secret_scan';d=os.path.abspath(os.getcwd());h=next((p for p in (os.path.join(x,'.claude','hooks',n+'.py') for x in (d,os.path.dirname(d),os.path.dirname(os.path.dirname(d)))) if os.path.exists(p)),None);exec(open(h,encoding='utf-8').read()) if h else sys.exit(0)\""
+          },
+          {
+            "type": "command",
+            "command": "python -c \"import sys,os;n='pii_guard';d=os.path.abspath(os.getcwd());h=next((p for p in (os.path.join(x,'.claude','hooks',n+'.py') for x in (d,os.path.dirname(d),os.path.dirname(os.path.dirname(d)))) if os.path.exists(p)),None);exec(open(h,encoding='utf-8').read()) if h else sys.exit(0)\""
+          },
+          {
+            "type": "command",
+            "command": "python -c \"import sys,os;n='data_safety_guard';d=os.path.abspath(os.getcwd());h=next((p for p in (os.path.join(x,'.claude','hooks',n+'.py') for x in (d,os.path.dirname(d),os.path.dirname(os.path.dirname(d)))) if os.path.exists(p)),None);exec(open(h,encoding='utf-8').read()) if h else sys.exit(0)\""
+          }
+        ]
+      }
+    ],
+
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python -c \"import sys,os;n='rbac_audit_guard';d=os.path.abspath(os.getcwd());h=next((p for p in (os.path.join(x,'.claude','hooks',n+'.py') for x in (d,os.path.dirname(d),os.path.dirname(os.path.dirname(d)))) if os.path.exists(p)),None);exec(open(h,encoding='utf-8').read()) if h else sys.exit(0)\""
+          },
+          {
+            "type": "command",
+            "command": "python -c \"import sys,os;n='hardcode_guard';d=os.path.abspath(os.getcwd());h=next((p for p in (os.path.join(x,'.claude','hooks',n+'.py') for x in (d,os.path.dirname(d),os.path.dirname(os.path.dirname(d)))) if os.path.exists(p)),None);exec(open(h,encoding='utf-8').read()) if h else sys.exit(0)\""
+          },
+          {
+            "type": "command",
+            "command": "python -c \"import sys,os;n='env_sync_guard';d=os.path.abspath(os.getcwd());h=next((p for p in (os.path.join(x,'.claude','hooks',n+'.py') for x in (d,os.path.dirname(d),os.path.dirname(os.path.dirname(d)))) if os.path.exists(p)),None);exec(open(h,encoding='utf-8').read()) if h else sys.exit(0)\""
+          }
+        ]
+      }
+    ]
+  },
+
+  "permissions": {
+    "allow": [
+      "Read(**)",
+
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(head:*)",
+      "Bash(tail:*)",
+      "Bash(wc:*)",
+      "Bash(sort:*)",
+      "Bash(uniq:*)",
+      "Bash(echo:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(sed:*)",
+      "Bash(date:*)",
+      "Bash(mkdir:*)",
+      "Bash(python --version:*)",
+
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git show:*)",
+      "Bash(git branch:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git remote -v:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git stash:*)",
+      "Bash(git checkout:*)",
+      "Bash(git switch:*)",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)",
+
+      "Bash(npm run check:all:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run typecheck:*)",
+      "Bash(npm test:*)",
+      "Bash(npm run test:api:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx tsc --noEmit:*)",
+      "Bash(npx eslint:*)",
+      "Bash(npm audit:*)",
+      "Bash(npm ls:*)",
+
+      "Bash(flutter analyze:*)",
+      "Bash(flutter test:*)",
+      "Bash(flutter pub get:*)",
+
+      "Bash(docker compose config:*)",
+      "Bash(docker compose ps:*)",
+      "Bash(docker compose logs:*)"
+    ],
+
+    "deny": [
+      "Bash(rm -rf:*)",
+      "Bash(rm -fr:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git branch -D:*)",
+      "Bash(git remote remove:*)",
+      "Bash(git remote rm:*)",
+      "Bash(mongosh:*)",
+      "Bash(mongo:*)",
+      "Bash(mongorestore:*)",
+      "Bash(npm run seed:fresh:*)",
+      "Bash(npm audit fix:*)",
+      "Bash(docker volume rm:*)",
+      "Bash(docker volume prune:*)",
+      "Bash(docker system prune:*)",
+      "Read(./backend/.env.local)",
+      "Read(./admin-web/.env.local)",
+      "Read(./zalo-miniapp/.env.local)",
+      "Read(./.env)",
+      "Read(**/.env.local)"
+    ]
+  }
+}

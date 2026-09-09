@@ -391,7 +391,8 @@ describe('ViGov API — luồng nghiệp vụ đầu-cuối', () => {
     });
 
     it('kế toán KHÔNG được xoá nhiệm vụ (yêu cầu quyền admin)', async () => {
-      await asAccountant(api().delete(`${API}/tasks/NV-2601`)).expect(403);
+      // Xoá nhiệm vụ là XOÁ MỀM: PATCH /tasks/:code/delete, không phải DELETE
+      await asAccountant(api().patch(`${API}/tasks/NV-2601/delete`)).expect(403);
     });
   });
 

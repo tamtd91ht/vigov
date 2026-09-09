@@ -19,7 +19,22 @@ interface SignedState {
 
 const EMPTY_STATE: SignedState = { fileId: "", url: "", failed: false };
 
-export function SignedImage({ fileId, alt }: { fileId: string; alt: string }) {
+export function SignedImage({
+  fileId,
+  alt,
+  zoomable = false,
+}: {
+  fileId: string;
+  alt: string;
+  /**
+   * Bấm vào ảnh để mở bản đầy đủ ở tab mới.
+   *
+   * Ô thumbnail dùng `object-fit: cover` nên ảnh dọc của điện thoại bị cắt gần
+   * hết — cán bộ phải xem được khung đầy đủ mới đánh giá được hiện trường. Dùng
+   * lại link ký sẵn component đang giữ, không xin thêm một lượt nữa.
+   */
+  zoomable?: boolean;
+}) {
   const [state, setState] = useState<SignedState>(EMPTY_STATE);
 
   // Đổi sang tệp khác → bỏ link cũ ngay trong render, không chờ effect chạy
@@ -43,10 +58,23 @@ export function SignedImage({ fileId, alt }: { fileId: string; alt: string }) {
   if (failed) return <span className="tiny">Không đọc được ảnh</span>;
   if (!url) return <span className="spinner" style={{ width: 18, height: 18 }} />;
 
-  return (
+  const image = (
     // Ảnh do người dùng tải lên nằm ở máy chủ API, kích thước không biết trước —
     // next/image không thêm giá trị gì ở đây mà lại cần cấu hình remotePatterns.
     // eslint-disable-next-line @next/next/no-img-element
     <img src={url} alt={alt} onError={() => setState((prev) => ({ ...prev, failed: true }))} />
+  );
+
+  if (!zoomable) return image;
+
+  return (
+    <button
+      type="button"
+      className="imgzoom"
+      title="Bấm để xem ảnh đầy đủ"
+      onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
+    >
+      {image}
+    </button>
   );
 }

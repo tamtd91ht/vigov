@@ -1,5 +1,61 @@
 # ViGov — quy ước cho AI agent
 
+---
+
+# ⚠ ĐÂY LÀ ỨNG DỤNG CỦA CƠ QUAN NHÀ NƯỚC
+
+ViGov là nền tảng **Điều hành số cấp Xã/Phường** do UBND xã/phường vận hành. Mọi dòng mã
+trong dự án này chạm tới một trong ba thứ sau:
+
+1. **Dữ liệu cá nhân của công dân** — số điện thoại, họ tên, địa chỉ, ảnh hiện trường,
+   dữ liệu thẻ căn cước, nội dung đơn thư. Chịu ràng buộc **Nghị định 13/2023/NĐ-CP**
+   về bảo vệ dữ liệu cá nhân.
+2. **Hồ sơ hành chính có giá trị pháp lý** — văn bản đến/đi, đơn thư, phiếu phản ánh,
+   quyết định giải ngân. Đây là **tài liệu lưu trữ** có thời hạn lưu theo quy định:
+   **không được xoá cứng, không được sửa lặng lẽ**.
+3. **Uy tín của một cơ quan công quyền** — hiển thị sai tên xã, con số thống kê lệch,
+   một câu tiếng Việt sai chính tả đều là sự cố có người phải giải trình.
+
+**MỌI THỨ KHI CODE ĐỀU PHẢI CẨN THẬN.** Cụ thể:
+
+| Nguyên tắc | Nghĩa khi viết mã |
+|---|---|
+| **Cẩn thận trước, nhanh sau** | Không đoán nghiệp vụ. Không "tạm thế này rồi sửa sau". Không đổi hành vi nghiệp vụ khi không được yêu cầu. |
+| **Nói rõ giả định** | Nêu giả định trước khi viết mã. Nghiệp vụ hành chính có nhiều biến thể theo địa phương — chọn thầm là chọn sai. |
+| **Không phá dữ liệu** | Không xoá cứng bản ghi nghiệp vụ, không `deleteMany`, không migration mất dữ liệu. Xoá mềm + ghi vết. |
+| **Mọi thao tác ghi phải có vết** | Ai làm, làm gì, lúc nào, từ IP nào. Nhật ký giữ tối thiểu 12 tháng. |
+| **Mặc định đóng** | Endpoint mới phải khai quyền tường minh. Tệp nghiệp vụ mới phải `isPrivate = true`. Trường dữ liệu cá nhân mặc định che. |
+| **Cách ly dữ liệu công dân** | Công dân chỉ được thấy đúng dữ liệu của chính mình. Định danh công dân chỉ là OTP — coi là danh tính **yếu**. |
+| **Không hardcode** | Một mã nguồn chạy cho nhiều xã. Tên đơn vị, SLA, danh mục, toạ độ, URL đều ở cấu hình. |
+| **Tiếng Việt hành chính đúng chuẩn** | Sai chính tả, sai thuật ngữ (phản ánh ≠ khiếu nại ≠ tố cáo) là lỗi nghiệp vụ, không phải lỗi nhỏ. |
+| **Kiểm chứng, đừng chỉ khai báo** | `npm run check:all` + test liên quan phải chạy thật. Báo "đã xong" khi đã chạy và thấy xanh. |
+| **Không tự chốt câu hỏi mở của khách** | ~27 câu hỏi mở ở `ESTIMATE_TECHNICAL.md` là quyết định của khách hàng. |
+
+**Khi phải chọn giữa "làm cho nhanh" và "làm cho đúng" — luôn chọn đúng, rồi nói cho
+người dùng biết nó tốn thêm bao nhiêu.**
+
+## Bộ não `.claude/` — khuôn khổ bắt buộc
+
+Toàn bộ luật, kỹ năng, quy trình và chốt cưỡng chế nằm ở `.claude/`:
+
+| Nơi | Nội dung |
+|---|---|
+| `.claude/CLAUDE.md` | Bối cảnh, kiến trúc, hành vi khi làm việc (tự nạp mọi phiên) |
+| `.claude/rules/critical/` | **8 luật tối quan trọng**, nạp sẵn: dữ liệu cá nhân · cách ly công dân · RBAC · nhật ký · bảo toàn dữ liệu · bí mật cấu hình · không hardcode · tiếng Việt hành chính |
+| `.claude/skills/` | 26 kỹ năng, tự bật theo từ khoá |
+| `.claude/hooks/` | **7 hook cưỡng chế thật** — chặn secret, chặn log dữ liệu cá nhân, chặn xoá dữ liệu, nhắc thiếu quyền / hardcode / lệch env |
+| `.claude/workflows/` | 7 quy trình theo loại việc |
+| `.claude/agents/` · `.claude/commands/` | 9 agent · 17 lệnh `/` |
+| `.claude/data/` | Thuật ngữ hành chính · hằng số · bản đồ module · tham chiếu pháp lý |
+
+Tra cứu: **`.claude/rules/_INDEX.md`**. Cách mở rộng bộ não: **`.claude/README.md`**.
+
+Hook chặn một việc thì **không tìm cách khác cho lọt** — thông báo chặn luôn nói cách
+làm đúng tương đương. Thật sự cần làm việc bị chặn thì nói rõ hậu quả với người dùng và
+chờ xác nhận tường minh.
+
+---
+
 ## Biến môi trường: `.env.local` (giá trị thật) ↔ `.env.example` (mẫu)
 
 Mỗi module có **hai** tệp cấu hình, vai trò khác hẳn nhau:
@@ -74,8 +130,14 @@ Biến đã có sẵn trong môi trường (Docker, CI) luôn thắng giá trị
   lọc ở danh sách, lọc ở mọi nơi truy vấn collection đó TRỰC TIẾP (thống kê, báo
   cáo, tìm kiếm toàn cục, workflow), và không cấp lại mã đã dùng.
 
+Chi tiết từng nguyên tắc → `.claude/rules/critical/` và `.claude/skills/`.
+
 ## Tài liệu
 
 `README.md` (cách chạy, xử lý sự cố) · `SECURITY.md` (rà soát bảo mật, việc bắt buộc
 trước production) · `BAO-CAO-TIEN-DO.md` (tiến độ) · `deploy/` (triển khai, UAT, phát
-hành store) · `plans/` (plan chi tiết từng task) · `pending-tasks.json` (trạng thái task).
+hành store) · `plans/` (plan chi tiết từng task) · `pending-tasks.json` (trạng thái task) ·
+`docs/` (bộ tài liệu bàn giao) · `.claude/README.md` (bộ não AI agent).
+
+Sửa mã xong là phải đồng bộ tài liệu — bảng tra "sửa gì thì cập nhật gì" ở
+`.claude/skills/tai-lieu-dong-bo/SKILL.md`.

@@ -185,7 +185,7 @@ export class FilesService {
     const mimeType = (file.mimetype ?? '').toLowerCase();
     this.assertMimeAllowed(filePurpose, mimeType);
 
-    const originalName = file.originalname ?? 'tệp-không-tên';
+    const originalName = decodeMultipartFilename(file.originalname) || 'tệp-không-tên';
     const storageKey = this.buildStorageKey(filePurpose, originalName, mimeType);
     await this.driver.save(file.buffer, storageKey, mimeType);
 
@@ -343,6 +343,31 @@ export class FilesService {
     };
   }
 
+  /**
+   * Cấp link ký sẵn cho nơi gọi ĐÃ TỰ kiểm tra quyền trên bản ghi nghiệp vụ.
+   *
+   * Khác `signedUrl()` ở hai điểm, và cả hai đều có lý do:
+   *
+   *   · Không gọi `assertCanSign` — hàm đó phân quyền theo NGƯỜI TẢI LÊN, nên
+   *     công dân ký được ảnh mình gửi mà KHÔNG ký được ảnh nghiệm thu do cán bộ
+   *     chụp, dù cả hai đều thuộc đúng phiếu của họ. Quyền đúng ở đây là quyền
+   *     trên PHIẾU, mà chỉ FeedbackService biết (`findOne({ code, citizenPhone })`).
+   *     Nhờ vậy không tệp nào phải để công khai để công dân xem được kết quả.
+   *
+   *   · Không tra bản ghi tệp — `listMine` trả tới 50 phiếu × 3 ảnh, tra từng
+   *     mã là 150 lượt truy vấn cho một việc chỉ cần một phép HMAC. Mã tệp không
+   *     tồn tại chỉ dẫn tới link trả 404 khi mở, còn `isPrivate` vẫn được kiểm
+   *     ở `openForStream` lúc đọc tệp thật.
+   *
+   * CHỈ dùng khi nơi gọi đã xác định người dùng có quyền trên bản ghi chứa mã
+   * tệp này. Endpoint nhận mã tệp thẳng từ client thì phải dùng `signedUrl()`.
+   */
+  mintSignedUrl(id: string, ttlSeconds = DEFAULT_SIGNED_URL_TTL_SECONDS): string {
+    const ttl = clampTtl(ttlSeconds);
+    const exp = Math.floor(Date.now() / 1000) + ttl;
+    return `${this.publicUrl(id)}?exp=${exp}&sig=${this.sign(id, exp)}`;
+  }
+
   /** Kiểm tra chữ ký của link ký sẵn; sai hoặc hết hạn thì ném ForbiddenException */
   verifySignature(id: string, exp: string | number | undefined, sig: string | undefined): void {
     const expNumber = typeof exp === 'number' ? exp : parseInt(String(exp ?? ''), 10);
@@ -417,6 +442,30 @@ export class FilesService {
     const month = String(now.getMonth() + 1).padStart(2, '0');
     return `${purpose}/${year}/${month}/${randomUUID()}${pickExtension(originalName, mimeType)}`;
   }
+}
+
+/**
+ * Giải mã tên tệp lấy từ phần multipart về UTF-8.
+ *
+ * Busboy (thư viện Multer dùng bên dưới) đọc `filename` của multipart theo
+ * Latin-1, nên "Phụ lục biên bản.docx" về tới đây thành "PhÃ¡Â»Â¥ lÃ¡Â»Â¥c...":
+ * mỗi byte UTF-8 bị hiểu thành một ký tự riêng. Tên đó vào Mongo là hỏng vĩnh
+ * viễn — danh sách tệp đính kèm hiện chữ rác, và header Content-Disposition lúc
+ * tải về bị mã hoá hai lần nên tệp lưu ra cũng sai tên.
+ *
+ * Cách sửa: đọc lại chuỗi thành byte Latin-1 rồi giải mã UTF-8. Hai lớp bảo vệ
+ * để hàm này an toàn cả khi Busboy đổi mặc định sang UTF-8 ở bản sau:
+ *   · có ký tự ngoài Latin-1 ⇒ tên đã đúng, giữ nguyên;
+ *   · giải mã ra ký tự thay thế U+FFFD ⇒ chuỗi byte không phải UTF-8, giữ nguyên.
+ */
+export function decodeMultipartFilename(raw: string | undefined): string {
+  const name = (raw ?? '').trim();
+  if (!name) return '';
+  // Ký tự ngoài dải Latin-1 ⇒ tên đã được giải mã đúng, không đụng vào nữa
+  if (/[^\u0000-\u00ff]/.test(name)) return name;
+  const decoded = Buffer.from(name, 'latin1').toString('utf8');
+  // U+FFFD nghĩa là chuỗi byte không phải UTF-8 ⇒ giữ nguyên tên gốc
+  return decoded.includes('\ufffd') ? name : decoded;
 }
 
 /** Ưu tiên đuôi tệp gốc nếu an toàn, ngược lại suy từ MIME */

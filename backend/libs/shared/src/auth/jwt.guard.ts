@@ -38,6 +38,25 @@ export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
 export const ALLOW_PENDING_PASSWORD_KEY = 'vigov:allowPendingPassword';
 export const AllowPendingPassword = () => SetMetadata(ALLOW_PENDING_PASSWORD_KEY, true);
 
+/**
+ * Endpoint mở cho MỌI tài khoản đã đăng nhập, KỂ CẢ công dân.
+ *
+ * Vì sao cần một khai báo riêng: bảng RBAC chỉ có vai trò cán bộ, `roleKey`
+ * 'citizen' không nằm trong đó nên `hasPermission` luôn trả false. Gắn
+ * `@RequirePermission` vào một endpoint công dân cần dùng là chặn đúng người
+ * cần dùng nó; còn `@Public()` thì bỏ luôn xác thực. Trước đây những endpoint
+ * này được để TRỐNG decorator và dựa vào hành vi mặc định của guard — đúng ý
+ * đồ, nhưng không ai đọc mã mà biết được là cố tình hay bỏ sót.
+ *
+ * KHÔNG thay đổi hành vi kiểm tra: đây là khai báo ý đồ, để hành vi mặc định
+ * của guard trở thành một lựa chọn tường minh và soi được bằng công cụ.
+ *
+ * @param reason Vì sao endpoint này phải mở cho công dân — bắt buộc, cùng tinh
+ *   thần với comment `// CÔNG KHAI — <lý do>` mà `@Public()` đòi.
+ */
+export const ANY_AUTHENTICATED_KEY = 'vigov:anyAuthenticated';
+export const AnyAuthenticated = (reason: string) => SetMetadata(ANY_AUTHENTICATED_KEY, reason);
+
 /** Yêu cầu quyền tối thiểu trên một phân hệ */
 export const REQUIRE_PERMISSION_KEY = 'vigov:requirePermission';
 export const RequirePermission = (module: ModuleKey, permission: Permission) =>

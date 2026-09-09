@@ -31,13 +31,29 @@ export interface ZaloUserProfile {
 export interface LocationResult {
   granted: boolean;
   /**
-   * Toạ độ chỉ có ở bản mock. SDK đã bỏ `latitude`/`longitude`: bản thật chỉ
-   * trả `token`, backend đổi token lấy toạ độ (hết hạn sau 2 phút, dùng 1 lần).
+   * Toạ độ. KHÔNG đến từ zmp-sdk: SDK đã bỏ `latitude`/`longitude`, chỉ trả
+   * `token` để backend đổi (hết hạn sau 2 phút, dùng một lần). Đây là toạ độ
+   * do THIẾT BỊ đo qua `navigator.geolocation` — xem browserGeolocate().
    */
   lat?: number;
   lng?: number;
   address?: string;
   token?: string;
+  /**
+   * Bán kính sai số (mét) do thiết bị khai. Phải hiện ra được: một điểm sai số
+   * 2000m nhìn trên bản đồ y như điểm sai số 10m, mà một cái ghim đúng ngõ còn
+   * cái kia ghim sang xã khác.
+   */
+  accuracy?: number;
+  /** Nguồn toạ độ — để biết đường nào đang chạy khi thử trên điện thoại */
+  source?: "zalo" | "browser" | "mock";
+  /**
+   * Lý do thất bại, NGUYÊN VĂN từ SDK. Trước đây mọi lỗi đều rơi về
+   * `{granted:false}` trơn, nên màn hình nói dối là "người dùng từ chối" trong
+   * khi thật ra Zalo chặn quyền API. Người thử cầm điện thoại không mở được
+   * console, nên lỗi phải hiện ra được trên giao diện.
+   */
+  error?: string;
 }
 
 /** Bật để thử luồng người dùng từ chối quyền vị trí (câu hỏi mở #16) */
@@ -73,6 +89,15 @@ const MOCK_IMAGE_URI =
       '<text x="120" y="228" font-family="Arial" font-size="18" fill="#ffffff" text-anchor="middle">Ảnh mẫu</text>' +
       "</svg>",
   );
+
+/**
+ * Cạnh dài nhất của ảnh sau khi thu nhỏ để gửi (điểm ảnh), cùng định dạng và
+ * mức nén. 1600px đủ để cán bộ đọc được biển số, mặt đường, vết nứt trên màn
+ * hình Web Quản trị; giữ nguyên ảnh gốc 12MP chỉ làm người dân tốn 4G.
+ */
+const IMAGE_MAX_EDGE = 1600;
+const IMAGE_MIME = "image/jpeg";
+const IMAGE_QUALITY = 0.85;
 
 /** Kết quả quét — mang theo lỗi để màn hình nói được vì sao hỏng */
 export interface ScanResult {
@@ -185,6 +210,164 @@ async function runScan(): Promise<ScanResult> {
   }
 }
 
+/** Một lần đọc vị trí từ thiết bị, kèm sai số do chính thiết bị khai */
+interface BrowserFix {
+  lat: number;
+  lng: number;
+  /** Bán kính sai số (mét) — GPS thường 5-20m, wifi/cell hàng trăm mét tới hàng km */
+  accuracy: number;
+}
+
+/**
+ * Đủ chính xác để ghim đúng ngõ, đúng nhà. Đạt ngưỡng này là nhận luôn, không
+ * chờ thêm — chờ nữa chỉ làm người dùng ngồi nhìn vòng xoay.
+ */
+const GOOD_ACCURACY_M = 30;
+
+/** Thời gian tối đa dành cho việc chờ GPS ổn định */
+const GEOLOCATE_WINDOW_MS = 15000;
+
+/**
+ * Sai số vượt ngưỡng này thì toạ độ VÔ DỤNG — dứt khoát không ghim lên phiếu.
+ *
+ * VÌ SAO CẦN NGƯỠNG CHẶN, không chỉ cảnh báo: khi webview không được hệ điều
+ * hành cấp một điểm định vị thật, nó rơi về ước lượng theo địa chỉ mạng. Với
+ * nhà mạng Việt Nam, dải IP di động phần lớn đăng ký ở Hà Nội, nên người dùng
+ * ở Tuy Hoà vẫn ra một điểm giữa Hà Nội — lệch cả nghìn kilômét mà `accuracy`
+ * khai đúng là hàng chục nghìn mét.
+ *
+ * Một điểm như thế trên phiếu phản ánh còn TỆ HƠN không có điểm nào: cán bộ
+ * tin vào cái ghim rồi tới nhầm nơi, còn người dân thì tưởng đã báo đúng chỗ.
+ * Thà bắt nhập địa chỉ bằng tay.
+ *
+ * 500m: đủ rộng để nhận điểm GPS yếu trong nhà hay điểm wifi trong khu dân cư
+ * (vẫn khoanh đúng thôn), đủ hẹp để loại mọi ước lượng theo mạng.
+ */
+const MAX_USABLE_ACCURACY_M = 500;
+
+/**
+ * Vị trí hiện tại của THIẾT BỊ, qua `navigator.geolocation`.
+ *
+ * VÌ SAO `watchPosition` CHỨ KHÔNG `getCurrentPosition`: trên Android, lần đọc
+ * đầu tiên gần như luôn là điểm thô từ wifi/trạm phát sóng — sai số hàng trăm
+ * mét tới hàng chục km, đủ để ghim sang xã khác. `getCurrentPosition` trả đúng
+ * cái điểm thô đó rồi kết thúc, GPS có bắt được tín hiệu sau đó cũng vô ích.
+ * `watchPosition` cho nhiều lần đọc liên tiếp, mỗi lần một chính xác hơn, nên
+ * ở đây giữ lấy lần đọc TỐT NHẤT và dừng ngay khi đạt GOOD_ACCURACY_M.
+ *
+ * `maximumAge: 0` để không nhận điểm cũ trong bộ đệm: người dùng đang đứng ở
+ * hiện trường và cần vị trí LÚC NÀY, không phải chỗ họ mở máy lần trước.
+ *
+ * Hết thời gian mà chưa có điểm nào đủ tốt thì vẫn trả điểm tốt nhất đã đọc
+ * được — điểm thô kèm sai số hiển thị rõ còn hơn không có gì. Chỉ khi không đọc
+ * được lần nào mới coi là thất bại.
+ */
+function browserGeolocate(): Promise<BrowserFix> {
+  return new Promise((resolve, reject) => {
+    const geo = navigator.geolocation;
+    if (!geo) {
+      reject(new Error("webview không có navigator.geolocation"));
+      return;
+    }
+
+    let best: BrowserFix | null = null;
+    let watchId: number | null = null;
+    let done = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    function finish(err?: Error): void {
+      if (done) return;
+      done = true;
+      if (timer !== null) clearTimeout(timer);
+      if (watchId !== null) geo.clearWatch(watchId);
+      // Có điểm nào là dùng điểm đó, kể cả khi lần đọc cuối báo lỗi
+      if (best) resolve(best);
+      else reject(err ?? new Error("không đọc được vị trí nào"));
+    }
+
+    timer = setTimeout(
+      () => finish(new Error(`không phản hồi sau ${GEOLOCATE_WINDOW_MS / 1000}s (webview có thể không được cấp quyền vị trí)`)),
+      GEOLOCATE_WINDOW_MS,
+    );
+
+    watchId = geo.watchPosition(
+      (pos) => {
+        const fix: BrowserFix = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          accuracy: pos.coords.accuracy,
+        };
+        if (!best || fix.accuracy < best.accuracy) best = fix;
+        if (fix.accuracy <= GOOD_ACCURACY_M) finish();
+      },
+      (err) => finish(new Error(`[${err.code}] ${err.message || "không lấy được vị trí"}`)),
+      { enableHighAccuracy: true, timeout: GEOLOCATE_WINDOW_MS, maximumAge: 0 },
+    );
+  });
+}
+
+/**
+ * Lấy vị trí thật — hai đường, thử lần lượt.
+ *
+ * 1. `sdk.getLocation()` là đường chính thức, nhưng chỉ trả `token`: KHÔNG có
+ *    toạ độ, nên không vẽ được bản đồ xem trước chừng nào backend chưa làm bước
+ *    đổi token + reverse geocode (P3-26). Và quyền API này (ID 38) hiện đang bị
+ *    Zalo chặn ở tầng nền tảng — cùng nhóm với scanQRCode/chooseImage.
+ * 2. `navigator.geolocation` — Mini App vẫn chạy trong webview. Nếu Zalo chuyển
+ *    tiếp quyền vị trí của hệ điều hành xuống webview thì đường này cho TOẠ ĐỘ
+ *    NGAY, tức bản đồ hiện được mà không phải chờ Zalo cấp quyền API lẫn chờ
+ *    backend. Đây là đường duy nhất có thể ra bản đồ ở thời điểm này.
+ *
+ * Mọi lý do thất bại được gom lại và trả nguyên văn lên giao diện, giống luồng
+ * quét QR: nuốt lỗi ở đây là bắt người thử đoán.
+ */
+async function runLocate(): Promise<LocationResult> {
+  const notes: string[] = [];
+
+  // Đường 1 — mã định vị của Zalo. Lấy trước vì nếu có thì backend đổi được ra
+  // toạ độ do chính Zalo xác định, không phụ thuộc webview có được cấp GPS hay không.
+  let token: string | undefined;
+  const sdk = await loadSdk();
+  if (!sdk) {
+    notes.push("không nạp được zmp-sdk");
+  } else {
+    try {
+      token = (await withTimeout("getLocation", 15000, sdk.getLocation())).token;
+      if (!token) notes.push("getLocation không trả token");
+    } catch (err: unknown) {
+      notes.push(`getLocation — ${errText(err)}`);
+    }
+  }
+
+  // Đường 2 — thiết bị tự đo
+  let fix: BrowserFix | null = null;
+  try {
+    fix = await browserGeolocate();
+  } catch (err: unknown) {
+    notes.push(`navigator.geolocation — ${errText(err)}`);
+  }
+
+  /* Loại điểm quá thô TRƯỚC khi nó chạm tới giao diện. Đây là chỗ chặn cái
+     điểm-giữa-Hà-Nội do ước lượng theo địa chỉ mạng: nó là một toạ độ hoàn
+     toàn hợp lệ về mặt kiểu dữ liệu, chỉ sai chỗ. */
+  if (fix && fix.accuracy > MAX_USABLE_ACCURACY_M) {
+    notes.push(
+      `toạ độ đo được lệch tới ±${Math.round(fix.accuracy)}m — dáng của ước lượng theo địa chỉ mạng ` +
+        "chứ không phải GPS, đã bỏ",
+    );
+    fix = null;
+  }
+
+  if (fix) {
+    return { granted: true, token, lat: fix.lat, lng: fix.lng, accuracy: fix.accuracy, source: "browser" };
+  }
+
+  /* Không đo được nhưng còn mã định vị: chưa kết luận là thất bại. Nơi gọi sẽ
+     nhờ máy chủ đổi mã — Zalo có thể biết vị trí thật. Trả granted:false để
+     giao diện bắt nhập địa chỉ ngay, rồi nâng cấp nếu máy chủ trả về toạ độ. */
+  return { granted: false, token, error: notes.join(" · ") };
+}
+
 /**
  * Ảnh chụp trạng thái tích hợp, hiển thị ngay trong app.
  *
@@ -228,6 +411,22 @@ export async function zaloDiagnostics(): Promise<Array<[string, string]>> {
     rows.push(["Xin quyền camera", JSON.stringify(asked)]);
   } catch (err: unknown) {
     rows.push(["Xin quyền camera", `lỗi — ${errText(err)}`]);
+  }
+
+  // Hai đường lấy vị trí, đo riêng từng đường. Đặt TRƯỚC scanQRCode vì cả hai
+  // chạy không cần người dùng chạm gì, còn scanQRCode thì mở màn quét và chặn.
+  try {
+    const loc = await withTimeout("getLocation (thử 10s)", 10000, sdk.getLocation());
+    rows.push(["Gọi getLocation", loc.token ? "có token" : "không token"]);
+  } catch (err: unknown) {
+    rows.push(["Gọi getLocation", errText(err)]);
+  }
+
+  try {
+    const pos = await browserGeolocate();
+    rows.push(["navigator.geolocation", `${pos.lat.toFixed(5)}, ${pos.lng.toFixed(5)} (±${Math.round(pos.accuracy)}m)`]);
+  } catch (err: unknown) {
+    rows.push(["navigator.geolocation", errText(err)]);
   }
 
   // Gọi thẳng scanQRCode với thời gian chờ ngắn: nếu quyền API bị Zalo chặn thì
@@ -333,9 +532,9 @@ export const zaloService = {
   /**
    * Vị trí hiện tại.
    *
-   * Bản thật chỉ có `token` — không có toạ độ để hiển thị ngay, nên `address`
-   * bỏ trống và người dùng tự nhập (đúng luồng "từ chối" đã có sẵn ở màn phản ánh).
-   * Điền địa chỉ tự động được sau khi backend làm bước đổi token + reverse geocode (P3-26).
+   * Xem runLocate() để biết thứ tự hai đường và vì sao cần đường thứ hai.
+   * `address` vẫn bỏ trống ở bản thật — điền tự động được sau khi backend làm
+   * bước đổi token + reverse geocode (P3-26); trước đó người dùng tự nhập.
    */
   async getLocation(): Promise<LocationResult> {
     if (appConfig.zalo.useMockSdk) {
@@ -343,20 +542,22 @@ export const zaloService = {
       if (zaloMockFlags.denyLocation) return { granted: false };
       return {
         granted: true,
-        lat: 20.7431,
-        lng: 105.9214,
-        address: `Đường trục Thôn Đông, ${appConfig.org.name}`,
+        lat: appConfig.map.center.lat,
+        lng: appConfig.map.center.lng,
+        /*
+         * KHÔNG trả địa chỉ, kể cả ở nhánh mock.
+         *
+         * Trường này là đường duy nhất lọt qua được `usableAddress` — nơi gọi
+         * dùng thẳng `res.address` để hiện bản đồ ngay, không chờ máy chủ. Một
+         * địa chỉ bịa gắn lên toạ độ thật thì người dân đọc tưởng thật rồi gửi
+         * phiếu sai chỗ, mà lúc chạy mock thì trông y như bản thật nên không ai
+         * phát hiện. Địa chỉ chỉ được đến từ provider GIS thật.
+         */
+        accuracy: 12,
+        source: "mock",
       };
     }
-    return attempt(
-      "getLocation",
-      async (sdk) => {
-        const { token } = await sdk.getLocation();
-        // Không token nghĩa là người dùng bấm từ chối trên popup của Zalo
-        return token ? { granted: true, token } : { granted: false };
-      },
-      { granted: false },
-    );
+    return runLocate();
   },
 
   /**
@@ -431,4 +632,84 @@ export const zaloService = {
       [],
     );
   },
+
+  /**
+   * Đọc một đường dẫn ảnh của Zalo thành Blob để gửi lên `/files/upload`.
+   *
+   * VÌ SAO CẦN HAI ĐƯỜNG: `filePaths` không phải URL http — tuỳ phiên bản
+   * Zalo và hệ điều hành, nó là `blob:`, `file://` hay một scheme riêng của
+   * webview. `fetch` đọc được `blob:` và data-URI, nhưng nhiều webview chặn
+   * `fetch` trên `file://` (trả TypeError) trong khi thẻ `<img>` vẫn tải được
+   * chính đường dẫn đó. Nên khi `fetch` trượt thì vẽ ảnh qua canvas rồi lấy
+   * Blob — đường này chạy được với mọi thứ `<img>` hiển thị nổi.
+   *
+   * Canvas làm ảnh mất dữ liệu EXIF và mã lại thành JPEG. Đổi lại là ảnh gửi
+   * được; và với ảnh phản ánh thì bỏ EXIF là điều NÊN làm — thẻ EXIF chứa toạ
+   * độ GPS nơi chụp, dữ liệu cá nhân theo NĐ 13/2023 mà người gửi không biết
+   * mình đang gửi.
+   *
+   * Ném lỗi khi cả hai đường đều trượt — nơi gọi phải nói cho người dùng biết
+   * ảnh nào không gửi được, không được lặng lẽ bỏ ảnh.
+   */
+  async readImageBlob(uri: string): Promise<Blob> {
+    try {
+      const res = await fetch(uri);
+      if (res.ok) {
+        const blob = await res.blob();
+        if (blob.size > 0) return blob;
+      }
+      console.debug(`[zalo] fetch ảnh trả ${res.status}, chuyển sang canvas`);
+    } catch (err: unknown) {
+      console.debug("[zalo] fetch ảnh thất bại, chuyển sang canvas", err);
+    }
+    return drawToBlob(uri);
+  },
 };
+
+/**
+ * Nạp ảnh bằng thẻ `<img>` rồi vẽ lên canvas để lấy Blob.
+ *
+ * Đồng thời THU NHỎ ảnh về `IMAGE_MAX_EDGE`: ảnh camera điện thoại nay 4–12MB,
+ * vượt hạn mức tệp của máy chủ và tốn dữ liệu di động của người dân, trong khi
+ * cán bộ xem trên màn hình chỉ cần cỡ 1600px là rõ mọi chi tiết cần thiết.
+ */
+async function drawToBlob(uri: string): Promise<Blob> {
+  const image = await loadImageElement(uri);
+
+  const scale = Math.min(1, IMAGE_MAX_EDGE / Math.max(image.naturalWidth, image.naturalHeight));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Thiết bị không dựng được ảnh để gửi");
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+  return new Promise<Blob>((resolve, reject) => {
+    /*
+     * `toBlob` gọi lại với `null` khi canvas bị "nhiễm" (tainted) vì ảnh đến từ
+     * nguồn khác gốc mà không có CORS. Không bắt trường hợp này thì lời hứa
+     * treo mãi và người dùng thấy vòng xoay không bao giờ dừng.
+     */
+    canvas.toBlob(
+      (blob) => {
+        if (blob && blob.size > 0) resolve(blob);
+        else reject(new Error("Không đọc được ảnh đã chọn trên thiết bị này"));
+      },
+      IMAGE_MIME,
+      IMAGE_QUALITY,
+    );
+  });
+}
+
+/** Nạp một đường dẫn ảnh thành thẻ `<img>` đã sẵn kích thước */
+function loadImageElement(uri: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    // Xin CORS để canvas không bị nhiễm nếu nguồn ảnh có trả header phù hợp
+    image.crossOrigin = "anonymous";
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("Không mở được ảnh đã chọn"));
+    image.src = uri;
+  });
+}

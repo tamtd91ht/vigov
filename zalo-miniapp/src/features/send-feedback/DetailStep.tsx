@@ -196,16 +196,31 @@ export function DetailStep({
             <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
               <Icon name="pin" size={20} color="var(--pink)" />
               <div style={{ flex: 1, minWidth: 0 }}>
-                {editingAddress ? (
+                {/*
+                  Mở SẴN ô nhập khi chưa có địa chỉ, không chỉ khi người dùng bấm
+                  "Sửa". Chưa chốt nhà cung cấp bản đồ (câu hỏi mở #2) nên
+                  `GEO_PROVIDER=mock`, mà địa chỉ do provider mock sinh ra là
+                  BỊA và `usableAddress` cố ý bỏ đi — nghĩa là phần lớn trường
+                  hợp ô này rỗng. Hiện dòng "Chưa có địa chỉ" rồi bắt người dân
+                  tự tìm ra nút "Sửa" là để trống đúng ô mà họ cần điền.
+                */}
+                {editingAddress || !location.address.trim() ? (
                   <input
-                    className="finp"
+                    className={`finp ${errors.address ? "err" : ""}`}
                     value={location.address}
                     placeholder="Nhập địa chỉ cụ thể"
                     onChange={(e) => onAddressChange(e.target.value)}
                   />
                 ) : (
                   <div style={{ fontWeight: 600, color: "var(--navy)", fontSize: ".9rem" }}>
-                    {location.address || "Chưa có địa chỉ"}
+                    {location.address}
+                  </div>
+                )}
+                {/* Nói thật vì sao ô trống, để người dân không tưởng app lỗi */}
+                {!location.address.trim() && (
+                  <div className="tiny muted" style={{ marginTop: 4 }}>
+                    Đã ghim đúng vị trí trên bản đồ; hệ thống chưa tra được tên đường nên
+                    mời bạn gõ giúp địa chỉ cho dễ tìm.
                   </div>
                 )}
                 {location.lat !== undefined && location.lng !== undefined && (

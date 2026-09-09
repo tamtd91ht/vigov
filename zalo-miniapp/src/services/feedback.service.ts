@@ -29,6 +29,9 @@ interface ApiFeedback {
   status: string;
   slaHoursLeft?: number | null;
   imageFileIds?: string[];
+  /** Link đọc ảnh đã ký sẵn — chỉ có ở nhóm endpoint /feedback/citizen/** */
+  imageUrls?: string[];
+  resultImageUrls?: string[];
   timeline?: { title: string; meta?: string; state?: string }[];
   rating?: number;
   ratingComment?: string;
@@ -62,18 +65,6 @@ function toTimeline(steps: ApiFeedback["timeline"]): TimelineStep[] {
   return (steps ?? []).map((s) => ({ title: s.title, meta: s.meta ?? "", current: s.state === "cur" }));
 }
 
-/**
- * Ảnh hiện trường: backend chỉ trả MÃ tệp (imageFileIds), không trả URL — ảnh
- * phản ánh lưu riêng tư nên phải xin link ký sẵn (`GET /files/:id/signed-url`)
- * mới xem được. Mini App chưa có phần đó, nên màn "Phản ánh của tôi" tạm hiển
- * thị bằng ô màu — đúng SỐ ảnh người dân đã gửi. Web Quản trị đã xem được ảnh
- * thật (nó có sẵn SignedImage).
- */
-function toImageColors(fileIds: string[] | undefined): string[] {
-  const palette = appConfig.imagePlaceholderColors;
-  return (fileIds ?? []).map((_, i) => palette[i % palette.length]);
-}
-
 function toTicket(raw: ApiFeedback): FeedbackTicket {
   return {
     code: raw.code,
@@ -84,7 +75,17 @@ function toTicket(raw: ApiFeedback): FeedbackTicket {
     sentAt: raw.sentAt ?? "",
     status: toStatus(raw.status),
     slaHoursLeft: Math.round(raw.slaHoursLeft ?? 0),
-    imageColors: toImageColors(raw.imageFileIds),
+    /*
+     * Link đọc ảnh do CHÍNH endpoint của công dân cấp (`imageUrls` /
+     * `resultImageUrls`), không phải mã tệp trần.
+     *
+     * Ảnh phản ánh là tệp riêng tư nên `/files/<id>` trơn bị từ chối. Trước đây
+     * Mini App vẽ ô màu giữ chỗ — người dân gửi ảnh xong không bao giờ xem lại
+     * được ảnh mình gửi. Nay `GET /feedback/citizen/mine/**` (đã lọc theo
+     * citizenPhone ngay trong truy vấn) trả kèm link đã ký, hiệu lực 1 giờ.
+     */
+    imageUrls: raw.imageUrls ?? [],
+    resultImageUrls: raw.resultImageUrls ?? [],
     timeline: toTimeline(raw.timeline),
     rating: raw.rating ?? 0,
     ratingComment: raw.ratingComment || undefined,
@@ -116,11 +117,11 @@ function createMockTicket(input: CreateFeedbackInput): FeedbackTicket {
     sentAt: stamp(now),
     status: "received",
     slaHoursLeft: input.category.resolveDays * 24,
-    // Chế độ mock không có máy chủ để tải ảnh: giữ đúng SỐ ảnh dưới dạng ô màu,
-    // khớp cách `toTicket` quy đổi `imageFileIds` của phiếu thật.
-    imageColors: input.imagePaths.map(
-      (_, i) => appConfig.imagePlaceholderColors[i % appConfig.imagePlaceholderColors.length],
-    ),
+    /* Chế độ mock không có máy chủ để tải ảnh: dùng thẳng đường dẫn tạm của
+       Zalo làm link xem. Ảnh vẫn hiện đúng trong phiên đang chạy, đủ để trình
+       diễn luồng gửi phiếu khi không có backend. */
+    imageUrls: [...input.imagePaths],
+    resultImageUrls: [],
     timeline: [
       { title: "Công dân gửi phản ánh", meta: `${stamp(now)} · Zalo Mini App` },
       { title: "Chờ tiếp nhận & phân công", meta: "Trong giờ hành chính", current: true },

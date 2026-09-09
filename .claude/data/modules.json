@@ -1,0 +1,150 @@
+{
+  "_ghi_chu": "Bản đồ module ViGov. Nạp khi cần biết module nào làm gì và chịu luật nào. Nguồn chuẩn là mã nguồn — tệp này là bản tra cứu, sửa khi thêm/bỏ module.",
+  "_cap_nhat": "2026-09-09",
+
+  "san_pham": {
+    "backend": {
+      "duong_dan": "backend/apps/api-gateway",
+      "stack": "NestJS 11 · MongoDB (Mongoose) · RabbitMQ · JWT+RBAC · Socket.IO",
+      "thu_vien_chung": "backend/libs/shared (alias @vigov/shared)",
+      "ghi_chu": "Phase 1 chỉ có MỘT app là api-gateway. Không tạo apps/* mới.",
+      "kiem_chung": "npx tsc --noEmit -p apps/api-gateway/tsconfig.app.json && npm test && npm run test:e2e",
+      "tai_lieu": "docs/01-BACKEND.md · backend/README.md"
+    },
+    "admin-web": {
+      "duong_dan": "admin-web",
+      "stack": "Next.js 16 App Router · TypeScript",
+      "nguoi_dung": "Cán bộ, công chức xã",
+      "cong_dev": 3100,
+      "nguon_chuan_kieu": "admin-web/src/types/index.ts",
+      "kiem_chung": "npx tsc --noEmit && npm run lint",
+      "tai_lieu": "docs/02-ADMIN-WEB.md",
+      "spec_giao_dien": "vigov-prototype.html"
+    },
+    "zalo-miniapp": {
+      "duong_dan": "zalo-miniapp",
+      "stack": "React + Vite · zmp-sdk",
+      "nguoi_dung": "Công dân",
+      "cong_dev": 5173,
+      "kiem_chung": "npx tsc --noEmit && npm run lint",
+      "tai_lieu": "docs/03-ZALO-MINIAPP.md · docs/05..07-ZALO-*.md"
+    },
+    "mobile": {
+      "duong_dan": "mobile",
+      "stack": "Flutter · Material 3 · provider + go_router",
+      "nguoi_dung": "Công dân (Android + iOS)",
+      "cau_hinh": "Không dùng tệp env — truyền qua --dart-define, đọc ở lib/config/app_config.dart",
+      "kiem_chung": "flutter analyze && flutter test",
+      "tai_lieu": "mobile/BUILD.md · deploy/RELEASE.md"
+    }
+  },
+
+  "module_backend": {
+    "audit": {
+      "viec": "Nhật ký thao tác — AuditInterceptor đăng ký APP_INTERCEPTOR toàn ứng dụng",
+      "luat": ["nhat-ky-thao-tac"],
+      "canh_bao": "Trường nhạy cảm mới phải thêm vào REDACTED_FIELDS cùng lượt"
+    },
+    "auth": {
+      "viec": "Đăng nhập cán bộ, định danh công dân qua OTP/Zalo, refresh token, sổ phiên",
+      "luat": ["phan-quyen-rbac", "du-lieu-ca-nhan"],
+      "ky_nang": ["phien-va-token", "xac-thuc-otp-cong-dan"]
+    },
+    "catalogs": {
+      "viec": "Danh mục dùng chung: cán bộ, địa bàn, chuyên mục tin, chủ đề video, năm ngân sách",
+      "luat": ["khong-hardcode"]
+    },
+    "content": {
+      "viec": "CMS — tin, audio truyền thanh, video cho công dân",
+      "ghi_chu": "Tệp nội dung CMS công khai CÓ CHỦ Ý (isPrivate = false)"
+    },
+    "disbursement": {
+      "viec": "Giải ngân: lập → trình → duyệt → chi → quyết toán",
+      "luat": ["nhat-ky-thao-tac", "bao-toan-du-lieu"],
+      "canh_bao": "Tiền lưu số nguyên đơn vị đồng. Người duyệt khác người lập."
+    },
+    "documents": {
+      "viec": "Văn bản đến / đi, luân chuyển, đính kèm bản scan",
+      "luat": ["bao-toan-du-lieu", "nhat-ky-thao-tac"],
+      "ky_nang": ["an-toan-tep-upload"]
+    },
+    "dossiers": {
+      "viec": "Hồ sơ một cửa, tra cứu tiến độ cho công dân",
+      "luat": ["cach-ly-du-lieu-cong-dan", "du-lieu-ca-nhan"],
+      "canh_bao": "Có bản maskPhone riêng — nợ kỹ thuật, xem skills/che-du-lieu-ca-nhan"
+    },
+    "feedback": {
+      "viec": "Phản ánh, kiến nghị: tiếp nhận → phân loại → phân công → xử lý → nghiệm thu → đóng → công dân đánh giá",
+      "luat": ["cach-ly-du-lieu-cong-dan", "du-lieu-ca-nhan", "nhat-ky-thao-tac"],
+      "ky_nang": ["sla-va-trang-thai", "che-du-lieu-ca-nhan"],
+      "canh_bao": "Đường /feedback/citizen/** cách ly theo citizenPhone lấy từ phiên. Có bản maskPhone riêng — nợ kỹ thuật."
+    },
+    "files": {
+      "viec": "Tải lên / tải xuống, link ký HMAC, driver local hoặc S3",
+      "luat": ["du-lieu-ca-nhan", "bao-toan-du-lieu"],
+      "ky_nang": ["an-toan-tep-upload"],
+      "canh_bao": "Gắn tệp vào bản ghi nghiệp vụ PHẢI qua findPrivateById"
+    },
+    "integrations": {
+      "viec": "Adapter bên thứ ba: geo (GIS), ocr, idcard (thẻ căn cước)",
+      "ky_nang": ["adapter-ben-thu-ba"],
+      "canh_bao": "idcard tách khỏi ocr vì ràng buộc NĐ 13/2023"
+    },
+    "map": {
+      "viec": "Bản đồ: ghim phản ánh, điểm kinh tế số",
+      "luat": ["khong-hardcode"],
+      "canh_bao": "Toạ độ trung tâm phải đọc từ cấu hình — mỗi xã một toạ độ"
+    },
+    "messaging": { "viec": "Trao đổi, bình luận trong hồ sơ nghiệp vụ" },
+    "notification": {
+      "viec": "Thông báo: trong ứng dụng, ZNS, đẩy (FCM); consumer RabbitMQ",
+      "ky_nang": ["hang-doi-rabbitmq", "adapter-ben-thu-ba"],
+      "canh_bao": "Tin nhắn không chứa dữ liệu cá nhân dạng rõ"
+    },
+    "realtime": {
+      "viec": "Socket.IO — 3 sự kiện cho Web Quản trị",
+      "ky_nang": ["realtime-socket"],
+      "canh_bao": "Phạm vi realtime đầy đủ là câu hỏi mở #7 — không tự mở rộng"
+    },
+    "reports": {
+      "viec": "Báo cáo, thống kê, xuất Excel / PDF / PPTX",
+      "ky_nang": ["bao-cao-va-xuat-file"],
+      "canh_bao": "Số liệu đi lên cấp trên — phải đúng tuyệt đối. Loại bản ghi đã xoá mềm."
+    },
+    "search": {
+      "viec": "Tìm kiếm toàn cục",
+      "ky_nang": ["tim-kiem-mongo-an-toan"],
+      "canh_bao": "Phạm vi tìm là câu hỏi mở #28. Chỉ trả tài nguyên vai trò người gọi được xem."
+    },
+    "settings": {
+      "viec": "Cấu hình hệ thống, SLA theo lĩnh vực",
+      "luat": ["khong-hardcode"],
+      "canh_bao": "Đang lặp giá trị SLA mặc định của admin-web/src/config/sla.config.ts — nợ kỹ thuật"
+    },
+    "tasks": {
+      "viec": "Nhiệm vụ: giao → nhận → nộp → duyệt → hoàn thành; kanban 5 cột",
+      "luat": ["nhat-ky-thao-tac"],
+      "ky_nang": ["sla-va-trang-thai"]
+    },
+    "users": {
+      "viec": "Tài khoản cán bộ và công dân, vai trò, khoá / xoá mềm, chặn",
+      "luat": ["phan-quyen-rbac", "du-lieu-ca-nhan", "bao-toan-du-lieu"],
+      "canh_bao": "maskPhone bản gốc ở đây. Đổi vai trò / khoá tài khoản phải thu hồi phiên."
+    },
+    "workflow": { "viec": "Luồng luân chuyển, nhắc hạn, việc nền qua RabbitMQ" },
+    "zalo-webhook": {
+      "viec": "Webhook Zalo: xoá dữ liệu theo yêu cầu, sự kiện OA",
+      "canh_bao": "LUÔN trả 200; chỉ xử lý khi chữ ký hợp lệ. Trả lỗi làm Zalo thử lại và có thể khoá webhook."
+    }
+  },
+
+  "phan_he_admin_web": [
+    "dashboard", "tasks", "documents", "disbursement", "feedback", "map",
+    "reports", "cms", "users", "settings", "profile", "help"
+  ],
+
+  "man_hinh_cong_dan": [
+    "onboarding", "home", "send-feedback", "my-feedback", "lookup",
+    "news", "radio", "video", "directory", "profile", "idcard", "map"
+  ]
+}

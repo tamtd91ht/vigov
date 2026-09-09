@@ -14,6 +14,16 @@ const ZNS_TEMPLATE_CONFIG_KEYS: Record<string, string> = {
 
 const MISSING_OA_DETAIL = 'Chưa cấu hình Zalo OA';
 
+/** Hạn chờ gọi ZNS — thông báo trễ còn hơn giữ tiến trình gửi treo vô hạn */
+const ZNS_TIMEOUT_MS = 8000;
+
+/** Thân phản hồi của ZNS */
+interface ZnsResponse {
+  data?: { msg_id?: string };
+  error: number;
+  message?: string;
+}
+
 /**
  * Gửi ZNS (Zalo Notification Service) tới số điện thoại công dân.
  *
@@ -49,17 +59,54 @@ export class ZnsProvider implements NotificationProvider {
       return { ok: false, detail: `Chưa có template ZNS cho ${msg.templateKey}` };
     }
 
+    /* Cổng thứ ba: access token của OA.
+       KHÔNG phải ZALO_APP_SECRET. Đây là token do luồng OAuth của Zalo OA cấp,
+       hạn 1 giờ, gia hạn bằng refresh token (hạn 3 tháng). Chưa có nó thì phải
+       báo THẤT BẠI — trước đây hàm này trả ok:true kèm "Đã xếp hàng gửi ZNS"
+       trong khi không gửi gì cả, nên nhật ký và bảng theo dõi thông báo đều báo
+       thành công cho những tin chưa từng rời máy chủ. */
+    const accessToken = this.config.get<string>('zalo.oaAccessToken', '');
+    if (!accessToken) {
+      this.logger.warn(
+        `Chưa có ZALO_OA_ACCESS_TOKEN — KHÔNG gửi được ZNS ${msg.templateKey} tới ${msg.recipient}`,
+      );
+      return { ok: false, detail: 'Chưa có access token của Zalo OA' };
+    }
+
     const payload = {
       phone: toZaloPhone(msg.recipient),
       template_id: templateId,
       template_data: { title: msg.title, body: msg.body, ...(msg.data ?? {}) },
     };
 
-    // Khi OA đã được duyệt: POST ZNS_ENDPOINT với header access_token lấy từ
-    // luồng OAuth của Zalo (access token có hạn, cần refresh + cache).
-    void ZNS_ENDPOINT;
-    this.logger.log(`Xếp hàng gửi ZNS ${msg.templateKey} tới ${payload.phone} (template ${templateId})`);
-    return { ok: true, detail: 'Đã xếp hàng gửi ZNS' };
+    try {
+      const res = await fetch(ZNS_ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', access_token: accessToken },
+        body: JSON.stringify(payload),
+        signal: AbortSignal.timeout(ZNS_TIMEOUT_MS),
+      });
+
+      if (!res.ok) {
+        this.logger.error(`ZNS trả HTTP ${res.status} khi gửi ${msg.templateKey}`);
+        return { ok: false, detail: `ZNS trả HTTP ${res.status}` };
+      }
+
+      // Giống graph.zalo.me: HTTP 200 cả khi lỗi nghiệp vụ, `error !== 0` mới là hỏng
+      const body = (await res.json()) as ZnsResponse;
+      if (body.error !== 0) {
+        const detail = `[${body.error}] ${body.message ?? ''}`.trim();
+        this.logger.error(`Zalo từ chối gửi ZNS ${msg.templateKey}: ${detail}`);
+        return { ok: false, detail: `Zalo từ chối gửi ZNS: ${detail}` };
+      }
+
+      this.logger.log(`Đã gửi ZNS ${msg.templateKey} tới ${payload.phone} (template ${templateId})`);
+      return { ok: true, detail: body.data?.msg_id ? `msg_id ${body.data.msg_id}` : 'Đã gửi ZNS' };
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Không gọi được ZNS: ${reason}`);
+      return { ok: false, detail: `Không gọi được ZNS: ${reason}` };
+    }
   }
 }
 

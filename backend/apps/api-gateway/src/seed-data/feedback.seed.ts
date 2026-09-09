@@ -9,7 +9,7 @@
  *   • `slaDueAt` = thời điểm gửi + resolveDays của lĩnh vực;
  *   • `channel` = 'app'; ghim bản đồ mock quy đổi thành lat/lng quanh trung tâm xã.
  */
-import type { Feedback } from '@vigov/shared';
+import type { Feedback, TimelineState } from '@vigov/shared';
 import { addDays, parseVnDateTime, pinToLatLng, unmaskPhone } from './seed.util';
 
 export type FeedbackSeed = Partial<Feedback> & { code: string };
@@ -77,7 +77,7 @@ interface FeedbackBase {
   assignee: string;
   department: string;
   linkedTaskCode?: string;
-  timeline: { title: string; meta: string; state: string }[];
+  timeline: { title: string; meta: string; state: TimelineState }[];
 }
 
 const FEEDBACK_BASE: FeedbackBase[] = [

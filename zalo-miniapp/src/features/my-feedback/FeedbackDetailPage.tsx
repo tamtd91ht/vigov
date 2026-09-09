@@ -19,12 +19,14 @@ import { feedbackService } from "@/services/feedback.service";
 import { useFeedback } from "@/state/FeedbackContext";
 import { useToast } from "@/state/ToastContext";
 import type { FeedbackTicket } from "@/types";
+import { AttachmentThumb } from "@/features/send-feedback/DetailStep";
 
 /** ===== Hằng số hiển thị ===== */
 const PAGE_TITLE = "Chi tiết phản ánh";
 const NOT_FOUND_MESSAGE = "Không tìm thấy phiếu";
 const LB_DESCRIPTION = "Mô tả";
 const LB_IMAGES = "Ảnh hiện trường";
+const LB_RESULT_IMAGES = "Ảnh sau xử lý";
 const LB_NO_IMAGE = "Không đính kèm ảnh";
 const LB_LOCATION = "Vị trí";
 const LB_TIMELINE = "Tiến trình xử lý";
@@ -139,27 +141,28 @@ function TicketDetail({ ticket, onRated }: { ticket: FeedbackTicket; onRated: ()
         </div>
       </div>
 
-      {/* Ảnh hiện trường — backend trả mã tệp, Phase 1 hiển thị bằng ô màu */}
+      {/* Ảnh hiện trường — link đã ký sẵn do máy chủ cấp cùng phiếu */}
       <div className="card card-b" style={cardStyle}>
         <div className="sm" style={blockLabelStyle}>
           {LB_IMAGES}
         </div>
-        {ticket.imageColors.length === 0 ? (
-          <div className="tiny muted">{LB_NO_IMAGE}</div>
-        ) : (
-          <div className="chips-row">
-            {ticket.imageColors.map((color, i) => (
-              <div
-                key={i}
-                className="thumb"
-                style={{ width: THUMB_SIZE, height: THUMB_SIZE, background: color }}
-              >
-                <Icon name="image" size={26} color="rgba(255,255,255,.8)" />
-              </div>
-            ))}
-          </div>
-        )}
+        <ImageRow urls={ticket.imageUrls} />
       </div>
+
+      {/*
+        Ảnh nghiệm thu: bằng chứng đã xử lý, do cán bộ chụp. Đây là thứ người
+        dân muốn thấy nhất khi phiếu đóng, nên hiện thành khối riêng chứ không
+        trộn vào ảnh hiện trường. Chưa có ảnh thì ẩn hẳn khối, đừng để một dòng
+        "không có ảnh" ở phiếu còn đang xử lý.
+      */}
+      {ticket.resultImageUrls.length > 0 && (
+        <div className="card card-b" style={cardStyle}>
+          <div className="sm" style={blockLabelStyle}>
+            {LB_RESULT_IMAGES}
+          </div>
+          <ImageRow urls={ticket.resultImageUrls} />
+        </div>
+      )}
 
       {/* Vị trí */}
       <div className="card card-b" style={cardStyle}>
@@ -239,5 +242,28 @@ function TicketDetail({ ticket, onRated }: { ticket: FeedbackTicket; onRated: ()
         </div>
       )}
     </>
+  );
+}
+
+/**
+ * Hàng ảnh của phiếu.
+ *
+ * Dùng `AttachmentThumb` của màn gửi phản ánh để cùng một cách xử lý ảnh hỏng:
+ * link ký sẵn hết hạn sau một giờ, nên người dân mở phiếu để đó rồi cuộn lại
+ * có thể gặp ảnh không tải được — lúc đó ô màu kèm icon vẫn tử tế hơn ảnh vỡ.
+ */
+function ImageRow({ urls }: { urls: string[] }) {
+  if (urls.length === 0) return <div className="tiny muted">{LB_NO_IMAGE}</div>;
+  return (
+    <div className="chips-row">
+      {urls.map((url, i) => (
+        <AttachmentThumb
+          key={url}
+          uri={url}
+          index={i}
+          style={{ width: THUMB_SIZE, height: THUMB_SIZE, flex: "0 0 auto" }}
+        />
+      ))}
+    </div>
   );
 }

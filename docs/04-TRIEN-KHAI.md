@@ -191,6 +191,7 @@ là hệ thống không chạy hoặc mất an toàn:
 | `CORS_ORIGINS` | `https://quantri.vigov.<tên-miền>,https://h5.zdn.vn` |
 | `NEXT_PUBLIC_API_BASE_URL` | `https://api.vigov.<tên-miền>/api/v1` |
 | `VITE_API_BASE_URL` | `https://api.vigov.<tên-miền>/api/v1` |
+| `VITE_MAX_FILE_SIZE` · `NEXT_PUBLIC_MAX_FILE_SIZE` | **Phải khớp `STORAGE_MAX_FILE_SIZE`** — lệch thì người dùng chờ tải hết tệp rồi mới nhận 413. Nhúng lúc `docker build` |
 | `SEED_ADMIN_PASSWORD` | Mật khẩu mạnh, dùng một lần rồi đổi ở Bước 8 |
 | `SEED_DEFAULT_PASSWORD` | Như trên |
 | `TRUST_PROXY` | `1` (có đúng một nginx đứng trước) |
