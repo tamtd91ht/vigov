@@ -53,6 +53,17 @@ git branch --show-current
 4. Đưa thông điệp cho người dùng xem
 5. Chỉ commit khi người dùng đồng ý
 
+## Thông điệp dài: soạn ra TỆP rồi `git commit -F`
+
+Thông điệp nhiều dòng thì **ghi ra tệp trong thư mục nháp** rồi `git commit -F <tệp>`,
+đừng nhồi vào `-m "$(printf …)"` trên dòng lệnh. Ba lý do:
+
+1. Tiếng Việt có dấu qua `printf` trên Windows dễ hỏng mã ký tự.
+2. `hooks/data_safety_guard.py` quét **chuỗi lệnh**, nên thông điệp nhắc tới một lệnh
+   nguy hiểm (`rm -rf`, `git push … --force`, `deleteMany`) sẽ bị chặn dù đó chỉ là
+   văn bản mô tả. Đưa ra tệp là hết vướng — và **đừng** sửa hook để lách.
+3. Dấu ngoặc, backtick, `$` trong thông điệp không còn phải escape.
+
 ## KHÔNG BAO GIỜ
 
 - Commit khi người dùng chưa yêu cầu
