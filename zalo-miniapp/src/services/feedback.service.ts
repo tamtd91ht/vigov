@@ -1,6 +1,7 @@
 import { appConfig } from "@/config/app.config";
 import type { FeedbackCategory } from "@/config/categories";
 import { apiClient, buildQuery, mockDelay, type Paged } from "@/services/api";
+import { filesService } from "@/services/files.service";
 import { initialTickets } from "@/mocks/feedback.mock";
 import type { FeedbackTicket, TicketStatus, TimelineStep } from "@/types";
 
@@ -41,11 +42,16 @@ export interface CreateFeedbackInput {
   lat?: number;
   lng?: number;
   /**
-   * Ô màu giữ chỗ cho ảnh đã đính kèm ở bước 2 — KHÔNG phải đường dẫn ảnh.
-   * Ảnh thật chỉ xem trước được trong lúc soạn (đường dẫn tạm của Zalo);
-   * gửi lên máy chủ phải qua module Files, chưa mở cho Mini App (WBS #24).
+   * Đường dẫn tệp tạm của ảnh người dân đã chọn ở bước 2 (`filePaths` do
+   * zmp-sdk trả về). Ảnh được tải lên module Files TRƯỚC khi tạo phiếu, nên
+   * phiếu mang `imageFileIds` thật — Web Quản trị xem được ảnh hiện trường.
    */
-  imageColors: string[];
+  imagePaths: string[];
+  /**
+   * Gọi khi tải ảnh xong, ngay trước khi tạo phiếu — để giao diện đổi nhãn nút
+   * từ "Đang tải ảnh…" sang "Đang gửi…". Không có ảnh thì gọi luôn.
+   */
+  onImagesUploaded?: () => void;
 }
 
 function toStatus(value: string): TicketStatus {
@@ -57,9 +63,11 @@ function toTimeline(steps: ApiFeedback["timeline"]): TimelineStep[] {
 }
 
 /**
- * Ảnh hiện trường: backend chỉ trả mã tệp (imageFileIds). Đường dẫn tải ảnh
- * cho công dân thuộc module Files (WBS #24) và chưa mở cho Mini App, nên
- * Phase 1 vẫn hiển thị bằng ô màu — đúng số ảnh đã đính kèm.
+ * Ảnh hiện trường: backend chỉ trả MÃ tệp (imageFileIds), không trả URL — ảnh
+ * phản ánh lưu riêng tư nên phải xin link ký sẵn (`GET /files/:id/signed-url`)
+ * mới xem được. Mini App chưa có phần đó, nên màn "Phản ánh của tôi" tạm hiển
+ * thị bằng ô màu — đúng SỐ ảnh người dân đã gửi. Web Quản trị đã xem được ảnh
+ * thật (nó có sẵn SignedImage).
  */
 function toImageColors(fileIds: string[] | undefined): string[] {
   const palette = appConfig.imagePlaceholderColors;
@@ -108,7 +116,11 @@ function createMockTicket(input: CreateFeedbackInput): FeedbackTicket {
     sentAt: stamp(now),
     status: "received",
     slaHoursLeft: input.category.resolveDays * 24,
-    imageColors: input.imageColors,
+    // Chế độ mock không có máy chủ để tải ảnh: giữ đúng SỐ ảnh dưới dạng ô màu,
+    // khớp cách `toTicket` quy đổi `imageFileIds` của phiếu thật.
+    imageColors: input.imagePaths.map(
+      (_, i) => appConfig.imagePlaceholderColors[i % appConfig.imagePlaceholderColors.length],
+    ),
     timeline: [
       { title: "Công dân gửi phản ánh", meta: `${stamp(now)} · Zalo Mini App` },
       { title: "Chờ tiếp nhận & phân công", meta: "Trong giờ hành chính", current: true },
@@ -144,12 +156,28 @@ export const feedbackService = {
     return toTicket(await apiClient.get<ApiFeedback>(`/feedback/citizen/mine/${codePath(code)}`));
   },
 
-  /** Gửi phản ánh mới; mã phiếu do backend sinh (#PA-<năm>-<4 chữ số>) */
+  /**
+   * Gửi phản ánh mới; mã phiếu do backend sinh (#PA-<năm>-<4 chữ số>).
+   *
+   * Tải ảnh lên TRƯỚC rồi mới tạo phiếu: đường dẫn ảnh của Zalo là tệp tạm
+   * trong webview, hết hiệu lực khi đóng app, nên không thể tạo phiếu trước
+   * rồi gắn ảnh sau. Ảnh lỗi thì cả lượt gửi dừng lại (xem
+   * `filesService.uploadFeedbackImages`) — thà báo lỗi để người dân thử lại
+   * còn hơn tạo phiếu thiếu ảnh minh chứng trong im lặng.
+   */
   async create(input: CreateFeedbackInput): Promise<FeedbackTicket> {
     if (appConfig.api.useMocks) {
       await mockDelay();
+      // Mock không tải ảnh, nhưng vẫn báo để nhãn nút không mắc ở "Đang tải ảnh…"
+      input.onImagesUploaded?.();
       return createMockTicket(input);
     }
+
+    const imageFileIds = input.imagePaths.length
+      ? await filesService.uploadFeedbackImages(input.imagePaths)
+      : [];
+    input.onImagesUploaded?.();
+
     const created = await apiClient.post<ApiFeedback>("/feedback/citizen", {
       categoryKey: input.category.key,
       title: input.title,
@@ -157,8 +185,7 @@ export const feedbackService = {
       location: input.location,
       lat: input.lat,
       lng: input.lng,
-      // Upload ảnh lên module Files chưa mở cho Mini App (WBS #24) nên chưa gửi
-      // imageFileIds; ô màu người dùng chọn chỉ là placeholder phía giao diện.
+      imageFileIds,
       channel: "zalo",
     });
     return toTicket(created);

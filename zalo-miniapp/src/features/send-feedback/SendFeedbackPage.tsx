@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { DemoBadge, DemoNote } from "@/components/common";
-import { appConfig } from "@/config/app.config";
 import { demoConfig } from "@/config/demo.config";
 import { useGoBack } from "@/hooks/useGoBack";
 import { slaText, type FeedbackCategory } from "@/config/categories";
@@ -39,6 +38,12 @@ export function SendFeedbackPage() {
   const [editingAddress, setEditingAddress] = useState(false);
   const [errors, setErrors] = useState<DetailErrors>({});
   const [submitting, setSubmitting] = useState(false);
+  /**
+   * Đang ở chặng tải ảnh lên (trước khi tạo phiếu). Tách khỏi `submitting` để
+   * nút nói rõ đang làm gì: tải 3 ảnh trên 3G mất vài giây, nếu nút chỉ đứng ở
+   * "Đang gửi…" thì người dân dễ tưởng treo rồi tắt app giữa lượt tải.
+   */
+  const [uploading, setUploading] = useState(false);
   const [ticket, setTicket] = useState<FeedbackTicket | null>(null);
   const [askLeave, setAskLeave] = useState(false);
   const locationAsked = useRef(false);
@@ -105,6 +110,7 @@ export function SendFeedbackPage() {
   async function handleSubmit() {
     if (!category || submitting) return;
     setSubmitting(true);
+    setUploading(images.length > 0);
     try {
       // Mã phiếu #PA-<năm>-<4 chữ số> do backend sinh khi tạo phiếu.
       const created = await create({
@@ -114,13 +120,10 @@ export function SendFeedbackPage() {
         location: location.address.trim() || FALLBACK_LOCATION,
         lat: location.lat,
         lng: location.lng,
-        // Đường dẫn ảnh của Zalo chỉ sống trong lúc soạn phiếu: là tệp tạm của
-        // webview, không gửi được lên máy chủ (module Files chưa mở cho Mini
-        // App — WBS #24) và hết hiệu lực khi mở lại app. Nên phiếu đã gửi giữ
-        // đúng SỐ ảnh dưới dạng ô màu, khớp cách backend trả về imageFileIds.
-        imageColors: images.map(
-          (_, i) => appConfig.imagePlaceholderColors[i % appConfig.imagePlaceholderColors.length],
-        ),
+        // Đường dẫn tệp tạm của Zalo; service tải ảnh lên kho tệp trước khi tạo
+        // phiếu nên Web Quản trị xem được ảnh hiện trường thật.
+        imagePaths: images,
+        onImagesUploaded: () => setUploading(false),
       });
       setTicket(created);
       showToast(TOAST_SENT);
@@ -129,6 +132,7 @@ export function SendFeedbackPage() {
       showToast(err instanceof ApiError ? err.message : TOAST_FAILED);
     } finally {
       setSubmitting(false);
+      setUploading(false);
     }
   }
 
@@ -213,7 +217,7 @@ export function SendFeedbackPage() {
               {submitting ? (
                 <>
                   <span className="spin" />
-                  Đang gửi…
+                  {uploading ? "Đang tải ảnh…" : "Đang gửi…"}
                 </>
               ) : (
                 <>

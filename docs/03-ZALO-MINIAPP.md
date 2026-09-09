@@ -204,6 +204,7 @@ Mini App nằm ở `app-config.json`.
 | Zalo OA / ZNS | Chưa có tài khoản thật; template ZNS chờ Zalo duyệt (1 ngày đến 1 tuần) |
 | `@sentry/browser` | Lỗ hổng mức trung bình, đến bắc cầu từ `zmp-sdk`. Không tự nâng được, phải chờ Zalo phát hành bản mới |
 | Lưu phiên | Đang dùng `localStorage`; chấp nhận được trong môi trường Zalo nhưng không nên giữ token dài hạn |
+| Xem lại ảnh hiện trường | Gửi phản ánh đã tải ảnh THẬT lên kho tệp (`filesService.uploadFeedbackImages` → `imageFileIds`), Web Quản trị xem được ảnh. Nhưng màn "Phản ánh của tôi" của công dân vẫn hiện ô màu: ảnh lưu riêng tư, muốn xem phải xin link ký sẵn (`GET /files/:id/signed-url`) mà Mini App chưa có phần đó — cần một component kiểu `SignedImage` như admin-web |
 | Bản đồ nền | Có adapter thật (`MapLibreCanvas`, mặc định OpenFreeMap) song song bản mô phỏng. `maplibre-gl` ghim chính xác `5.24.0` — bản 6 nạp worker từ một tệp riêng mà bundler không phát hành, làm bản đồ trắng trơn không báo lỗi (xem `02-ADMIN-WEB.md` mục 4.5). **Điều kiện chạy được trong Zalo: tên miền tile phải được khai trong danh sách domain của Mini App trên Zalo Developers** — chưa khai thì tile im lặng không tải và màn hình chỉ có nền trống. Chưa khai xong thì để `VITE_MAP_PROVIDER=mock` |
 
 ---

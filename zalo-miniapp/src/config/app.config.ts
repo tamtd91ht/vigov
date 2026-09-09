@@ -123,9 +123,10 @@ export const appConfig = {
   /**
    * Ô màu giữ chỗ cho ảnh hiện trường, xoay vòng theo số ảnh.
    *
-   * Dùng ở hai chỗ: phiếu đã gửi (backend chỉ trả mã tệp, module Files chưa mở
-   * cho Mini App — WBS #24) và nền ô thumbnail khi đường dẫn ảnh Zalo trả về
-   * không tải được. Theo quy ước dự án, màu không rải rác trong component.
+   * Dùng ở hai chỗ: phiếu đã gửi (backend chỉ trả mã tệp, Mini App chưa có
+   * phần xin link ký sẵn để xem ảnh riêng tư) và nền ô thumbnail khi đường dẫn
+   * ảnh Zalo trả về không tải được. Theo quy ước dự án, màu không rải rác
+   * trong component.
    */
   imagePlaceholderColors: ["var(--blue)", "var(--green)", "var(--purple)", "var(--orange)", "var(--teal)"],
 

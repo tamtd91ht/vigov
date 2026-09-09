@@ -409,17 +409,13 @@ export const zaloService = {
   },
 
   /**
-   * Chọn ảnh từ album hoặc camera.
+   * Mở trình chọn ảnh của Zalo (album hoặc camera), trả về đường dẫn các tệp
+   * đã chọn. Mảng rỗng nghĩa là người dùng huỷ hoặc không gọi được.
    *
-   * Trả về đường dẫn các tệp đã chọn, mảng rỗng nghĩa là người dùng huỷ hoặc
-   * không gọi được. Tải ảnh lên máy chủ thuộc phần đính kèm phản ánh, chưa làm.
-   */
-  /**
-   * Mở trình chọn ảnh của Zalo, trả về đường dẫn các tệp đã chọn.
-   *
-   * `filePaths` của zmp-sdk dùng được trực tiếp làm `src` của thẻ `<img>` —
-   * đó là cách duy nhất hiện có để xem trước ảnh, vì module Files chưa mở cho
-   * Mini App (WBS #24) nên không upload rồi lấy URL về được.
+   * `filePaths` của zmp-sdk dùng trực tiếp làm `src` của thẻ `<img>` để xem
+   * trước. Đây là tệp TẠM trong webview, hết hiệu lực khi đóng app — muốn lưu
+   * lại thì phải đọc thành Blob rồi tải lên kho tệp ngay trong lúc soạn phiếu
+   * (xem `filesService.uploadFeedbackImages`).
    *
    * Nhánh mock trả về một data-URI SVG thật, không phải chuỗi giả: chuỗi giả
    * làm thẻ img hỏng ảnh khi phát triển trên trình duyệt thường.
