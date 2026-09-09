@@ -612,4 +612,11 @@ hiện lại trên báo cáo cuối tháng.
 Chốt chống spam `FEEDBACK_MAX_PER_DAY` vẫn đếm **cả phiếu đã gỡ**, có chủ ý: nếu không,
 gửi 5 phiếu rồi thu hồi cả 5 là lại gửi được tiếp.
 
+### Cán bộ tìm yêu cầu thu hồi ở đâu
+
+Trang Phản ánh của Web Quản trị có nút lọc **"Chờ duyệt thu hồi"** (gọi
+`GET /feedback?withdrawStatus=pending`), và thẻ phiếu nào đang chờ thì mang chip đỏ
+**"Xin thu hồi"**. Không có hai thứ này thì cán bộ phải mở từng phiếu mới biết, trong
+khi người dân vẫn đang thấy "Hệ thống đang xử lý" — yêu cầu nằm im tới lúc họ gọi lên xã.
+
 Kiểm chứng: `test/feedback-withdraw.e2e-spec.ts` (20 test).

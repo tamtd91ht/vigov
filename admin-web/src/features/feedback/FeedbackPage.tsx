@@ -46,12 +46,20 @@ export function FeedbackPage() {
   const [category, setCategory] = useState("all");
   const [status, setStatus] = useState("all");
   const [openCode, setOpenCode] = useState<string | null>(null);
+  /** Chỉ hiện phiếu người dân đang xin thu hồi — bộ lọc cho việc CHẶN, cần xử trước */
+  const [onlyWithdraw, setOnlyWithdraw] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Bộ lọc lĩnh vực / trạng thái là tham số truy vấn gửi server, không lọc ở trình duyệt
   const list = useApiResource(
-    () => feedbackService.list({ categoryKey: category, status, limit: PAGE_SIZE }),
-    [category, status],
+    () =>
+      feedbackService.list({
+        categoryKey: category,
+        status,
+        withdrawStatus: onlyWithdraw ? "pending" : undefined,
+        limit: PAGE_SIZE,
+      }),
+    [category, status, onlyWithdraw],
   );
   const stats = useApiResource(() => feedbackService.stats(), []);
   const detail = useApiResource(
@@ -237,6 +245,21 @@ export function FeedbackPage() {
 
       <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", marginBottom: 18 }}>
         <SegmentControl options={STATUS_OPTIONS} value={status} onChange={setStatus} />
+        {/*
+          Lối vào duy nhất tới nhóm phiếu ĐANG CHỜ cán bộ quyết. Người dân đã bấm xin
+          thu hồi và đang thấy "Hệ thống đang xử lý"; không có nút này thì cán bộ phải
+          mở từng phiếu mới biết, và yêu cầu nằm im cho tới khi họ gọi lên xã hỏi.
+        */}
+        <button
+          type="button"
+          className={onlyWithdraw ? "btn pri" : "btn"}
+          onClick={() => setOnlyWithdraw((v) => !v)}
+          aria-pressed={onlyWithdraw}
+          title="Chỉ hiện phiếu người dân đang xin thu hồi"
+        >
+          <Icon name="alert" size={14} />
+          Chờ duyệt thu hồi
+        </button>
         <span className="tiny muted" style={{ marginLeft: "auto" }}>
           Hiển thị {items.length}/{total} phiếu phản ánh
         </span>

@@ -80,6 +80,11 @@ export interface FeedbackListFilter {
   assignee?: string;
   /** Từ khoá tìm trong mã phiếu / tiêu đề / nội dung */
   q?: string;
+  /**
+   * Lọc theo trạng thái yêu cầu thu hồi. `'pending'` = chỉ hiện phiếu người dân
+   * đang xin thu hồi và chờ cán bộ quyết.
+   */
+  withdrawStatus?: string;
   page?: number;
   limit?: number;
 }
@@ -230,6 +235,7 @@ export const feedbackService = {
       department: filter.department,
       assignee: filter.assignee,
       q: filter.q,
+      withdrawStatus: filter.withdrawStatus,
       page: filter.page,
       limit: filter.limit,
     });

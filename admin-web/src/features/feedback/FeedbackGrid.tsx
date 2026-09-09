@@ -30,9 +30,20 @@ function FeedbackCard({ item, onOpen }: { item: CitizenFeedback; onOpen: (code: 
       <div className="in">
         <div style={{ display: "flex", gap: 8, alignItems: "center", justifyContent: "space-between" }}>
           <span className="cd">{item.code}</span>
-          <Chip color={status.color} tint={status.tint}>
-            {status.label}
-          </Chip>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            {/*
+              Yêu cầu thu hồi phải thấy được NGAY TRÊN THẺ. Người dân bấm xin thu hồi
+              rồi chỉ thấy "Hệ thống đang xử lý" — nếu dấu hiệu này chỉ nằm trong ngăn
+              chi tiết thì cán bộ phải mở từng phiếu mới biết, và yêu cầu nằm im tới
+              lúc người dân gọi lên xã hỏi.
+            */}
+            {item.withdrawStatus === "pending" && (
+              <Chip color="var(--red)">Xin thu hồi</Chip>
+            )}
+            <Chip color={status.color} tint={status.tint}>
+              {status.label}
+            </Chip>
+          </div>
         </div>
         <div className="ti">{item.title}</div>
         <div className="ex">{item.excerpt}</div>
