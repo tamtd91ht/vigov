@@ -44,7 +44,7 @@ admin-web/src/
 | `/tasks` | Nhiệm vụ | Chuyển đổi Kanban ⇄ bảng, checklist, vướng mắc |
 | `/documents` | Văn bản & Đơn thư | OCR trích 7 trường, cán bộ xác nhận từng trường; đính kèm phụ lục tải lên/tải về thật |
 | `/disbursement` | Giải ngân | Đề nghị, vướng mắc, tiến độ theo hạng mục |
-| `/feedback` | Phản ánh | Đếm ngược SLA, ghim bản đồ, ảnh hiện trường |
+| `/feedback` | Phản ánh | Đếm ngược SLA, ghim bản đồ, ảnh hiện trường (bấm vào ảnh để mở bản đầy đủ ở tab mới — ô thumbnail dùng `object-fit: cover` nên ảnh dọc của điện thoại bị cắt) |
 | `/map` | Bản đồ kinh tế số | Lớp dữ liệu và ghim cơ sở; nền bản đồ thật hoặc bản mô phỏng, chọn bằng `NEXT_PUBLIC_MAP_PROVIDER` (mục 4.5) |
 | `/reports` | Báo cáo | Kết xuất Excel; PDF/PPTX trả 501 ở Phase 1 |
 | `/settings` | Cấu hình | SLA, cây tổ chức, lĩnh vực phản ánh, tài khoản cán bộ |

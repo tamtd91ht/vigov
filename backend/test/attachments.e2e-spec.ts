@@ -420,6 +420,22 @@ describe('ViGov API — luồng đính kèm tệp', () => {
       expect(image.headers['content-type']).toContain('image/jpeg');
     });
 
+    /*
+     * Đây là lỗi im lặng nhất của cả luồng: header đúng cú pháp, ảnh tải về
+     * được bằng curl, nhưng trong webview Zalo (h5.zdn.vn — KHÁC site với tên
+     * miền API) trình duyệt chặn thẻ <img> và không báo gì. Người dân chỉ thấy
+     * ô ảnh trống. Không có test thì không cách nào biết nó tái diễn.
+     */
+    it('ảnh riêng tư phục vụ được cho webview KHÁC site (Zalo Mini App)', async () => {
+      const detail = await api()
+        .get(`${API}/feedback/citizen/mine/${encodeURIComponent(code)}`)
+        .set('Authorization', `Bearer ${citizenToken}`)
+        .expect(200);
+
+      const download = await api().get(detail.body.imageUrls[0] as string).expect(200);
+      expect(download.headers['cross-origin-resource-policy']).toBe('cross-origin');
+    });
+
     it('tên tệp tiếng Việt của công dân cũng không bị hỏng', async () => {
       const detail = await api()
         .get(`${API}/feedback/citizen/mine/${encodeURIComponent(code)}`)

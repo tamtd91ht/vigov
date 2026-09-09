@@ -115,6 +115,31 @@ có nhánh mô phỏng khi `appConfig.api.useMocks = true`.
    người gửi không biết.
 4. **Gửi phiếu** với `imageFileIds`; xem lại thì đọc `imageUrls` / `resultImageUrls`.
 
+Xem lại ảnh trên phiếu: `imageUrls` / `resultImageUrls` là link **đã ký sẵn**. Tệp
+riêng tư được phục vụ với `Cross-Origin-Resource-Policy: cross-origin` — thiếu header
+này thì webview Zalo (`h5.zdn.vn`, khác site với API) chặn im lặng mọi thẻ `<img>` và
+người dân chỉ thấy ô ảnh trống (phát hiện `TB-17` trong `../SECURITY.md`).
+
+### 4c. Địa chỉ của vị trí — vì sao thường để trống
+
+Toạ độ và địa chỉ là hai việc khác nhau, và **chỉ toạ độ là chắc chắn có**:
+
+- Toạ độ lấy từ thiết bị (`navigator.geolocation`) hoặc từ mã định vị của Zalo qua
+  backend. Đây là thứ vẽ được bản đồ và là thứ cán bộ cần để tới đúng nơi.
+- Địa chỉ chữ phải nhờ **provider GIS** tra ngược từ toạ độ. Nhà cung cấp thật đang
+  **chờ khách chốt** (câu hỏi mở #2 — VietMap / Goong / MapLibre + nguồn mở; Google Maps
+  bị loại vì không có giấy phép tại Việt Nam), nên `GEO_PROVIDER=mock`.
+
+`MockGeoProvider` **bịa** địa chỉ từ toạ độ. Một địa chỉ bịa gắn lên toạ độ thật thì
+người dân đọc tưởng thật rồi gửi phiếu sai chỗ, cán bộ tới nhầm nơi. Vì vậy backend trả
+kèm `addressProvider`, và Mini App (`usableAddress`) **bỏ** mọi địa chỉ do provider
+`mock` sinh ra. Hệ quả người dùng thấy: ô địa chỉ **để trống, mở sẵn cho họ tự gõ**, kèm
+một dòng giải thích là đã ghim đúng vị trí nhưng chưa tra được tên đường.
+
+> Đây **không** phải lỗi quyền. Quyền vị trí đã cấp và toạ độ đã đúng. Muốn tự điền địa
+> chỉ thì chỉ cần chốt nhà cung cấp GIS rồi thêm một lớp `implements GeoProvider` và một
+> nhánh trong `GeoService.resolveProvider` — không phải sửa gì ở Mini App.
+
 > **Cần nghiệm thu trên máy thật.** Bước 2 là chỗ duy nhất còn rủi ro: hình dạng
 > `filePaths` khác nhau theo phiên bản Zalo và hệ điều hành, mà cả `fetch` lẫn canvas
 > đều có thể trượt (canvas bị "nhiễm" nếu nguồn ảnh khác gốc mà không có CORS). Trên

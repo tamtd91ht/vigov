@@ -542,9 +542,17 @@ export const zaloService = {
       if (zaloMockFlags.denyLocation) return { granted: false };
       return {
         granted: true,
-        lat: 20.7431,
-        lng: 105.9214,
-        address: `Đường trục Thôn Đông, ${appConfig.org.name}`,
+        lat: appConfig.map.center.lat,
+        lng: appConfig.map.center.lng,
+        /*
+         * KHÔNG trả địa chỉ, kể cả ở nhánh mock.
+         *
+         * Trường này là đường duy nhất lọt qua được `usableAddress` — nơi gọi
+         * dùng thẳng `res.address` để hiện bản đồ ngay, không chờ máy chủ. Một
+         * địa chỉ bịa gắn lên toạ độ thật thì người dân đọc tưởng thật rồi gửi
+         * phiếu sai chỗ, mà lúc chạy mock thì trông y như bản thật nên không ai
+         * phát hiện. Địa chỉ chỉ được đến từ provider GIS thật.
+         */
         accuracy: 12,
         source: "mock",
       };

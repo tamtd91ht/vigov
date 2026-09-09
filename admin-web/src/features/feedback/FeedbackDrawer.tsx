@@ -69,7 +69,7 @@ function ImagePanel({
   return (
     <div className={fileIds.length > 1 ? "p multi" : "p"}>
       {fileIds.map((id) => (
-        <SignedImage key={id} fileId={id} alt={alt} />
+        <SignedImage key={id} fileId={id} alt={alt} zoomable />
       ))}
     </div>
   );
@@ -219,7 +219,7 @@ export function FeedbackDrawer({
                 <div className="upl-grid" style={{ marginBottom: 8 }}>
                   {resultFileIds.map((id) => (
                     <div className="th" key={id}>
-                      <SignedImage fileId={id} alt="Ảnh hiện trường sau xử lý" />
+                      <SignedImage fileId={id} alt="Ảnh hiện trường sau xử lý" zoomable />
                     </div>
                   ))}
                 </div>

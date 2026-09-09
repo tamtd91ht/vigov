@@ -250,9 +250,14 @@ export function DetailStep({
             <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
               <Icon name="pin" size={20} color="var(--pink)" />
               <div style={{ flex: 1, minWidth: 0 }}>
-                {/* Không có toạ độ thì mở sẵn ô nhập, đừng bắt người dùng tìm
-                    ra nút "Sửa" mới gõ được thứ bắt buộc phải gõ. */}
-                {editingAddress || !hasPoint ? (
+                {/*
+                  Mở sẵn ô nhập khi CHƯA CÓ địa chỉ, không chỉ khi thiếu toạ độ.
+                  Hệ thống chưa chốt nhà cung cấp bản đồ nên phần lớn trường hợp
+                  không tra được địa chỉ từ toạ độ; hiện dòng chữ "Chưa có địa
+                  chỉ" rồi bắt người dùng tự tìm ra nút "Sửa" là để trống một ô
+                  mà chính họ cần điền.
+                */}
+                {editingAddress || !hasPoint || !location.address.trim() ? (
                   <input
                     className={`finp ${errors.address ? "err" : ""}`}
                     value={location.address}
@@ -261,7 +266,14 @@ export function DetailStep({
                   />
                 ) : (
                   <div style={{ fontWeight: 600, color: "var(--navy)", fontSize: ".9rem" }}>
-                    {location.address || "Chưa có địa chỉ"}
+                    {location.address}
+                  </div>
+                )}
+                {/* Nói thật vì sao ô trống, để người dân không tưởng app lỗi */}
+                {hasPoint && !location.address.trim() && (
+                  <div className="tiny muted" style={{ marginTop: 4 }}>
+                    Đã ghim đúng vị trí trên bản đồ; hệ thống chưa tra được tên đường nên
+                    mời bạn gõ giúp địa chỉ cho dễ tìm.
                   </div>
                 )}
                 {location.lat !== undefined && location.lng !== undefined && (

@@ -108,12 +108,22 @@ export class FilesController {
      * nên với 'same-site' trình duyệt CHẶN mọi thẻ <video>/<img> trỏ về đây —
      * ảnh và video im lặng không hiện, không báo lỗi gì trong ứng dụng.
      *
-     * Chỉ nới cho tệp CÔNG KHAI; tệp riêng tư giữ 'same-site' để không bị trang
-     * ngoài nhúng vào ngay cả khi lộ link ký sẵn.
+     * Trước đây chỉ nới cho tệp CÔNG KHAI, với lý do "tệp riêng tư giữ
+     * 'same-site' để không bị trang ngoài nhúng vào ngay cả khi lộ link ký sẵn".
+     * Nhưng ảnh phản ánh BẮT BUỘC là tệp riêng tư (TB-09), nên đúng thứ Mini App
+     * cần hiển thị lại là thứ duy nhất bị chặn: người dân gửi ảnh xong mở phiếu
+     * ra chỉ thấy ô ảnh trống, không có lỗi nào để lần theo.
+     *
+     * CORP không có danh sách cho phép — chỉ có same-origin / same-site /
+     * cross-origin — nên phục vụ được webview khác site thì buộc phải nới.
+     *
+     * Đổi lại, tới được dòng này thì tệp riêng tư ĐÃ qua kiểm chữ ký ở
+     * `openForStream`. Nghĩa là điều kiện đọc vẫn là "có link ký sẵn còn hiệu
+     * lực", y như trước; phần mất đi chỉ là việc trang ngoài không nhúng được
+     * một link ĐÃ bị lộ — mà link đã lộ thì mở trực tiếp cũng đọc được rồi.
+     * Vì vậy giữ TTL ngắn mới là lớp bảo vệ thật (xem TB-17 trong SECURITY.md).
      */
-    if (!file.isPrivate) {
-      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    }
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
     /*
      * Báo cho trình phát biết có thể tua. Thiếu header này thì thẻ <video> của
      * trình duyệt vô hiệu hoá thanh tua, dù máy chủ có phục vụ Range đi nữa.
