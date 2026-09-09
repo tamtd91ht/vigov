@@ -13,6 +13,15 @@ vận hành hệ thống.
 | 6 | [`06-ZALO-MO-TA-BAN-DEMO.md`](06-ZALO-MO-TA-BAN-DEMO.md) | Quản trị Mini App | Nội dung nộp xét duyệt cho **bản demo**: tên, mô tả ngắn, mô tả đầy đủ, chế độ demo trong mã nguồn (`VITE_DEMO_MODE`), cách chuyển sang bản chính thức |
 | 7 | [`07-ZALO-4-QUYEN-API-CHI-TIET.md`](07-ZALO-4-QUYEN-API-CHI-TIET.md) | Quản trị Mini App | Tờ làm việc từng quyền API (25 · 38 · 94 · 100): ID, mục đích, mô tả dán vào form, cách chụp ảnh minh hoạ trên Mini App |
 
+### Quyết định kiến trúc (ADR)
+
+Những quyết định có đánh đổi, đã cân nhắc phương án khác rồi mới chốt. Đổi ý về sau thì
+viết ADR **mới** đặt cái cũ thành "Đã thay thế", không sửa đè lên bản đã chốt.
+
+| # | Quyết định | Trạng thái |
+|---|---|---|
+| [0001](quyet-dinh/0001-thu-hoi-phan-anh.md) | Thu hồi phản ánh: xoá mềm · quyền `approve` · đếm cả phiếu đã gỡ vào chống spam | Đã chốt 10/09/2026 |
+
 ---
 
 ## Toàn cảnh hệ thống

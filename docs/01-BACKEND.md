@@ -610,7 +610,12 @@ search, settings, workflow) đều đã thêm bộ lọc `NOT_DELETED` — sót 
 hiện lại trên báo cáo cuối tháng.
 
 Chốt chống spam `FEEDBACK_MAX_PER_DAY` vẫn đếm **cả phiếu đã gỡ**, có chủ ý: nếu không,
-gửi 5 phiếu rồi thu hồi cả 5 là lại gửi được tiếp.
+gửi 5 phiếu rồi thu hồi cả 5 là lại gửi được tiếp. Hành vi này được khoá bằng
+`test/feedback-withdraw-spam.e2e-spec.ts` — đây là chỗ dễ bị "sửa cho tử tế" bằng cách
+thêm `NOT_DELETED` vào `assertNotSpamming`.
+
+> Ba quyết định nghiệp vụ của tính năng này (xoá mềm · quyền `approve` · đếm cả phiếu đã
+> gỡ) đã được khách hàng chốt ngày 10/09/2026 — xem `quyet-dinh/0001-thu-hoi-phan-anh.md`.
 
 ### Cán bộ tìm yêu cầu thu hồi ở đâu
 
@@ -619,4 +624,5 @@ Trang Phản ánh của Web Quản trị có nút lọc **"Chờ duyệt thu h�
 **"Xin thu hồi"**. Không có hai thứ này thì cán bộ phải mở từng phiếu mới biết, trong
 khi người dân vẫn đang thấy "Hệ thống đang xử lý" — yêu cầu nằm im tới lúc họ gọi lên xã.
 
-Kiểm chứng: `test/feedback-withdraw.e2e-spec.ts` (20 test).
+Kiểm chứng: `test/feedback-withdraw.e2e-spec.ts` (20 test) +
+`test/feedback-withdraw-spam.e2e-spec.ts` (2 test).
