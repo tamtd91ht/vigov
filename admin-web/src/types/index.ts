@@ -47,6 +47,10 @@ export interface Task {
   collaborators: string[];
   description: string;
   checklist: ChecklistItem[];
+  /** Có giá trị nghĩa là đã xoá mềm: ẩn khỏi danh sách, dữ liệu vẫn còn */
+  deletedAt?: string;
+  deletedBy?: string;
+  deleteReason?: string;
 }
 
 /** Văn bản đến / Đơn thư */

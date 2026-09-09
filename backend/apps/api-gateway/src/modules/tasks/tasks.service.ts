@@ -53,6 +53,15 @@ const AUTHOR_COLORS = ['#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed', '#
 /** Tên người giao mặc định khi không xác định được phiên đăng nhập */
 const SYSTEM_ACTOR = 'Hệ thống';
 
+/**
+ * Điều kiện "chưa bị xoá mềm". `deletedAt: null` khớp CẢ tài liệu thiếu hẳn
+ * trường này (bản ghi tạo trước khi có tính năng xoá) lẫn tài liệu đã khôi phục.
+ */
+const NOT_DELETED: FilterQuery<TaskDocument> = { deletedAt: null };
+
+/** Điều kiện "đã bị xoá mềm" — dùng cho bộ lọc "Đã xoá" của Web Quản trị */
+const IS_DELETED: FilterQuery<TaskDocument> = { deletedAt: { $ne: null } };
+
 /* ───────────────────────── Tiện ích ngày tháng ───────────────────────── */
 
 /** Chuyển chuỗi dd/MM/yyyy sang Date (mốc cuối ngày để tính hạn xử lý) */
@@ -161,7 +170,10 @@ export class TasksService {
     const page = Math.max(query.page ?? DEFAULT_PAGE, DEFAULT_PAGE);
     const limit = Math.min(query.limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
 
-    const filter: FilterQuery<TaskDocument> = {};
+    // Mặc định ẩn nhiệm vụ đã xoá mềm; `deleted=true` là bộ lọc xem riêng thùng đã xoá
+    const filter: FilterQuery<TaskDocument> = {
+      ...(query.deleted === 'true' ? IS_DELETED : NOT_DELETED),
+    };
     if (query.status) filter.status = query.status;
     if (query.department) filter.department = query.department;
     if (query.assignee) filter.assignee = query.assignee;
@@ -187,9 +199,19 @@ export class TasksService {
     return { items, total, page, limit };
   }
 
-  /** Chi tiết nhiệm vụ theo mã NV-xxxx (404 nếu không có) */
-  async findByCode(code: string): Promise<TaskDocument> {
-    const task = await this.taskModel.findOne({ code }).exec();
+  /**
+   * Chi tiết nhiệm vụ theo mã NV-xxxx (404 nếu không có).
+   *
+   * Nhiệm vụ đã xoá mềm coi như không tồn tại với mọi đường ghi (sửa, tick việc
+   * con, bình luận, đính kèm) — nếu không thì bản ghi trong thùng đã xoá vẫn
+   * sửa được qua API dù giao diện không còn chỗ bấm. Xem chi tiết bản đã xoá
+   * thì dùng `detail(code, { includeDeleted: true })`.
+   */
+  async findByCode(code: string, options?: { includeDeleted?: boolean }): Promise<TaskDocument> {
+    const filter: FilterQuery<TaskDocument> = options?.includeDeleted
+      ? { code }
+      : { code, ...NOT_DELETED };
+    const task = await this.taskModel.findOne(filter).exec();
     if (!task) throw new NotFoundException(`Không tìm thấy nhiệm vụ ${code}`);
     return task;
   }
@@ -202,7 +224,8 @@ export class TasksService {
    * để hiện được tên tệp.
    */
   async detail(code: string): Promise<Record<string, unknown>> {
-    const task = await this.findByCode(code);
+    // Bản đã xoá mềm vẫn phải mở xem được để cán bộ kiểm tra trước khi khôi phục
+    const task = await this.findByCode(code, { includeDeleted: true });
     return this.withAttachmentFiles(task);
   }
 
@@ -445,11 +468,46 @@ export class TasksService {
     return task;
   }
 
-  /** Xoá nhiệm vụ — chỉ quản trị hệ thống */
-  async remove(code: string): Promise<{ deleted: boolean; code: string }> {
-    const result = await this.taskModel.deleteOne({ code }).exec();
-    if (result.deletedCount === 0) throw new NotFoundException(`Không tìm thấy nhiệm vụ ${code}`);
-    return { deleted: true, code };
+  /**
+   * Xoá MỀM nhiệm vụ — chỉ quản trị hệ thống.
+   *
+   * Chỉ đặt cờ `deletedAt`: bản ghi biến mất khỏi danh sách, mọi đường ghi báo
+   * 404, nhưng nhật ký xử lý và mã tệp minh chứng vẫn còn để truy vết. Mốc xoá
+   * cũng được ghi vào nhật ký của chính nhiệm vụ, nên khi khôi phục thì lý do
+   * và người xoá còn đọc lại được.
+   */
+  async remove(code: string, user?: JwtPayload, reason?: string): Promise<Record<string, unknown>> {
+    const task = await this.findByCode(code);
+    const actor = user?.displayName ?? SYSTEM_ACTOR;
+    const trimmed = reason?.trim();
+
+    task.deletedAt = new Date();
+    task.deletedBy = actor;
+    if (trimmed) task.deleteReason = trimmed;
+    task.timeline.push(
+      this.buildTimelineStep(trimmed ? `Xoá nhiệm vụ: ${trimmed}` : 'Xoá nhiệm vụ', actor),
+    );
+    await task.save();
+
+    // Nhiệm vụ rời khỏi mọi danh sách nên client đang mở phải tải lại (P5-05)
+    this.emitTaskChanged('deleted', task);
+    return this.withAttachmentFiles(task);
+  }
+
+  /** Khôi phục nhiệm vụ đã xoá mềm — dữ liệu còn nguyên nên chỉ cần bỏ cờ xoá */
+  async restore(code: string, user?: JwtPayload): Promise<Record<string, unknown>> {
+    const task = await this.taskModel.findOne({ code, ...IS_DELETED }).exec();
+    if (!task) throw new NotFoundException(`Không tìm thấy nhiệm vụ ${code} trong thùng đã xoá`);
+
+    const actor = user?.displayName ?? SYSTEM_ACTOR;
+    task.deletedAt = null;
+    task.deletedBy = undefined;
+    task.deleteReason = undefined;
+    task.timeline.push(this.buildTimelineStep('Khôi phục nhiệm vụ', actor));
+    await task.save();
+
+    this.emitTaskChanged('restored', task);
+    return this.withAttachmentFiles(task);
   }
 
   /**
@@ -466,6 +524,7 @@ export class TasksService {
 
     const items = await this.taskModel
       .find({
+        ...NOT_DELETED,
         status: { $ne: TASK_STATUS_DONE },
         deadlineAt: { $ne: null, $lte: threshold },
       })
@@ -504,7 +563,7 @@ export class TasksService {
    * danh sách/chi tiết theo quyền của mình. RealtimeService nuốt mọi lỗi nên lời
    * gọi này không thể làm hỏng nghiệp vụ đang chạy.
    */
-  private emitTaskChanged(type: 'created' | 'status', task: TaskDocument): void {
+  private emitTaskChanged(type: 'created' | 'status' | 'deleted' | 'restored', task: TaskDocument): void {
     this.realtime.emitChange(
       REALTIME_EVENTS.TASK_CHANGED,
       { type, code: task.code, status: task.status, at: new Date().toISOString() },

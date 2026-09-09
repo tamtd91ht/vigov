@@ -16,6 +16,7 @@ import {
   AttachTaskFilesDto,
   CreateCommentDto,
   CreateTaskDto,
+  DeleteTaskDto,
   QueryTasksDto,
   ToggleChecklistDto,
   UpdateTaskDto,
@@ -101,10 +102,22 @@ export class TasksController {
     return this.tasks.removeAttachment(code, fileId, req.user);
   }
 
-  /** Xoá nhiệm vụ — chỉ quản trị hệ thống */
+  /**
+   * Xoá MỀM nhiệm vụ: ẩn khỏi mọi danh sách và chặn mọi thao tác ghi, dữ liệu
+   * vẫn nằm nguyên trong CSDL. Dùng PATCH chứ không phải DELETE để nói đúng việc
+   * đang làm (đổi trạng thái bản ghi) và để mang được lý do xoá trong body —
+   * cùng quy ước với xoá tài khoản công dân ở phân hệ Người dùng.
+   */
   @RequirePermission('tasks', 'admin')
-  @Delete(':code')
-  remove(@Param('code') code: string) {
-    return this.tasks.remove(code);
+  @Patch(':code/delete')
+  remove(@Param('code') code: string, @Body() dto: DeleteTaskDto, @Req() req: AuthedRequest) {
+    return this.tasks.remove(code, req.user, dto.reason);
+  }
+
+  /** Khôi phục nhiệm vụ đã xoá mềm — chỉ quản trị hệ thống */
+  @RequirePermission('tasks', 'admin')
+  @Patch(':code/restore')
+  restore(@Param('code') code: string, @Req() req: AuthedRequest) {
+    return this.tasks.restore(code, req.user);
   }
 }

@@ -192,8 +192,9 @@ export class ReportsService {
   /** Nạp dữ liệu thô của kỳ từ 3 phân hệ */
   private async collect(range: ReportRange) {
     const [allTasks, allFeedbacks, budgets] = await Promise.all([
+      // `deletedAt: null` — nhiệm vụ đã xoá mềm không vào báo cáo kỳ
       this.taskModel
-        .find({}, 'code title department assignee status deadline deadlineAt createdAt')
+        .find({ deletedAt: null }, 'code title department assignee status deadline deadlineAt createdAt')
         .lean<TaskLean[]>()
         .exec(),
       this.feedbackModel

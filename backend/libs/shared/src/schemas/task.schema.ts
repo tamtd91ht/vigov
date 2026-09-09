@@ -131,6 +131,24 @@ export class Task {
    */
   @Prop({ type: [String], default: [] })
   attachmentFileIds: string[];
+
+  /**
+   * Mốc xoá MỀM (WBS #3). `null`/thiếu trường = nhiệm vụ còn hiệu lực.
+   *
+   * Nhiệm vụ không bị xoá khỏi CSDL: nhật ký xử lý, bình luận và mã tệp minh
+   * chứng còn là bằng chứng phục vụ thanh tra, và mã NV-xxxx đã được dẫn chiếu
+   * trong văn bản / phản ánh (`sourceRefId`) nên xoá cứng là để lại liên kết chết.
+   */
+  @Prop({ type: Date, default: null, index: true })
+  deletedAt?: Date | null;
+
+  /** Cán bộ thực hiện việc xoá — hiển thị ở thùng "Đã xoá" của Web Quản trị */
+  @Prop()
+  deletedBy?: string;
+
+  /** Lý do xoá (không bắt buộc) — chỉ lưu để truy vết nội bộ */
+  @Prop()
+  deleteReason?: string;
 }
 
 export const TaskSchema = SchemaFactory.createForClass(Task);

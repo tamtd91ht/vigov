@@ -63,6 +63,10 @@ export function TaskDrawer({
   onSave,
   onAttachFile,
   onRemoveFile,
+  onEdit,
+  onDelete,
+  onRestore,
+  canDelete,
 }: {
   task: TaskDetail | null;
   loading: boolean;
@@ -78,6 +82,14 @@ export function TaskDrawer({
   onAttachFile: (fileId: string) => Promise<void>;
   /** Gỡ một tệp minh chứng khỏi nhiệm vụ */
   onRemoveFile: (fileId: string) => Promise<void>;
+  /** Mở form sửa nội dung nhiệm vụ (PATCH /tasks/:code) */
+  onEdit: () => void;
+  /** Xoá mềm nhiệm vụ — mở bước xác nhận ở trang cha */
+  onDelete: () => void;
+  /** Khôi phục nhiệm vụ đã xoá mềm */
+  onRestore: () => Promise<void>;
+  /** Chỉ vai trò có quyền `tasks:admin` mới thấy nút Xoá / Khôi phục */
+  canDelete: boolean;
 }) {
   const { showToast } = useToast();
   const [tab, setTab] = useState("detail");
@@ -100,6 +112,8 @@ export function TaskDrawer({
     setFileError("");
   }
 
+  /** Nhiệm vụ đã xoá mềm — chỉ xem, không sửa được nữa */
+  const deleted = !!task?.deletedAt;
   const status = findStatus(taskStatuses, task?.status ?? "moi");
   const priority = findStatus(taskPriorities, task?.priority ?? "tb");
   const doneCount = task?.checklist.filter((c) => c.done).length ?? 0;
@@ -160,34 +174,66 @@ export function TaskDrawer({
       title={task?.title ?? "Chi tiết nhiệm vụ"}
       meta={task ? `${task.id} · Hạn xử lý ${task.deadline}` : "Đang tải dữ liệu từ máy chủ…"}
       footer={
-        <>
-          <select
-            className="sel"
-            value={statusDraft}
-            disabled={!task || saving}
-            onChange={(e) => setStatusDraft(e.target.value)}
-          >
-            {taskStatuses.map((s) => (
-              <option key={s.key} value={s.key}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-          <button className="btn pri" type="button" disabled={!task || saving} onClick={saveProgress}>
-            Cập nhật tiến độ
-          </button>
-          <button
-            className="btn"
-            type="button"
-            disabled
-            title="Chờ API nhắc việc — backend chưa có endpoint gửi nhắc cho người thực hiện"
-          >
-            Nhắc việc
-          </button>
-          <button className="btn" type="button" onClick={onClose}>
-            Đóng
-          </button>
-        </>
+        /* Nhiệm vụ đã xoá mềm là bản ghi chỉ-đọc: mọi đường ghi ở backend đều
+           báo 404, nên ở đây chỉ còn Khôi phục và Đóng. */
+        deleted ? (
+          <>
+            {canDelete && (
+              <button className="btn pri" type="button" disabled={saving} onClick={() => void run(onRestore)}>
+                <Icon name="ok" size={15} />
+                Khôi phục nhiệm vụ
+              </button>
+            )}
+            <button className="btn" type="button" style={{ marginLeft: "auto" }} onClick={onClose}>
+              Đóng
+            </button>
+          </>
+        ) : (
+          <>
+            <select
+              className="sel"
+              value={statusDraft}
+              disabled={!task || saving}
+              onChange={(e) => setStatusDraft(e.target.value)}
+            >
+              {taskStatuses.map((s) => (
+                <option key={s.key} value={s.key}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+            <button className="btn pri" type="button" disabled={!task || saving} onClick={saveProgress}>
+              Cập nhật tiến độ
+            </button>
+            <button className="btn" type="button" disabled={!task || saving} onClick={onEdit}>
+              <Icon name="edit" size={15} />
+              Sửa nội dung
+            </button>
+            <button
+              className="btn"
+              type="button"
+              disabled
+              title="Chờ API nhắc việc — backend chưa có endpoint gửi nhắc cho người thực hiện"
+            >
+              Nhắc việc
+            </button>
+            {canDelete && (
+              <button
+                className="btn danger"
+                type="button"
+                title="Xoá mềm — dữ liệu và nhật ký vẫn được giữ lại"
+                disabled={!task || saving}
+                onClick={onDelete}
+              >
+                <Icon name="trash" size={15} />
+                Xoá
+              </button>
+            )}
+            <button className="btn" type="button" style={{ marginLeft: "auto" }} onClick={onClose}>
+              Đóng
+            </button>
+          </>
+        )
       }
     >
       <DataState loading={loading} error={error} onRetry={onRetry} empty={!task} emptyMessage="Chưa chọn nhiệm vụ">
@@ -208,6 +254,15 @@ export function TaskDrawer({
                 Ưu tiên: {priority.label}
               </Chip>
             </div>
+
+            {deleted && (
+              <div className="note" style={{ marginBottom: 16, borderColor: "var(--red)" }}>
+                <b>Nhiệm vụ đã bị xoá.</b> Bản ghi được giữ lại để truy vết nên nhật ký, ý kiến trao đổi
+                và tệp minh chứng vẫn đọc được, nhưng không sửa được nữa.
+                {task.deletedBy && <> Người xoá: {task.deletedBy}.</>}
+                {task.deleteReason && <> Lý do: {task.deleteReason}.</>}
+              </div>
+            )}
 
             <Tabs items={DRAWER_TABS} active={tab} onChange={setTab} />
 
@@ -299,7 +354,7 @@ export function TaskDrawer({
                           <input
                             type="checkbox"
                             checked={item.done}
-                            disabled={saving}
+                            disabled={saving || deleted}
                             onChange={() => void run(() => onToggleChecklist(i, !item.done))}
                           />
                           <span className="lb">{item.title}</span>
@@ -334,11 +389,11 @@ export function TaskDrawer({
                     style={{ flex: 1, minWidth: 0 }}
                     placeholder="Nhập ý kiến trao đổi…"
                     value={commentInput}
-                    disabled={saving}
+                    disabled={saving || deleted}
                     onChange={(e) => setCommentInput(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && sendComment()}
                   />
-                  <button className="btn pri sm" type="button" disabled={saving} onClick={sendComment}>
+                  <button className="btn pri sm" type="button" disabled={saving || deleted} onClick={sendComment}>
                     <Icon name="send" size={14} />
                     Gửi
                   </button>
@@ -378,7 +433,7 @@ export function TaskDrawer({
                             type="button"
                             title="Gỡ tệp khỏi nhiệm vụ"
                             style={{ color: "var(--red)" }}
-                            disabled={saving}
+                            disabled={saving || deleted}
                             onClick={() => void run(() => onRemoveFile(file.fileId))}
                           >
                             <Icon name="trash" size={13} />
@@ -399,7 +454,10 @@ export function TaskDrawer({
                   )}
 
                   {/* Minh chứng là tài liệu nội bộ nên tải lên ở chế độ riêng tư,
-                      giống bản scan văn bản: chỉ mở được bằng link có chữ ký. */}
+                      giống bản scan văn bản: chỉ mở được bằng link có chữ ký.
+                      Nhiệm vụ đã xoá thì ẩn hẳn ô tải lên: backend từ chối gắn tệp
+                      vào bản ghi đã xoá, để lại ô trống chỉ gây tải lên rồi báo lỗi. */}
+                  {!deleted && (
                   <FileUpload
                     key={`${task.id}-${uploadKey}`}
                     purpose="other"
@@ -416,6 +474,7 @@ export function TaskDrawer({
                       void run(() => onAttachFile(fileId));
                     }}
                   />
+                  )}
                   {fileError && <div className="ferr">{fileError}</div>}
                 </div>
               </div>

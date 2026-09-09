@@ -162,4 +162,17 @@ describe("TaskTable", () => {
 
     expect(screen.getByTitle("Lê Minh Tuấn")).toHaveTextContent("LT");
   });
+
+  it('nhiệm vụ đã xoá mềm hiện nhãn "Đã xoá" thay cho trạng thái nghiệp vụ', () => {
+    render(
+      <TaskTable
+        tasks={[makeTask({ status: "dang", deletedAt: "2026-09-01T00:00:00.000Z" })]}
+        onOpen={vi.fn()}
+      />,
+    );
+
+    const row = within(bodyRows()[0]);
+    expect(row.getByText("Đã xoá")).toBeInTheDocument();
+    expect(row.queryByText("Đang thực hiện")).not.toBeInTheDocument();
+  });
 });

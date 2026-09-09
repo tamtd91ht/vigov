@@ -44,6 +44,8 @@ export interface TaskQuery {
   priority?: string;
   /** Từ khoá tìm theo mã / tiêu đề / mô tả */
   q?: string;
+  /** `true` thì CHỈ lấy nhiệm vụ đã xoá mềm (thùng "Đã xoá") */
+  deleted?: boolean;
   page?: number;
   limit?: number;
 }
@@ -72,6 +74,8 @@ export interface UpdateTaskInput {
   progress?: number;
   description?: string;
   collaborators?: string[];
+  /** Ghi đè toàn bộ danh sách việc con; backend tính lại tiến độ theo danh sách mới */
+  checklist?: { title: string; done?: boolean }[];
 }
 
 /** Bản ghi thô backend trả về — khoá chính là `code`, chưa có `id` */
@@ -151,6 +155,8 @@ export async function listTasks(query: TaskQuery = {}): Promise<Paged<TaskDetail
     const keyword = query.q?.trim().toLowerCase() ?? "";
     const matched = store().filter(
       (t) =>
+        // Thùng "Đã xoá" và danh sách đang dùng loại trừ nhau, giống bộ lọc backend
+        (query.deleted ? !!t.deletedAt : !t.deletedAt) &&
         (!query.status || t.status === query.status) &&
         (!query.department || t.department === query.department) &&
         (!query.assignee || t.assignee === query.assignee) &&
@@ -175,6 +181,7 @@ export async function listTasks(query: TaskQuery = {}): Promise<Paged<TaskDetail
       assignee: query.assignee,
       priority: query.priority,
       q: query.q,
+      deleted: query.deleted ? "true" : undefined,
       page,
       limit,
     })}`,
@@ -239,6 +246,11 @@ export async function updateTask(code: string, input: UpdateTaskInput): Promise<
     await mockDelay();
     const task = mockFind(code);
     Object.assign(task, input as Partial<TaskDetail>);
+    // Ghi đè việc con thì tiến độ tính lại theo danh sách mới (khớp backend)
+    if (input.checklist) {
+      task.checklist = input.checklist.map((c) => ({ title: c.title, done: c.done ?? false }));
+      task.progress = calcProgress(task.checklist);
+    }
     if (input.status === "xong") task.progress = 100;
     return { ...task };
   }
@@ -316,12 +328,38 @@ export async function removeTaskAttachment(code: string, fileId: string): Promis
   );
 }
 
-/** Xoá nhiệm vụ — chỉ tài khoản quản trị hệ thống dùng được */
-export async function deleteTask(code: string): Promise<void> {
+/**
+ * Xoá MỀM nhiệm vụ — chỉ tài khoản quản trị hệ thống dùng được.
+ *
+ * Backend chỉ đặt cờ `deletedAt`: nhiệm vụ biến mất khỏi danh sách nhưng nhật ký
+ * xử lý, bình luận và tệp minh chứng vẫn còn, khôi phục được ở thùng "Đã xoá".
+ * Dùng PATCH .../delete chứ không phải DELETE để mang được lý do xoá trong body.
+ */
+export async function deleteTask(code: string, reason?: string): Promise<TaskDetail> {
   if (appConfig.api.useMocks) {
     await mockDelay();
-    mockStore = store().filter((t) => t.id !== code);
-    return;
+    const task = mockFind(code);
+    task.deletedAt = new Date().toISOString();
+    task.deletedBy = "Nguyễn Văn Bình";
+    task.deleteReason = reason?.trim() || undefined;
+    return { ...task };
   }
-  await apiClient.delete<{ deleted: boolean }>(`/tasks/${encodeURIComponent(code)}`);
+  return toTaskDetail(
+    await apiClient.patch<RawTask>(`/tasks/${encodeURIComponent(code)}/delete`, {
+      reason: reason?.trim() || undefined,
+    }),
+  );
+}
+
+/** Khôi phục nhiệm vụ đã xoá mềm — dữ liệu còn nguyên nên chỉ cần bỏ cờ xoá */
+export async function restoreTask(code: string): Promise<TaskDetail> {
+  if (appConfig.api.useMocks) {
+    await mockDelay();
+    const task = mockFind(code);
+    task.deletedAt = undefined;
+    task.deletedBy = undefined;
+    task.deleteReason = undefined;
+    return { ...task };
+  }
+  return toTaskDetail(await apiClient.patch<RawTask>(`/tasks/${encodeURIComponent(code)}/restore`, {}));
 }

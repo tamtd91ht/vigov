@@ -8,6 +8,9 @@ import { Chip } from "@/components/ui/Chip";
 import { Card } from "@/components/ui/Card";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 
+/** Nhãn nhiệm vụ đã xoá mềm — dùng lại tông màu của phân hệ Người dùng */
+const DELETED_CHIP = { label: "Đã xoá", color: "var(--mut)", tint: "rgba(136,150,166,.12)" };
+
 /** Số ngày còn lại tới hạn so với hôm nay (âm = quá hạn) — deadline dạng "dd/MM/yyyy" */
 function daysUntilDeadline(deadline: string): number {
   const matched = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(deadline.trim());
@@ -101,9 +104,16 @@ export function TaskTable({ tasks, onOpen }: { tasks: Task[]; onOpen: (id: strin
                       </Chip>
                     </td>
                     <td>
-                      <Chip color={status.color} tint={status.tint} dot>
-                        {status.label}
-                      </Chip>
+                      {/* Thùng "Đã xoá": cờ xoá là thông tin quan trọng hơn trạng thái nghiệp vụ */}
+                      {t.deletedAt ? (
+                        <Chip color={DELETED_CHIP.color} tint={DELETED_CHIP.tint} dot>
+                          {DELETED_CHIP.label}
+                        </Chip>
+                      ) : (
+                        <Chip color={status.color} tint={status.tint} dot>
+                          {status.label}
+                        </Chip>
+                      )}
                     </td>
                   </tr>
                 );

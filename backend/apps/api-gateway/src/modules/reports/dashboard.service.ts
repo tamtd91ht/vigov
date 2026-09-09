@@ -62,7 +62,8 @@ export class DashboardService {
     const soon = new Date(now.getTime() + 7 * 24 * 3600 * 1000);
 
     const [tasks, documents, feedbacks, budgets] = await Promise.all([
-      this.taskModel.find().lean().exec(),
+      // `deletedAt: null` — nhiệm vụ đã xoá mềm không được tính vào thẻ thống kê
+      this.taskModel.find({ deletedAt: null }).lean().exec(),
       this.docModel.find().lean().exec(),
       this.feedbackModel.find().lean().exec(),
       this.budgetModel.find({ year }).lean().exec(),

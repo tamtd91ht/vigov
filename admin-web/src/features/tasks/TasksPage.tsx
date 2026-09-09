@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
 import { taskPriorities } from "@/config/status.config";
 import { fetchDepartments, fetchStaffDirectory } from "@/services/catalogs.service";
@@ -9,9 +9,11 @@ import {
   addTaskComment,
   apiErrorMessage,
   createTask,
+  deleteTask,
   getTask,
   listTasks,
   removeTaskAttachment,
+  restoreTask,
   toggleChecklistItem,
   updateTask,
   type CreateTaskInput,
@@ -28,15 +30,29 @@ import { PageHead } from "@/components/ui/PageHead";
 import { SegmentControl } from "@/components/ui/SegmentControl";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { useToast } from "@/components/ui/Toast";
+import { authService, getServerSession } from "@/services/auth";
+import { findRole } from "@/config/roles.config";
+import { Drawer } from "@/components/ui/Drawer";
 import { KanbanBoard } from "./KanbanBoard";
 import { TaskTable } from "./TaskTable";
 import { TaskDrawer } from "./TaskDrawer";
-import { NewTaskForm } from "./NewTaskForm";
+import { TaskForm } from "./TaskForm";
 
 const VIEW_OPTIONS = [
   { key: "kanban", label: "Kanban" },
   { key: "list", label: "Bảng" },
 ];
+
+/** Hai thùng dữ liệu loại trừ nhau: đang dùng / đã xoá mềm */
+const SCOPE_OPTIONS = [
+  { key: "active", label: "Đang dùng" },
+  { key: "deleted", label: "Đã xoá" },
+];
+
+const DELETE_NOTE =
+  "Xoá mềm: nhiệm vụ biến mất khỏi Kanban, bảng danh sách và các báo cáo, nhưng bản ghi " +
+  "vẫn nằm trong cơ sở dữ liệu — nhật ký xử lý, ý kiến trao đổi và tệp minh chứng đều còn. " +
+  'Khôi phục lại được ở bộ lọc "Đã xoá".';
 
 /** Kanban cần đủ nhiệm vụ để xếp 5 cột nên lấy trang lớn hơn chế độ bảng */
 const KANBAN_PAGE_SIZE = 100;
@@ -61,9 +77,22 @@ export function TasksPage() {
   const [page, setPage] = useState(1);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [formOpen, setFormOpen] = useState(false);
+  /** Nhiệm vụ đang mở trong form: `null` = giao việc mới, undefined = form đóng */
+  const [formTask, setFormTask] = useState<TaskDetail | null | undefined>(undefined);
+  /** Đang xem thùng nhiệm vụ đã xoá mềm thay vì danh sách đang dùng */
+  const [deletedView, setDeletedView] = useState(false);
+  /** Nhiệm vụ chờ xác nhận xoá — mở drawer nhập lý do */
+  const [deleteTarget, setDeleteTarget] = useState<TaskDetail | null>(null);
+  const [deleteReason, setDeleteReason] = useState("");
 
   const limit = view === "kanban" ? KANBAN_PAGE_SIZE : LIST_PAGE_SIZE;
+
+  /**
+   * Xoá / khôi phục nhiệm vụ yêu cầu quyền `tasks:admin` ở backend.
+   * Ẩn hẳn nút với vai trò không đủ quyền thay vì để bấm rồi nhận 403.
+   */
+  const session = useSyncExternalStore(authService.subscribe, authService.getSession, getServerSession);
+  const canDelete = findRole(session?.roleKey ?? "")?.modules.tasks === "admin";
 
   // Bộ lọc và phân trang đều là tham số truy vấn gửi lên máy chủ
   const list = useApiResource(
@@ -72,10 +101,11 @@ export function TasksPage() {
         department: deptFilter === "all" ? undefined : deptFilter,
         assignee: assigneeFilter || undefined,
         priority: priorityFilter || undefined,
+        deleted: deletedView || undefined,
         page,
         limit,
       }),
-    [deptFilter, assigneeFilter, priorityFilter, page, limit],
+    [deptFilter, assigneeFilter, priorityFilter, deletedView, page, limit],
   );
 
   // Chi tiết nhiệm vụ (kèm bình luận, nhật ký) tải riêng khi mở drawer
@@ -174,10 +204,57 @@ export function TasksPage() {
   const submitNewTask = async (input: CreateTaskInput) => {
     try {
       const created = await createTask(input);
-      setFormOpen(false);
+      setFormTask(undefined);
       setPage(1);
       list.reload();
       showToast(`Đã giao việc ${created.id} cho ${created.assignee}`);
+    } catch (err) {
+      showToast(apiErrorMessage(err));
+    }
+  };
+
+  /**
+   * Lưu nội dung sửa từ form. Tải lại cả danh sách vì sửa người thực hiện / bộ
+   * phận / trạng thái có thể làm nhiệm vụ rơi ra ngoài bộ lọc đang áp dụng —
+   * lúc đó nó phải biến mất khỏi bảng, không phải nằm lại với dữ liệu mới.
+   */
+  const submitEditTask = async (patch: UpdateTaskInput) => {
+    if (!formTask) return;
+    try {
+      const updated = await updateTask(formTask.id, patch);
+      setFormTask(undefined);
+      applyTask(updated);
+      list.reload();
+      showToast(`Đã cập nhật nhiệm vụ ${updated.id}`);
+    } catch (err) {
+      showToast(apiErrorMessage(err));
+    }
+  };
+
+  /** Xoá MỀM nhiệm vụ: đặt cờ xoá, dữ liệu và nhật ký vẫn còn */
+  const submitDelete = async () => {
+    const target = deleteTarget;
+    if (!target) return;
+    try {
+      await deleteTask(target.id, deleteReason);
+      setDeleteTarget(null);
+      setDeleteReason("");
+      setDrawerOpen(false);
+      list.reload();
+      showToast(`Đã xoá nhiệm vụ ${target.id}. Dữ liệu vẫn được giữ, khôi phục ở bộ lọc "Đã xoá".`);
+    } catch (err) {
+      showToast(apiErrorMessage(err));
+    }
+  };
+
+  /** Khôi phục nhiệm vụ đã xoá mềm — bản ghi trở lại danh sách đang dùng */
+  const restore = async () => {
+    if (!openTaskId) return;
+    try {
+      const restored = await restoreTask(openTaskId);
+      setDrawerOpen(false);
+      list.reload();
+      showToast(`Đã khôi phục nhiệm vụ ${restored.id}`);
     } catch (err) {
       showToast(apiErrorMessage(err));
     }
@@ -210,10 +287,13 @@ export function TasksPage() {
         title="Quản lý nhiệm vụ"
         sub="Theo dõi nhiệm vụ giao từ kết luận họp, văn bản đến và phản ánh của người dân"
         actions={
-          <button className="btn pri" type="button" onClick={() => setFormOpen(true)}>
-            <Icon name="plus" size={15} />
-            Giao việc mới
-          </button>
+          /* Thùng "Đã xoá" là chỗ khôi phục, không phải chỗ giao việc mới */
+          deletedView ? undefined : (
+            <button className="btn pri" type="button" onClick={() => setFormTask(null)}>
+              <Icon name="plus" size={15} />
+              Giao việc mới
+            </button>
+          )
         }
       />
 
@@ -294,6 +374,17 @@ export function TasksPage() {
             Hiển thị {items.length}/{total} nhiệm vụ
           </span>
           <SegmentControl
+            options={SCOPE_OPTIONS}
+            value={deletedView ? "deleted" : "active"}
+            onChange={(key) =>
+              changeFilter(() => {
+                setDeletedView(key === "deleted");
+                // Thùng đã xoá xem dạng bảng dễ đối chiếu hơn Kanban theo trạng thái
+                if (key === "deleted") setView("list");
+              })
+            }
+          />
+          <SegmentControl
             options={VIEW_OPTIONS}
             value={view}
             onChange={(key) => {
@@ -309,7 +400,7 @@ export function TasksPage() {
         error={list.error}
         onRetry={list.reload}
         empty={items.length === 0}
-        emptyMessage="Không có nhiệm vụ phù hợp bộ lọc"
+        emptyMessage={deletedView ? "Chưa có nhiệm vụ nào bị xoá" : "Không có nhiệm vụ phù hợp bộ lọc"}
       >
         {view === "kanban" ? (
           <KanbanBoard tasks={items} onOpen={openTask} />
@@ -352,8 +443,63 @@ export function TasksPage() {
         onSave={saveTask}
         onAttachFile={attachFile}
         onRemoveFile={removeFile}
+        onEdit={() => detail.data && setFormTask(detail.data)}
+        onDelete={() => {
+          setDeleteReason("");
+          setDeleteTarget(detail.data ?? null);
+        }}
+        onRestore={restore}
+        canDelete={canDelete}
       />
-      <NewTaskForm open={formOpen} onClose={() => setFormOpen(false)} onCreate={submitNewTask} />
+
+      <TaskForm
+        open={formTask !== undefined}
+        onClose={() => setFormTask(undefined)}
+        task={formTask ?? null}
+        onCreate={submitNewTask}
+        onUpdate={submitEditTask}
+      />
+
+      {/* Drawer xác nhận xoá mềm nhiệm vụ */}
+      <Drawer
+        open={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        title="Xoá nhiệm vụ"
+        meta={deleteTarget ? `${deleteTarget.id} · ${deleteTarget.title}` : undefined}
+        footer={
+          <>
+            <button type="button" className="btn danger" onClick={() => void submitDelete()}>
+              <Icon name="trash" size={15} />
+              Xác nhận xoá
+            </button>
+            <button
+              type="button"
+              className="btn"
+              style={{ marginLeft: "auto" }}
+              onClick={() => setDeleteTarget(null)}
+            >
+              Huỷ
+            </button>
+          </>
+        }
+      >
+        <div className="note" style={{ marginBottom: 16 }}>
+          {DELETE_NOTE}
+        </div>
+        <div className="fgroup">
+          <label htmlFor="task-delete-reason">Lý do xoá</label>
+          <textarea
+            id="task-delete-reason"
+            className="finp"
+            value={deleteReason}
+            placeholder="Ví dụ: Giao trùng với NV-2599, nhiệm vụ kiểm thử…"
+            onChange={(e) => setDeleteReason(e.target.value)}
+          />
+          <div className="fhint">
+            Không bắt buộc. Lý do được ghi vào nhật ký xử lý của nhiệm vụ để truy vết.
+          </div>
+        </div>
+      </Drawer>
     </div>
   );
 }
