@@ -21,6 +21,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 import sys
 
 # ---- Lớp 1: lệnh shell ----------------------------------------------------
@@ -35,12 +36,17 @@ DANGEROUS_BASH: list[tuple[str, str, str]] = [
     (r"""\bgit\s+clean\b""",
      "git clean",
      "Xoá tệp chưa theo dõi — có thể xoá cả .env.local. Dùng `git status` rồi xoá tay."),
-    (r"""\bgit\s+push\s+(--force\b|-f\b)""",
+    # Cờ --force đứng ở ĐÂU CŨNG ĐƯỢC trong lệnh, không riêng ngay sau `push`.
+    # Mẫu cũ `git\s+push\s+(--force|-f)` bỏ sót đúng dạng hay dùng nhất:
+    # `git push origin main --force`. Chặn tới ký tự phân cách lệnh (| ; &) để
+    # `git push && rm -f x` không bị nhận nhầm vì chữ `-f` của lệnh khác.
+    # `--force-with-lease` KHÔNG bị chặn — đó là cách an toàn ta khuyến nghị.
+    (r"""\bgit\s+push\b[^\n|;&]*\s(--force(?!-with-lease)\b|-f\b)""",
      "git push --force",
      "Ghi đè lịch sử của người khác. Dùng `--force-with-lease` nếu thật cần, sau khi hỏi."),
     (r"""\bgit\s+(branch\s+-D|push\s+\S+\s+--delete)\b""",
      "xoá nhánh",
-     "Xoá nhánh có thể mất công việc chưa merge. Xác nhận với người dùng trước."),
+     "Nhánh này CHƯA merge vào main — xoá là mất commit. Nhánh đã merge thì hook tự cho qua."),
     (r"""\bdropDatabase\s*\(|\bdb\.dropDatabase\b""",
      "dropDatabase",
      "Xoá toàn bộ cơ sở dữ liệu."),
@@ -124,7 +130,47 @@ def block(lines: list[str]) -> None:
     sys.exit(2)
 
 
+DELETE_REMOTE_BRANCH = re.compile(
+    r"""\bgit\s+push\s+(\S+)\s+--delete\s+(\S+)"""
+)
+
+
+def branch_is_merged(remote: str, branch: str) -> bool:
+    """True khi `branch` đã nằm trọn trong main — xoá đi không mất commit nào.
+
+    VÌ SAO KIỂM CHỨ KHÔNG CHẶN THẲNG: xoá một nhánh ĐÃ merge không mất gì, mọi commit
+    vẫn nằm trên main. Chặn cả trường hợp đó chỉ ép người dùng tự chạy tay đúng lệnh
+    ta vừa từ chối — hook mất tác dụng răn đe mà công việc vẫn phải làm. Ngược lại,
+    nhánh CHƯA merge thì xoá là mất việc thật, nên vẫn chặn.
+
+    Không xác định được (không phải repo git, tên nhánh lạ, git lỗi) thì coi như CHƯA
+    merge — nghi ngờ thì chặn.
+    """
+    ref = branch.strip().strip("'\"")
+    if not ref or ref.startswith("-"):
+        return False
+    candidates = [f"{remote}/{ref}", ref]
+    bases = [f"{remote}/main", "main", f"{remote}/master", "master"]
+    for cand in candidates:
+        for base in bases:
+            try:
+                r = subprocess.run(
+                    ["git", "merge-base", "--is-ancestor", cand, base],
+                    capture_output=True, text=True, timeout=5,
+                )
+            except Exception:
+                continue
+            if r.returncode == 0:
+                return True
+    return False
+
+
 def check_bash(command: str) -> None:
+    # Xoá nhánh từ xa ĐÃ merge vào main là an toàn — cho qua trước khi soi mẫu chung
+    m = DELETE_REMOTE_BRANCH.search(command)
+    if m and branch_is_merged(m.group(1), m.group(2)):
+        sys.exit(0)
+
     for pattern, name, why in DANGEROUS_BASH:
         if re.search(pattern, command):
             block([
