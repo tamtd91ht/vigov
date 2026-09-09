@@ -42,3 +42,13 @@ desktop.ini
 .cache/
 .turbo/
 .eslintcache
+
+# ── Khoá ký ứng dụng — TUYỆT ĐỐI KHÔNG commit ────────────────
+# Khoá ký release là thứ KHÔNG lấy lại được: mất nó là không bao giờ phát hành
+# được bản cập nhật cho cùng một app listing nữa. Trước đây `mobile/` có
+# .gitignore riêng lo việc này; module đó đã bị bỏ (11b345a) nên luật chuyển
+# lên đây để lần sau đặt khoá vào repo là git vẫn bỏ qua, không đẩy lên GitHub.
+*.jks
+*.keystore
+*.p12
+key.properties
