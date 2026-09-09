@@ -105,7 +105,7 @@ export function TaskTable({ tasks, onOpen }: { tasks: Task[]; onOpen: (id: strin
                     </td>
                     <td>
                       {/* Thùng "Đã xoá": cờ xoá là thông tin quan trọng hơn trạng thái nghiệp vụ */}
-                      {t.deletedAt ? (
+                      {t.isDeleted ? (
                         <Chip color={DELETED_CHIP.color} tint={DELETED_CHIP.tint} dot>
                           {DELETED_CHIP.label}
                         </Chip>

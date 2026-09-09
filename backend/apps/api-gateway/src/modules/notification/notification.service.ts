@@ -3,6 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model, isValidObjectId } from 'mongoose';
 import {
   CitizenUser,
+  NOT_DELETED,
   StaffUser,
   type CitizenUserDocument,
   type NotificationChannel,
@@ -311,7 +312,7 @@ export class NotificationService {
     }
     const citizens = await this.citizenModel
       // Không gửi cho tài khoản đã xoá mềm
-      .find({ status: 'active', deletedAt: null })
+      .find({ status: 'active', ...NOT_DELETED })
       .select('phone')
       .limit(BROADCAST_MAX_RECIPIENTS)
       .lean()

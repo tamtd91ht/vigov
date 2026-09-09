@@ -160,6 +160,7 @@ describe('UsersService.deleteCitizenById', () => {
     channel: 'zalo',
     feedbackCount: 3,
     status: 'active',
+    isDeleted: true,
     deletedAt: new Date('2026-09-06T00:00:00Z'),
     deletedBy: 'admin',
     get: () => undefined,
@@ -183,7 +184,7 @@ describe('UsersService.deleteCitizenById', () => {
     return { service, citizenFindOneAndUpdate, sessionUpdateMany, invalidateAll };
   }
 
-  it('đánh dấu deletedAt chứ không xoá tài liệu khỏi CSDL', async () => {
+  it('đánh dấu isDeleted chứ không xoá tài liệu khỏi CSDL', async () => {
     const { service, citizenFindOneAndUpdate } = makeCitizenService();
 
     await service.deleteCitizenById(CITIZEN_ID, 'admin', ' Tài khoản kiểm thử ');
@@ -193,7 +194,8 @@ describe('UsersService.deleteCitizenById', () => {
       { $set: Record<string, unknown> },
     ];
     // Chỉ xoá được bản ghi CHƯA xoá — gọi lại lần hai phải ra 404 chứ không ghi đè mốc xoá
-    expect(filter).toMatchObject({ deletedAt: null });
+    expect(filter).toMatchObject({ isDeleted: { $ne: true } });
+    expect(update.$set.isDeleted).toBe(true);
     expect(update.$set.deletedAt).toBeInstanceOf(Date);
     expect(update.$set.deletedBy).toBe('admin');
     // Lý do được cắt khoảng trắng thừa trước khi lưu
@@ -246,8 +248,8 @@ describe('UsersService.deleteCitizenById', () => {
       Record<string, unknown>,
       { $set: Record<string, unknown>; $unset: Record<string, unknown> },
     ];
-    expect(filter).toMatchObject({ deletedAt: { $ne: null } });
-    expect(update.$set).toEqual({ deletedAt: null });
+    expect(filter).toMatchObject({ isDeleted: true });
+    expect(update.$set).toEqual({ isDeleted: false, deletedAt: null });
     expect(update.$unset).toEqual({ deletedBy: '', deleteReason: '' });
     expect(restored.displayName).toBe('Trần Thị Hoa');
   });

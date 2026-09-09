@@ -113,7 +113,7 @@ export function TaskDrawer({
   }
 
   /** Nhiệm vụ đã xoá mềm — chỉ xem, không sửa được nữa */
-  const deleted = !!task?.deletedAt;
+  const deleted = !!task?.isDeleted;
   const status = findStatus(taskStatuses, task?.status ?? "moi");
   const priority = findStatus(taskPriorities, task?.priority ?? "tb");
   const doneCount = task?.checklist.filter((c) => c.done).length ?? 0;

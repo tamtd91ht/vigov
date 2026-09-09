@@ -166,7 +166,7 @@ describe("TaskTable", () => {
   it('nhiệm vụ đã xoá mềm hiện nhãn "Đã xoá" thay cho trạng thái nghiệp vụ', () => {
     render(
       <TaskTable
-        tasks={[makeTask({ status: "dang", deletedAt: "2026-09-01T00:00:00.000Z" })]}
+        tasks={[makeTask({ status: "dang", isDeleted: true, deletedAt: "2026-09-01T00:00:00.000Z" })]}
         onOpen={vi.fn()}
       />,
     );

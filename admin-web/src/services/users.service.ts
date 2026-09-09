@@ -36,6 +36,7 @@ export interface CitizenAccount {
    * Chỉ có giá trị với tài khoản đã xoá mềm — danh sách mặc định không trả bản
    * ghi nào như vậy, chỉ bộ lọc "Đã xoá" mới thấy.
    */
+  isDeleted?: boolean;
   deletedAt?: string;
   deletedBy?: string;
   deleteReason?: string;
@@ -137,6 +138,7 @@ function toMockCitizen(c: (typeof citizenUsers)[number]): CitizenAccount {
     feedbackCount: c.feedbackCount,
     status: c.status,
     lockReason: c.lockReason,
+    isDeleted: c.isDeleted,
     deletedAt: c.deletedAt,
     deletedBy: c.deletedBy,
     deleteReason: c.deleteReason,
@@ -148,7 +150,7 @@ export async function listCitizens(query: CitizenQuery = {}): Promise<Paged<Citi
   if (appConfig.api.useMocks) {
     const items = citizenUsers
       // Mặc định ẩn tài khoản đã xoá mềm, giống hành vi của backend
-      .filter((c) => (query.deleted ? !!c.deletedAt : !c.deletedAt))
+      .filter((c) => (query.deleted ? !!c.isDeleted : !c.isDeleted))
       .filter((c) => (!query.area || c.area === query.area) && (!query.status || c.status === query.status))
       .filter((c) => !query.q || c.zaloName.toLowerCase().includes(query.q.toLowerCase()))
       .map(toMockCitizen);
@@ -234,6 +236,7 @@ export async function deleteCitizen(id: string, reason?: string): Promise<Citize
   if (appConfig.api.useMocks) {
     const found = citizenUsers.find((c) => c.id === id);
     if (found) {
+      found.isDeleted = true;
       found.deletedAt = new Date().toISOString();
       found.deletedBy = "admin";
       found.deleteReason = reason?.trim() || undefined;
@@ -250,6 +253,7 @@ export async function restoreCitizen(id: string): Promise<CitizenAccount> {
   if (appConfig.api.useMocks) {
     const found = citizenUsers.find((c) => c.id === id);
     if (found) {
+      found.isDeleted = false;
       found.deletedAt = undefined;
       found.deletedBy = undefined;
       found.deleteReason = undefined;

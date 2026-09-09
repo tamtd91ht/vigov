@@ -161,7 +161,7 @@ export function CitizenTable({
   };
 
   /** Bản ghi đã xoá mềm hiển thị chip riêng, không phải chip active/locked */
-  const chipOf = (user: CitizenAccount) => (user.deletedAt ? DELETED_CHIP : STATUS_CHIP[user.status]);
+  const chipOf = (user: CitizenAccount) => (user.isDeleted ? DELETED_CHIP : STATUS_CHIP[user.status]);
 
   return (
     <>
@@ -256,7 +256,7 @@ export function CitizenTable({
                       </td>
                       <td style={{ textAlign: "right" }}>
                         <span style={{ display: "inline-flex", gap: 8, justifyContent: "flex-end" }}>
-                          {c.deletedAt ? (
+                          {c.isDeleted ? (
                             <button
                               type="button"
                               className="btn sm"
@@ -355,7 +355,7 @@ export function CitizenTable({
         footer={
           detail && (
             <>
-              {detail.deletedAt ? (
+              {detail.isDeleted ? (
                 canDelete && (
                   <button type="button" className="btn" onClick={() => handleRestore(detail)}>
                     <Icon name="ok" size={15} />

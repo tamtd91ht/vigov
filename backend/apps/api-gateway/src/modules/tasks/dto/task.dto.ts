@@ -1,4 +1,5 @@
 import { Type } from 'class-transformer';
+import { SoftDeleteBodyDto, SoftDeleteQueryDto } from '@vigov/shared';
 import {
   ArrayMaxSize,
   ArrayNotEmpty,
@@ -171,15 +172,10 @@ export class AttachTaskFilesDto {
 }
 
 /** Xoá mềm nhiệm vụ (PATCH /tasks/:code/delete) — lý do không bắt buộc */
-export class DeleteTaskDto {
-  @IsOptional()
-  @IsString()
-  @MaxLength(500, { message: 'Lý do xoá tối đa 500 ký tự' })
-  reason?: string;
-}
+export class DeleteTaskDto extends SoftDeleteBodyDto {}
 
 /** Bộ lọc danh sách nhiệm vụ (GET /tasks) */
-export class QueryTasksDto {
+export class QueryTasksDto extends SoftDeleteQueryDto {
   @IsOptional()
   @IsIn(TASK_STATUSES, { message: 'Trạng thái lọc không hợp lệ' })
   status?: string;
@@ -200,14 +196,6 @@ export class QueryTasksDto {
   @IsOptional()
   @IsString()
   q?: string;
-
-  /**
-   * `true` thì CHỈ trả nhiệm vụ đã xoá mềm (bộ lọc "Đã xoá" của Web Quản trị);
-   * không truyền thì danh sách chỉ có nhiệm vụ còn hiệu lực.
-   */
-  @IsOptional()
-  @IsIn(['true', 'false'], { message: 'Tham số deleted chỉ nhận: true, false' })
-  deleted?: string;
 
   @IsOptional()
   @Type(() => Number)

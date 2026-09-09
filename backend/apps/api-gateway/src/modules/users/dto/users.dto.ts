@@ -1,5 +1,7 @@
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
+import { SoftDeleteBodyDto } from '@vigov/shared';
 import {
+  IsBoolean,
   IsIn,
   IsInt,
   IsNotEmpty,
@@ -54,10 +56,16 @@ export class ListCitizensQueryDto extends PaginationQueryDto {
   /**
    * `true` thì CHỈ trả tài khoản đã xoá mềm (bộ lọc "Đã xoá" của Web Quản trị);
    * không truyền thì danh sách chỉ có tài khoản chưa xoá.
+   *
+   * Lớp này đã `extends PaginationQueryDto` nên không kế thừa thêm
+   * `SoftDeleteQueryDto` được (TS không đa kế thừa). Bộ decorator dưới đây phải
+   * giữ Y NGUYÊN như `SoftDeleteQueryDto.deleted` để API không lệch kiểu giữa
+   * các phân hệ — sửa một bên thì sửa cả hai.
    */
   @IsOptional()
-  @IsIn(['true', 'false'], { message: 'Tham số deleted chỉ nhận: true, false' })
-  deleted?: string;
+  @Transform(({ value }) => (typeof value === 'string' ? value === 'true' : value))
+  @IsBoolean({ message: 'Tham số deleted phải là true hoặc false' })
+  deleted?: boolean;
 }
 
 /** Khoá tài khoản công dân — bắt buộc nêu lý do để lưu vết */
@@ -68,11 +76,7 @@ export class LockCitizenDto {
 }
 
 /** Xoá mềm tài khoản công dân — lý do không bắt buộc, có thì lưu để truy vết */
-export class DeleteCitizenDto {
-  @IsOptional()
-  @IsString({ message: 'Lý do xoá không hợp lệ' })
-  reason?: string;
-}
+export class DeleteCitizenDto extends SoftDeleteBodyDto {}
 
 /** Lọc danh sách phiên đăng nhập theo kênh */
 export class ListSessionsQueryDto {

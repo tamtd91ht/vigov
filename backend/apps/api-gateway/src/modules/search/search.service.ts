@@ -6,6 +6,7 @@ import {
   type FeedbackDocument,
   IncomingDocument,
   type IncomingDocumentDocument,
+  NOT_DELETED,
   Task,
   type TaskDocument,
 } from '@vigov/shared';
@@ -51,8 +52,8 @@ export class SearchService {
     const [tasks, documents, feedback] = await Promise.all([
       types.includes('tasks')
         ? this.taskModel
-            // `deletedAt: null` — nhiệm vụ đã xoá mềm không hiện trong tìm kiếm toàn cục
-            .find({ ...textFilter, deletedAt: null }, TEXT_SCORE)
+            // NOT_DELETED — nhiệm vụ đã xoá mềm không hiện trong tìm kiếm toàn cục
+            .find({ ...textFilter, ...NOT_DELETED }, TEXT_SCORE)
             .sort(TEXT_SCORE)
             .limit(limit)
             .select('code title status department')
@@ -61,8 +62,8 @@ export class SearchService {
         : Promise.resolve([]),
       types.includes('documents')
         ? this.documentModel
-            // `deletedAt: null` — văn bản đã xoá mềm không hiện trong tìm kiếm toàn cục
-            .find({ ...textFilter, deletedAt: null }, TEXT_SCORE)
+            // NOT_DELETED — văn bản đã xoá mềm không hiện trong tìm kiếm toàn cục
+            .find({ ...textFilter, ...NOT_DELETED }, TEXT_SCORE)
             .sort(TEXT_SCORE)
             .limit(limit)
             .select('arrivalNo refNo summary department')

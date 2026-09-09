@@ -208,7 +208,7 @@ export async function listDocuments(query: DocumentQuery = {}): Promise<Paged<Do
     const matched = store().filter(
       (d) =>
         // Thùng "Đã xoá" và sổ văn bản đang dùng loại trừ nhau, giống bộ lọc backend
-        (query.deleted ? !!d.deletedAt : !d.deletedAt) &&
+        (query.deleted ? !!d.isDeleted : !d.isDeleted) &&
         (!query.kind || d.kind === query.kind) &&
         (!query.status || d.status === query.status) &&
         (!query.department || d.department === query.department) &&
@@ -429,7 +429,7 @@ export async function removeDocumentAttachment(
 /**
  * Xoá MỀM văn bản khỏi sổ — chỉ tài khoản quản trị hệ thống dùng được.
  *
- * Backend chỉ đặt cờ `deletedAt`: văn bản biến mất khỏi sổ nhưng số đến, nhật ký
+ * Backend chỉ đặt cờ `isDeleted`: văn bản biến mất khỏi sổ nhưng số đến, nhật ký
  * xử lý, bản scan và các trường OCR đã xác nhận vẫn còn, khôi phục được ở thùng
  * "Đã xoá". Dùng PATCH .../delete chứ không phải DELETE để mang được lý do xoá.
  */
@@ -437,6 +437,7 @@ export async function deleteDocument(arrivalNo: string, reason?: string): Promis
   if (appConfig.api.useMocks) {
     await mockDelay();
     const doc = mockFind(arrivalNo);
+    doc.isDeleted = true;
     doc.deletedAt = new Date().toISOString();
     doc.deletedBy = "Nguyễn Văn Bình";
     doc.deleteReason = reason?.trim() || undefined;
@@ -454,6 +455,7 @@ export async function restoreDocument(arrivalNo: string): Promise<DocumentDetail
   if (appConfig.api.useMocks) {
     await mockDelay();
     const doc = mockFind(arrivalNo);
+    doc.isDeleted = false;
     doc.deletedAt = undefined;
     doc.deletedBy = undefined;
     doc.deleteReason = undefined;

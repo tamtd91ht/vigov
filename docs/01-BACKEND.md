@@ -277,15 +277,63 @@ và số người gửi trong phiếu phản ánh.
 > Đây từng là lỗi thật: giao diện gửi số đã che lên route theo số thật và nhận
 > 404 ở mọi lần khoá tài khoản.
 
-### 5.1 Xoá tài khoản công dân là xoá MỀM
+### 5.1 Xoá MỀM — quy ước dùng chung cho 4 phân hệ
 
-`PATCH /users/citizens/id/:id/delete` (quyền `users:admin`) chỉ đặt `deletedAt`
-trên `citizen_users`, **không xoá tài liệu**: số điện thoại là khoá liên kết tới
-hồ sơ một cửa và phản ánh đã gửi — những dữ liệu xã có nghĩa vụ lưu trữ.
+Bốn phân hệ có xoá mềm: **Nhiệm vụ** (`tasks`), **Văn bản** (`documents`),
+**Công dân** (`citizen_users`), **Hạng mục ngân sách** (`budget_items`). Cả bốn
+dùng ĐÚNG MỘT bộ quy ước ở `libs/shared/src/schemas/soft-delete.ts` — trước đây
+mỗi service tự khai `NOT_DELETED`/`IS_DELETED` riêng (4 bản sao y nhau) cộng hơn
+mười chỗ viết thẳng `deletedAt: null`, nên thêm phân hệ là lại quên một chỗ.
 
-Hệ quả của cờ `deletedAt`:
+```ts
+class SoftDeletable {           // các schema đều `extends` lớp này
+  isDeleted: boolean;           // CỜ để truy vấn — default false, có index
+  deletedAt?: Date | null;      // chỉ là mốc thời gian, KHÔNG lọc theo
+  deletedBy?: string;           // TÊN ĐĂNG NHẬP (không phải displayName)
+  deleteReason?: string;
+}
+const NOT_DELETED = { isDeleted: { $ne: true } };   // mọi danh sách / thống kê
+const IS_DELETED  = { isDeleted: true };            // bộ lọc "Đã xoá"
+markDeleted(doc, username, reason) / markRestored(doc)   // cho doc.save()
+softDeleteUpdate(username, reason) / softRestoreUpdate() // cho findOneAndUpdate
+```
 
-| Nơi | Hành vi khi `deletedAt` có giá trị |
+Hai điểm dễ sai:
+
+- **`$ne: true` chứ không phải `false`.** Bản ghi tạo trước khi có tính năng xoá
+  KHÔNG có trường `isDeleted`; lọc `isDeleted: false` thì chúng biến mất khỏi mọi
+  danh sách. Nhờ `$ne: true`, hệ thống chạy đúng ngay cả khi chưa backfill.
+- **`deletedAt` không dùng để lọc.** Nó chỉ trả lời "xoá lúc nào"; đổi sang lọc
+  theo nó là quay lại đúng chỗ vừa dọn.
+
+Dữ liệu cũ: chạy `npm run backfill:is-deleted` (xem trước) rồi
+`npm run backfill:is-deleted -- --write` để đặt cờ theo quy tắc
+`isDeleted = (deletedAt != null)`. **Không bắt buộc trước khi deploy**, chỉ để dữ
+liệu sạch và để index phát huy tác dụng.
+
+Endpoint theo cùng khuôn ở cả 4 phân hệ — dùng `PATCH` chứ không phải `DELETE` để
+nói đúng việc đang làm (đổi trạng thái bản ghi) và để mang lý do xoá trong body:
+
+| Phân hệ | Xoá mềm | Khôi phục |
+|---|---|---|
+| Nhiệm vụ | `PATCH /tasks/:code/delete` | `PATCH /tasks/:code/restore` |
+| Văn bản | `PATCH /documents/:arrivalNo/delete` | `PATCH /documents/:arrivalNo/restore` |
+| Công dân | `PATCH /users/citizens/id/:id/delete` | `PATCH /users/citizens/id/:id/restore` |
+| Ngân sách | `PATCH /disbursement/:code/delete` | `PATCH /disbursement/:code/restore` |
+
+Tất cả đều đòi quyền `<phân hệ>:admin`. Tham số xem thùng đã xoá là `?deleted=true`
+(DTO dùng chung `SoftDeleteQueryDto`, nhận boolean sau `@Transform`).
+
+**Mã/số đã cấp KHÔNG được cấp lại** cho bản ghi mới: bộ sinh mã (`NV-xxxx`, số đến
+văn bản, `HM-xx`) vẫn đếm cả bản đã xoá — nếu không thì hai bản ghi khác nhau trùng
+mã trong cùng một sổ.
+
+#### Riêng phân hệ Công dân
+
+Số điện thoại là khoá liên kết tới hồ sơ một cửa và phản ánh đã gửi — dữ liệu xã có
+nghĩa vụ lưu trữ. Hệ quả của cờ xoá:
+
+| Nơi | Hành vi khi `isDeleted = true` |
 |---|---|
 | `GET /users/citizens` | Ẩn khỏi danh sách; `?deleted=true` mới xem được |
 | `GET /users/citizens/stats` | Không tính vào cả ba con số |
@@ -300,8 +348,8 @@ Hệ quả của cờ `deletedAt`:
 thì người bị xoá vẫn dùng app bình thường mà quản trị viên không thấy họ ở đâu.
 
 Khác `erasedAt` (webhook Zalo, NĐ 13/2023): `erasedAt` là **vô danh hoá** — xoá
-thật các trường nhận dạng theo yêu cầu của chính chủ thể dữ liệu; `deletedAt` là
-quyết định hành chính của xã và đảo ngược được.
+thật các trường nhận dạng theo yêu cầu của chính chủ thể dữ liệu; `isDeleted` là
+quyết định hành chính của xã và đảo ngược được. Đừng gộp hai việc.
 
 ---
 

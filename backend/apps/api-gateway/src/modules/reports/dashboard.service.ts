@@ -8,6 +8,7 @@ import {
   type FeedbackDocument,
   IncomingDocument,
   type IncomingDocumentDocument,
+  NOT_DELETED,
   Task,
   type TaskDocument,
 } from '@vigov/shared';
@@ -62,10 +63,9 @@ export class DashboardService {
     const soon = new Date(now.getTime() + 7 * 24 * 3600 * 1000);
 
     const [tasks, documents, feedbacks, budgets] = await Promise.all([
-      // `deletedAt: null` — nhiệm vụ đã xoá mềm không được tính vào thẻ thống kê
-      this.taskModel.find({ deletedAt: null }).lean().exec(),
-      // `deletedAt: null` — văn bản đã xoá mềm không tính vào thẻ thống kê
-      this.docModel.find({ deletedAt: null }).lean().exec(),
+      // NOT_DELETED — nhiệm vụ / văn bản đã xoá mềm không tính vào thẻ thống kê
+      this.taskModel.find(NOT_DELETED).lean().exec(),
+      this.docModel.find(NOT_DELETED).lean().exec(),
       this.feedbackModel.find().lean().exec(),
       this.budgetModel.find({ year }).lean().exec(),
     ]);

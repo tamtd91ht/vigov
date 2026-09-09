@@ -1,4 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { SoftDeletable } from './soft-delete';
 import { HydratedDocument } from 'mongoose';
 
 export type TaskDocument = HydratedDocument<Task>;
@@ -51,9 +52,14 @@ export const TimelineStepSchema = SchemaFactory.createForClass(TimelineStep);
 /**
  * Nhiệm vụ (WBS #3) — tên field khớp admin-web/src/types Task
  * để FE chuyển từ mock sang API không phải đổi mã.
+ *
+ * Kế thừa `SoftDeletable` (isDeleted/deletedAt/deletedBy/deleteReason): nhiệm vụ
+ * không bị xoá khỏi CSDL vì nhật ký xử lý, bình luận và mã tệp minh chứng còn là
+ * bằng chứng phục vụ thanh tra, mà mã NV-xxxx đã được văn bản / phản ánh dẫn
+ * chiếu qua `sourceRefId` nên xoá cứng là để lại liên kết chết.
  */
 @Schema({ collection: 'tasks', timestamps: true })
-export class Task {
+export class Task extends SoftDeletable {
   /** Mã hiển thị: NV-2601 */
   @Prop({ required: true, unique: true, index: true })
   code: string;
@@ -132,23 +138,6 @@ export class Task {
   @Prop({ type: [String], default: [] })
   attachmentFileIds: string[];
 
-  /**
-   * Mốc xoá MỀM (WBS #3). `null`/thiếu trường = nhiệm vụ còn hiệu lực.
-   *
-   * Nhiệm vụ không bị xoá khỏi CSDL: nhật ký xử lý, bình luận và mã tệp minh
-   * chứng còn là bằng chứng phục vụ thanh tra, và mã NV-xxxx đã được dẫn chiếu
-   * trong văn bản / phản ánh (`sourceRefId`) nên xoá cứng là để lại liên kết chết.
-   */
-  @Prop({ type: Date, default: null, index: true })
-  deletedAt?: Date | null;
-
-  /** Cán bộ thực hiện việc xoá — hiển thị ở thùng "Đã xoá" của Web Quản trị */
-  @Prop()
-  deletedBy?: string;
-
-  /** Lý do xoá (không bắt buộc) — chỉ lưu để truy vết nội bộ */
-  @Prop()
-  deleteReason?: string;
 }
 
 export const TaskSchema = SchemaFactory.createForClass(Task);

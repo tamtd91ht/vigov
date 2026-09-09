@@ -12,6 +12,9 @@ export * from './auth/session-registry';
 export * from './auth/session-registry.module';
 export * from './events/events';
 
+export * from './dto/soft-delete.dto';
+export * from './schemas/soft-delete';
+
 export * from './schemas/task.schema';
 export * from './schemas/document.schema';
 export * from './schemas/feedback.schema';

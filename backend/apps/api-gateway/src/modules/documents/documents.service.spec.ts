@@ -27,10 +27,10 @@ const ocrMock = () => ({}) as unknown as OcrService;
 
 /**
  * Bộ giá đỡ cho xoá mềm: `findOne` ghi lại bộ lọc mà service truyền vào để test
- * bắt được lỗi quên điều kiện `deletedAt`, và trả `null` khi bộ lọc không khớp
+ * bắt được lỗi quên điều kiện `isDeleted`, và trả `null` khi bộ lọc không khớp
  * trạng thái xoá hiện tại của tài liệu (giống Mongo thật).
  */
-function softDeleteHarness(deletedAt: Date | null = null) {
+function softDeleteHarness(deleted = false) {
   const doc = fakeDoc({
     arrivalNo: '128',
     refNo: '128/UBND-VP',
@@ -39,7 +39,8 @@ function softDeleteHarness(deletedAt: Date | null = null) {
     department: 'Văn phòng',
     status: 'moi',
     kind: 'incoming',
-    deletedAt,
+    isDeleted: deleted,
+    deletedAt: deleted ? new Date('2026-09-01T00:00:00Z') : null,
     deletedBy: undefined as string | undefined,
     deleteReason: undefined as string | undefined,
     timeline: [] as { title: string; meta: string; state: string }[],
@@ -49,10 +50,10 @@ function softDeleteHarness(deletedAt: Date | null = null) {
   const filters: Record<string, unknown>[] = [];
   const findOne = jest.fn((filter: Record<string, unknown>) => {
     filters.push(filter);
-    const wantsDeleted = JSON.stringify(filter).includes('$ne');
-    const isDeleted = doc.deletedAt !== null && doc.deletedAt !== undefined;
-    const includeDeleted = !('deletedAt' in filter);
-    const matched = includeDeleted || wantsDeleted === isDeleted;
+    // NOT_DELETED là `{ isDeleted: { $ne: true } }`, IS_DELETED là `{ isDeleted: true }`
+    const wantsAlive = JSON.stringify(filter).includes('$ne');
+    const includeDeleted = !('isDeleted' in filter);
+    const matched = includeDeleted || (wantsAlive ? !doc.isDeleted : doc.isDeleted);
     return queryChain(matched ? doc : null);
   });
 
@@ -68,13 +69,15 @@ function softDeleteHarness(deletedAt: Date | null = null) {
 /* ─────────────────── Xoá mềm / khôi phục văn bản ─────────────────── */
 
 describe('DocumentsService.remove', () => {
-  it('CHỈ đặt cờ deletedAt, không xoá tài liệu khỏi CSDL', async () => {
+  it('CHỈ đặt cờ isDeleted, không xoá tài liệu khỏi CSDL', async () => {
     const { service, doc } = softDeleteHarness();
 
-    await service.remove('128', { displayName: 'Nguyễn Văn Bình' } as never, 'Vào sổ trùng số đến');
+    await service.remove('128', { username: 'binh.nv', displayName: 'Nguyễn Văn Bình' } as never, 'Vào sổ trùng số đến');
 
+    expect(doc.isDeleted).toBe(true);
     expect(doc.deletedAt).toBeInstanceOf(Date);
-    expect(doc.deletedBy).toBe('Nguyễn Văn Bình');
+    // `deletedBy` lưu TÊN ĐĂNG NHẬP, không phải họ tên hiển thị
+    expect(doc.deletedBy).toBe('binh.nv');
     expect(doc.deleteReason).toBe('Vào sổ trùng số đến');
     expect(doc.save).toHaveBeenCalled();
   });
@@ -97,7 +100,7 @@ describe('DocumentsService.remove', () => {
   });
 
   it('xoá văn bản đã xoá rồi thì 404, không ghi gì thêm', async () => {
-    const { service, doc } = softDeleteHarness(new Date('2026-09-01T00:00:00Z'));
+    const { service, doc } = softDeleteHarness(true);
 
     await expect(service.remove('128')).rejects.toBeInstanceOf(NotFoundException);
     expect(doc.save).not.toHaveBeenCalled();
@@ -106,12 +109,13 @@ describe('DocumentsService.remove', () => {
 
 describe('DocumentsService.restore', () => {
   it('bỏ cờ xoá và dọn luôn người xoá / lý do xoá', async () => {
-    const { service, doc } = softDeleteHarness(new Date('2026-09-01T00:00:00Z'));
+    const { service, doc } = softDeleteHarness(true);
     doc.deletedBy = 'Nguyễn Văn Bình';
     doc.deleteReason = 'Vào sổ trùng';
 
-    await service.restore('128', { displayName: 'Trần Thị Hoa' } as never);
+    await service.restore('128', { username: 'hoa.tt', displayName: 'Trần Thị Hoa' } as never);
 
+    expect(doc.isDeleted).toBe(false);
     expect(doc.deletedAt).toBeNull();
     expect(doc.deletedBy).toBeUndefined();
     expect(doc.deleteReason).toBeUndefined();
@@ -128,13 +132,13 @@ describe('DocumentsService.restore', () => {
 
 describe('DocumentsService — đường ghi từ chối văn bản đã xoá mềm', () => {
   it('gỡ tệp đính kèm của văn bản đã xoá thì 404 (bản ghi đã xoá là bất biến)', async () => {
-    const { service } = softDeleteHarness(new Date('2026-09-01T00:00:00Z'));
+    const { service } = softDeleteHarness(true);
 
     await expect(service.removeAttachment('128', 'f1')).rejects.toBeInstanceOf(NotFoundException);
   });
 
   it('findOne VẪN mở được bản đã xoá để cán bộ kiểm tra trước khi khôi phục', async () => {
-    const { service } = softDeleteHarness(new Date('2026-09-01T00:00:00Z'));
+    const { service } = softDeleteHarness(true);
 
     const result = await service.findOne('128');
 
@@ -164,14 +168,14 @@ describe('DocumentsService.list — bộ lọc xoá mềm', () => {
 
     await service.list({});
 
-    expect(filters[0]).toMatchObject({ deletedAt: null });
+    expect(filters[0]).toMatchObject({ isDeleted: { $ne: true } });
   });
 
   it('deleted=true thì CHỈ trả văn bản đã xoá mềm', async () => {
     const { service, filters } = listFilterHarness();
 
-    await service.list({ deleted: 'true' });
+    await service.list({ deleted: true });
 
-    expect(filters[0]).toMatchObject({ deletedAt: { $ne: null } });
+    expect(filters[0]).toMatchObject({ isDeleted: true });
   });
 });

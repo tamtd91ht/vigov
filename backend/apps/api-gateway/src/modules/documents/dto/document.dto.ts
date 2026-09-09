@@ -1,4 +1,5 @@
 import { Type } from 'class-transformer';
+import { SoftDeleteBodyDto, SoftDeleteQueryDto } from '@vigov/shared';
 import {
   ArrayMaxSize,
   ArrayNotEmpty,
@@ -149,14 +150,9 @@ export class UpdateDocumentDto {
 
 /** Bộ lọc danh sách văn bản đến / đơn thư */
 /** Xoá mềm văn bản (PATCH /documents/:arrivalNo/delete) — lý do không bắt buộc */
-export class DeleteDocumentDto {
-  @IsOptional()
-  @IsString()
-  @MaxLength(500, { message: 'Lý do xoá tối đa 500 ký tự' })
-  reason?: string;
-}
+export class DeleteDocumentDto extends SoftDeleteBodyDto {}
 
-export class QueryDocumentsDto {
+export class QueryDocumentsDto extends SoftDeleteQueryDto {
   @IsOptional()
   @IsIn(DOCUMENT_KINDS, { message: 'Phân loại chỉ nhận giá trị incoming hoặc petition' })
   kind?: (typeof DOCUMENT_KINDS)[number];
@@ -179,14 +175,6 @@ export class QueryDocumentsDto {
   @IsOptional()
   @IsString()
   q?: string;
-
-  /**
-   * `true` thì CHỈ trả văn bản đã xoá mềm (bộ lọc "Đã xoá" của Web Quản trị);
-   * không truyền thì sổ văn bản chỉ có bản ghi còn hiệu lực.
-   */
-  @IsOptional()
-  @IsIn(['true', 'false'], { message: 'Tham số deleted chỉ nhận: true, false' })
-  deleted?: string;
 
   @IsOptional()
   @Type(() => Number)

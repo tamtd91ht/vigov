@@ -238,7 +238,7 @@ describe('TasksService.create', () => {
     const mock = taskModelMock([]);
     const service = new TasksService(mock.model, realtimeMock(), filesMock());
 
-    await service.create({ ...VALID_TASK } as never, { displayName: 'Nguyễn Văn Bình' } as never);
+    await service.create({ ...VALID_TASK } as never, { username: 'binh.nv', displayName: 'Nguyễn Văn Bình' } as never);
     expect(mock.created[0].assigner).toBe('Nguyễn Văn Bình');
   });
 
@@ -564,7 +564,7 @@ describe('TasksService.addAttachments', () => {
   it('ghi nhật ký kèm tên tệp và người thực hiện', async () => {
     const { service, task } = attachmentHarness([], { f1: storedFile('f1') });
 
-    await service.addAttachments('NV-2601', ['f1'], { displayName: 'Nguyễn Văn Bình' } as never);
+    await service.addAttachments('NV-2601', ['f1'], { username: 'binh.nv', displayName: 'Nguyễn Văn Bình' } as never);
 
     const step = (task.timeline as { title: string; meta: string }[])[0];
     expect(step.title).toContain('minh-chung-f1.pdf');
@@ -658,17 +658,18 @@ describe('TasksService.detail', () => {
 
 /**
  * Bộ giá đỡ cho xoá mềm: `findOne` ghi lại bộ lọc mà service truyền vào để test
- * bắt được lỗi quên điều kiện `deletedAt`, và trả `null` khi bộ lọc không khớp
+ * bắt được lỗi quên điều kiện `isDeleted`, và trả `null` khi bộ lọc không khớp
  * trạng thái xoá hiện tại của tài liệu (giống Mongo thật).
  */
-function softDeleteHarness(deletedAt: Date | null = null) {
+function softDeleteHarness(deleted = false) {
   const task = fakeDoc({
     code: 'NV-2601',
     title: 'Rà soát quỹ đất công ích',
     department: 'Địa chính – Xây dựng',
     assignee: 'Lê Minh Tuấn',
     status: TASK_STATUS_NEW,
-    deletedAt,
+    isDeleted: deleted,
+    deletedAt: deleted ? new Date('2026-09-01T00:00:00Z') : null,
     deletedBy: undefined as string | undefined,
     deleteReason: undefined as string | undefined,
     timeline: [] as { title: string; meta: string; state: string }[],
@@ -679,10 +680,10 @@ function softDeleteHarness(deletedAt: Date | null = null) {
   const findOne = jest.fn((filter: Record<string, unknown>) => {
     filters.push(filter);
     // Bộ lọc "chưa xoá" không khớp tài liệu đã xoá, và ngược lại
-    const wantsDeleted = JSON.stringify(filter).includes('$ne');
-    const isDeleted = task.deletedAt !== null && task.deletedAt !== undefined;
-    const includeDeleted = !('deletedAt' in filter);
-    const matched = includeDeleted || wantsDeleted === isDeleted;
+    // NOT_DELETED là `{ isDeleted: { $ne: true } }`, IS_DELETED là `{ isDeleted: true }`
+    const wantsAlive = JSON.stringify(filter).includes('$ne');
+    const includeDeleted = !('isDeleted' in filter);
+    const matched = includeDeleted || (wantsAlive ? !task.isDeleted : task.isDeleted);
     return queryChain(matched ? task : null);
   });
 
@@ -697,13 +698,15 @@ function softDeleteHarness(deletedAt: Date | null = null) {
 }
 
 describe('TasksService.remove', () => {
-  it('CHỈ đặt cờ deletedAt, không xoá tài liệu khỏi CSDL', async () => {
+  it('CHỈ đặt cờ isDeleted, không xoá tài liệu khỏi CSDL', async () => {
     const { service, task, emitChange } = softDeleteHarness();
 
-    await service.remove('NV-2601', { displayName: 'Nguyễn Văn Bình' } as never, 'Trùng nhiệm vụ NV-2599');
+    await service.remove('NV-2601', { username: 'binh.nv', displayName: 'Nguyễn Văn Bình' } as never, 'Trùng nhiệm vụ NV-2599');
 
+    expect(task.isDeleted).toBe(true);
     expect(task.deletedAt).toBeInstanceOf(Date);
-    expect(task.deletedBy).toBe('Nguyễn Văn Bình');
+    // `deletedBy` lưu TÊN ĐĂNG NHẬP, không phải họ tên hiển thị
+    expect(task.deletedBy).toBe('binh.nv');
     expect(task.deleteReason).toBe('Trùng nhiệm vụ NV-2599');
     expect(task.save).toHaveBeenCalled();
     // Nhiệm vụ rời khỏi danh sách nên client đang mở phải được báo
@@ -728,7 +731,7 @@ describe('TasksService.remove', () => {
   });
 
   it('xoá nhiệm vụ đã xoá rồi thì 404, không ghi gì thêm', async () => {
-    const { service, task } = softDeleteHarness(new Date('2026-09-01T00:00:00Z'));
+    const { service, task } = softDeleteHarness(true);
 
     await expect(service.remove('NV-2601')).rejects.toBeInstanceOf(NotFoundException);
     expect(task.save).not.toHaveBeenCalled();
@@ -737,12 +740,13 @@ describe('TasksService.remove', () => {
 
 describe('TasksService.restore', () => {
   it('bỏ cờ xoá và dọn luôn người xoá / lý do xoá', async () => {
-    const { service, task } = softDeleteHarness(new Date('2026-09-01T00:00:00Z'));
+    const { service, task } = softDeleteHarness(true);
     task.deletedBy = 'Nguyễn Văn Bình';
     task.deleteReason = 'Giao trùng';
 
-    await service.restore('NV-2601', { displayName: 'Trần Thị Hoa' } as never);
+    await service.restore('NV-2601', { username: 'hoa.tt', displayName: 'Trần Thị Hoa' } as never);
 
+    expect(task.isDeleted).toBe(false);
     expect(task.deletedAt).toBeNull();
     expect(task.deletedBy).toBeUndefined();
     expect(task.deleteReason).toBeUndefined();
@@ -759,7 +763,7 @@ describe('TasksService.restore', () => {
 
 describe('TasksService — đường ghi từ chối nhiệm vụ đã xoá mềm', () => {
   it('sửa nhiệm vụ đã xoá thì 404 (bản ghi trong thùng đã xoá là bất biến)', async () => {
-    const { service } = softDeleteHarness(new Date('2026-09-01T00:00:00Z'));
+    const { service } = softDeleteHarness(true);
 
     await expect(service.update('NV-2601', { title: 'Tiêu đề mới' })).rejects.toBeInstanceOf(
       NotFoundException,
@@ -767,7 +771,7 @@ describe('TasksService — đường ghi từ chối nhiệm vụ đã xoá mề
   });
 
   it('bình luận vào nhiệm vụ đã xoá thì 404', async () => {
-    const { service } = softDeleteHarness(new Date('2026-09-01T00:00:00Z'));
+    const { service } = softDeleteHarness(true);
 
     await expect(service.addComment('NV-2601', { content: 'Ý kiến' })).rejects.toBeInstanceOf(
       NotFoundException,
@@ -775,7 +779,7 @@ describe('TasksService — đường ghi từ chối nhiệm vụ đã xoá mề
   });
 
   it('detail VẪN mở được bản đã xoá để cán bộ kiểm tra trước khi khôi phục', async () => {
-    const { service } = softDeleteHarness(new Date('2026-09-01T00:00:00Z'));
+    const { service } = softDeleteHarness(true);
 
     const result = await service.detail('NV-2601');
 
@@ -805,14 +809,14 @@ describe('TasksService.list — bộ lọc xoá mềm', () => {
 
     await service.list({});
 
-    expect(filters[0]).toMatchObject({ deletedAt: null });
+    expect(filters[0]).toMatchObject({ isDeleted: { $ne: true } });
   });
 
   it('deleted=true thì CHỈ trả nhiệm vụ đã xoá mềm', async () => {
     const { service, filters } = listFilterHarness();
 
-    await service.list({ deleted: 'true' });
+    await service.list({ deleted: true });
 
-    expect(filters[0]).toMatchObject({ deletedAt: { $ne: null } });
+    expect(filters[0]).toMatchObject({ isDeleted: true });
   });
 });

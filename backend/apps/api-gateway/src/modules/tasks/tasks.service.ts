@@ -2,7 +2,11 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, type FilterQuery } from 'mongoose';
 import {
+  IS_DELETED,
+  NOT_DELETED,
   Task,
+  markDeleted,
+  markRestored,
   type ChecklistItem,
   type JwtPayload,
   type TaskDocument,
@@ -53,14 +57,6 @@ const AUTHOR_COLORS = ['#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed', '#
 /** Tên người giao mặc định khi không xác định được phiên đăng nhập */
 const SYSTEM_ACTOR = 'Hệ thống';
 
-/**
- * Điều kiện "chưa bị xoá mềm". `deletedAt: null` khớp CẢ tài liệu thiếu hẳn
- * trường này (bản ghi tạo trước khi có tính năng xoá) lẫn tài liệu đã khôi phục.
- */
-const NOT_DELETED: FilterQuery<TaskDocument> = { deletedAt: null };
-
-/** Điều kiện "đã bị xoá mềm" — dùng cho bộ lọc "Đã xoá" của Web Quản trị */
-const IS_DELETED: FilterQuery<TaskDocument> = { deletedAt: { $ne: null } };
 
 /* ───────────────────────── Tiện ích ngày tháng ───────────────────────── */
 
@@ -172,7 +168,7 @@ export class TasksService {
 
     // Mặc định ẩn nhiệm vụ đã xoá mềm; `deleted=true` là bộ lọc xem riêng thùng đã xoá
     const filter: FilterQuery<TaskDocument> = {
-      ...(query.deleted === 'true' ? IS_DELETED : NOT_DELETED),
+      ...(query.deleted ? IS_DELETED : NOT_DELETED),
     };
     if (query.status) filter.status = query.status;
     if (query.department) filter.department = query.department;
@@ -471,21 +467,22 @@ export class TasksService {
   /**
    * Xoá MỀM nhiệm vụ — chỉ quản trị hệ thống.
    *
-   * Chỉ đặt cờ `deletedAt`: bản ghi biến mất khỏi danh sách, mọi đường ghi báo
+   * Chỉ đặt cờ `isDeleted`: bản ghi biến mất khỏi danh sách, mọi đường ghi báo
    * 404, nhưng nhật ký xử lý và mã tệp minh chứng vẫn còn để truy vết. Mốc xoá
    * cũng được ghi vào nhật ký của chính nhiệm vụ, nên khi khôi phục thì lý do
    * và người xoá còn đọc lại được.
+   *
+   * `deletedBy` lưu TÊN ĐĂNG NHẬP (khớp nhật ký kiểm toán và 3 phân hệ còn lại),
+   * còn nhật ký hiển thị dùng họ tên cho cán bộ dễ đọc.
    */
   async remove(code: string, user?: JwtPayload, reason?: string): Promise<Record<string, unknown>> {
     const task = await this.findByCode(code);
-    const actor = user?.displayName ?? SYSTEM_ACTOR;
+    const shownName = user?.displayName ?? SYSTEM_ACTOR;
     const trimmed = reason?.trim();
 
-    task.deletedAt = new Date();
-    task.deletedBy = actor;
-    if (trimmed) task.deleteReason = trimmed;
+    markDeleted(task, user?.username, reason);
     task.timeline.push(
-      this.buildTimelineStep(trimmed ? `Xoá nhiệm vụ: ${trimmed}` : 'Xoá nhiệm vụ', actor),
+      this.buildTimelineStep(trimmed ? `Xoá nhiệm vụ: ${trimmed}` : 'Xoá nhiệm vụ', shownName),
     );
     await task.save();
 
@@ -499,11 +496,10 @@ export class TasksService {
     const task = await this.taskModel.findOne({ code, ...IS_DELETED }).exec();
     if (!task) throw new NotFoundException(`Không tìm thấy nhiệm vụ ${code} trong thùng đã xoá`);
 
-    const actor = user?.displayName ?? SYSTEM_ACTOR;
-    task.deletedAt = null;
-    task.deletedBy = undefined;
-    task.deleteReason = undefined;
-    task.timeline.push(this.buildTimelineStep('Khôi phục nhiệm vụ', actor));
+    markRestored(task);
+    task.timeline.push(
+      this.buildTimelineStep('Khôi phục nhiệm vụ', user?.displayName ?? SYSTEM_ACTOR),
+    );
     await task.save();
 
     this.emitTaskChanged('restored', task);

@@ -9,13 +9,17 @@ import {
   type BlacklistRecordDocument,
   CitizenUser,
   type CitizenUserDocument,
+  IS_DELETED,
   LoginSession,
   type LoginSessionDocument,
+  NOT_DELETED,
   SessionRegistry,
   StaffUser,
   type StaffUserDocument,
   checkPasswordPolicy,
   findRole,
+  softDeleteUpdate,
+  softRestoreUpdate,
 } from '@vigov/shared';
 import {
   ChangeStaffPasswordDto,
@@ -55,14 +59,6 @@ const EMBEDDED_PHONE_PATTERN = /(?<!\d)0\d{9}(?!\d)/g;
 /** Kênh đăng nhập của công dân (phiên 'web' là của cán bộ) */
 const CITIZEN_SESSION_KINDS = ['app', 'zalo'];
 
-/**
- * Điều kiện "chưa bị xoá mềm". `deletedAt: null` khớp CẢ tài liệu thiếu hẳn
- * trường này (dữ liệu tạo trước khi có tính năng xoá) lẫn tài liệu đã khôi phục.
- */
-const NOT_DELETED: FilterQuery<CitizenUserDocument> = { deletedAt: null };
-
-/** Điều kiện "đã bị xoá mềm" — dùng cho bộ lọc "Đã xoá" của Web Quản trị */
-const IS_DELETED: FilterQuery<CitizenUserDocument> = { deletedAt: { $ne: null } };
 
 /**
  * Cửa sổ tính "công dân hoạt động gần đây" cho thẻ thống kê.
@@ -238,7 +234,7 @@ export class UsersService {
     const limit = query.limit ?? DEFAULT_PAGE_SIZE;
 
     // Mặc định ẩn tài khoản đã xoá mềm; `deleted=true` là bộ lọc xem riêng thùng đã xoá
-    const filter: FilterQuery<CitizenUserDocument> = { ...(query.deleted === 'true' ? IS_DELETED : NOT_DELETED) };
+    const filter: FilterQuery<CitizenUserDocument> = { ...(query.deleted ? IS_DELETED : NOT_DELETED) };
     if (query.area) filter.area = query.area;
     if (query.status) filter.status = query.status;
     if (query.q) {
@@ -335,7 +331,7 @@ export class UsersService {
   }
 
   /**
-   * Xoá mềm tài khoản công dân theo `id`: đánh dấu `deletedAt` chứ KHÔNG xoá
+   * Xoá mềm tài khoản công dân theo `id`: đánh dấu `isDeleted` chứ KHÔNG xoá
    * tài liệu — số điện thoại còn là khoá liên kết tới hồ sơ và phản ánh đã gửi.
    *
    * Kèm theo là thu hồi mọi phiên đang mở: tài khoản đã xoá không được dùng
@@ -344,11 +340,10 @@ export class UsersService {
    */
   async deleteCitizenById(id: string, actor: string, reason?: string) {
     this.assertObjectId(id);
-    const trimmed = reason?.trim();
     const doc = await this.citizenModel
       .findOneAndUpdate(
         { _id: new Types.ObjectId(id), ...NOT_DELETED },
-        { $set: { deletedAt: new Date(), deletedBy: actor, ...(trimmed ? { deleteReason: trimmed } : {}) } },
+        softDeleteUpdate(actor, reason),
         { new: true },
       )
       .exec();
@@ -370,7 +365,7 @@ export class UsersService {
     const doc = await this.citizenModel
       .findOneAndUpdate(
         { _id: new Types.ObjectId(id), ...IS_DELETED },
-        { $set: { deletedAt: null }, $unset: { deletedBy: '', deleteReason: '' } },
+        softRestoreUpdate(),
         { new: true },
       )
       .exec();

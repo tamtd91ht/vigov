@@ -120,7 +120,7 @@ export function DocumentTable({
                 </td>
                 <td>
                   {/* Thùng "Đã xoá": cờ xoá là thông tin quan trọng hơn trạng thái xử lý */}
-                  {doc.deletedAt ? (
+                  {doc.isDeleted ? (
                     <Chip color={DELETED_CHIP.color} tint={DELETED_CHIP.tint} dot>
                       {DELETED_CHIP.label}
                     </Chip>

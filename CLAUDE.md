@@ -65,6 +65,14 @@ Biến đã có sẵn trong môi trường (Docker, CI) luôn thắng giá trị
 - **Adapter cho mọi dịch vụ bên thứ 3** (OCR, GIS, ZNS, FCM): đổi nhà cung cấp chỉ
   sửa một tệp adapter, không đụng vào tầng nghiệp vụ.
 - **Tên trường thống nhất giữa 3 module**; `admin-web/src/types/index.ts` là nguồn chuẩn.
+- **Xoá mềm dùng chung một khuôn**: mọi schema có xoá mềm phải
+  `extends SoftDeletable` và lọc bằng `NOT_DELETED` / `IS_DELETED` nhập từ
+  `@vigov/shared` (`libs/shared/src/schemas/soft-delete.ts`) — KHÔNG khai lại cờ
+  hay viết thẳng `{ isDeleted: false }` trong service. Cờ để truy vấn là
+  `isDeleted`; `deletedAt` chỉ là mốc thời gian. Điều kiện lọc là `$ne: true` để
+  khớp cả bản ghi cũ chưa có trường. Thêm phân hệ mới có xoá mềm thì nhớ ba việc:
+  lọc ở danh sách, lọc ở mọi nơi truy vấn collection đó TRỰC TIẾP (thống kê, báo
+  cáo, tìm kiếm toàn cục, workflow), và không cấp lại mã đã dùng.
 
 ## Tài liệu
 

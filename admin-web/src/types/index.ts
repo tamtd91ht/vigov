@@ -47,8 +47,11 @@ export interface Task {
   collaborators: string[];
   description: string;
   checklist: ChecklistItem[];
-  /** Có giá trị nghĩa là đã xoá mềm: ẩn khỏi danh sách, dữ liệu vẫn còn */
+  /** Cờ xoá mềm — trường dùng để lọc; bản ghi cũ có thể chưa có trường này */
+  isDeleted?: boolean;
+  /** Mốc thời gian xoá, chỉ để hiển thị ở bộ lọc "Đã xoá" — không dùng để lọc */
   deletedAt?: string;
+  /** Tên đăng nhập cán bộ đã xoá */
   deletedBy?: string;
   deleteReason?: string;
 }
@@ -70,8 +73,11 @@ export interface IncomingDocument {
   signer: string;
   pageCount: number;
   timeline: TimelineItem[];
-  /** Có giá trị nghĩa là đã xoá mềm: ẩn khỏi sổ văn bản, dữ liệu vẫn còn */
+  /** Cờ xoá mềm — trường dùng để lọc; bản ghi cũ có thể chưa có trường này */
+  isDeleted?: boolean;
+  /** Mốc thời gian xoá, chỉ để hiển thị ở bộ lọc "Đã xoá" — không dùng để lọc */
   deletedAt?: string;
+  /** Tên đăng nhập cán bộ đã xoá */
   deletedBy?: string;
   deleteReason?: string;
 }
@@ -279,8 +285,11 @@ export interface CitizenUser {
   registeredAt: string;
   status: "active" | "locked";
   lockReason?: string;
-  /** Có giá trị nghĩa là đã xoá mềm: ẩn khỏi danh sách, dữ liệu vẫn còn */
+  /** Cờ xoá mềm — trường dùng để lọc; bản ghi cũ có thể chưa có trường này */
+  isDeleted?: boolean;
+  /** Mốc thời gian xoá, chỉ để hiển thị ở bộ lọc "Đã xoá" — không dùng để lọc */
   deletedAt?: string;
+  /** Tên đăng nhập cán bộ đã xoá */
   deletedBy?: string;
   deleteReason?: string;
 }

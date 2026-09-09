@@ -417,7 +417,7 @@ export class AuthService {
 
     // Tài khoản bị quản trị viên xoá mềm coi như không còn tồn tại: bản ghi vẫn
     // nằm trong CSDL (upsert ở trên tìm thấy nó) nhưng không được cấp token mới
-    if (citizen.deletedAt) {
+    if (citizen.isDeleted) {
       throw new UnauthorizedException('Tài khoản đã bị xoá. Vui lòng liên hệ UBND xã.');
     }
 
@@ -682,7 +682,7 @@ export class AuthService {
     }
 
     const citizen = await this.citizenModel.findOne({ phone: subject }).exec();
-    if (!citizen || citizen.status === 'locked' || citizen.deletedAt) {
+    if (!citizen || citizen.status === 'locked' || citizen.isDeleted) {
       throw new UnauthorizedException(REFRESH_FAILED_MESSAGE);
     }
     return {

@@ -6,6 +6,7 @@ import {
   EVENTS,
   Feedback,
   IncomingDocument,
+  NOT_DELETED,
   type DocumentAssignedEvent,
   type FeedbackAssignedEvent,
   type FeedbackDocument,
@@ -200,9 +201,9 @@ export class WorkflowService {
     if (!task.sourceRefId) return; // nhiệm vụ nội bộ, không có nguồn
 
     if (task.sourceType === SOURCE_TYPE_DOCUMENT) {
-      // `deletedAt: null` — văn bản đã xoá khỏi sổ thì không đồng bộ trạng thái nữa
+      // NOT_DELETED — văn bản đã xoá khỏi sổ thì không đồng bộ trạng thái nữa
       const doc = await this.documentModel
-        .findOne({ _id: task.sourceRefId, deletedAt: null })
+        .findOne({ _id: task.sourceRefId, ...NOT_DELETED })
         .exec();
       if (!doc) return;
       doc.status = DOCUMENT_STATUS_DONE;
@@ -334,11 +335,11 @@ export class WorkflowService {
 
   /**
    * Lấy văn bản theo id, báo lỗi tiếng Việt khi id sai hoặc không tồn tại.
-   * `deletedAt: null` — không giao việc từ văn bản đã bị xoá khỏi sổ.
+   * NOT_DELETED — không giao việc từ văn bản đã bị xoá khỏi sổ.
    */
   private async loadDocument(documentId: string): Promise<IncomingDocumentDocument> {
     if (!isValidObjectId(documentId)) throw new BadRequestException('Mã văn bản không hợp lệ');
-    const doc = await this.documentModel.findOne({ _id: documentId, deletedAt: null }).exec();
+    const doc = await this.documentModel.findOne({ _id: documentId, ...NOT_DELETED }).exec();
     if (!doc) throw new NotFoundException('Không tìm thấy văn bản đến');
     return doc;
   }

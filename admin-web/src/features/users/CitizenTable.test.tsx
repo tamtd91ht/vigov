@@ -107,7 +107,7 @@ describe("CitizenTable — xoá mềm", () => {
 
   it("ở thùng đã xoá: hiện chip Đã xoá và khôi phục ngay, không cần xác nhận", async () => {
     const user = userEvent.setup();
-    const deleted = makeCitizen({ deletedAt: "2026-09-06T03:06:00.000Z", deletedBy: "admin" });
+    const deleted = makeCitizen({ isDeleted: true, deletedAt: "2026-09-06T03:06:00.000Z", deletedBy: "admin" });
     const { onRestore } = renderTable({ citizens: [deleted], deletedView: true });
 
     // Tài khoản đã xoá không còn nút khoá/mở khoá

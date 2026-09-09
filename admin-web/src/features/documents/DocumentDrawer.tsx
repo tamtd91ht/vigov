@@ -190,7 +190,7 @@ export function DocumentDrawer({
   };
 
   /** Văn bản đã xoá mềm — chỉ xem, không sửa được nữa */
-  const deleted = !!doc?.deletedAt;
+  const deleted = !!doc?.isDeleted;
   const ocrFields = doc?.ocrFields ?? [];
   const confirmedCount = ocrFields.filter((f) => f.confirmed).length;
   const allConfirmed = ocrFields.length > 0 && confirmedCount === ocrFields.length;

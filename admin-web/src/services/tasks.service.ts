@@ -156,7 +156,7 @@ export async function listTasks(query: TaskQuery = {}): Promise<Paged<TaskDetail
     const matched = store().filter(
       (t) =>
         // Thùng "Đã xoá" và danh sách đang dùng loại trừ nhau, giống bộ lọc backend
-        (query.deleted ? !!t.deletedAt : !t.deletedAt) &&
+        (query.deleted ? !!t.isDeleted : !t.isDeleted) &&
         (!query.status || t.status === query.status) &&
         (!query.department || t.department === query.department) &&
         (!query.assignee || t.assignee === query.assignee) &&
@@ -331,7 +331,7 @@ export async function removeTaskAttachment(code: string, fileId: string): Promis
 /**
  * Xoá MỀM nhiệm vụ — chỉ tài khoản quản trị hệ thống dùng được.
  *
- * Backend chỉ đặt cờ `deletedAt`: nhiệm vụ biến mất khỏi danh sách nhưng nhật ký
+ * Backend chỉ đặt cờ `isDeleted`: nhiệm vụ biến mất khỏi danh sách nhưng nhật ký
  * xử lý, bình luận và tệp minh chứng vẫn còn, khôi phục được ở thùng "Đã xoá".
  * Dùng PATCH .../delete chứ không phải DELETE để mang được lý do xoá trong body.
  */
@@ -339,6 +339,7 @@ export async function deleteTask(code: string, reason?: string): Promise<TaskDet
   if (appConfig.api.useMocks) {
     await mockDelay();
     const task = mockFind(code);
+    task.isDeleted = true;
     task.deletedAt = new Date().toISOString();
     task.deletedBy = "Nguyễn Văn Bình";
     task.deleteReason = reason?.trim() || undefined;
@@ -356,6 +357,7 @@ export async function restoreTask(code: string): Promise<TaskDetail> {
   if (appConfig.api.useMocks) {
     await mockDelay();
     const task = mockFind(code);
+    task.isDeleted = false;
     task.deletedAt = undefined;
     task.deletedBy = undefined;
     task.deleteReason = undefined;

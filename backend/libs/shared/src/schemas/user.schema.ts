@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { SoftDeletable } from './soft-delete';
 
 export type StaffUserDocument = HydratedDocument<StaffUser>;
 export type CitizenUserDocument = HydratedDocument<CitizenUser>;
@@ -71,9 +72,20 @@ export class StaffUser {
 }
 export const StaffUserSchema = SchemaFactory.createForClass(StaffUser);
 
-/** Công dân dùng Zalo Mini App (WBS #11) */
+/**
+ * Công dân dùng Zalo Mini App (WBS #11).
+ *
+ * Kế thừa `SoftDeletable`: không xoá hẳn tài liệu vì số điện thoại là khoá liên
+ * kết tới hồ sơ một cửa và phản ánh đã gửi. Bản ghi đã xoá bị ẩn khỏi mọi danh
+ * sách và KHÔNG đăng nhập lại được, nhưng dữ liệu vẫn nguyên và khôi phục được.
+ *
+ * PHÂN BIỆT với `erasedAt` bên dưới: `isDeleted` là quản trị viên ẩn bản ghi
+ * (khôi phục được); `erasedAt` là VÔ DANH HOÁ theo yêu cầu rút đồng ý của chính
+ * chủ thể dữ liệu (NĐ 13/2023) — có xoá thật các trường nhận dạng, không khôi
+ * phục được. Hai việc khác nhau, đừng gộp.
+ */
 @Schema({ collection: 'citizen_users', timestamps: true })
-export class CitizenUser {
+export class CitizenUser extends SoftDeletable {
   @Prop({ required: true, unique: true, index: true })
   phone: string;
 
@@ -116,28 +128,6 @@ export class CitizenUser {
   @Prop()
   erasedAt?: Date;
 
-  /**
-   * Thời điểm bị QUẢN TRỊ VIÊN xoá mềm trên Web Quản trị; `null` là chưa xoá.
-   *
-   * Không xoá hẳn tài liệu vì số điện thoại là khoá liên kết tới hồ sơ một cửa
-   * và phản ánh đã gửi — xoá cứng là mất tham chiếu của dữ liệu xã phải lưu.
-   * Bản ghi đã xoá bị ẩn khỏi mọi danh sách và KHÔNG đăng nhập lại được, nhưng
-   * dữ liệu vẫn nguyên trong CSDL và khôi phục được từ bộ lọc "Đã xoá".
-   *
-   * Khác `erasedAt`: đó là vô danh hoá theo yêu cầu rút đồng ý của chính chủ
-   * thể dữ liệu (NĐ 13/2023), có xoá thật các trường nhận dạng.
-   */
-  /* Phải khai `type: Date` tay vì union `Date | null` làm reflect-metadata trả về Object */
-  @Prop({ type: Date, default: null, index: true })
-  deletedAt?: Date | null;
-
-  /** Tên đăng nhập cán bộ đã xoá — để truy vết cùng nhật ký kiểm toán */
-  @Prop()
-  deletedBy?: string;
-
-  /** Lý do xoá (tuỳ chọn), hiển thị lại ở bộ lọc "Đã xoá" */
-  @Prop()
-  deleteReason?: string;
 }
 export const CitizenUserSchema = SchemaFactory.createForClass(CitizenUser);
 

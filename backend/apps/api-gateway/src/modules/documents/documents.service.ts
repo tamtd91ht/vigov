@@ -2,7 +2,11 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, type FilterQuery } from 'mongoose';
 import {
+  IS_DELETED,
   IncomingDocument,
+  NOT_DELETED,
+  markDeleted,
+  markRestored,
   type IncomingDocumentDocument,
   type JwtPayload,
 } from '@vigov/shared';
@@ -48,14 +52,6 @@ const STATUS_LABELS: Record<string, string> = {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-/**
- * Điều kiện "chưa bị xoá mềm". `deletedAt: null` khớp CẢ tài liệu thiếu hẳn
- * trường này (bản ghi vào sổ trước khi có tính năng xoá) lẫn tài liệu đã khôi phục.
- */
-const NOT_DELETED: FilterQuery<IncomingDocumentDocument> = { deletedAt: null };
-
-/** Điều kiện "đã bị xoá mềm" — dùng cho bộ lọc "Đã xoá" của Web Quản trị */
-const IS_DELETED: FilterQuery<IncomingDocumentDocument> = { deletedAt: { $ne: null } };
 
 @Injectable()
 export class DocumentsService {
@@ -169,7 +165,7 @@ export class DocumentsService {
 
     // Mặc định ẩn văn bản đã xoá mềm; `deleted=true` là bộ lọc xem riêng thùng đã xoá
     const filter: FilterQuery<IncomingDocumentDocument> = {
-      ...(query.deleted === 'true' ? IS_DELETED : NOT_DELETED),
+      ...(query.deleted ? IS_DELETED : NOT_DELETED),
     };
     if (query.kind) filter.kind = query.kind;
     if (query.status) filter.status = query.status;
@@ -219,7 +215,7 @@ export class DocumentsService {
   /* Kiểu trả về khai TƯỜNG MINH: kiểu suy ra từ bản lean của Mongoose cộng
      thêm trường mới vượt giới hạn TS7056 mà compiler chịu tuần tự hoá được. */
   async findOne(arrivalNo: string): Promise<Record<string, unknown>> {
-    // KHÔNG lọc `deletedAt`: bản đã xoá mềm vẫn phải mở xem được để cán bộ
+    // KHÔNG lọc `isDeleted`: bản đã xoá mềm vẫn phải mở xem được để cán bộ
     // kiểm tra trước khi khôi phục (mọi đường GHI thì đi qua `findWritable`).
     const doc = await this.docModel.findOne({ arrivalNo }).lean().exec();
     if (!doc) throw new NotFoundException(`Không tìm thấy văn bản có số đến ${arrivalNo}`);
@@ -377,7 +373,7 @@ export class DocumentsService {
   /**
    * Xoá MỀM văn bản khỏi sổ (chỉ quản trị).
    *
-   * Chỉ đặt cờ `deletedAt`: văn bản biến mất khỏi sổ và mọi đường ghi báo 404,
+   * Chỉ đặt cờ `isDeleted`: văn bản biến mất khỏi sổ và mọi đường ghi báo 404,
    * nhưng số đến, nhật ký xử lý, bản scan và các trường OCR đã xác nhận vẫn còn
    * để truy vết. Mốc xoá cũng ghi vào nhật ký của chính văn bản, nên khi khôi
    * phục thì lý do và người xoá còn đọc lại được.
@@ -390,9 +386,9 @@ export class DocumentsService {
     const who = actor?.displayName ?? 'Hệ thống';
     const trimmed = reason?.trim();
 
-    doc.deletedAt = new Date();
-    doc.deletedBy = who;
-    if (trimmed) doc.deleteReason = trimmed;
+    // `deletedBy` lưu TÊN ĐĂNG NHẬP (khớp nhật ký kiểm toán và 3 phân hệ còn
+    // lại); nhật ký hiển thị dùng họ tên cho cán bộ dễ đọc.
+    markDeleted(doc, actor?.username, reason);
     doc.timeline.push({
       title: trimmed ? `Xoá văn bản khỏi sổ: ${trimmed}` : 'Xoá văn bản khỏi sổ',
       meta: timelineMeta(actor),
@@ -411,9 +407,7 @@ export class DocumentsService {
       throw new NotFoundException(`Không tìm thấy văn bản số đến ${arrivalNo} trong thùng đã xoá`);
     }
 
-    doc.deletedAt = null;
-    doc.deletedBy = undefined;
-    doc.deleteReason = undefined;
+    markRestored(doc);
     doc.timeline.push({
       title: 'Khôi phục văn bản vào sổ',
       meta: timelineMeta(actor),

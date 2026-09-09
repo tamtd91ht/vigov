@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { CitizenUser, type CitizenUserDocument } from '@vigov/shared';
+import { CitizenUser, NOT_DELETED, type CitizenUserDocument } from '@vigov/shared';
 import type { NotificationChannel, NotificationRequestedEvent } from '@vigov/shared';
 import type { NotificationProvider, NotificationSendResult } from './notification.provider';
 
@@ -38,9 +38,9 @@ export class PushProvider implements NotificationProvider {
       return { ok: false, detail: 'Chưa cấu hình dịch vụ thông báo đẩy' };
     }
 
-    // `deletedAt: null` — tài khoản đã xoá mềm thì không đẩy thông báo nữa
+    // NOT_DELETED — tài khoản đã xoá mềm thì không đẩy thông báo nữa
     const citizen = await this.citizenModel
-      .findOne({ phone: msg.recipient, deletedAt: null })
+      .findOne({ phone: msg.recipient, ...NOT_DELETED })
       .select('pushTokens')
       .exec();
     const tokens = citizen?.pushTokens ?? [];
