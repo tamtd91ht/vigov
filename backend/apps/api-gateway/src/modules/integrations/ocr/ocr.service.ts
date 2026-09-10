@@ -6,9 +6,15 @@ import {
   type OcrExtractResult,
   type OcrProvider,
 } from './ocr.provider';
+import { OcrSpaceProvider } from './ocrspace.provider';
 
-/** Nhà cung cấp OCR đã tích hợp — Phase 1 mới chỉ có bản giả lập */
-const SUPPORTED_PROVIDERS = ['mock'] as const;
+/**
+ * Nhà cung cấp OCR đã tích hợp.
+ * - `mock`: dữ liệu giả lập, mặc định.
+ * - `ocrspace`: dịch vụ miễn phí, CHỈ để dùng thử trên máy phát triển — tự từ
+ *   chối chạy ở production (xem `ocrspace.provider.ts`).
+ */
+const SUPPORTED_PROVIDERS = ['mock', 'ocrspace'] as const;
 const DEFAULT_PROVIDER = 'mock';
 
 /**
@@ -22,6 +28,7 @@ export class OcrService {
   constructor(
     private readonly config: ConfigService,
     private readonly mockProvider: MockOcrProvider,
+    private readonly ocrSpaceProvider: OcrSpaceProvider,
   ) {}
 
   /** Danh sách khoá 7 trường chuẩn — module Documents dùng để dựng khung ocrFields */
@@ -48,6 +55,7 @@ export class OcrService {
   private resolveProvider(): OcrProvider {
     const name = this.providerName;
     if (name === 'mock') return this.mockProvider;
+    if (name === 'ocrspace') return this.ocrSpaceProvider;
 
     throw new ServiceUnavailableException(
       `Chưa tích hợp provider OCR: ${name}. Hiện chỉ hỗ trợ: ${SUPPORTED_PROVIDERS.join(', ')}.`,

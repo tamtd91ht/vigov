@@ -77,6 +77,11 @@ export default () => ({
   ocr: {
     provider: process.env.OCR_PROVIDER ?? 'mock',
     apiKey: process.env.OCR_API_KEY ?? '',
+    /**
+     * Điểm cuối của dịch vụ OCR. Để trống thì provider tự dùng mặc định của
+     * mình — biến này chỉ cần khi đổi sang máy chủ riêng hoặc bản tự dựng.
+     */
+    endpoint: process.env.OCR_ENDPOINT ?? '',
   },
   /**
    * Đọc thẻ căn cước (P5-11) — tách khỏi `ocr` vì khác nhà cung cấp, khác bộ
