@@ -255,7 +255,7 @@ export function ReceiveDocForm({
       open={open}
       onClose={onClose}
       title="Tiếp nhận văn bản đến"
-      meta="Vào sổ văn bản đến — đính kèm bản scan để chạy bóc tách OCR"
+      meta="Vào sổ văn bản đến — kéo bản scan vào rồi quét OCR để máy điền hộ thông tin"
       footer={
         <>
           <button type="button" className="btn pri" disabled={saving} onClick={() => void submit()}>
@@ -269,6 +269,56 @@ export function ReceiveDocForm({
       }
     >
       <div className={saving ? "saving" : undefined}>
+        {/*
+          Ô kéo-thả bản scan đặt Ở ĐẦU form, không phải cuối.
+
+          VÌ SAO: đây là thứ tự làm việc thật của cán bộ văn thư — có tệp trong
+          tay thì kéo vào và để máy đọc trước, các ô phía dưới được điền hộ, cán
+          bộ chỉ rà lại. Đặt ô này ở cuối là bắt nhập tay hết rồi mới thấy chỗ
+          tải tệp, đúng lúc không còn cần OCR nữa.
+
+          Cũng khớp bố cục của mockup đã duyệt và của DocumentDrawer (tab
+          "Thông tin & OCR" cũng đặt bản scan trên cùng) — hai màn cùng nói về
+          bản scan thì không nên xếp ngược nhau.
+        */}
+        <div className="fgroup">
+          {/* Bản scan lưu ở chế độ riêng tư: chỉ đọc được qua link ký sẵn cấp cho cán bộ */}
+          <label>Bản scan văn bản</label>
+          <FileUpload
+            key={uploadKey}
+            purpose="scan"
+            isPrivate
+            placeholder="Kéo-thả bản scan vào đây hoặc bấm để chọn"
+            onUploaded={(fileId) => setScanFileId(fileId)}
+            onCleared={() => setScanFileId("")}
+            disabled={saving}
+          />
+          <div className="fhint">
+            Đính kèm rồi bấm <b>Quét OCR</b> để hệ thống điền hộ các trường bên dưới; có thể vào sổ
+            trước rồi tải bản scan sau.
+          </div>
+
+          {/* Nút quét chỉ hiện khi ĐÃ có bản scan — không có tệp thì không quét được gì */}
+          {scanFileId ? (
+            <div style={{ marginTop: 10 }}>
+              <button
+                type="button"
+                className="btn sm pri"
+                onClick={runScan}
+                disabled={scanning || saving}
+              >
+                <Icon name={scanning ? "clock" : "layer"} size={15} />
+                {scanning ? "Đang quét bản scan…" : "Quét OCR để điền hộ thông tin"}
+              </button>
+              {scanNote ? (
+                <div className="fhint" style={{ marginTop: 8 }}>
+                  {scanNote}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+
         <div
           style={{
             display: "grid",
@@ -390,44 +440,6 @@ export function ReceiveDocForm({
               ))}
             </select>
           </div>
-        </div>
-
-        {/* Bản scan lưu ở chế độ riêng tư: chỉ đọc được qua link ký sẵn cấp cho cán bộ */}
-        <div className="fgroup">
-          <label>Bản scan văn bản</label>
-          <FileUpload
-            key={uploadKey}
-            purpose="scan"
-            isPrivate
-            placeholder="Kéo-thả bản scan vào đây hoặc bấm để chọn"
-            onUploaded={(fileId) => setScanFileId(fileId)}
-            onCleared={() => setScanFileId("")}
-            disabled={saving}
-          />
-          <div className="fhint">
-            Đính kèm ngay rồi bấm <b>Quét OCR</b> để hệ thống điền hộ các trường phía trên; có thể
-            vào sổ trước rồi tải bản scan sau.
-          </div>
-
-          {/* Nút quét chỉ hiện khi ĐÃ có bản scan — không có tệp thì không quét được gì */}
-          {scanFileId ? (
-            <div style={{ marginTop: 10 }}>
-              <button
-                type="button"
-                className="btn sm pri"
-                onClick={runScan}
-                disabled={scanning || saving}
-              >
-                <Icon name={scanning ? "clock" : "layer"} size={15} />
-                {scanning ? "Đang quét bản scan…" : "Quét OCR để điền hộ thông tin"}
-              </button>
-              {scanNote ? (
-                <div className="fhint" style={{ marginTop: 8 }}>
-                  {scanNote}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
         </div>
       </div>
     </Drawer>
