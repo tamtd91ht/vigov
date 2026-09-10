@@ -20,6 +20,12 @@ hệ thống.
 | 10 | [`10-ZALO-MO-TA-BAN-DEMO.md`](10-ZALO-MO-TA-BAN-DEMO.md) | Quản trị Mini App | Nội dung nộp xét duyệt cho **bản demo**, chế độ demo trong mã nguồn |
 | 11 | [`11-ZALO-4-QUYEN-API.md`](11-ZALO-4-QUYEN-API.md) | Quản trị Mini App | Tờ làm việc từng quyền API (25 · 38 · 94 · 100), mô tả dán vào form, cách chụp ảnh |
 
+### Tệp mẫu kiểm thử
+
+[`mau-kiem-thu/`](mau-kiem-thu/) — ba tệp PDF mô phỏng công văn để tester thử tính năng
+scan văn bản (OCR), kèm bảng kết quả mong đợi đã kiểm chứng. **Dữ liệu bịa, không có giá
+trị pháp lý** — không in ra để lẫn vào hồ sơ thật.
+
 ### Quyết định kiến trúc (ADR)
 
 Những quyết định có đánh đổi, đã cân nhắc phương án khác rồi mới chốt. Đổi ý về sau thì
