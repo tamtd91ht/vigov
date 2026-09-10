@@ -179,3 +179,105 @@ describe('DocumentsService.list — bộ lọc xoá mềm', () => {
     expect(filters[0]).toMatchObject({ isDeleted: true });
   });
 });
+
+/* ───────────────── Quét thử OCR ở form tiếp nhận (previewOcr) ───────────── */
+
+/**
+ * Đường này để cán bộ kéo bản scan vào form tiếp nhận rồi bấm quét, máy điền hộ
+ * các trường trước khi vào sổ. Ba điều phải giữ:
+ *
+ *   1. KHÔNG ghi gì vào cơ sở dữ liệu — chưa có văn bản nào để ghi, và cán bộ
+ *      còn phải sửa lại trước khi lưu.
+ *   2. Chỉ nhận tệp NGHIỆP VỤ (isPrivate = true). Bản scan văn bản để ở chế độ
+ *      công khai là ai có mã tệp cũng đọc được nội dung công văn.
+ *   3. Không trả cờ `confirmed` — chưa có gì để xác nhận, và trả ra sẽ khiến
+ *      giao diện tưởng cán bộ đã rà soát.
+ */
+describe('DocumentsService.previewOcr', () => {
+  const scanFile = { _id: 'f1', originalName: 'cong-van.pdf', isPrivate: true };
+
+  function harness(overrides: { findPrivateById?: jest.Mock; extract?: jest.Mock } = {}) {
+    const findPrivateById = overrides.findPrivateById ?? jest.fn().mockResolvedValue(scanFile);
+    const extract =
+      overrides.extract ??
+      jest.fn().mockResolvedValue({
+        fields: [
+          { key: 'refNo', label: 'Số ký hiệu', value: '1245/UBND-VP', confidence: 0.5 },
+          { key: 'deadline', label: 'Hạn xử lý', value: '', confidence: 0 },
+        ],
+      });
+
+    const findOne = jest.fn(() => {
+      throw new Error('previewOcr KHÔNG được truy vấn collection văn bản');
+    });
+
+    const service = new DocumentsService(
+      { findOne } as unknown as Model<IncomingDocumentDocument>,
+      { extract } as unknown as OcrService,
+      { findPrivateById } as unknown as FilesService,
+    );
+
+    return { service, findPrivateById, extract, findOne };
+  }
+
+  it('trả về các trường OCR đọc được từ bản scan', async () => {
+    const { service } = harness();
+
+    const result = await service.previewOcr('f1');
+
+    expect(result.fileId).toBe('f1');
+    expect(result.fields).toHaveLength(2);
+    expect(result.fields[0]).toEqual({
+      key: 'refNo',
+      label: 'Số ký hiệu',
+      value: '1245/UBND-VP',
+      confidence: 0.5,
+    });
+  });
+
+  it('KHÔNG chạm tới collection văn bản — chưa có văn bản nào để ghi', async () => {
+    const { service, findOne } = harness();
+
+    await service.previewOcr('f1');
+
+    expect(findOne).not.toHaveBeenCalled();
+  });
+
+  it('giữ nguyên trường OCR đọc rỗng, không bịa giá trị thay thế', async () => {
+    const { service } = harness();
+
+    const result = await service.previewOcr('f1');
+
+    const deadline = result.fields.find((f) => f.key === 'deadline');
+    expect(deadline?.value).toBe('');
+    expect(deadline?.confidence).toBe(0);
+  });
+
+  it('KHÔNG trả cờ confirmed — chưa có gì để cán bộ xác nhận', async () => {
+    const { service } = harness();
+
+    const result = await service.previewOcr('f1');
+
+    for (const field of result.fields) {
+      expect(field).not.toHaveProperty('confirmed');
+    }
+  });
+
+  it('bắt buộc tệp phải là tệp nghiệp vụ riêng tư', async () => {
+    const findPrivateById = jest.fn().mockRejectedValue(new Error('tệp đang ở chế độ công khai'));
+    const { service, extract } = harness({ findPrivateById });
+
+    await expect(service.previewOcr('f-public')).rejects.toThrow('công khai');
+    // Không được gọi OCR khi tệp đã bị từ chối
+    expect(extract).not.toHaveBeenCalled();
+  });
+
+  it('quét đúng mã tệp được truyền vào', async () => {
+    const { service, extract, findPrivateById } = harness();
+
+    await service.previewOcr('f-abc');
+
+    expect(findPrivateById).toHaveBeenCalledWith('f-abc', expect.any(String));
+    expect(extract).toHaveBeenCalledWith('f-abc');
+  });
+});

@@ -109,6 +109,19 @@ interface RawDocument extends IncomingDocument {
 }
 
 /** Phản hồi của các endpoint OCR — chỉ trả phần OCR, không trả cả văn bản */
+/** Một trường OCR ở bước xem trước — CHƯA có cờ confirmed vì chưa lưu gì */
+export interface PreviewedOcrField {
+  key: string;
+  label: string;
+  value: string;
+  confidence: number;
+}
+
+interface PreviewOcrResponse {
+  fileId: string;
+  fields: PreviewedOcrField[];
+}
+
 interface OcrFieldsResponse {
   arrivalNo: string;
   ocrFields: OcrField[];
@@ -321,6 +334,40 @@ export async function updateDocument(arrivalNo: string, input: UpdateDocumentInp
     return { ...doc };
   }
   return toDocumentDetail(await apiClient.patch<RawDocument>(`/documents/${encodeURIComponent(arrivalNo)}`, input));
+}
+
+/**
+ * Quét thử OCR một bản scan CHƯA gắn vào văn bản nào.
+ *
+ * Dùng ở form Tiếp nhận văn bản: cán bộ kéo tệp vào, bấm quét, máy điền hộ các
+ * trường trước khi vào sổ. Khác `runDocumentOcr` ở chỗ nhận mã TỆP thay vì số
+ * đến, và KHÔNG ghi gì vào cơ sở dữ liệu — nên gọi bao nhiêu lần cũng được.
+ *
+ * Trả về mảng rỗng nếu backend không đọc được trường nào; nơi gọi tự quyết định
+ * thông báo cho cán bộ.
+ */
+export async function previewDocumentOcr(fileId: string): Promise<PreviewedOcrField[]> {
+  if (appConfig.api.useMocks) {
+    await mockDelay();
+    /* Bản mock trả đúng bộ khoá của BACKEND (issuedDate, không phải date) để
+       phần điền form không chạy đúng ở chế độ mock rồi hỏng khi nối API thật. */
+    return [
+      { key: 'refNo', label: 'Số ký hiệu', value: '1245/UBND-VP', confidence: 0.5 },
+      { key: 'issuedDate', label: 'Ngày ban hành', value: '12/03/2026', confidence: 0.5 },
+      { key: 'sender', label: 'Cơ quan ban hành', value: 'UBND huyện Đông Phú', confidence: 0.5 },
+      {
+        key: 'summary',
+        label: 'Trích yếu',
+        value: 'triển khai kế hoạch cải cách hành chính năm 2026 trên địa bàn xã',
+        confidence: 0.5,
+      },
+      { key: 'deadline', label: 'Hạn xử lý', value: '20/03/2026', confidence: 0.5 },
+      { key: 'confidentiality', label: 'Độ mật', value: 'Mật', confidence: 0.5 },
+      { key: 'urgency', label: 'Độ khẩn', value: 'Khẩn', confidence: 0.5 },
+    ];
+  }
+  const res = await apiClient.post<PreviewOcrResponse>('/documents/ocr/preview', { fileId });
+  return res.fields ?? [];
 }
 
 /** Chạy OCR trên bản scan đính kèm, trả về danh sách trường đã bóc tách */

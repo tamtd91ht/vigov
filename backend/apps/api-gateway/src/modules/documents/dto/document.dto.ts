@@ -197,6 +197,20 @@ export class ConfirmOcrFieldDto {
   value?: string;
 }
 
+/**
+ * Xem trước kết quả OCR trên một bản scan CHƯA gắn vào văn bản nào
+ * (POST /documents/ocr/preview).
+ *
+ * VÌ SAO CẦN DTO RIÊNG: đường OCR cũ nhận số đến, tức văn bản phải được lưu
+ * trước. Cán bộ tiếp nhận thì muốn kéo tệp vào là quét ngay để máy điền hộ các
+ * trường, chứ không phải nhập tay xong mới quét.
+ */
+export class PreviewOcrDto {
+  @IsString({ message: 'Mã tệp bản scan không hợp lệ' })
+  @IsNotEmpty({ message: 'Vui lòng chọn bản scan cần quét' })
+  fileId!: string;
+}
+
 /** Số tệp đính kèm tối đa gắn một lần cho văn bản */
 export const MAX_DOCUMENT_ATTACHMENTS_PER_CALL = 10;
 

@@ -8,6 +8,7 @@ import { fetchDepartments, fetchDocumentTypes } from "@/services/catalogs.servic
 import { useCatalog } from "@/hooks/useCatalog";
 import { urgencyLevels, confidentialityLevels } from "@/config/status.config";
 
+import { previewDocumentOcr } from "@/services/documents.service";
 import type { CreateDocumentInput } from "@/services/documents.service";
 
 interface FormState {
@@ -38,6 +39,45 @@ const EMPTY_FORM: FormState = {
   signer: "",
 };
 
+/**
+ * dd/mm/yyyy (OCR trả về) -> yyyy-mm-dd (giá trị của input type=date).
+ * Trả chuỗi rỗng nếu không đúng dạng — thà để trống còn hơn điền ngày sai vào
+ * hồ sơ hành chính.
+ */
+function toIsoDate(vn: string): string {
+  const m = (vn ?? "").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (!m) return "";
+  const [, d, mo, y] = m;
+  const day = Number(d);
+  const month = Number(mo);
+  // Chặn ngày vô nghĩa kiểu 32/13/2026 do OCR đọc sai chữ số
+  if (day < 1 || day > 31 || month < 1 || month > 12) return "";
+  return `${y}-${mo.padStart(2, "0")}-${d.padStart(2, "0")}`;
+}
+
+/**
+ * Khớp giá trị OCR đọc được với một mục trong danh mục.
+ *
+ * VÌ SAO KHÔNG SO SÁNH TRỰC TIẾP: danh mục dùng "Hoả tốc" (dấu hỏi) trong khi
+ * OCR trả "Hỏa tốc" (dấu ngã) — cùng một mức độ khẩn nhưng khác dấu, so bằng
+ * `===` là trượt. Bỏ dấu rồi so là khớp được cả hai cách viết, và cũng khớp
+ * khi OCR trả chữ hoa toàn bộ.
+ *
+ * Không khớp mục nào thì trả rỗng để nơi gọi GIỮ NGUYÊN giá trị đang chọn —
+ * không được đặt bừa một mức độ mật cho văn bản hành chính.
+ */
+function matchCatalog(value: string, options: readonly { key: string }[]): string {
+  const norm = (s: string) =>
+    (s ?? "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .trim();
+  const target = norm(value);
+  if (!target) return "";
+  return options.find((o) => norm(o.key) === target)?.key ?? "";
+}
+
 /** yyyy-mm-dd -> dd/mm/yyyy */
 function toVnDate(iso: string): string {
   if (!iso) return "";
@@ -67,6 +107,12 @@ export function ReceiveDocForm({
   const [scanFileId, setScanFileId] = useState("");
   /** Đổi khoá để dựng lại ô tải tệp khi mở lại form (xoá tệp của lượt trước) */
   const [uploadKey, setUploadKey] = useState(0);
+  /** Đang gọi OCR — chặn bấm quét hai lần và chặn lưu giữa lúc quét */
+  const [scanning, setScanning] = useState(false);
+  /** Thông báo kết quả quét gần nhất, hiện dưới nút */
+  const [scanNote, setScanNote] = useState("");
+  /** Các trường form vừa được OCR điền hộ — dùng để gắn nhãn nhắc cán bộ rà lại */
+  const [ocrFilled, setOcrFilled] = useState<Set<keyof FormState>>(new Set());
 
   /** Chưa chọn thì lấy bộ phận đầu danh mục làm mặc định */
   const department = form.department || departments[0] || "";
@@ -82,11 +128,93 @@ export function ReceiveDocForm({
       setErrors({});
       setScanFileId("");
       setUploadKey((k) => k + 1);
+      setScanNote("");
+      setOcrFilled(new Set());
     }
   }
 
-  const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
+  const set = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+    /* Cán bộ đã tự sửa thì bỏ nhãn "OCR điền" — nhãn đó chỉ để nhắc rà soát
+       giá trị máy đọc, giữ lại sau khi người dùng sửa là nói sai. */
+    setOcrFilled((prev) => {
+      if (!prev.has(key)) return prev;
+      const next = new Set(prev);
+      next.delete(key);
+      return next;
+    });
+  };
+
+  /**
+   * Quét OCR bản scan vừa tải lên và điền hộ các trường trên biểu mẫu.
+   *
+   * Nguyên tắc: CHỈ điền, không tự lưu và không ghi đè thứ cán bộ đã nhập.
+   * Trường OCR đọc rỗng thì để nguyên — thà trống còn hơn điền sai vào một hồ
+   * sơ hành chính. Mọi trường vẫn sửa lại được sau khi điền.
+   */
+  const runScan = async () => {
+    if (!scanFileId || scanning) return;
+    setScanning(true);
+    setScanNote("");
+    try {
+      const fields = await previewDocumentOcr(scanFileId);
+      const byKey = new Map(fields.map((f) => [f.key, f]));
+      const val = (key: string) => (byKey.get(key)?.value ?? "").trim();
+
+      const filled = new Set<keyof FormState>();
+      const patch: Partial<FormState> = {};
+
+      /* Chỉ điền khi OCR đọc RA GIÁ TRỊ. Trường nào máy không đọc được thì giữ
+         nguyên ô đang có — kể cả khi ô đó đang trống. */
+      const refNo = val("refNo");
+      if (refNo) { patch.refNo = refNo; filled.add("refNo"); }
+
+      const issued = toIsoDate(val("issuedDate"));
+      if (issued) { patch.date = issued; filled.add("date"); }
+
+      const sender = val("sender");
+      if (sender) { patch.sender = sender; filled.add("sender"); }
+
+      const summary = val("summary");
+      if (summary) { patch.summary = summary; filled.add("summary"); }
+
+      const deadline = toIsoDate(val("deadline"));
+      if (deadline) { patch.deadline = deadline; filled.add("deadline"); }
+
+      const conf = matchCatalog(val("confidentiality"), confidentialityLevels);
+      if (conf) { patch.confidentiality = conf; filled.add("confidentiality"); }
+
+      const urg = matchCatalog(val("urgency"), urgencyLevels);
+      if (urg) { patch.urgency = urg; filled.add("urgency"); }
+
+      setForm((prev) => ({ ...prev, ...patch }));
+      setOcrFilled(filled);
+      // Xoá lỗi của những trường vừa được điền để không còn báo đỏ oan
+      setErrors((prev) => {
+        const next = { ...prev };
+        for (const key of filled) delete next[key];
+        return next;
+      });
+
+      setScanNote(
+        filled.size > 0
+          ? `Đã điền ${filled.size} trường từ bản scan. Vui lòng kiểm tra lại trước khi lưu.`
+          : "Không đọc được thông tin nào từ bản scan. Vui lòng nhập thủ công.",
+      );
+    } catch (err: unknown) {
+      setScanNote(
+        err instanceof Error && err.message
+          ? `Không quét được bản scan: ${err.message}`
+          : "Không quét được bản scan. Vui lòng thử lại hoặc nhập thủ công.",
+      );
+    } finally {
+      setScanning(false);
+    }
+  };
+
+  /** Nhãn nhỏ cạnh tên trường, cho biết giá trị do OCR điền và cần rà lại */
+  const ocrTag = (key: keyof FormState) =>
+    ocrFilled.has(key) ? <span className="ocr">OCR</span> : null;
 
   const submit = async () => {
     const nextErrors: Partial<Record<keyof FormState, string>> = {};
@@ -159,7 +287,7 @@ export function ReceiveDocForm({
             </select>
           </div>
           <div className="fgroup">
-            <label>Số/Ký hiệu{req}</label>
+            <label>Số/Ký hiệu{req} {ocrTag("refNo")}</label>
             <input
               className={errors.refNo ? "finp err" : "finp"}
               value={form.refNo}
@@ -169,7 +297,7 @@ export function ReceiveDocForm({
             {errors.refNo && <div className="ferr">{errors.refNo}</div>}
           </div>
           <div className="fgroup">
-            <label>Ngày đến{req}</label>
+            <label>Ngày đến{req} {ocrTag("date")}</label>
             <input
               className={errors.date ? "finp err" : "finp"}
               type="date"
@@ -179,7 +307,7 @@ export function ReceiveDocForm({
             {errors.date && <div className="ferr">{errors.date}</div>}
           </div>
           <div className="fgroup">
-            <label>Hạn xử lý</label>
+            <label>Hạn xử lý {ocrTag("deadline")}</label>
             <input
               className="finp"
               type="date"
@@ -191,7 +319,7 @@ export function ReceiveDocForm({
         </div>
 
         <div className="fgroup">
-          <label>Cơ quan ban hành{req}</label>
+          <label>Cơ quan ban hành{req} {ocrTag("sender")}</label>
           <input
             className={errors.sender ? "finp err" : "finp"}
             value={form.sender}
@@ -202,7 +330,7 @@ export function ReceiveDocForm({
         </div>
 
         <div className="fgroup">
-          <label>Trích yếu nội dung{req}</label>
+          <label>Trích yếu nội dung{req} {ocrTag("summary")}</label>
           <textarea
             className={errors.summary ? "finp err" : "finp"}
             value={form.summary}
@@ -239,7 +367,7 @@ export function ReceiveDocForm({
             />
           </div>
           <div className="fgroup">
-            <label>Độ mật</label>
+            <label>Độ mật {ocrTag("confidentiality")}</label>
             <select
               className="finp"
               value={form.confidentiality}
@@ -253,7 +381,7 @@ export function ReceiveDocForm({
             </select>
           </div>
           <div className="fgroup">
-            <label>Độ khẩn</label>
+            <label>Độ khẩn {ocrTag("urgency")}</label>
             <select className="finp" value={form.urgency} onChange={(e) => set("urgency", e.target.value)}>
               {urgencyLevels.map((l) => (
                 <option key={l.key} value={l.key}>
@@ -277,8 +405,29 @@ export function ReceiveDocForm({
             disabled={saving}
           />
           <div className="fhint">
-            Đính kèm ngay để chạy OCR bóc tách thông tin; có thể vào sổ trước rồi tải bản scan sau.
+            Đính kèm ngay rồi bấm <b>Quét OCR</b> để hệ thống điền hộ các trường phía trên; có thể
+            vào sổ trước rồi tải bản scan sau.
           </div>
+
+          {/* Nút quét chỉ hiện khi ĐÃ có bản scan — không có tệp thì không quét được gì */}
+          {scanFileId ? (
+            <div style={{ marginTop: 10 }}>
+              <button
+                type="button"
+                className="btn sm pri"
+                onClick={runScan}
+                disabled={scanning || saving}
+              >
+                <Icon name={scanning ? "clock" : "layer"} size={15} />
+                {scanning ? "Đang quét bản scan…" : "Quét OCR để điền hộ thông tin"}
+              </button>
+              {scanNote ? (
+                <div className="fhint" style={{ marginTop: 8 }}>
+                  {scanNote}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
     </Drawer>

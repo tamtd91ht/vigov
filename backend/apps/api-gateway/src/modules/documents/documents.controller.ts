@@ -6,6 +6,7 @@ import {
   ConfirmOcrFieldDto,
   CreateDocumentDto,
   DeleteDocumentDto,
+  PreviewOcrDto,
   QueryDocumentsDto,
   UpdateDocumentDto,
 } from './dto/document.dto';
@@ -20,6 +21,19 @@ export class DocumentsController {
   @Get()
   list(@Query() query: QueryDocumentsDto) {
     return this.documents.list(query);
+  }
+
+  /**
+   * Quét thử OCR một bản scan chưa gắn vào văn bản nào — dùng ở form tiếp nhận
+   * để máy điền hộ các trường trước khi cán bộ bấm lưu. Không ghi vào CSDL.
+   *
+   * PHẢI khai TRƯỚC route ':arrivalNo': Nest khớp route theo thứ tự khai, nên
+   * đặt sau thì 'ocr' bị hiểu là một số đến và lời gọi rơi vào hàm detail().
+   */
+  @RequirePermission('documents', 'edit')
+  @Post('ocr/preview')
+  previewOcr(@Body() dto: PreviewOcrDto) {
+    return this.documents.previewOcr(dto.fileId);
   }
 
   /** Chi tiết văn bản theo số đến */

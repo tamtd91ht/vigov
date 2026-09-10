@@ -348,6 +348,37 @@ export class DocumentsService {
     return { arrivalNo: doc.arrivalNo, ocrFields: doc.ocrFields };
   }
 
+  /**
+   * Quét thử OCR trên một bản scan chưa gắn vào văn bản nào.
+   *
+   * KHÔNG ghi gì vào cơ sở dữ liệu — đây là bước xem trước ở form tiếp nhận,
+   * dùng để điền hộ cán bộ các trường trên biểu mẫu. Cán bộ vẫn sửa được mọi
+   * giá trị, và chỉ khi bấm lưu thì văn bản mới được vào sổ.
+   *
+   * Khác `runOcr` ở hai điểm: nhận mã TỆP thay vì số đến, và không lưu kết quả
+   * nên không cần giữ trạng thái `confirmed` của lần chạy trước.
+   *
+   * `findPrivateById` bắt buộc tệp phải là tệp NGHIỆP VỤ (isPrivate = true) —
+   * bản scan văn bản không được để ở chế độ công khai. Hàm này không kiểm chủ
+   * sở hữu tệp, nhưng route đã đòi quyền documents:edit nên chỉ cán bộ có
+   * quyền tiếp nhận văn bản mới gọi được.
+   */
+  async previewOcr(fileId: string) {
+    // Ném 404 nếu tệp không tồn tại, 400 nếu tệp đang ở chế độ công khai
+    await this.files.findPrivateById(fileId, 'bản scan văn bản');
+
+    const result = await this.ocr.extract(fileId);
+    return {
+      fileId,
+      fields: result.fields.map((field) => ({
+        key: field.key,
+        label: field.label,
+        value: field.value,
+        confidence: field.confidence,
+      })),
+    };
+  }
+
   /** Cán bộ xác nhận một trường OCR, có thể sửa lại giá trị máy đọc sai */
   async confirmOcrField(arrivalNo: string, key: string, dto: ConfirmOcrFieldDto) {
     const doc = await this.docModel.findOne({ arrivalNo }).exec();
