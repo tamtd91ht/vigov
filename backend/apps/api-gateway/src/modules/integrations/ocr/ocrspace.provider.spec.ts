@@ -1,4 +1,7 @@
-import { parseAdministrativeDocument, safeFileName } from './ocrspace.provider';
+import { ServiceUnavailableException } from '@nestjs/common';
+import type { FilesService } from '../../files/files.service';
+import type { OcrRuntimeConfig } from './ocr.provider';
+import { OcrSpaceProvider, parseAdministrativeDocument, safeFileName } from './ocrspace.provider';
 
 /**
  * Test cho phần suy ra trường từ văn bản OCR đọc được.
@@ -108,5 +111,80 @@ describe('safeFileName', () => {
 
   it('không hỏng khi bản ghi cũ thiếu originalName', () => {
     expect(safeFileName(undefined as unknown as string, 'image/png')).toBe('scan.png');
+  });
+});
+
+/**
+ * Test cho phần CẢNH BÁO NGƯỜI DÙNG.
+ *
+ * Provider này gửi bản scan ra máy chủ nước ngoài. Cách kiểm soát đã chốt là:
+ * không chặn theo môi trường (mã không có nhánh `if` production/dev), mà luôn
+ * cảnh báo — một dòng `warn` trong nhật ký và một `notice` trả kèm kết quả để
+ * giao diện hiện cho cán bộ. Bộ test dưới đây khoá lại đúng hai thứ đó, vì
+ * chúng là toàn bộ lớp kiểm soát còn lại.
+ */
+describe('OcrSpaceProvider — cảnh báo khi dùng', () => {
+  /** Lỗi mốc: ném từ FilesService để biết luồng đã chạy tới bước đọc tệp */
+  const DEN_BUOC_DOC_TEP = new Error('den-buoc-doc-tep');
+
+  const CAU_HINH: OcrRuntimeConfig = { apiKey: 'khoa-gia-cho-test', endpoint: '' };
+
+  function dungProvider() {
+    const files = {
+      getContent: () => Promise.reject(DEN_BUOC_DOC_TEP),
+    } as unknown as FilesService;
+    return new OcrSpaceProvider(files);
+  }
+
+  it('ghi một dòng cảnh báo vào nhật ký mỗi lượt gọi', async () => {
+    const provider = dungProvider();
+    const canhBao = jest.spyOn(provider['logger'], 'warn').mockImplementation(() => undefined);
+
+    await expect(provider.extract('tep-nao-do', CAU_HINH)).rejects.toThrow(DEN_BUOC_DOC_TEP);
+
+    expect(canhBao).toHaveBeenCalledTimes(1);
+    expect(canhBao.mock.calls[0][0]).toMatch(/ocr\.space/);
+
+    canhBao.mockRestore();
+  });
+
+  it('KHÔNG ghi tên tệp vào nhật ký — tên bản scan hay chứa tên công dân', async () => {
+    const provider = dungProvider();
+    const canhBao = jest.spyOn(provider['logger'], 'warn').mockImplementation(() => undefined);
+
+    await expect(provider.extract('CV-1245-Nguyen-Van-A.pdf', CAU_HINH)).rejects.toThrow(
+      DEN_BUOC_DOC_TEP,
+    );
+
+    const dongLog = canhBao.mock.calls[0][0] as string;
+    expect(dongLog).not.toMatch(/Nguyen-Van-A/);
+    expect(dongLog).not.toMatch(/1245/);
+
+    canhBao.mockRestore();
+  });
+
+  it('cảnh báo và hành vi KHÔNG phụ thuộc môi trường', async () => {
+    // Chốt lại quyết định: provider không đọc NODE_ENV, không có nhánh if theo
+    // môi trường. Hành vi ở nơi kiểm thử và nơi chạy thật phải giống nhau.
+    const nguon = require('node:fs').readFileSync(
+      require.resolve('./ocrspace.provider.ts'),
+      'utf8',
+    ) as string;
+    const dongMa = nguon
+      .split('\n')
+      .filter((d) => !d.trimStart().startsWith('*') && !d.trimStart().startsWith('//'));
+
+    expect(dongMa.join('\n')).not.toMatch(/NODE_ENV|'production'/);
+  });
+
+  it('báo thiếu khoá API bằng tiếng Việt, có hướng dẫn làm gì tiếp', async () => {
+    const provider = dungProvider();
+
+    await expect(provider.extract('tep-nao-do', { apiKey: '', endpoint: '' })).rejects.toThrow(
+      ServiceUnavailableException,
+    );
+    await expect(provider.extract('tep-nao-do', { apiKey: '', endpoint: '' })).rejects.toThrow(
+      /Cấu hình → Tích hợp/,
+    );
   });
 });

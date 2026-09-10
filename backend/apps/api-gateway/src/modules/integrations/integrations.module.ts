@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { FilesModule } from '../files/files.module';
+import { SettingsModule } from '../settings/settings.module';
 import { MockOcrProvider } from './ocr/ocr.provider';
 import { OcrService } from './ocr/ocr.service';
 import { OcrSpaceProvider } from './ocr/ocrspace.provider';
@@ -16,7 +17,9 @@ import { ZaloLocationService } from './geo/zalo-location.service';
  */
 @Module({
   // FilesModule: provider OCR thật cần đọc nội dung bản scan qua FilesService
-  imports: [FilesModule],
+  // SettingsModule: đọc cấu hình nhà cung cấp do cán bộ đặt ở trang Cấu hình.
+  // Phụ thuộc đi MỘT chiều (integrations → settings), không có vòng lặp.
+  imports: [FilesModule, SettingsModule],
   controllers: [GeoController],
   providers: [
     MockOcrProvider,

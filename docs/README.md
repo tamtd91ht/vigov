@@ -19,6 +19,7 @@ hệ thống.
 | 9 | [`09-ZALO-XIN-QUYEN-API.md`](09-ZALO-XIN-QUYEN-API.md) | Quản trị Mini App | Hồ sơ xin 4 quyền API Zalo, webhook xoá dữ liệu, bản nháp Điều khoản sử dụng |
 | 10 | [`10-ZALO-MO-TA-BAN-DEMO.md`](10-ZALO-MO-TA-BAN-DEMO.md) | Quản trị Mini App | Nội dung nộp xét duyệt cho **bản demo**, chế độ demo trong mã nguồn |
 | 11 | [`11-ZALO-4-QUYEN-API.md`](11-ZALO-4-QUYEN-API.md) | Quản trị Mini App | Tờ làm việc từng quyền API (25 · 38 · 94 · 100), mô tả dán vào form, cách chụp ảnh |
+| 12 | [`12-BIEN-MOI-TRUONG.md`](12-BIEN-MOI-TRUONG.md) | Lập trình viên · Vận hành | **Ba tệp `.env` / `.env.example` / `.env.local`**: vai trò từng tệp, module nào đọc tệp nào, thứ tự ưu tiên, cạm bẫy chuỗi rỗng và bundle trình duyệt |
 
 ### Tệp mẫu kiểm thử
 

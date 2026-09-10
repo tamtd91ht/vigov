@@ -8,7 +8,19 @@ import { AuditService } from './audit.service';
 const AUDITED_METHODS = ['POST', 'PATCH', 'PUT', 'DELETE'];
 
 /** Trường nhạy cảm không bao giờ được lưu vào nhật ký */
-const REDACTED_FIELDS = ['password', 'newPassword', 'currentPassword', 'passwordHash', 'token', 'accessToken', 'otp'];
+const REDACTED_FIELDS = [
+  'password',
+  'newPassword',
+  'currentPassword',
+  'passwordHash',
+  'token',
+  'accessToken',
+  'otp',
+  // Khoá API nhà cung cấp bên thứ 3 (trang Cấu hình → Tích hợp). Không che là
+  // khoá của khách nằm nguyên văn trong audit_logs, tức là mất tác dụng của
+  // việc mã hoá nó trong collection cấu hình.
+  'apiKey',
+];
 const REDACTED_PLACEHOLDER = '***';
 
 /** Giới hạn kích thước dữ liệu body lưu kèm nhật ký (số ký tự JSON) */

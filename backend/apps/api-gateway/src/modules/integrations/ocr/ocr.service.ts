@@ -1,32 +1,30 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { IntegrationSettingsService } from '../../settings/integration-settings.service';
 import {
   MockOcrProvider,
+  OCR_DEFAULT_PROVIDER,
   OCR_FIELD_DEFS,
+  OCR_SUPPORTED_PROVIDERS,
   type OcrExtractResult,
   type OcrProvider,
+  type OcrRuntimeConfig,
 } from './ocr.provider';
 import { OcrSpaceProvider } from './ocrspace.provider';
 
 /**
- * Nhà cung cấp OCR đã tích hợp.
- * - `mock`: dữ liệu giả lập, mặc định.
- * - `ocrspace`: dịch vụ miễn phí, CHỈ để dùng thử trên máy phát triển — tự từ
- *   chối chạy ở production (xem `ocrspace.provider.ts`).
- */
-const SUPPORTED_PROVIDERS = ['mock', 'ocrspace'] as const;
-const DEFAULT_PROVIDER = 'mock';
-
-/**
- * Dịch vụ OCR dùng chung (WBS #25 — task P3-25).
- * Chọn provider theo cấu hình `ocr.provider`, module Documents chỉ gọi extract().
+ * Chọn và gọi provider OCR đang cấu hình (WBS #25).
+ *
+ * Nguồn cấu hình: trang Cấu hình (cơ sở dữ liệu) THẮNG biến môi trường; biến
+ * môi trường là giá trị mồi khi chưa ai cấu hình. Luật đó nằm ở
+ * `IntegrationSettingsService.resolveOcr()` — chỗ duy nhất, để không provider
+ * nào tự suy luận lại.
  */
 @Injectable()
 export class OcrService {
   private readonly logger = new Logger(OcrService.name);
 
   constructor(
-    private readonly config: ConfigService,
+    private readonly settings: IntegrationSettingsService,
     private readonly mockProvider: MockOcrProvider,
     private readonly ocrSpaceProvider: OcrSpaceProvider,
   ) {}
@@ -38,27 +36,29 @@ export class OcrService {
 
   /** Trích xuất thông tin từ bản scan; fileRef là scanFileId trong file storage */
   async extract(fileRef: string): Promise<OcrExtractResult> {
-    const provider = this.resolveProvider();
-    this.logger.log(`Chạy OCR bản scan ${fileRef} bằng provider "${this.providerName}"`);
-    return provider.extract(fileRef);
-  }
+    const resolved = await this.settings.resolveOcr();
+    const name = (resolved.provider || OCR_DEFAULT_PROVIDER).trim().toLowerCase();
+    const provider = this.resolveProvider(name);
 
-  private get providerName(): string {
-    return (this.config.get<string>('ocr.provider') ?? DEFAULT_PROVIDER).trim().toLowerCase();
+    this.logger.log(
+      `Chạy OCR bản scan ${fileRef} bằng provider "${name}" (nguồn cấu hình: ${resolved.source})`,
+    );
+
+    const config: OcrRuntimeConfig = { apiKey: resolved.apiKey, endpoint: resolved.endpoint };
+    return provider.extract(fileRef, config);
   }
 
   /**
    * Ánh xạ tên cấu hình sang lớp provider.
-   * Provider thật chờ khách chốt (câu hỏi mở #1) — khách tự đăng ký tài khoản
-   * và cung cấp OCR_API_KEY, khi đó bổ sung nhánh tương ứng tại đây.
+   * Thêm nhà cung cấp mới: viết một lớp implements OcrProvider, thêm tên vào
+   * OCR_SUPPORTED_PROVIDERS và một nhánh tại đây.
    */
-  private resolveProvider(): OcrProvider {
-    const name = this.providerName;
+  private resolveProvider(name: string): OcrProvider {
     if (name === 'mock') return this.mockProvider;
     if (name === 'ocrspace') return this.ocrSpaceProvider;
 
     throw new ServiceUnavailableException(
-      `Chưa tích hợp provider OCR: ${name}. Hiện chỉ hỗ trợ: ${SUPPORTED_PROVIDERS.join(', ')}.`,
+      `Chưa tích hợp provider OCR: ${name}. Hiện chỉ hỗ trợ: ${OCR_SUPPORTED_PROVIDERS.join(', ')}.`,
     );
   }
 }

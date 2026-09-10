@@ -1,10 +1,12 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put } from '@nestjs/common';
-import { RequirePermission } from '@vigov/shared';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Req } from '@nestjs/common';
+import { RequirePermission, type AuthedRequest } from '@vigov/shared';
 import { SettingsService } from './settings.service';
+import { IntegrationSettingsService } from './integration-settings.service';
 import {
   CreateFeedbackCategoryDto,
   CreateOrgNodeDto,
   UpdateFeedbackCategoryDto,
+  UpdateOcrIntegrationDto,
   UpdateOrgNodeDto,
   UpdateSlaDto,
 } from './dto/settings.dto';
@@ -12,7 +14,30 @@ import {
 /** Phân hệ Cấu hình hệ thống — SLA, cây tổ chức, danh mục vai trò (WBS #9). */
 @Controller('settings')
 export class SettingsController {
-  constructor(private readonly settings: SettingsService) {}
+  constructor(
+    private readonly settings: SettingsService,
+    private readonly integrations: IntegrationSettingsService,
+  ) {}
+
+  // ─── Nhà cung cấp bên thứ 3 ──────────────────────────────────────────────
+
+  /**
+   * Cấu hình nhà cung cấp OCR đang có hiệu lực.
+   * KHÔNG trả khoá API dạng rõ — chỉ dạng đã che để cán bộ đối chiếu.
+   */
+  @Get('integrations/ocr')
+  @RequirePermission('settings', 'view')
+  getOcrIntegration() {
+    return this.integrations.getOcrStatus();
+  }
+
+  /** Lưu cấu hình nhà cung cấp OCR. Khoá được mã hoá trước khi vào cơ sở dữ liệu */
+  @Patch('integrations/ocr')
+  @RequirePermission('settings', 'edit')
+  updateOcrIntegration(@Body() dto: UpdateOcrIntegrationDto, @Req() req: AuthedRequest) {
+    // Danh tính lấy từ phiên đã xác thực, không nhận từ body
+    return this.integrations.updateOcr(dto, req.user?.username ?? 'không rõ');
+  }
 
   // ─── SLA ─────────────────────────────────────────────────────────────────
 

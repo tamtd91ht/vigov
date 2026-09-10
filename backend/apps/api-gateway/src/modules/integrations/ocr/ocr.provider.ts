@@ -20,15 +20,54 @@ export interface OcrExtractedField {
 
 export interface OcrExtractResult {
   fields: OcrExtractedField[];
+  /**
+   * Cảnh báo do CHÍNH provider tự khai, để hiện cho cán bộ ngay lúc dùng.
+   *
+   * VÌ SAO ĐẶT Ở HỢP ĐỒNG PROVIDER: mỗi nhà cung cấp có một điều cần nói trước
+   * (dịch vụ miễn phí gửi dữ liệu ra nước ngoài, bản dùng thử có hạn mức, bản
+   * beta đọc sai nhiều...). Để provider tự khai thì tầng nghiệp vụ và giao diện
+   * không phải biết đang chạy provider nào — thêm nhà cung cấp mới chỉ sửa một
+   * tệp, không phải đi thêm nhánh `if` ở giao diện.
+   *
+   * Để trống là không có gì cần cảnh báo (bản `mock` và provider chính thức).
+   */
+  notice?: string;
+}
+
+/**
+ * Cấu hình chạy của provider, do `OcrService` giải quyết xong rồi truyền vào.
+ *
+ * VÌ SAO TRUYỀN VÀO thay vì để provider tự đọc `ConfigService`: cấu hình nay có
+ * thể đến từ trang Cấu hình (cơ sở dữ liệu) hoặc từ biến môi trường. Provider
+ * tự đọc là mỗi provider phải tự biết luật ưu tiên đó — sai một chỗ là dùng
+ * khoá của nguồn khác. Giải quyết một lần ở `OcrService`, provider chỉ nhận
+ * giá trị đã chốt.
+ */
+export interface OcrRuntimeConfig {
+  /** Khoá API dạng rõ; rỗng nghĩa là chưa cấu hình */
+  apiKey: string;
+  /** Điểm cuối riêng; rỗng thì provider dùng mặc định của mình */
+  endpoint: string;
 }
 
 export interface OcrProvider {
   /** Trích xuất thông tin từ tệp scan (fileRef = scanFileId trong file storage P3-24) */
-  extract(fileRef: string): Promise<OcrExtractResult>;
+  extract(fileRef: string, config: OcrRuntimeConfig): Promise<OcrExtractResult>;
 }
 
 /** Token DI cho provider OCR đang được chọn */
 export const OCR_PROVIDER = 'VIGOV_OCR_PROVIDER';
+
+/**
+ * Nhà cung cấp OCR đã tích hợp — NGUỒN CHUẨN.
+ *
+ * Trang Cấu hình đọc danh sách này qua API thay vì tự khai một bản sao: hai bản
+ * sao là giao diện cho chọn một nhà cung cấp mà máy chủ chưa hỗ trợ.
+ * Thêm nhà cung cấp: thêm tên vào đây + một nhánh trong `OcrService`.
+ */
+export const OCR_SUPPORTED_PROVIDERS = ['mock', 'ocrspace'] as const;
+
+export const OCR_DEFAULT_PROVIDER = 'mock';
 
 /**
  * 7 trường chuẩn của văn bản hành chính Việt Nam.
@@ -62,10 +101,10 @@ const MOCK_VALUES: Record<string, string> = {
 /**
  * Provider OCR giả lập dùng cho Phase 1.
  *
- * LƯU Ý: provider OCR thật đang CHỜ KHÁCH CHỐT (câu hỏi mở #1) — khách hàng
- * tự đăng ký tài khoản/API key với nhà cung cấp, hệ thống chỉ đọc qua
- * ConfigService (`ocr.provider`, `ocr.apiKey`). Khi có nhà cung cấp chính thức,
- * bổ sung một lớp implements OcrProvider tương tự và đăng ký trong OcrService.
+ * LƯU Ý: provider OCR thật đang CHỜ KHÁCH CHỐT (câu hỏi mở #1) — khách tự đăng
+ * ký tài khoản và khoá API với nhà cung cấp, rồi nhập ở trang Cấu hình (hoặc
+ * đặt biến môi trường). Khi có nhà cung cấp chính thức, bổ sung một lớp
+ * implements OcrProvider tương tự và đăng ký trong OcrService.
  */
 @Injectable()
 export class MockOcrProvider implements OcrProvider {

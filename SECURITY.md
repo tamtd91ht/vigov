@@ -44,7 +44,7 @@ Kiểm chứng sau khi sửa: `npx tsc --noEmit -p apps/api-gateway/tsconfig.app
 | 24 | Chống path traversal khi lưu tệp | ✅ Có sẵn | Regex khoá an toàn + đối chiếu đường dẫn tuyệt đối |
 | 25 | Giới hạn dung lượng tệp tải lên | ✅ Có sẵn | Multer `limits.fileSize` + kiểm tra lại ở service |
 | 26 | Chữ ký link tệp riêng tư | ✅ Có sẵn | HMAC-SHA256, so sánh bằng `timingSafeEqual`, TTL tối đa 24 giờ |
-| 27 | Nhật ký thao tác (audit log) che trường nhạy cảm | ✅ Có sẵn | `AuditInterceptor` che password/token/otp |
+| 27 | Nhật ký thao tác (audit log) che trường nhạy cảm | ✅ Có sẵn | `AuditInterceptor` che password/token/otp/**apiKey** |
 | 28 | Escape từ khoá người dùng trước khi ghép `$regex` | ✅ Có sẵn | Users, Feedback, Search đều escape |
 | 29 | Thu hồi token khi khoá tài khoản / thu hồi phiên | ✅ Có sẵn | `sid` trong payload JWT + `SessionRegistry` tra lại phiên/trạng thái chủ tài khoản (nhớ tạm 10 giây) |
 | 30 | Refresh token + xoay vòng token | ✅ Có sẵn | `POST /auth/refresh`, băm bcrypt lưu trên `login_sessions`, xoay vòng mỗi lượt, dùng lại token cũ thì thu hồi phiên |
@@ -56,6 +56,7 @@ Kiểm chứng sau khi sửa: `npx tsc --noEmit -p apps/api-gateway/tsconfig.app
 | 36 | Công dân chỉ đọc được tệp của phiếu CHÍNH MÌNH | ✅ Đã làm | `mintSignedUrl` chỉ nhận mã tệp lấy từ bản ghi đã lọc theo `citizenPhone` (TB-16) |
 | 37 | Ảnh riêng tư hiển thị được trong webview Zalo | ✅ Đã sửa | `Cross-Origin-Resource-Policy: cross-origin` cho tệp đã qua kiểm chữ ký (TB-17) |
 | 38 | Endpoint mở cho công dân được khai TƯỜNG MINH | ⚠️ Một phần | `@AnyAuthenticated('<lý do>')` — đã khai 2 route kho tệp; còn 12 route, xem TB-18 |
+| 39 | Mã hoá khoá API nhà cung cấp trước khi lưu vào MongoDB | ✅ Đã làm 10/09/2026 | AES-256-GCM, khoá suy từ `JWT_SECRET` bằng HKDF (`libs/shared/src/crypto/secret-box.ts`). Bản `mongodump` lọt ra ngoài mà không có tệp env thì không giải mã được. Trường `select: false`; API chỉ trả khoá đã che |
 
 ---
 
@@ -69,6 +70,7 @@ Kiểm chứng sau khi sửa: `npx tsc --noEmit -p apps/api-gateway/tsconfig.app
 | **C-02** | **Stored XSS qua tệp tải lên.** Mục đích `other` không giới hạn MIME, còn route đọc tệp luôn trả `Content-Disposition: inline`. Kẻ xấu tải lên tệp `text/html` (hoặc `image/svg+xml`) chứa script rồi phát tán link `/api/v1/files/<id>` — mã chạy ngay trên tên miền API. | ✅ **ĐÃ SỬA** — gia cố thêm 10/09/2026: `other` chuyển sang danh sách trắng, và loại tệp nay kiểm qua ba tầng (MIME · đuôi tệp · magic bytes) thay vì chỉ MIME do client khai |
 | **C-03** | **Xác thực phía client hoàn toàn là mock.** `admin-web/src/services/auth.ts` so sánh mật khẩu ngay trong trình duyệt với `NEXT_PUBLIC_DEMO_*` rồi ghi phiên vào `localStorage`; `AuthGuard.tsx` chỉ ẩn giao diện phía client, không có middleware chặn ở tầng route. Mobile (`identity_service.dart`) và Zalo Mini App cũng lưu phiên mock. **Không được đưa lên môi trường thật ở trạng thái này.** | ✅ **ĐÃ SỬA** — cả 3 client đăng nhập qua API thật (P5-01/02/03); mock nay phải bật tường minh bằng cờ môi trường và bị cấm ở staging/production |
 | **C-04** | **`JWT_SECRET` mẫu dùng chung cho cả ký token và ký link tệp.** Nếu lên production mà quên đổi, mọi token và mọi link tệp riêng tư đều giả mạo được. | ✅ **ĐÃ SỬA** (chặn khởi động) — vẫn phải đổi khoá thật, xem mục 4 |
+| **C-05** | **Bản scan gửi ra dịch vụ OCR miễn phí đặt ở nước ngoài.** Khi `OCR_PROVIDER=ocrspace`, mỗi bản scan cán bộ tải lên được gửi tới ocr.space để đọc chữ. Văn bản hành chính có thể chứa họ tên, địa chỉ, số điện thoại công dân; gửi ra ngoài như vậy chưa có cơ sở pháp lý theo NĐ 13/2023 và chưa có thoả thuận xử lý dữ liệu với nhà cung cấp. *Ghi chú lịch sử: bản đầu có khối chặn ở production nhưng đọc sai tên khoá cấu hình (`nodeEnv` thay vì `env`) nên khối đó chưa bao giờ chạy, và không test nào chạm tới nên lỗi lọt qua CI.* | ⚠ **RỦI RO ĐƯỢC CHẤP NHẬN 10/09/2026** — chủ sản phẩm quyết định cho phép chọn provider tự do và **tự chịu trách nhiệm** với dữ liệu đưa vào; khối chặn theo môi trường đã **bỏ hẳn** (mã không phân biệt production/dev). Bù lại có hai lớp luôn bật: **cảnh báo hiện trên giao diện** mỗi lần cán bộ quét, và **một dòng `warn` mỗi lượt gọi** làm vết. Còn phải chốt nhà cung cấp trong nước — xem mục 4 việc `0-bis` |
 
 ### Mức TRUNG BÌNH
 
@@ -132,6 +134,20 @@ Lệnh chạy: `npm audit --production` (chỉ đọc kết quả, **không** ch
 
 ## 4. Việc BẮT BUỘC làm trước khi lên production
 
+0-bis. **Đưa nhà cung cấp OCR về `mock` hoặc về nhà cung cấp đã có hợp đồng** (phát hiện
+   **C-05**). Kiểm ở **Cấu hình → Tích hợp** trên Web Quản trị *và* biến `OCR_PROVIDER` —
+   cấu hình ở giao diện thắng biến môi trường, nên sửa env một mình là chưa đủ.
+   Để `ocrspace` là mỗi bản scan cán bộ tải lên đều được gửi sang dịch vụ miễn phí
+   đặt ở **máy chủ nước ngoài** — chưa có cơ sở pháp lý theo NĐ 13/2023 và chưa có thoả thuận
+   xử lý dữ liệu với nhà cung cấp.
+   *Trong lúc còn dùng cho bản demo:* chỉ tải lên văn bản mẫu tự tạo (`docs/mau-kiem-thu/`),
+   không tải văn bản thật của công dân. Hai endpoint OCR đòi quyền `documents:edit` nên công
+   dân không gọi được — phạm vi phơi bày giới hạn ở người dùng Web Quản trị. Rà số lượt bản
+   scan đã rời khỏi hệ thống bằng
+   `docker compose logs backend | grep "dịch vụ OCR miễn phí"`.
+   *Điều kiện để đổi:* đã chốt nhà cung cấp OCR (câu hỏi mở #1) — **ưu tiên nhà cung cấp
+   trong nước** để bảo đảm tính pháp lý — và đã viết adapter cho nhà cung cấp đó.
+
 0. **Xoá `CITIZEN_OTP_BYPASS_CODE`** khỏi `.env` (để trống). Đây là mã cố định cho phép định danh
    **bất kỳ số điện thoại nào** ở màn OTP, dựng tạm cho giai đoạn Zalo chưa cấp quyền
    `getPhoneNumber` và mã OTP thật còn chưa gửi được qua SMS/ZNS. Còn giá trị là còn một lối vào
@@ -146,6 +162,11 @@ Lệnh chạy: `npm audit --production` (chỉ đọc kết quả, **không** ch
 1. **Đổi `JWT_SECRET`.** Sinh chuỗi ngẫu nhiên ≥ 32 ký tự (`openssl rand -base64 48`), lưu trong
    trình quản lý bí mật, không commit. Khoá này ký cả token đăng nhập lẫn link tệp riêng tư.
    *API Gateway đã được chặn khởi động nếu `NODE_ENV=production` mà khoá còn là giá trị mẫu.*
+   **Đổi khoá này còn làm mất khả năng giải mã khoá API của nhà cung cấp đã lưu ở
+   Cấu hình → Tích hợp** (khoá mã hoá suy từ `JWT_SECRET` bằng HKDF —
+   `libs/shared/src/crypto/secret-box.ts`). Hệ thống không sập: nó coi như chưa có khoá, ghi
+   `error` vào log, giao diện báo cần nhập lại. Đổi `JWT_SECRET` thì **nhập lại khoá API**
+   ngay sau đó. Thứ tự đúng: đổi `JWT_SECRET` → khởi động lại → vào Cấu hình nhập lại khoá.
 2. **Bật HTTPS/TLS** ở nginx/load balancer, chuyển hướng toàn bộ HTTP → HTTPS. HSTS chỉ được gắn
    khi `NODE_ENV=production`, nên phải có TLS trước rồi mới bật cờ production.
 3. **Khai báo whitelist CORS thật**: `CORS_ORIGINS=https://<tên-miền-web-quản-trị>,https://h5.zdn.vn`.

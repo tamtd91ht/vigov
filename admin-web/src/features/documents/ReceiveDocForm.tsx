@@ -111,6 +111,14 @@ export function ReceiveDocForm({
   const [scanning, setScanning] = useState(false);
   /** Thông báo kết quả quét gần nhất, hiện dưới nút */
   const [scanNote, setScanNote] = useState("");
+  /**
+   * Cảnh báo về nhà cung cấp OCR đang dùng, do backend trả kèm kết quả quét.
+   *
+   * Tách khỏi `scanNote`: `scanNote` nói kết quả lần quét vừa rồi (điền được mấy
+   * trường), còn ô này nói dữ liệu của cán bộ được gửi đi đâu — hai việc khác
+   * nhau, và cái sau phải nổi bật hơn.
+   */
+  const [scanWarning, setScanWarning] = useState("");
   /** Các trường form vừa được OCR điền hộ — dùng để gắn nhãn nhắc cán bộ rà lại */
   const [ocrFilled, setOcrFilled] = useState<Set<keyof FormState>>(new Set());
 
@@ -156,8 +164,13 @@ export function ReceiveDocForm({
     if (!scanFileId || scanning) return;
     setScanning(true);
     setScanNote("");
+    setScanWarning("");
     try {
-      const fields = await previewDocumentOcr(scanFileId);
+      const { fields, notice } = await previewDocumentOcr(scanFileId);
+      /* Cảnh báo do backend gửi kèm — ví dụ nhà cung cấp đang dùng là dịch vụ
+         miễn phí đặt ở nước ngoài. Hiện cho cán bộ biết bản scan đi đâu; giao
+         diện không tự soạn nội dung này để đổi nhà cung cấp không phải sửa ở đây. */
+      setScanWarning(notice ?? "");
       const byKey = new Map(fields.map((f) => [f.key, f]));
       const val = (key: string) => (byKey.get(key)?.value ?? "").trim();
 
@@ -313,6 +326,12 @@ export function ReceiveDocForm({
               {scanNote ? (
                 <div className="fhint" style={{ marginTop: 8 }}>
                   {scanNote}
+                </div>
+              ) : null}
+              {/* Cảnh báo về nhà cung cấp OCR — nội dung do backend gửi kèm kết quả */}
+              {scanWarning ? (
+                <div className="fwarn">
+                  <Icon name="alert" size={13} /> {scanWarning}
                 </div>
               ) : null}
             </div>

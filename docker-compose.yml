@@ -160,6 +160,8 @@ services:
       # Tích hợp bên thứ 3 — provider chốt sau (câu hỏi mở #1, #2, #3)
       OCR_PROVIDER: ${OCR_PROVIDER:-mock}
       OCR_API_KEY: ${OCR_API_KEY:-}
+      # Để trống thì provider tự dùng điểm cuối mặc định của mình
+      OCR_ENDPOINT: ${OCR_ENDPOINT:-}
       IDCARD_PROVIDER: ${IDCARD_PROVIDER:-mock}
       IDCARD_API_KEY: ${IDCARD_API_KEY:-}
       GEO_PROVIDER: ${GEO_PROVIDER:-mock}

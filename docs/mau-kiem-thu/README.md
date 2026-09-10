@@ -84,7 +84,16 @@ mặc định hay giá trị bịa, và cán bộ phải nhập tay được.
 | `ocrspace` | Đọc chữ thật rồi suy ra trường bằng luật chuỗi | `OCR_PROVIDER=ocrspace` + `OCR_API_KEY` |
 
 > Chạy với `mock` thì **ba tệp cho kết quả giống nhau** — đúng thiết kế, không phải lỗi.
-> Muốn thấy khác biệt giữa ba tệp thì phải đặt `OCR_PROVIDER=ocrspace`.
+> Muốn thấy khác biệt giữa ba tệp thì phải chuyển nhà cung cấp sang `ocrspace`.
+
+Đổi nhà cung cấp bằng **Cấu hình → Tích hợp** trên Web Quản trị (không cần khởi động lại
+dịch vụ) hoặc bằng biến `OCR_PROVIDER`. Giao diện thắng biến môi trường.
+
+Với `ocrspace`, sau mỗi lần bấm quét, form Tiếp nhận văn bản **hiện một ô cảnh báo màu cam**
+cho biết bản scan được gửi ra dịch vụ đặt ở nước ngoài. Đây là hành vi **đúng**, cần có
+trong ảnh chụp khi nghiệm thu — không phải lỗi giao diện. Nội dung cảnh báo do backend gửi
+kèm kết quả (trường `notice`), nên đổi nhà cung cấp là đổi luôn câu cảnh báo mà không phải
+sửa giao diện. Provider `mock` không có cảnh báo vì không gửi gì ra ngoài.
 
 Với provider thật, độ tin cậy của mọi trường là **0.5** — cố ý để thấp, vì đó là kết quả
 suy ra bằng luật chuỗi chứ không phải do nhà cung cấp khẳng định. Trường không dò được

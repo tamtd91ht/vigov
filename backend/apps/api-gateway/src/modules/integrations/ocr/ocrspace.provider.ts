@@ -1,11 +1,11 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { FilesService } from '../../files/files.service';
 import {
   OCR_FIELD_DEFS,
   type OcrExtractResult,
   type OcrExtractedField,
   type OcrProvider,
+  type OcrRuntimeConfig,
 } from './ocr.provider';
 
 /**
@@ -21,12 +21,33 @@ import {
  * 13/2023 và chưa có thoả thuận xử lý dữ liệu với nhà cung cấp. Chỉ chạy trên
  * máy phát triển, với văn bản mẫu tự tạo.
  *
- * Chốt chặn: provider TỰ TỪ CHỐI chạy khi `NODE_ENV=production`. Muốn dùng thật
- * thì phải chọn nhà cung cấp có hợp đồng, không phải gỡ dòng chặn này.
+ * CÁCH KIỂM SOÁT: provider chạy ở môi trường nào cũng như nhau — mã KHÔNG phân
+ * biệt production / dev, vì một nhánh `if` theo môi trường chỉ làm hành vi khác
+ * nhau giữa nơi kiểm thử và nơi chạy thật, tức là chỗ dễ sai nhất lại là chỗ
+ * không ai thử tới. Thay vào đó có hai thứ luôn bật:
+ *
+ *   1. `notice` trả kèm kết quả → giao diện hiện cảnh báo cho cán bộ ngay lúc
+ *      họ dùng tính năng, để người quyết định biết dữ liệu đi đâu.
+ *   2. Một dòng `warn` mỗi lượt gọi → vết trong nhật ký cho việc dữ liệu rời
+ *      khỏi hệ thống.
+ *
+ * Chọn dùng provider nào là quyết định của người quản trị qua `OCR_PROVIDER`, và
+ * người đó chịu trách nhiệm với dữ liệu đưa vào. Muốn dùng cho dữ liệu THẬT thì
+ * chọn nhà cung cấp có thoả thuận xử lý dữ liệu cá nhân — xem SECURITY.md.
  *
  * Giới hạn của bậc miễn phí (tại thời điểm 10/09/2026): 25.000 lượt/tháng,
  * mỗi tệp tối đa 1MB, PDF tối đa 3 trang. Vượt hạn mức thì dịch vụ trả lỗi.
  */
+
+/**
+ * Cảnh báo hiện cho cán bộ mỗi lần dùng provider này. Văn phong hành chính,
+ * nói rõ dữ liệu đi đâu và nên dùng với loại văn bản nào — không dùng thuật ngữ
+ * kỹ thuật vì người đọc là cán bộ tiếp nhận văn bản, không phải lập trình viên.
+ */
+const PROVIDER_NOTICE =
+  'Đang dùng dịch vụ nhận dạng chữ miễn phí đặt tại nước ngoài. Bản scan sẽ được ' +
+  'gửi ra ngoài hệ thống để đọc chữ. Chỉ nên dùng với văn bản mẫu hoặc văn bản ' +
+  'không chứa thông tin cá nhân của công dân.';
 
 /** Ngưỡng kích thước tệp của bậc miễn phí — vượt là dịch vụ từ chối */
 const FREE_TIER_MAX_BYTES = 1024 * 1024;
@@ -57,24 +78,27 @@ interface OcrSpaceResponse {
 export class OcrSpaceProvider implements OcrProvider {
   private readonly logger = new Logger(OcrSpaceProvider.name);
 
-  constructor(
-    private readonly config: ConfigService,
-    private readonly files: FilesService,
-  ) {}
+  // Không nhận ConfigService: cấu hình (khoá, điểm cuối) do OcrService giải
+  // quyết theo luật ưu tiên rồi truyền vào `extract`
+  constructor(private readonly files: FilesService) {}
 
-  async extract(fileRef: string): Promise<OcrExtractResult> {
-    // Chặn cứng ở production — xem khối chú thích đầu tệp
-    if (this.config.get<string>('nodeEnv') === 'production') {
-      throw new ServiceUnavailableException(
-        'Provider OCR "ocrspace" là dịch vụ miễn phí chỉ dùng để thử nghiệm, ' +
-          'không được phép chạy trên môi trường production. Vui lòng chọn nhà cung cấp chính thức.',
-      );
-    }
+  async extract(fileRef: string, config: OcrRuntimeConfig): Promise<OcrExtractResult> {
+    // Ghi vết mỗi lượt gọi: đây là lúc một bản scan rời khỏi hệ thống ra máy chủ
+    // nước ngoài, nên phải có dấu trong nhật ký để rà lại được sau này.
+    //
+    // KHÔNG ghi tên tệp: tên bản scan do cán bộ đặt, thực tế hay chứa số hồ sơ
+    // hoặc tên công dân — ghi vào log là lộ dữ liệu cá nhân qua đường nhật ký.
+    this.logger.warn(
+      'Gửi một bản scan sang dịch vụ OCR miễn phí ocr.space (máy chủ nước ngoài). ' +
+        'Chỉ dùng với văn bản mẫu; văn bản thật của công dân cần nhà cung cấp có ' +
+        'thoả thuận xử lý dữ liệu cá nhân — xem SECURITY.md.',
+    );
 
-    const apiKey = (this.config.get<string>('ocr.apiKey') ?? '').trim();
+    const apiKey = (config.apiKey ?? '').trim();
     if (!apiKey) {
       throw new ServiceUnavailableException(
-        'Chưa đặt OCR_API_KEY cho provider "ocrspace". Đăng ký khoá miễn phí tại ocr.space/ocrapi.',
+        'Chưa có khoá API cho nhà cung cấp OCR "ocrspace". Vui lòng nhập khoá ở trang ' +
+          'Cấu hình → Tích hợp, hoặc đặt biến OCR_API_KEY. Khoá miễn phí lấy tại ocr.space/ocrapi.',
       );
     }
 
@@ -87,8 +111,9 @@ export class OcrSpaceProvider implements OcrProvider {
       );
     }
 
-    const text = await this.callOcrSpace(buffer, file.mimeType, apiKey, file.originalName);
-    return { fields: parseAdministrativeDocument(text) };
+    const endpoint = (config.endpoint ?? '').trim() || DEFAULT_ENDPOINT;
+    const text = await this.callOcrSpace(buffer, file.mimeType, apiKey, file.originalName, endpoint);
+    return { fields: parseAdministrativeDocument(text), notice: PROVIDER_NOTICE };
   }
 
   /** Gọi ocr.space, trả về toàn bộ văn bản đọc được */
@@ -97,8 +122,8 @@ export class OcrSpaceProvider implements OcrProvider {
     mimeType: string,
     apiKey: string,
     originalName: string,
+    endpoint: string,
   ): Promise<string> {
-    const endpoint = (this.config.get<string>('ocr.endpoint') ?? '').trim() || DEFAULT_ENDPOINT;
     const form = new FormData();
     /* PHẢI gửi kèm tên tệp CÓ ĐUÔI: ocr.space nhận diện loại tệp qua đuôi tên,
        gửi tên trống hay tên không đuôi thì dịch vụ trả lỗi E216 dù Content-Type

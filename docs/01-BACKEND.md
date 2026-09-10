@@ -49,7 +49,7 @@ vào `shared` sẽ làm ranh giới module nhoè đi.
 |---|---|---|
 | `users` | 19 | Tài khoản cán bộ, tài khoản công dân, phiên đăng nhập, danh sách chặn |
 | `content` | 19 | CMS: bài viết, video, bản tin truyền thanh — kèm nhóm `/public` cho công dân |
-| `settings` | 12 | SLA, cây tổ chức, lĩnh vực phản ánh, danh mục vai trò |
+| `settings` | 14 | SLA, cây tổ chức, lĩnh vực phản ánh, danh mục vai trò, nhà cung cấp tích hợp |
 | `feedback` | 10 | Phản ánh của người dân, luồng xử lý và SLA |
 | `catalogs` | 9 | Danh mục dùng chung cho dropdown + danh bạ công khai |
 | `map` | 8 | Bản đồ kinh tế số: lớp dữ liệu và ghim |
@@ -497,10 +497,13 @@ phản hồi cùng hình dạng với `GET /feedback/:code`.
 
 ## 7. Chạy và kiểm thử
 
+> Ba tệp `.env` / `.env.example` / `.env.local` khác vai trò nhau ra sao, và vì sao
+> không được tạo `backend/.env` → [`12-BIEN-MOI-TRUONG.md`](12-BIEN-MOI-TRUONG.md).
+
 ```bash
 cd backend
 npm install
-cp .env.example .env.local          # ứng dụng đọc .env.local, KHÔNG đọc .env
+cp .env.example .env.local          # điền giá trị thật vào đây — KHÔNG commit
 docker compose up -d                # mongo + rabbitmq cho môi trường phát triển
 npm run seed                        # 10 tài khoản + cấu hình SLA + dữ liệu demo
 npm run start:dev                   # http://localhost:3001/api/v1

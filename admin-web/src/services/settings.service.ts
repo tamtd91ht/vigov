@@ -202,3 +202,59 @@ export async function deleteCategory(key: string): Promise<{ key: string; delete
     `/settings/categories/${encodeURIComponent(key)}`,
   );
 }
+
+// ─── Nhà cung cấp bên thứ 3 ────────────────────────────────────────────────
+
+/**
+ * Cấu hình nhà cung cấp OCR.
+ *
+ * Máy chủ KHÔNG bao giờ trả khoá API dạng rõ — chỉ `apiKeyMasked` để cán bộ
+ * đối chiếu đúng khoá mình đã dán. Vì vậy giao diện không thể gửi lại khoá cũ
+ * để "giữ nguyên": bỏ trống ô khoá khi lưu nghĩa là giữ khoá đang có.
+ */
+export interface OcrIntegrationStatus {
+  provider: string;
+  endpoint: string;
+  apiKeyMasked: string;
+  hasStoredKey: boolean;
+  /** Khoá đã lưu nhưng không giải mã được — thường do JWT_SECRET đã đổi */
+  storedKeyUnreadable: boolean;
+  /** Cấu hình đang lấy từ đâu: đã lưu ở đây, hay còn theo biến môi trường */
+  source: "database" | "env";
+  updatedBy: string;
+  updatedAt: string | null;
+  /** Nhà cung cấp máy chủ hỗ trợ — nguồn chuẩn, giao diện không tự khai bản sao */
+  supportedProviders: string[];
+}
+
+export interface OcrIntegrationInput {
+  provider?: string;
+  /** Bỏ qua = giữ khoá đang lưu; chuỗi rỗng = xoá khoá */
+  apiKey?: string;
+  endpoint?: string;
+}
+
+/** GET /settings/integrations/ocr */
+export async function fetchOcrIntegration(): Promise<OcrIntegrationStatus> {
+  if (appConfig.api.useMocks) {
+    return mockDelay({
+      provider: "mock",
+      endpoint: "",
+      apiKeyMasked: "",
+      hasStoredKey: false,
+      storedKeyUnreadable: false,
+      source: "env" as const,
+      updatedBy: "",
+      updatedAt: null,
+      supportedProviders: ["mock", "ocrspace"],
+    });
+  }
+  return apiClient.get<OcrIntegrationStatus>("/settings/integrations/ocr");
+}
+
+/** PATCH /settings/integrations/ocr — khoá được mã hoá ở máy chủ trước khi lưu */
+export async function saveOcrIntegration(
+  input: OcrIntegrationInput,
+): Promise<OcrIntegrationStatus> {
+  return apiClient.patch<OcrIntegrationStatus>("/settings/integrations/ocr", input);
+}

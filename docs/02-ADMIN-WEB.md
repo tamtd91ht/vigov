@@ -47,7 +47,7 @@ admin-web/src/
 | `/feedback` | Phản ánh | Đếm ngược SLA, ghim bản đồ, ảnh hiện trường (bấm vào ảnh để mở bản đầy đủ ở tab mới — ô thumbnail dùng `object-fit: cover` nên ảnh dọc của điện thoại bị cắt) |
 | `/map` | Bản đồ kinh tế số | Lớp dữ liệu và ghim cơ sở; nền bản đồ thật hoặc bản mô phỏng, chọn bằng `NEXT_PUBLIC_MAP_PROVIDER` (mục 4.5) |
 | `/reports` | Báo cáo | Kết xuất Excel; PDF/PPTX trả 501 ở Phase 1 |
-| `/settings` | Cấu hình | SLA, cây tổ chức, lĩnh vực phản ánh, tài khoản cán bộ |
+| `/settings` | Cấu hình | SLA, cây tổ chức, lĩnh vực phản ánh, tài khoản cán bộ, nhà cung cấp tích hợp |
 | `/cms` | Nội dung | Bài viết, video, truyền thanh, gửi thông báo hàng loạt |
 | `/users` | Người dùng Mini App | Công dân (kèm ngày đăng ký, hoạt động gần nhất), phiên đăng nhập, danh sách chặn; xoá mềm tài khoản công dân (chỉ vai trò quản trị, khôi phục ở bộ lọc "Đã xoá") |
 | `/profile` | Hồ sơ cá nhân | Tài khoản đang đăng nhập, thiết bị đang mở phiên, tự đổi mật khẩu |
@@ -285,6 +285,9 @@ nhân — hai bản sao của cùng một bộ luật kiểm tra sẽ lệch nha
 |---|---|
 | `.env.local` | Giá trị thật — ứng dụng đọc tệp này, **không commit** |
 | `.env.example` | Mẫu, chỉ chứa giá trị giữ chỗ — commit |
+
+> Vai trò đầy đủ của ba tệp env, thứ tự ưu tiên khi nạp và các cạm bẫy thường gặp →
+> [`12-BIEN-MOI-TRUONG.md`](12-BIEN-MOI-TRUONG.md).
 
 > **`NEXT_PUBLIC_*` được nhúng cứng vào mã JavaScript lúc build**, không đọc lúc
 > chạy. Sửa xong **phải dựng lại image**; đổi biến rồi khởi động lại là vô tác

@@ -155,6 +155,9 @@ một dòng giải thích là đã ghim đúng vị trí nhưng chưa tra đư�
 | `.env.local` | Giá trị thật — ứng dụng đọc tệp này, **không commit** |
 | `.env.example` | Mẫu — commit |
 
+> Vai trò đầy đủ của ba tệp env, thứ tự ưu tiên khi nạp và các cạm bẫy thường gặp →
+> [`12-BIEN-MOI-TRUONG.md`](12-BIEN-MOI-TRUONG.md).
+
 > **`VITE_*` được nhúng cứng vào bundle lúc build.** Sửa xong phải dựng lại;
 > đổi biến rồi khởi động lại là vô tác dụng. Không đặt bí mật vào tiền tố này.
 

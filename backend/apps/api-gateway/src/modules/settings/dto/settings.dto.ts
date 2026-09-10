@@ -140,6 +140,47 @@ export class CreateFeedbackCategoryDto {
   order?: number;
 }
 
+/** Giới hạn độ dài khoá API và điểm cuối của nhà cung cấp */
+export const MAX_API_KEY_LENGTH = 500;
+export const MAX_ENDPOINT_LENGTH = 300;
+
+/**
+ * Cập nhật cấu hình nhà cung cấp OCR.
+ *
+ * Ba trường tuỳ chọn để sửa từng phần (đổi điểm cuối mà không phải dán lại
+ * khoá). Bỏ qua `apiKey` = giữ khoá đang lưu; gửi chuỗi rỗng = xoá khoá.
+ */
+export class UpdateOcrIntegrationDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  @Matches(/^[a-z0-9-]*$/, {
+    message: 'Mã nhà cung cấp chỉ gồm chữ thường, số và dấu gạch ngang',
+  })
+  provider?: string;
+
+  /**
+   * Khoá API dạng rõ — backend mã hoá trước khi lưu, không bao giờ trả lại.
+   * Tên trường `apiKey` nằm trong `REDACTED_FIELDS` nên nhật ký ghi `***`.
+   */
+  @IsOptional()
+  @IsString()
+  @MaxLength(MAX_API_KEY_LENGTH, {
+    message: `Khoá API không vượt quá ${MAX_API_KEY_LENGTH} ký tự`,
+  })
+  apiKey?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(MAX_ENDPOINT_LENGTH, {
+    message: `Điểm cuối không vượt quá ${MAX_ENDPOINT_LENGTH} ký tự`,
+  })
+  @Matches(/^(https?:\/\/.+)?$/, {
+    message: 'Điểm cuối phải là địa chỉ http:// hoặc https://, hoặc để trống',
+  })
+  endpoint?: string;
+}
+
 /**
  * Cập nhật lĩnh vực — KHÔNG cho đổi `key`.
  * Key đã nằm trong `feedbacks.categoryKey` và `sla_rules.categoryKey` của các

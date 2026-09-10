@@ -13,6 +13,8 @@ export * from './auth/session-registry.module';
 export * from './events/events';
 export * from './zalo/me-info';
 
+export * from './crypto/secret-box';
+
 export * from './dto/soft-delete.dto';
 export * from './schemas/soft-delete';
 

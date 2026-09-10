@@ -345,7 +345,9 @@ export class DocumentsService {
     }));
 
     await doc.save();
-    return { arrivalNo: doc.arrivalNo, ocrFields: doc.ocrFields };
+    // `notice` là cảnh báo do provider tự khai (ví dụ dịch vụ miễn phí gửi bản
+    // scan ra nước ngoài) — trả nguyên ra để giao diện hiện cho cán bộ.
+    return { arrivalNo: doc.arrivalNo, ocrFields: doc.ocrFields, notice: result.notice };
   }
 
   /**
@@ -376,6 +378,9 @@ export class DocumentsService {
         value: field.value,
         confidence: field.confidence,
       })),
+      // Cảnh báo do provider tự khai — giao diện hiện lại cho cán bộ, không cần
+      // biết đang chạy nhà cung cấp nào
+      notice: result.notice,
     };
   }
 
