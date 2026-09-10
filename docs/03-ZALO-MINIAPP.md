@@ -179,7 +179,7 @@ này). Lời văn nằm ở `src/config/demo.config.ts`.
 
 Đặt `false` để có bản chính thức — nhớ trỏ luôn `VITE_ORG_NAME` /
 `VITE_ORG_PARENT` về tên đơn vị thật, giá trị mặc định trong mã nguồn cố ý là
-tên hư cấu. Bối cảnh và các bước nộp: `06-ZALO-MO-TA-BAN-DEMO.md`.
+tên hư cấu. Bối cảnh và các bước nộp: `10-ZALO-MO-TA-BAN-DEMO.md`.
 
 **CORS:** backend phải cho phép `https://h5.zdn.vn` — mọi Mini App chạy trong
 webview mang origin này.
@@ -266,5 +266,5 @@ Mini App nằm ở `app-config.json`.
 
 ## 9. Tài liệu liên quan
 
-`01-BACKEND.md` · `02-ADMIN-WEB.md` · `04-TRIEN-KHAI.md` ·
-`../deploy/RELEASE.md` (hồ sơ phát hành Zalo Mini App Store)
+`01-BACKEND.md` · `02-ADMIN-WEB.md` · `04-TRIEN-KHAI-VPS.md` ·
+`08-ZALO-PHAT-HANH.md` (hồ sơ phát hành Zalo Mini App Store)

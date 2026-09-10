@@ -550,8 +550,8 @@ Chi tiết rủi ro bảo mật và 12 việc bắt buộc trước production: 
 
 ## 10. Tài liệu liên quan
 
-`02-ADMIN-WEB.md` · `03-ZALO-MINIAPP.md` · `04-TRIEN-KHAI.md` ·
-`../SECURITY.md` · `../deploy/README.md` · `../plans/` (plan chi tiết từng task)
+`02-ADMIN-WEB.md` · `03-ZALO-MINIAPP.md` · `04-TRIEN-KHAI-VPS.md` ·
+`../SECURITY.md` · `06-VAN-HANH.md` · `../plans/` (plan chi tiết từng task)
 
 ---
 

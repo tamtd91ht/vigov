@@ -175,8 +175,8 @@ Kèm theo, hoàn tất hai khoảng trống của luồng ảnh phản ánh:
 
 ## 7. Tài liệu liên quan
 
-`docs/` (bộ tài liệu bàn giao: Backend · Web Quản trị · Zalo Mini App · Triển khai · hồ sơ xin quyền
-API Zalo · mô tả bản demo Zalo) · `README.md` (cách chạy, xử lý sự cố) · `SECURITY.md` (rà soát bảo mật,
-việc bắt buộc trước production) · `deploy/README.md` (triển khai) · `deploy/VPS-VA-ZALO.md` (thao tác trên
-VPS và nộp Zalo) · `deploy/RELEASE.md` (hồ sơ 3 store) · `deploy/UAT.md` (10 kịch bản hồi quy) ·
-`plans/` (plan chi tiết từng task) · `pending-tasks.json` (trạng thái 61 task).
+`docs/` — **nơi duy nhất chứa tài liệu**, chỉ mục ở `docs/README.md`: Backend · Web Quản trị ·
+Zalo Mini App · Triển khai VPS · Kubernetes và Jenkins · Vận hành · UAT · Phát hành và xin quyền
+Zalo. `README.md` (cách chạy, xử lý sự cố) · `SECURITY.md` (rà soát bảo mật, việc bắt buộc trước
+production) · `deploy/` (tệp cấu hình chạy được) · `k8s/` (manifest Kubernetes) · `plans/` (plan chi
+tiết từng task) · `pending-tasks.json` (trạng thái task).

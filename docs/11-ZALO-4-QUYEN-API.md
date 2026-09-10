@@ -3,7 +3,7 @@
 Tờ làm việc để ngồi trước Console điền cho xong. Mỗi quyền một mục, đủ bốn thứ:
 **ID · mục đích · mô tả dán vào form · cách chụp ảnh minh hoạ**.
 
-Khác gì `05-ZALO-XIN-QUYEN-API.md`: tệp đó là hồ sơ tổng — thiết lập chung,
+Khác gì `09-ZALO-XIN-QUYEN-API.md`: tệp đó là hồ sơ tổng — thiết lập chung,
 webhook, điều khoản, việc còn treo. Tệp này chỉ có phần điền form cho bốn quyền,
 gom theo từng quyền thay vì rải ra nhiều mục, để không phải nhảy qua lại giữa
 "lý do" ở mục 3 và "ảnh" ở mục 4.
@@ -106,7 +106,9 @@ việc thay cho mô tả bằng lời.
 > úng — phiếu cần một điểm toạ độ để xác định chỗ xảy ra sự việc, thay cho việc
 > mô tả bằng lời.
 >
-> Luồng cụ thể: người dùng vào bước 2 của biểu mẫu phản ánh, ứng dụng gọi
+> Luồng cụ thể: người dùng vào bước 2 của biểu mẫu phản ánh, ứng dụng hiện một
+> hộp thoại giải thích vì sao cần vị trí và hỏi ý kiến người dùng trước. Chỉ khi
+> người dùng bấm "Tiếp tục lấy vị trí", ứng dụng mới gọi
 > `getLocation` để lấy token, gửi token về máy chủ và đổi lấy toạ độ ở phía máy
 > chủ. Toạ độ được hiển thị ngay trên một bản đồ nhỏ để người dùng tự kiểm tra
 > điểm có đúng chỗ mình đang đứng hay không trước khi gửi, và người dùng luôn sửa

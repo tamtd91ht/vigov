@@ -108,5 +108,5 @@ Phát một bản tin, chuyển sang màn khác → kiểm tra thanh phát thu n
 - [ ] Kiểm thử thiết bị thật đủ hạng mục ở mục 3, không còn lỗi chặn (blocker).
 - [ ] `npm run test:e2e` của backend pass toàn bộ.
 - [ ] Không còn lỗi mức Cao trong `SECURITY.md`.
-- [ ] Zalo Mini App đã nộp kiểm duyệt (hoặc đã được duyệt) theo `deploy/RELEASE.md`.
+- [ ] Zalo Mini App đã nộp kiểm duyệt (hoặc đã được duyệt) theo `docs/08-ZALO-PHAT-HANH.md`.
 - [ ] Bàn giao: mã nguồn, tài liệu triển khai, tài khoản quản trị, hướng dẫn sử dụng cho cán bộ.

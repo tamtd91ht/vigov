@@ -359,5 +359,5 @@ của môi trường tương ứng.
 
 ## 11. Tài liệu liên quan
 
-`01-BACKEND.md` · `03-ZALO-MINIAPP.md` · `04-TRIEN-KHAI.md` ·
+`01-BACKEND.md` · `03-ZALO-MINIAPP.md` · `04-TRIEN-KHAI-VPS.md` ·
 `../SECURITY.md` · `../admin-web/AGENTS.md`

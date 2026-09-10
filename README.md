@@ -19,7 +19,9 @@ Ba module chung một dự án (mỗi module tự chứa, sẵn sàng tách repo
 - **`ViGov_Phase1_Req.xlsx`** — WBS yêu cầu gốc của khách.
 - **`BAO-CAO-TIEN-DO.md`** — báo cáo tiến độ + tài liệu kỹ thuật ngắn gọn (kiến trúc, đã tích hợp gì, còn thiếu gì).
 - **`SECURITY.md`** — kết quả rà soát bảo mật (P4-36) và việc cần làm trước khi lên production.
-- **`deploy/`** — triển khai VPS + nộp Zalo Mini App (`VPS-VA-ZALO.md`), hạ tầng nền (`README.md`), hồ sơ phát hành (`RELEASE.md`), kế hoạch UAT (`UAT.md`), cấu hình nginx mẫu (`nginx-vigov.conf`).
+- **`docs/`** — bộ tài liệu bàn giao: kiến trúc từng module, triển khai VPS, triển khai Kubernetes, vận hành, UAT, phát hành Zalo. Mục lục ở `docs/README.md`.
+- **`deploy/`** — chỉ tệp chạy được: `backup-mongo.sh`, cấu hình nginx mẫu (`nginx-vigov.conf`, `gateway-151-vigov.conf`). Tài liệu triển khai nằm ở `docs/`.
+- **`k8s/`** — manifest Kubernetes mẫu (kustomize base + overlay staging/production).
 - **`docker-compose.yml` · `Jenkinsfile` · `.github/workflows/ci.yml`** — dựng toàn hệ và CI/CD (P4-34).
 
 ## Chạy nhanh toàn bộ môi trường phát triển
@@ -59,9 +61,9 @@ Lệnh tiện ích khác ở thư mục gốc: `npm run check:all` (type-check +
 
 ## Triển khai lên máy chủ
 
-Xem **[`docs/04-TRIEN-KHAI.md`](docs/04-TRIEN-KHAI.md)** — runbook từng bước từ VPS
+Xem **[`docs/04-TRIEN-KHAI-VPS.md`](docs/04-TRIEN-KHAI-VPS.md)** — runbook từng bước từ VPS
 trống tới hệ thống chạy thật (Bước 0–11), rồi chuyển sang Jenkins (Bước 12).
-`deploy/README.md` là tài liệu tra cứu theo chủ đề khi cần đào sâu hoặc xử lý sự cố.
+`docs/06-VAN-HANH.md` là tài liệu tra cứu theo chủ đề khi cần đào sâu hoặc xử lý sự cố.
 
 Bộ tài liệu bàn giao đầy đủ: [`docs/`](docs/README.md).
 
