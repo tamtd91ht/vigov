@@ -1,0 +1,11 @@
+# Namespace gốc. Overlay đặt tên thật (vigov-staging / vigov-production) qua
+# trường `namespace` trong kustomization.yaml của từng môi trường.
+#
+# Mỗi xã/phường nên là MỘT namespace riêng khi triển khai đa đơn vị: tách hạn
+# mức tài nguyên, tách Secret, và giới hạn được phạm vi sự cố trong một xã.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: vigov
+  labels:
+    app.kubernetes.io/part-of: vigov

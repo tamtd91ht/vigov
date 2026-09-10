@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  labels:
+    app.kubernetes.io/name: backend
+    app.kubernetes.io/part-of: vigov
+spec:
+  # ⚠ 1 REPLICA LÀ CÓ CHỦ Ý cho lần chuyển đầu tiên.
+  #
+  # Tăng lên >1 thì PHẢI xử lý trước ba thứ, nếu không hệ thống hỏng theo cách
+  # khó thấy (xem docs/05-TRIEN-KHAI-K8S.md mục 3.2):
+  #   1. OTP_STORE phải là "mongo" — driver "memory" giữ mã trong bộ nhớ tiến
+  #      trình, mã sinh ở pod A không xác thực được ở pod B ⇒ công dân KHÔNG
+  #      đăng nhập được, và bộ đếm nhập sai không dùng chung nên người dò mã
+  #      chỉ cần đổi pod là có thêm lượt.
+  #   2. Socket.IO cần Redis adapter — không có thì thông báo realtime không
+  #      xuyên pod, cán bộ ở pod khác không nhận được.
+  #   3. Volume uploads phải ReadWriteMany hoặc chuyển STORAGE_DRIVER=s3 —
+  #      pod trên node khác sẽ không thấy ảnh hiện trường pod kia vừa ghi.
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0   # luôn giữ đủ pod đang phục vụ khi cập nhật
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: backend
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: backend
+        app.kubernetes.io/part-of: vigov
+    spec:
+      # Backend phải đợi Mongo và RabbitMQ sẵn sàng. k8s không có depends_on
+      # như compose, nên dùng initContainer chặn cho tới khi cổng mở.
+      initContainers:
+        - name: wait-for-mongo
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z mongo 27017; do
+                echo "Chờ MongoDB..."
+                sleep 2
+              done
+        - name: wait-for-rabbitmq
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              until nc -z rabbitmq 5672; do
+                echo "Chờ RabbitMQ..."
+                sleep 2
+              done
+      containers:
+        - name: backend
+          # Overlay ghi đè registry + tag. Luôn dùng tag bất biến <branch>-<sha7>,
+          # KHÔNG dùng "latest": rollback cần biết chính xác đang chạy bản nào.
+          image: vigov-backend:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3001
+          envFrom:
+            - configMapRef:
+                name: vigov-config
+            - secretRef:
+                name: vigov-secrets
+
+          # readiness: chưa sẵn sàng thì KHÔNG nhận traffic (nhưng không bị giết)
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          # liveness: treo hẳn thì khởi động lại.
+          # initialDelaySeconds PHẢI lớn hơn thời gian khởi động thật (nối Mongo
+          # + RabbitMQ). Đặt quá ngắn thì pod bị giết giữa lúc đang khởi động và
+          # lặp vô hạn — biểu hiện là CrashLoopBackOff mà log không có lỗi gì.
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: http
+            initialDelaySeconds: 40
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              # Không đặt limit CPU: Node là đơn luồng, bị throttle CPU gây trễ
+              # khó truy. Chỉ giới hạn RAM để một pod rò rỉ không kéo sập node.
+              memory: 1Gi
+
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/uploads
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop: ["ALL"]
+
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: vigov-uploads

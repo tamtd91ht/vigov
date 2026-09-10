@@ -1,0 +1,93 @@
+# Service = tên gọi ổn định trong nội bộ cụm. Pod chết và được dựng lại với IP
+# khác, nhưng tên Service không đổi — đây là thứ MONGO_URI và RABBITMQ_URI trỏ
+# tới (hostname "mongo", "rabbitmq"), giống hệt vai trò của tên service trong
+# mạng vigov-net của docker-compose.
+#
+# Cả bốn đều là ClusterIP: KHÔNG lộ ra ngoài cụm. Đường ra Internet duy nhất là
+# Ingress (ingress.yaml).
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  labels:
+    app.kubernetes.io/name: backend
+    app.kubernetes.io/part-of: vigov
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: backend
+  ports:
+    - name: http
+      port: 3001
+      targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin-web
+  labels:
+    app.kubernetes.io/name: admin-web
+    app.kubernetes.io/part-of: vigov
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: admin-web
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zalo-miniapp
+  labels:
+    app.kubernetes.io/name: zalo-miniapp
+    app.kubernetes.io/part-of: vigov
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: zalo-miniapp
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+---
+# Headless (clusterIP: None) — bắt buộc cho StatefulSet: mỗi pod có một tên DNS
+# ổn định riêng (mongo-0.mongo, mongo-1.mongo…), điều kiện để dựng replica set
+# về sau.
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+  labels:
+    app.kubernetes.io/name: mongo
+    app.kubernetes.io/part-of: vigov
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: mongo
+  ports:
+    - name: mongo
+      port: 27017
+      targetPort: mongo
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq
+  labels:
+    app.kubernetes.io/name: rabbitmq
+    app.kubernetes.io/part-of: vigov
+spec:
+  clusterIP: None
+  selector:
+    app.kubernetes.io/name: rabbitmq
+  ports:
+    - name: amqp
+      port: 5672
+      targetPort: amqp
+    - name: management
+      port: 15672
+      targetPort: management

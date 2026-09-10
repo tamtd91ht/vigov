@@ -1,0 +1,38 @@
+# Kho tệp đính kèm: ảnh hiện trường của phiếu phản ánh và bản scan văn bản đến.
+#
+# ⚠ ĐÂY LÀ TÀI LIỆU HÀNH CHÍNH, KHÔNG TÁI TẠO ĐƯỢC. Mất PVC này là mất bằng
+# chứng của hồ sơ đã tiếp nhận. Phải nằm trong phạm vi sao lưu.
+#
+# ⚠ ReadWriteOnce CHỈ ĐÚNG KHI backend chạy 1 replica.
+#
+# Tăng replicas backend lên >1 thì pod trên node khác KHÔNG mount được volume
+# này, và biểu hiện rất khó truy: pod mới kẹt ở trạng thái ContainerCreating,
+# hoặc (tệ hơn, nếu cùng node) chạy được nhưng mỗi pod thấy một tập tệp khác
+# nhau — người dân tải ảnh lên xong, cán bộ mở ra không thấy.
+#
+# Hai cách xử lý (docs/05-TRIEN-KHAI-K8S.md mục 3.4):
+#
+#   A. Đổi accessModes sang ReadWriteMany.
+#      Cần StorageClass hỗ trợ RWX: NFS, CephFS, Longhorn, Azure Files…
+#      KHÔNG phải cụm nào cũng có — kiểm bằng: kubectl get storageclass
+#
+#   B. (KHUYẾN NGHỊ) Chuyển sang object storage:
+#      đặt STORAGE_DRIVER=s3 trong ConfigMap và điền S3_* trong Secret.
+#      Backend đã có sẵn adapter, hết hẳn bài toán volume chia sẻ, và sao lưu
+#      dùng luôn cơ chế của object storage.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vigov-uploads
+  labels:
+    app.kubernetes.io/name: uploads
+    app.kubernetes.io/part-of: vigov
+spec:
+  accessModes:
+    - ReadWriteOnce
+  # Overlay đặt storageClassName theo cụm thật.
+  resources:
+    requests:
+      # Ước tính: ~30 phiếu/ngày × 3 ảnh × 1,5 MB ≈ 50 GB/năm, cộng bản scan
+      # văn bản ~36 GB/năm. 100Gi đủ cho khoảng một năm của một xã ~10.000 dân.
+      storage: 100Gi

@@ -1,0 +1,84 @@
+# Cửa duy nhất ra Internet. Ba tên miền, ba đích khác nhau.
+#
+# ⚠ CẠM BẪY CORS — ĐÃ GẶP THẬT TRÊN BẢN VPS
+#
+# TUYỆT ĐỐI KHÔNG bật nginx.ingress.kubernetes.io/enable-cors ở đây.
+#
+# Trên bản triển khai VPS, gateway nginx tự chèn bộ header CORS dùng chung, và
+# bộ đó THIẾU PATCH. Trình duyệt đọc danh sách này ở bước preflight; không thấy
+# PATCH thì CHẶN request ngay tại máy người dùng — request không bao giờ tới
+# backend. Triệu chứng: thao tác tạo (POST) chạy bình thường, thao tác sửa
+# (PATCH) báo "không kết nối được máy chủ", dù backend hoàn toàn khoẻ.
+#
+# Backend đã khai CORS đầy đủ và đúng: GET POST PATCH PUT DELETE OPTIONS, origin
+# lấy từ biến CORS_ORIGINS gồm cả https://h5.zdn.vn cho Zalo Mini App
+# (backend/apps/api-gateway/src/security.middleware.ts). Hai nơi cùng khai CORS
+# chính là gốc của lỗi — để backend tự trả là hết cả lớp lỗi này.
+#
+# Kiểm sau khi dựng, PHẢI thấy PATCH trong kết quả:
+#   curl -sI -X OPTIONS https://api-vigov.<tên-miền>/api/v1/health \
+#     -H 'Origin: https://h5.zdn.vn' \
+#     -H 'Access-Control-Request-Method: PATCH' | grep -i allow-methods
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vigov
+  labels:
+    app.kubernetes.io/part-of: vigov
+  annotations:
+    # Kích thước tối đa mỗi ảnh hiện trường. PHẢI khớp STORAGE_MAX_FILE_SIZE
+    # của backend (20 MiB), nếu không người dân chờ tải hết ảnh rồi mới nhận
+    # 413 từ proxy.
+    nginx.ingress.kubernetes.io/proxy-body-size: "21m"
+
+    # Tải ảnh từ điện thoại qua mạng di động có thể chậm — nới thời gian chờ.
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+
+    # Ép HTTPS: Mini App chạy trong webview Zalo, gọi http:// sẽ bị chặn.
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+
+    # Overlay bật khi đã cài cert-manager:
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - admin-vigov.example.vn
+        - api-vigov.example.vn
+        - miniapp-vigov.example.vn
+      secretName: vigov-tls
+  rules:
+    # --- Web Quản trị (cán bộ) ---
+    - host: admin-vigov.example.vn
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: admin-web
+                port: { name: http }
+
+    # --- API (cả cán bộ lẫn công dân gọi vào đây) ---
+    - host: api-vigov.example.vn
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port: { name: http }
+
+    # --- Bản xem trước Mini App (nội bộ) ---
+    # Mini App THẬT phục vụ tại h5.zdn.vn trên hạ tầng Zalo, không phải ở đây.
+    - host: miniapp-vigov.example.vn
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: zalo-miniapp
+                port: { name: http }

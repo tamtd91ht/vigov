@@ -1,0 +1,52 @@
+# Biến môi trường KHÔNG bí mật của backend.
+#
+# Mật khẩu, chuỗi kết nối có credential, khoá API → Secret (secret.example.yaml),
+# KHÔNG đặt ở đây. ConfigMap hiển thị dạng rõ với bất kỳ ai đọc được namespace.
+#
+# Đối chiếu danh sách biến đầy đủ ở ../../.env.example.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vigov-config
+data:
+  NODE_ENV: "production"
+  TZ: "Asia/Ho_Chi_Minh"
+  PORT: "3001"
+  API_PREFIX: "api/v1"
+
+  JWT_EXPIRES_IN: "8h"
+  REFRESH_EXPIRES_IN: "7d"
+
+  # BẮT BUỘC là "mongo" khi backend chạy nhiều hơn 1 replica.
+  # Driver "memory" giữ mã OTP trong bộ nhớ tiến trình: mã sinh ở pod A không
+  # xác thực được ở pod B ⇒ công dân KHÔNG đăng nhập được. Bộ đếm nhập sai cũng
+  # không dùng chung ⇒ người dò mã chỉ cần đổi pod là có thêm lượt.
+  OTP_STORE: "mongo"
+
+  RABBITMQ_NOTIFICATION_QUEUE: "vigov.notification"
+  RABBITMQ_WORKFLOW_QUEUE: "vigov.workflow"
+
+  # Hạn mức chung; riêng nhóm đăng nhập/OTP có hạn mức chặt hơn trong mã nguồn.
+  THROTTLE_TTL_SECONDS: "60"
+  THROTTLE_LIMIT: "120"
+  FEEDBACK_MAX_PER_DAY: "5"
+
+  # local = ghi vào volume uploads. Chạy nhiều replica thì PHẢI là PVC
+  # ReadWriteMany, hoặc chuyển sang "s3" — xem docs/05-TRIEN-KHAI-K8S.md mục 3.4.
+  STORAGE_DRIVER: "local"
+  STORAGE_LOCAL_DIR: "/app/uploads"
+  # Phải khớp proxy-body-size của Ingress, nếu không người dân chờ tải hết ảnh
+  # rồi mới nhận 413. 20971520 = 20 MiB.
+  STORAGE_MAX_FILE_SIZE: "20971520"
+
+  # Nhà cung cấp bên thứ 3 — "mock" là bản giả lập, không gọi mạng.
+  # Đổi sang nhà cung cấp thật thì khoá API đặt trong Secret.
+  OCR_PROVIDER: "mock"
+  IDCARD_PROVIDER: "mock"
+  GEO_PROVIDER: "mock"
+  PUSH_PROVIDER: "mock"
+
+  # Whitelist CORS. PHẢI có https://h5.zdn.vn — đó là origin của Zalo Mini App,
+  # thiếu là Mini App gọi API bị trình duyệt chặn.
+  # Overlay ghi đè giá trị này theo tên miền thật của từng môi trường.
+  CORS_ORIGINS: "https://h5.zdn.vn"

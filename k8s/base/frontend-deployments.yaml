@@ -1,0 +1,115 @@
+# Hai frontend gộp một tệp: chúng cùng khuôn (không trạng thái, chỉ phục vụ
+# bundle tĩnh hoặc SSR), khác nhau ở cổng và image.
+#
+# ⚠ ĐIỂM KHÁC BIỆT QUAN TRỌNG SO VỚI BACKEND:
+# NEXT_PUBLIC_* và VITE_* được NHÚNG VÀO BUNDLE LÚC BUILD, không đọc lúc chạy.
+# Nghĩa là ConfigMap/Secret KHÔNG tác động gì tới hai deployment này — đổi URL
+# API phải BUILD LẠI IMAGE, không phải sửa manifest.
+# → docs/06-VAN-HANH.md mục 3.3
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-web
+  labels:
+    app.kubernetes.io/name: admin-web
+    app.kubernetes.io/part-of: vigov
+spec:
+  replicas: 2   # không trạng thái, nhân bản thoải mái
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: admin-web
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: admin-web
+        app.kubernetes.io/part-of: vigov
+    spec:
+      containers:
+        - name: admin-web
+          image: vigov-admin-web:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3000
+          env:
+            - name: NODE_ENV
+              value: "production"
+            - name: TZ
+              value: "Asia/Ho_Chi_Minh"
+            # Phải lớn hơn keepalive timeout của Ingress, nếu không sẽ 502 ngẫu
+            # nhiên: Next đóng socket rảnh trong khi proxy còn giữ trong pool và
+            # tái dùng đúng socket đã đóng.
+            - name: KEEP_ALIVE_TIMEOUT
+              value: "65000"
+          readinessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 30
+            periodSeconds: 20
+            failureThreshold: 3
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 768Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities: { drop: ["ALL"] }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zalo-miniapp
+  labels:
+    app.kubernetes.io/name: zalo-miniapp
+    app.kubernetes.io/part-of: vigov
+spec:
+  # LƯU Ý: Mini App thật KHÔNG chạy ở đây — bundle được tải thẳng lên hạ tầng
+  # Zalo và phục vụ tại h5.zdn.vn. Deployment này chỉ để nội bộ xem trước trên
+  # trình duyệt. Có thể bỏ hẳn nếu không cần bản xem trước.
+  # → docs/08-ZALO-PHAT-HANH.md
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zalo-miniapp
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: zalo-miniapp
+        app.kubernetes.io/part-of: vigov
+    spec:
+      containers:
+        - name: zalo-miniapp
+          image: vigov-zalo-miniapp:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080   # nginx trong container
+          readinessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { memory: 128Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: { drop: ["ALL"] }

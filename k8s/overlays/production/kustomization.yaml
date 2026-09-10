@@ -1,0 +1,112 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Môi trường PRODUCTION — hệ thống phục vụ người dân thật.
+#
+#   kubectl apply -k k8s/overlays/production
+#
+# ⚠ TRƯỚC LẦN ÁP ĐẦU TIÊN, đối chiếu đủ checklist ở
+#   docs/05-TRIEN-KHAI-K8S.md mục 5 và SECURITY.md mục 4.
+#
+# Đặc biệt:
+#   · CITIZEN_OTP_BYPASS_CODE phải TRỐNG trong Secret
+#   · Đã sao lưu Mongo VÀ đã diễn tập khôi phục thành công
+#   · Ingress không tự chèn CORS
+
+namespace: vigov-production
+
+resources:
+  - ../../base
+
+# Production LUÔN dùng tag bất biến <branch>-<sha7>, KHÔNG dùng "*-latest":
+# rollback cần biết chính xác đang chạy bản nào, và "latest" làm
+# `kubectl rollout undo` trở nên vô nghĩa.
+# CI đặt tag bằng: kustomize edit set image vigov-backend=...:main-a1b2c3d
+images:
+  - name: vigov-backend
+    newName: registry.example.vn/vigov/vigov-backend
+    newTag: main-CHANGEME
+  - name: vigov-admin-web
+    newName: registry.example.vn/vigov/vigov-admin-web
+    newTag: main-CHANGEME
+  - name: vigov-zalo-miniapp
+    newName: registry.example.vn/vigov/vigov-zalo-miniapp
+    newTag: main-CHANGEME
+
+patches:
+  # Tên miền thật + chứng thư production
+  - target:
+      kind: Ingress
+      name: vigov
+    patch: |-
+      - op: replace
+        path: /spec/tls/0/hosts
+        value:
+          - admin-vigov.example.vn
+          - api-vigov.example.vn
+          - miniapp-vigov.example.vn
+      - op: replace
+        path: /spec/rules/0/host
+        value: admin-vigov.example.vn
+      - op: replace
+        path: /spec/rules/1/host
+        value: api-vigov.example.vn
+      - op: replace
+        path: /spec/rules/2/host
+        value: miniapp-vigov.example.vn
+      - op: add
+        path: /metadata/annotations/cert-manager.io~1cluster-issuer
+        value: letsencrypt-prod
+
+  # Backend: tài nguyên cao hơn staging.
+  #
+  # ⚠ replicas VẪN GIỮ 1. Tăng lên >1 chỉ sau khi đã xử lý xong ba điều kiện ở
+  # docs/05-TRIEN-KHAI-K8S.md mục 3.2 (kho OTP dùng chung, Socket.IO adapter,
+  # volume uploads chia sẻ được). Tăng sớm là công dân không đăng nhập được và
+  # ảnh hiện trường không xem được — hỏng theo cách khó truy.
+  - target:
+      kind: Deployment
+      name: backend
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/cpu
+        value: 500m
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: 1Gi
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 2Gi
+
+  # Mongo: cache và dung lượng theo production
+  - target:
+      kind: StatefulSet
+      name: mongo
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/args
+        value: ["--wiredTigerCacheSizeGB", "2"]
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/requests/memory
+        value: 2Gi
+      - op: replace
+        path: /spec/template/spec/containers/0/resources/limits/memory
+        value: 8Gi
+      - op: replace
+        path: /spec/volumeClaimTemplates/0/spec/resources/requests/storage
+        value: 250Gi
+
+  - target:
+      kind: PersistentVolumeClaim
+      name: vigov-uploads
+    patch: |-
+      - op: replace
+        path: /spec/resources/requests/storage
+        value: 250Gi
+
+configMapGenerator:
+  - name: vigov-config
+    behavior: merge
+    literals:
+      - CORS_ORIGINS=https://admin-vigov.example.vn,https://miniapp-vigov.example.vn,https://h5.zdn.vn
+      - OTP_STORE=mongo

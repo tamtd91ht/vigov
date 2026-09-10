@@ -1,0 +1,89 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Môi trường STAGING — dùng cho UAT (docs/07-UAT-VA-NGHIEM-THU.md).
+#
+#   kubectl apply -k k8s/overlays/staging
+#
+# Trước lần áp đầu tiên: tạo Secret vigov-secrets trong namespace này —
+# xem k8s/base/secret.example.yaml.
+
+namespace: vigov-staging
+namePrefix: ""
+
+resources:
+  - ../../base
+
+# Tag image do CI đặt. Đổi bằng lệnh (không sửa tay tệp này):
+#   kustomize edit set image vigov-backend=<registry>/vigov-backend:<tag>
+images:
+  - name: vigov-backend
+    newName: registry.example.vn/vigov/vigov-backend
+    newTag: develop-latest
+  - name: vigov-admin-web
+    newName: registry.example.vn/vigov/vigov-admin-web
+    newTag: develop-latest
+  - name: vigov-zalo-miniapp
+    newName: registry.example.vn/vigov/vigov-zalo-miniapp
+    newTag: develop-latest
+
+patches:
+  # Tên miền staging + phát hành chứng thư tự động
+  - target:
+      kind: Ingress
+      name: vigov
+    patch: |-
+      - op: replace
+        path: /spec/tls/0/hosts
+        value:
+          - admin-staging.example.vn
+          - api-staging.example.vn
+          - miniapp-staging.example.vn
+      - op: replace
+        path: /spec/rules/0/host
+        value: admin-staging.example.vn
+      - op: replace
+        path: /spec/rules/1/host
+        value: api-staging.example.vn
+      - op: replace
+        path: /spec/rules/2/host
+        value: miniapp-staging.example.vn
+      - op: add
+        path: /metadata/annotations/cert-manager.io~1cluster-issuer
+        value: letsencrypt-staging
+
+  # Staging tải nhẹ: 1 replica cho frontend là đủ, tiết kiệm tài nguyên cụm
+  - target:
+      kind: Deployment
+      name: admin-web
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+  - target:
+      kind: Deployment
+      name: zalo-miniapp
+    patch: |-
+      - op: replace
+        path: /spec/replicas
+        value: 1
+
+  # Dung lượng nhỏ hơn production
+  - target:
+      kind: PersistentVolumeClaim
+      name: vigov-uploads
+    patch: |-
+      - op: replace
+        path: /spec/resources/requests/storage
+        value: 20Gi
+
+configMapGenerator:
+  - name: vigov-config
+    behavior: merge
+    literals:
+      # CORS: phải có h5.zdn.vn cho Zalo Mini App, cộng tên miền Web Quản trị.
+      - CORS_ORIGINS=https://admin-staging.example.vn,https://miniapp-staging.example.vn,https://h5.zdn.vn
+      # Staging chạy 1 replica backend nên "memory" vẫn chạy được, nhưng giữ
+      # "mongo" cho giống production — staging phải phản ánh đúng production,
+      # nếu không lỗi chỉ lộ ra sau khi đã lên thật.
+      - OTP_STORE=mongo

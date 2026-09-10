@@ -1,0 +1,156 @@
+# ⚠ ĐỌC TRƯỚC KHI DÙNG — hai StatefulSet dưới đây theo "Hướng 1: tất cả trong
+# cụm" (docs/05-TRIEN-KHAI-K8S.md mục 3.3). Khách CHƯA CHỐT hướng nào.
+#
+# Khuyến nghị cho lần chuyển đầu tiên là "Hướng 2: dữ liệu ngoài cụm" — vận hành
+# CSDL có trạng thái trên k8s khó hơn hẳn phần ứng dụng, mà dữ liệu ở đây là hồ
+# sơ hành chính có giá trị pháp lý và dữ liệu cá nhân công dân thuộc phạm vi
+# Nghị định 13/2023/NĐ-CP. Đổi cùng lúc cả cách chạy ứng dụng lẫn cách lưu dữ
+# liệu là gộp hai rủi ro vào một lần chuyển.
+#
+# CHỌN HƯỚNG 2: xoá tệp này khỏi kustomization.yaml, rồi trỏ MONGO_URI /
+# RABBITMQ_URI trong Secret sang máy ngoài. Không cần sửa gì khác.
+#
+# CHỌN HƯỚNG 1: đọc kỹ ba điểm sau trước khi chạy production —
+#   1. Chỉ 1 replica, KHÔNG phải replica set. Không có tính sẵn sàng cao, và
+#      không dùng được transaction nhiều tài liệu.
+#   2. Nâng phiên bản Mongo trên StatefulSet dễ sai; nên dùng Operator
+#      (Percona / MongoDB Community Operator) nếu vận hành lâu dài.
+#   3. Sao lưu KHÔNG tự có. Phải dựng CronJob chạy mongodump và đẩy ra ngoài
+#      cụm — xem docs/06-VAN-HANH.md mục 1.
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo
+  labels:
+    app.kubernetes.io/name: mongo
+    app.kubernetes.io/part-of: vigov
+spec:
+  serviceName: mongo   # phải khớp Service headless trong services.yaml
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: mongo
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mongo
+        app.kubernetes.io/part-of: vigov
+    spec:
+      terminationGracePeriodSeconds: 30   # cho mongod đóng sạch, tránh hỏng dữ liệu
+      containers:
+        - name: mongo
+          image: mongo:7
+          args:
+            # Ghìm cache WiredTiger. KHÔNG bỏ tham số này: mặc định Mongo lấy
+            # ~50% (RAM - 1GB) của NODE, không phải của limit container — trên
+            # node lớn nó sẽ vượt memory limit và bị OOM kill.
+            # Quy tắc: khoảng 1/4 bộ nhớ cấp cho pod.
+            - --wiredTigerCacheSizeGB
+            - "1"
+          ports:
+            - name: mongo
+              containerPort: 27017
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef: { name: vigov-secrets, key: MONGO_ROOT_USERNAME }
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: vigov-secrets, key: MONGO_ROOT_PASSWORD }
+            - name: MONGO_INITDB_DATABASE
+              value: "vigov"
+          readinessProbe:
+            # ping xác nhận mongod đã NHẬN LỆNH, không chỉ mở cổng.
+            exec:
+              command: ["mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command: ["mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+            initialDelaySeconds: 40
+            periodSeconds: 20
+            timeoutSeconds: 5
+            failureThreshold: 3
+          resources:
+            requests: { cpu: 250m, memory: 1Gi }
+            limits: { memory: 4Gi }
+          volumeMounts:
+            - name: data
+              mountPath: /data/db
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        # Overlay đặt storageClassName theo cụm thật.
+        resources:
+          requests:
+            storage: 100Gi
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq
+  labels:
+    app.kubernetes.io/name: rabbitmq
+    app.kubernetes.io/part-of: vigov
+spec:
+  serviceName: rabbitmq
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: rabbitmq
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: rabbitmq
+        app.kubernetes.io/part-of: vigov
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: rabbitmq
+          image: rabbitmq:3.13-management
+          ports:
+            - name: amqp
+              containerPort: 5672
+            - name: management
+              containerPort: 15672
+          env:
+            - name: RABBITMQ_DEFAULT_USER
+              valueFrom:
+                secretKeyRef: { name: vigov-secrets, key: RABBITMQ_DEFAULT_USER }
+            - name: RABBITMQ_DEFAULT_PASS
+              valueFrom:
+                secretKeyRef: { name: vigov-secrets, key: RABBITMQ_DEFAULT_PASS }
+          readinessProbe:
+            exec:
+              command: ["rabbitmq-diagnostics", "-q", "ping"]
+            initialDelaySeconds: 20
+            periodSeconds: 15
+            timeoutSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            exec:
+              command: ["rabbitmq-diagnostics", "-q", "ping"]
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests: { cpu: 100m, memory: 512Mi }
+            limits: { memory: 1Gi }
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/rabbitmq
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 10Gi
