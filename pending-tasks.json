@@ -466,5 +466,14 @@
     "createdAt": "2026-09-09T00:00:00.000Z",
     "updatedAt": "2026-09-09T00:00:00.000Z",
     "status": "pending"
+  },
+  {
+    "id": "P6-09",
+    "name": "Nghiệp vụ định danh số điện thoại công dân trên Zalo Mini App",
+    "description": "Hoàn thiện luồng định danh công dân — cửa duy nhất vào mọi dịch vụ cần danh tính, và là nơi sinh ra citizenPhone, khoá duy nhất cách ly dữ liệu giữa các công dân. Hiện luồng chạy được nhưng đứng trên hai thứ tạm phải biến mất trước khi mở cho dân: (1) CITIZEN_OTP_BYPASS_CODE — một mã cố định định danh được BẤT KỲ số nào, tức lối vào không qua xác thực thật (SECURITY.md mục 4, việc 0); (2) requestOtp chỉ ghi mã ra log máy chủ nên người dân bấm \"Gửi mã\" mà không bao giờ nhận được gì. Cả hai cùng một nguyên nhân: Zalo chưa cấp quyền getPhoneNumber (quyền ID 100). Thiết kế phủ CẢ HAI giai đoạn (chưa có quyền: OTP là đường chính; đã có quyền: Zalo là đường chính, OTP dự phòng) và chuyển giữa chúng bằng công tắc cấu hình CITIZEN_IDENTITY_MODE, không bằng sửa mã — nếu không, ngày Zalo duyệt sẽ là một đợt sửa gấp vào đúng đường nhạy cảm nhất. Quyết định đã chốt với khách 10/09/2026: kênh gửi OTP CHƯA chốt nên dựng adapter OtpSender (bản log sẵn có, chỗ cắm zns/sms, bản log phải chặn khởi động ở production); mở lại app thì tự vào và im lặng gia hạn bằng refresh token, không hỏi lại; số điện thoại buộc dùng đúng số Zalo khi đã có quyền getPhoneNumber. Kế hoạch chi tiết, ràng buộc bảo mật (11 mục), bảng nhật ký thao tác, rà tiếng Việt hành chính, khả năng tiếp cận cho người cao tuổi và 11 ca kiểm chứng bắt buộc: xem plans/p6-09-dinh-danh-so-dien-thoai.md.",
+    "planFilePath": "plans/p6-09-dinh-danh-so-dien-thoai.md",
+    "createdAt": "2026-09-10T00:00:00.000Z",
+    "updatedAt": "2026-09-10T00:00:00.000Z",
+    "status": "pending"
   }
 ]
