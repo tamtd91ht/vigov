@@ -37,3 +37,25 @@ export const demoConfig = {
     cccd: "Bản demo: dữ liệu quét được chỉ hiển thị tại chỗ để thử tính năng, không gửi đi và không lưu vào hồ sơ nào.",
   },
 } as const;
+
+/**
+ * Lời dẫn trước khi xin quyền vị trí — xem `components/LocationPrimerDialog.tsx`.
+ *
+ * KHÔNG nằm trong `demoConfig`: hộp thoại quyền của hệ thống hiện tên miền
+ * `h5.zdn.vn` ở cả bản demo lẫn bản chính thức, vì đó là tên miền Zalo phục vụ
+ * mọi Mini App. Gắn vào `demoConfig` sẽ khiến người sau tưởng tắt được cùng
+ * `VITE_DEMO_MODE`, trong khi bản live vẫn cần đúng lời dẫn này.
+ *
+ * Nhắc thẳng "Zalo" trong lời văn là cố ý: người dân đọc xong biết tên miền lạ
+ * sắp hiện ra là của Zalo chứ không phải bên thứ ba nào, nên yên tâm bấm đồng ý.
+ */
+export const locationPrimer = {
+  title: "Cho phép lấy vị trí hiện tại?",
+  lines: [
+    "Ứng dụng cần vị trí của Quý vị để ghim đúng nơi xảy ra sự việc trên bản đồ, giúp cán bộ tìm tới hiện trường nhanh hơn.",
+    "Ngay sau đây, Zalo sẽ hỏi Quý vị về quyền truy cập vị trí. Hộp thoại đó hiển thị địa chỉ “h5.zdn.vn” — đây là địa chỉ Zalo dùng để chạy mọi Mini App, Quý vị vui lòng chọn “Cho phép”.",
+    "Nếu không muốn chia sẻ vị trí, Quý vị vẫn có thể tự nhập địa chỉ nơi xảy ra sự việc.",
+  ],
+  accept: "Tiếp tục lấy vị trí",
+  decline: "Tự nhập địa chỉ",
+} as const;

@@ -52,3 +52,7 @@ desktop.ini
 *.keystore
 *.p12
 key.properties
+
+# ── Thư mục nháp cục bộ ──────────────────────────────────────
+# Ảnh chụp màn hình, tệp thử nghiệm khi làm việc — không thuộc mã nguồn.
+/tmp/

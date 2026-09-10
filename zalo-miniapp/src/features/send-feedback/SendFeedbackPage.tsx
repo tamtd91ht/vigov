@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { DemoBadge, DemoNote } from "@/components/common";
+import { LocationPrimerDialog } from "@/components/LocationPrimerDialog";
 import { demoConfig } from "@/config/demo.config";
 import { useGoBack } from "@/hooks/useGoBack";
 import { slaText, type FeedbackCategory } from "@/config/categories";
@@ -46,26 +47,47 @@ export function SendFeedbackPage() {
   const [uploading, setUploading] = useState(false);
   const [ticket, setTicket] = useState<FeedbackTicket | null>(null);
   const [askLeave, setAskLeave] = useState(false);
+  /** Đang hiện lời dẫn xin quyền vị trí (trước hộp thoại quyền của hệ thống) */
+  const [locationPrimer, setLocationPrimer] = useState(false);
   const locationAsked = useRef(false);
 
-  /** Vào bước 2 lần đầu thì tự xin quyền vị trí (câu hỏi mở #16 — từ chối thì nhập tay) */
+  /**
+   * Vào bước 2 lần đầu thì hỏi vị trí — nhưng qua một lời dẫn của ViGov trước.
+   *
+   * VÌ SAO KHÔNG GỌI THẲNG: `zaloService.getLocation()` kéo theo hộp thoại quyền
+   * GỐC của WebView, và hộp thoại đó mang tên miền `h5.zdn.vn` của Zalo chứ
+   * không mang tên ViGov — không đổi được. Bật lên đột ngột giữa màn "Gửi phản
+   * ánh" thì người dân thấy tên miền lạ và bấm "Từ chối", mất toạ độ hiện trường.
+   * Nên hiện `LocationPrimerDialog` trước, giải thích, rồi mới gọi.
+   */
   useEffect(() => {
     if (step !== 2 || locationAsked.current) return;
     locationAsked.current = true;
+    setLocationPrimer(true);
+  }, [step]);
+
+  /** Người dân đã đọc lời dẫn và đồng ý — giờ mới chạm tới hộp thoại quyền của hệ thống */
+  function acceptLocation() {
+    setLocationPrimer(false);
     setLocation((prev) => ({ ...prev, status: "loading" }));
-    let alive = true;
     void zaloService.getLocation().then((res) => {
-      if (!alive) return;
       if (res.granted) {
         setLocation({ status: "granted", address: res.address ?? "", lat: res.lat, lng: res.lng });
       } else {
         setLocation({ status: "denied", address: "" });
       }
     });
-    return () => {
-      alive = false;
-    };
-  }, [step]);
+  }
+
+  /**
+   * Người dân chọn tự nhập địa chỉ. Dùng đúng trạng thái `denied` như khi hệ
+   * thống từ chối quyền: cùng một hệ quả nghiệp vụ — không có toạ độ, phải nhập
+   * tay, và `validateDetail` bắt buộc điền địa chỉ (câu hỏi mở #16).
+   */
+  function declineLocation() {
+    setLocationPrimer(false);
+    setLocation({ status: "denied", address: "" });
+  }
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -229,6 +251,8 @@ export function SendFeedbackPage() {
           )}
         </div>
       </div>
+
+      {locationPrimer && <LocationPrimerDialog onAccept={acceptLocation} onDecline={declineLocation} />}
 
       {askLeave && (
         <div
