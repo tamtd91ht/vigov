@@ -19,14 +19,14 @@ Nhiệm vụ: xem thay đổi vừa rồi làm lệch tài liệu nào, rồi s�
 | Thay đổi | Tài liệu |
 |---|---|
 | Thêm/đổi endpoint | `docs/01-BACKEND.md` (bảng endpoint) |
-| Thêm/đổi biến môi trường | `.env.example` module **+** `.env.example` gốc nếu qua Docker **+** `docs/04-TRIEN-KHAI.md` nếu phải đặt lúc triển khai |
+| Thêm/đổi biến môi trường | `.env.example` module **+** `.env.example` gốc nếu qua Docker **+** `docs/04-TRIEN-KHAI-VPS.md` nếu phải đặt lúc triển khai |
 | Sửa/thêm chốt bảo mật | `SECURITY.md` mục 1 (checklist) + mục 2 (phát hiện) |
 | Đổi giá trị mặc định nhạy cảm | `SECURITY.md` mục 4 (việc bắt buộc trước production) |
 | Màn / luồng Web Quản trị | `docs/02-ADMIN-WEB.md` |
 | Màn / luồng Mini App | `docs/03-ZALO-MINIAPP.md` |
-| Phần liên quan quyền API Zalo | `docs/05-ZALO-XIN-QUYEN-API.md` · `docs/06-*` · `docs/07-*` |
-| Triển khai, nginx, Docker, CI | `docs/04-TRIEN-KHAI.md` · `deploy/README.md` · `deploy/nginx-vigov.conf` |
-| Cách build app | `mobile/BUILD.md` · `deploy/RELEASE.md` |
+| Phần liên quan quyền API Zalo | `docs/09-ZALO-XIN-QUYEN-API.md` · `docs/10-*` · `docs/11-*` |
+| Triển khai, nginx, Docker, CI | `docs/04-TRIEN-KHAI-VPS.md` · `docs/06-VAN-HANH.md` · `deploy/nginx-vigov.conf` |
+| Cách build app | `docs/08-ZALO-PHAT-HANH.md` |
 | Cách chạy dev, sự cố mới gặp | `README.md` (bảng xử lý sự cố) |
 | Xong một task | `pending-tasks.json` (trạng thái + `updatedAt`) · `BAO-CAO-TIEN-DO.md` |
 | Quyết định kiến trúc đáng tranh luận | `docs/quyet-dinh/NNNN-*.md` → `skills/quyet-dinh-kien-truc` |

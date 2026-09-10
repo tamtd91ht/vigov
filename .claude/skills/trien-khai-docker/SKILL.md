@@ -55,8 +55,13 @@ description: Dùng khi làm việc với docker-compose, Dockerfile, nginx, CI/C
 
 ## Tài liệu triển khai
 
-`docs/04-TRIEN-KHAI.md` — runbook từng bước từ VPS trống (Bước 0–11) rồi chuyển sang
-Jenkins (Bước 12). `deploy/README.md` tra cứu theo chủ đề. `deploy/VPS-VA-ZALO.md` cho
-VPS + nộp Mini App. `deploy/UAT.md` kế hoạch UAT. `deploy/RELEASE.md` hồ sơ 3 store.
+Toàn bộ tài liệu nằm ở `docs/`; `deploy/` chỉ còn tệp chạy được, `k8s/` chỉ chứa manifest.
+
+| Cần gì | Đọc |
+|---|---|
+| Dựng từ máy chủ trống | `docs/04-TRIEN-KHAI-VPS.md` — yêu cầu hạ tầng + runbook từng bước |
+| Jenkins, CI/CD, Kubernetes | `docs/05-TRIEN-KHAI-K8S.md` (phần k8s là thiết kế đề xuất, chưa kiểm chứng) |
+| Sao lưu, xoay log, cập nhật, xử lý sự cố | `docs/06-VAN-HANH.md` |
+| Nộp Zalo Mini App | `docs/08-ZALO-PHAT-HANH.md` |
 
 → `rules/critical/bi-mat-cau-hinh.md` · `skills/hang-doi-rabbitmq` · `skills/realtime-socket`

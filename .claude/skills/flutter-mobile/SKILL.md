@@ -56,6 +56,6 @@ và tài liệu build (`mobile/BUILD.md`)**, nếu không người build sau s�
 cd mobile && flutter analyze && flutter test
 ```
 
-Build phát hành: xem `mobile/BUILD.md`. Hồ sơ 3 store: `deploy/RELEASE.md`.
+Build phát hành: xem `mobile/BUILD.md`. Hồ sơ 3 store: `docs/08-ZALO-PHAT-HANH.md`.
 
 → `skills/tiep-can-nguoi-cao-tuoi` · `skills/dong-bo-kieu-4-module` · `rules/critical/du-lieu-ca-nhan.md`

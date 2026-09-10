@@ -55,8 +55,8 @@ grep -rE '^(NEXT_PUBLIC_USE_MOCKS|NEXT_PUBLIC_DEMO_USER|NEXT_PUBLIC_DEMO_PASSWOR
 
 ### 4. Tài liệu bàn giao
 
-`README.md` · `SECURITY.md` · `BAO-CAO-TIEN-DO.md` · `docs/01..07-*.md` ·
-`docs/04-TRIEN-KHAI.md` · `deploy/UAT.md` · `deploy/RELEASE.md` · `mobile/BUILD.md`
+`README.md` · `SECURITY.md` · `BAO-CAO-TIEN-DO.md` · `docs/01..11-*.md`
+(chỉ mục ở `docs/README.md`) · `k8s/README.md`
 
 ### 5. Ghi rõ những gì NGOÀI phạm vi
 

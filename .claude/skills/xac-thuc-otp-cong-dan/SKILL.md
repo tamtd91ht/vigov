@@ -61,7 +61,7 @@ Việc phải làm theo thứ tự:
 1. Kiểm chứng `exchangeZaloToken()` chạy thật với token của Zalo
 2. Bỏ trống `CITIZEN_OTP_BYPASS_CODE` ở mọi môi trường
 3. Cập nhật `SECURITY.md`: chuyển việc 0 sang "đã hoàn thành", đóng phát hiện **T-08**
-4. Cập nhật `docs/05-ZALO-XIN-QUYEN-API.md` và `docs/07-ZALO-4-QUYEN-API-CHI-TIET.md`
+4. Cập nhật `docs/09-ZALO-XIN-QUYEN-API.md` và `docs/11-ZALO-4-QUYEN-API.md`
 5. Rà lại `AUTH_THROTTLE` — có thể giữ nguyên, không nới
 
 → `rules/critical/cach-ly-du-lieu-cong-dan.md` · `skills/phien-va-token` · `skills/zalo-miniapp-platform`

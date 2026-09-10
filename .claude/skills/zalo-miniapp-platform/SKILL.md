@@ -19,8 +19,8 @@ description: Dùng khi làm việc trong zalo-miniapp/ — zmp-sdk, xin quyền 
 
 ## Bốn quyền đang xin
 
-Hồ sơ chi tiết: `docs/05-ZALO-XIN-QUYEN-API.md` · `docs/06-ZALO-MO-TA-BAN-DEMO.md` ·
-`docs/07-ZALO-4-QUYEN-API-CHI-TIET.md`. Ảnh minh chứng ở `docs/anh-xin-quyen/`.
+Hồ sơ chi tiết: `docs/09-ZALO-XIN-QUYEN-API.md` · `docs/10-ZALO-MO-TA-BAN-DEMO.md` ·
+`docs/11-ZALO-4-QUYEN-API.md`. Ảnh minh chứng ở `docs/anh-xin-quyen/`.
 **Sửa luồng liên quan tới quyền nào thì phải cập nhật hồ sơ quyền đó** — hồ sơ và mã
 lệch nhau là lý do Zalo từ chối.
 

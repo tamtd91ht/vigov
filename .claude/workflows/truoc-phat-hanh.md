@@ -69,11 +69,12 @@ Test đỏ hoặc lint đỏ → **không phát hành**. Dán nguyên văn kết
 | `README.md` | Cách chạy đúng hiện trạng; bảng xử lý sự cố đủ |
 | `SECURITY.md` | Mọi phát hiện có trạng thái đúng; mục 4 và mục 5 cập nhật |
 | `BAO-CAO-TIEN-DO.md` | Tiến độ khớp `pending-tasks.json` |
-| `docs/01..07-*.md` | Endpoint, luồng, hồ sơ quyền Zalo khớp mã |
-| `docs/04-TRIEN-KHAI.md` | Runbook chạy được từ VPS trống |
-| `deploy/UAT.md` | Kế hoạch UAT có người, có mốc |
-| `deploy/RELEASE.md` | Hồ sơ 3 store đủ (Google Play, App Store, Zalo Mini App) |
-| `mobile/BUILD.md` | Cấu hình ký, biến `--dart-define` đủ |
+| `docs/01..03-*.md` | Endpoint, luồng, màn hình khớp mã |
+| `docs/04-TRIEN-KHAI-VPS.md` | Runbook chạy được từ máy chủ trống |
+| `docs/06-VAN-HANH.md` | Sao lưu, cập nhật, xử lý sự cố đúng hiện trạng |
+| `docs/07-UAT-VA-NGHIEM-THU.md` | Kế hoạch UAT có người, có mốc |
+| `docs/08..11-ZALO-*.md` | Hồ sơ phát hành và xin quyền Zalo đủ |
+| `docs/README.md` | Chỉ mục khớp danh sách tệp thật |
 
 ## 6. Ghi rõ những gì NGOÀI phạm vi
 
