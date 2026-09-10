@@ -65,6 +65,7 @@ RabbitMQ chỉ dùng cho việc nền (thông báo, workflow).
 | **Tái sử dụng trước khi viết mới** | Trước khi viết hàm tiện ích, tìm xem đã có chưa. → `skills/ke-thua-truoc-khi-viet-moi` |
 | **Dọn rác của chính mình** | Xoá import/biến mà thay đổi của bạn làm thành vô dụng. Mã chết có sẵn thì để nguyên. |
 | **Comment giải thích VÌ SAO** | Theo đúng văn phong đang có: tiếng Việt, nêu lý do và hậu quả nếu làm sai, không mô tả lại mã. |
+| **Viết ngắn, kỹ thuật, đủ ý** | Tài liệu · comment · commit · báo cáo trả lời người dùng: một ý một câu, ưu tiên bảng, dẫn `tệp:dòng` thay vì miêu tả, không ví von, không nhắc lại. Dài dòng làm người đọc bỏ qua và tốn context mọi phiên sau. → `skills/tai-lieu-dong-bo` mục "Văn phong" |
 | **Kế hoạch cho việc nhiều bước** | Nêu `1. [bước] → kiểm chứng: [cách xác nhận]` trước khi bắt đầu. |
 
 ---

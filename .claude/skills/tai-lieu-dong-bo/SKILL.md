@@ -32,6 +32,25 @@ khác mã là lỗi bàn giao — người vận hành làm theo tài liệu và
 | Thêm khái niệm nghiệp vụ mới | `.claude/data/glossary.md` |
 | Thêm luật / kỹ năng vào bộ não | `.claude/rules/_INDEX.md` · `.claude/CLAUDE.md` |
 
+## VĂN PHONG: NGẮN, KỸ THUẬT, ĐỦ Ý
+
+Tài liệu dự án này viết cho **người kỹ thuật đang cần làm một việc cụ thể**, không phải
+để đọc giải trí. Dài dòng không phải là cẩn thận — nó làm người đọc bỏ qua, và làm agent
+tốn context vô ích ở mọi phiên sau.
+
+| # | Luật |
+|---|------|
+| 1 | **Một ý một câu.** Nói cái gì, ở đâu, vì sao — hết. Không mở bài, không kết luận, không nhắc lại điều vừa nói |
+| 2 | **Ưu tiên bảng và danh sách** hơn văn xuôi. Ba đoạn văn mô tả bốn lựa chọn = một bảng bốn dòng |
+| 3 | **Dùng thuật ngữ kỹ thuật đúng tên**, kèm đường dẫn tệp và số dòng. `configuration.ts:79` rõ hơn ba câu miêu tả |
+| 4 | **Không ví von, không kể chuyện, không nhấn mạnh bằng lời.** Cần cảnh báo thì một dòng `> ⚠` là đủ |
+| 5 | Giải thích **vì sao** chỉ khi lý do không tự hiển nhiên, và **một câu** — kèm hậu quả nếu làm sai |
+| 6 | Trần độ dài: tài liệu tra cứu ≤ 150 dòng; một mục ≤ 30 dòng. Vượt thì tách hoặc cắt, không co chữ |
+| 7 | Viết xong **đọc lại và xoá**: câu nào bỏ đi mà người đọc vẫn làm đúng việc thì bỏ |
+
+Áp dụng cho **cả** tài liệu `docs/`, `README`, comment trong mã, commit message, và báo
+cáo trả lời người dùng.
+
 ## MUST
 
 | # | Luật |

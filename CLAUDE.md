@@ -28,6 +28,7 @@ trong dự án này chạm tới một trong ba thứ sau:
 | **Cách ly dữ liệu công dân** | Công dân chỉ được thấy đúng dữ liệu của chính mình. Định danh công dân chỉ là OTP — coi là danh tính **yếu**. |
 | **Không hardcode** | Một mã nguồn chạy cho nhiều xã. Tên đơn vị, SLA, danh mục, toạ độ, URL đều ở cấu hình. |
 | **Tiếng Việt hành chính đúng chuẩn** | Sai chính tả, sai thuật ngữ (phản ánh ≠ khiếu nại ≠ tố cáo) là lỗi nghiệp vụ, không phải lỗi nhỏ. |
+| **Viết ngắn, kỹ thuật, đủ ý** | Tài liệu · comment · commit · báo cáo: một ý một câu, ưu tiên bảng, dẫn `tệp:dòng` thay vì miêu tả dài. Không ví von, không mở bài, không nhắc lại. → `.claude/skills/tai-lieu-dong-bo` mục "Văn phong" |
 | **Kiểm chứng, đừng chỉ khai báo** | `npm run check:all` + test liên quan phải chạy thật. Báo "đã xong" khi đã chạy và thấy xanh. |
 | **Không tự chốt câu hỏi mở của khách** | ~27 câu hỏi mở ở `ESTIMATE_TECHNICAL.md` là quyết định của khách hàng. |
 
