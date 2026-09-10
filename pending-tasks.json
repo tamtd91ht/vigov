@@ -475,5 +475,14 @@
     "createdAt": "2026-09-10T00:00:00.000Z",
     "updatedAt": "2026-09-10T00:00:00.000Z",
     "status": "pending"
+  },
+  {
+    "id": "P6-10",
+    "name": "Gateway .151 thiếu PATCH trong CORS — mọi thao tác sửa đang hỏng trên production",
+    "description": "ĐANG HỎNG TRÊN PRODUCTION. Mọi thao tác SỬA trên Web Quản trị và Zalo Mini App đều thất bại; thao tác tạo và xem vẫn bình thường nên lỗi dễ bị bỏ qua. Biểu hiện: người dân mở phiếu phản ánh của mình bấm \"Cập nhật nội dung\" thì báo hệ thống không phản hồi, nhưng bấm \"Thu hồi\" lại chạy — vì thu hồi dùng POST còn cập nhật dùng PATCH. Nguyên nhân KHÔNG nằm trong mã nguồn: gateway nginx .151 (gateway production dùng chung với dự án khác) tự chèn bộ header CORS chung thiếu PATCH, đè lên header đúng của backend. Trình duyệt đọc danh sách ở bước preflight, không thấy PATCH nên chặn request ngay tại máy người dùng — backend không hề biết có ai gọi. Đã kiểm chứng bằng ba phép thử trên hệ thống thật: (1) PATCH gọi thẳng API trả 401 đúng nghĩa nên backend xử lý được; (2) preflight trả về danh sách thiếu PATCH; (3) OPTIONS tới đường dẫn KHÔNG tồn tại vẫn trả 204 thay vì 404, chứng tỏ gateway chặn đứng OPTIONS chứ không chuyển xuống backend — nên chỉ gỡ add_header là CHƯA ĐỦ, phải xử lý cả khối chặn OPTIONS. Bằng chứng dứt điểm là header Access-Control-Allow-Credentials: true, thứ backend không bao giờ gửi vì đã đặt credentials: false. Việc phải làm nằm TRÊN MÁY GATEWAY, đội phát triển không có quyền truy cập: cần quản trị viên máy .151 thực hiện 8 bước trong docs/06-VAN-HANH.md mục 7 (tìm chỗ chèn CORS, sao lưu /etc/nginx, chọn cách sửa, nginx -t, reload, kiểm chứng bằng curl, xác nhận trên giao diện, kiểm không ảnh hưởng dự án khác). Khuyến nghị Cách A: để backend tự trả CORS cho riêng vhost api-vigov.omicrm.com — backend đã khai đầy đủ GET POST PATCH PUT DELETE OPTIONS và whitelist origin gồm h5.zdn.vn. Cách B (thêm PATCH vào danh sách gateway) nhanh hơn nhưng ảnh hưởng mọi dự án trên gateway và không sửa được lệch Allow-Headers lẫn Allow-Credentials. Lưu ý an toàn: đây là gateway production của dự án khác, bắt buộc nginx -t trước khi reload và phải kiểm các vhost khác sau khi sửa.",
+    "planFilePath": null,
+    "createdAt": "2026-09-10T00:00:00.000Z",
+    "updatedAt": "2026-09-10T00:00:00.000Z",
+    "status": "pending"
   }
 ]
