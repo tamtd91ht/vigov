@@ -107,10 +107,6 @@
       "Bash(npm audit:*)",
       "Bash(npm ls:*)",
 
-      "Bash(flutter analyze:*)",
-      "Bash(flutter test:*)",
-      "Bash(flutter pub get:*)",
-
       "Bash(docker compose config:*)",
       "Bash(docker compose ps:*)",
       "Bash(docker compose logs:*)"

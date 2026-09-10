@@ -12,7 +12,7 @@ dụng của **cơ quan nhà nước** buộc phải giữ.
 |---|---|---|---|
 | **Bối cảnh** | `CLAUDE.md` | Mọi phiên, tự động | Không — định hướng |
 | **Luật** | `rules/critical/` (8 tệp) | Mọi phiên, tự động | Một phần bằng hook |
-| **Kỹ năng** | `skills/<tên>/SKILL.md` (26) | Lười — tự bật khi từ khoá khớp | Không — hướng dẫn |
+| **Kỹ năng** | `skills/<tên>/SKILL.md` (25) | Lười — tự bật khi từ khoá khớp | Không — hướng dẫn |
 | **Hook** | `hooks/*.py` (7) | Trước / sau khi dùng tool | **Chặn hoặc nhắc thật** |
 
 Thêm hai tầng hỗ trợ:
@@ -139,7 +139,7 @@ skill nào không bao giờ tự bật (từ khoá sai)?
 |---|---|---|
 | `maskPhone` tồn tại **3 bản** | `users.service.ts:112` · `feedback.service.ts:667` · `dossiers.service.ts:77` | `libs/shared/src/privacy/mask.ts` |
 | SLA mặc định lặp **2 nơi** ngoài nguồn chuẩn | `settings/settings.service.ts` · `seed.ts` (nguồn chuẩn: `admin-web/src/config/sla.config.ts`) | Một nguồn |
-| Toạ độ trung tâm viết cứng **3 nơi** | `geo.provider.ts` (`DAI_THANG_CENTER`) · `zalo-miniapp/src/services/zalo.ts` · `mobile/lib/services/device/location_service.dart` | Cấu hình bản đồ |
+| Toạ độ trung tâm viết cứng **3 nơi** | `geo.provider.ts` (`DAI_THANG_CENTER`) · `zalo-miniapp/src/services/zalo.ts` | Cấu hình bản đồ |
 | Route thiếu khai quyền tường minh | `auth.controller.ts` (2) · `catalogs.controller.ts` (6) · `files.controller.ts` (2) · `geo.controller.ts` (3) · `notification.controller.ts` (1) | Khai `@RequirePermission` hoặc `@Public()` kèm lý do |
 
 Trả nợ khi **đang chạm vào** chỗ đó — không refactor ngoài phạm vi.

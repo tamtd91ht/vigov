@@ -21,7 +21,7 @@ nhắc lại nội dung skill.
 | Thiết kế / đổi endpoint, hợp đồng API | `api-backend` |
 | Nghiệp vụ hành chính: luồng xử lý, trạng thái, SLA, thuật ngữ | `nghiep-vu-hanh-chinh` |
 | Giao diện cán bộ (Web Quản trị) | `giao-dien-quan-tri` |
-| Giao diện công dân (Mini App, Flutter) | `giao-dien-cong-dan` |
+| Giao diện công dân (Zalo Mini App) | `giao-dien-cong-dan` |
 | Rà soát bảo mật, dữ liệu cá nhân, phân quyền | `ra-soat-bao-mat` |
 | Rà soát tuân thủ pháp lý, lưu trữ, quyền công dân | `ra-soat-tuan-thu` |
 | Viết / sửa test, quyết định cần test gì | `kiem-thu` |
@@ -58,8 +58,7 @@ nhắc lại nội dung skill.
 | Đối tượng | Agent |
 |---|---|
 | Cán bộ — Web Quản trị | `giao-dien-quan-tri` |
-| Công dân — Mini App | `giao-dien-cong-dan` (chế độ Zalo) |
-| Công dân — app Flutter | `giao-dien-cong-dan` (chế độ Flutter) |
+| Công dân — Zalo Mini App | `giao-dien-cong-dan` |
 | Đổi trường/kiểu ảnh hưởng nhiều module | `api-backend` điều phối; `skills/dong-bo-kieu-4-module` |
 
 ---

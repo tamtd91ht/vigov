@@ -21,7 +21,6 @@ trong dữ liệu. Không có test nào tự bắt.
 | `admin-web/` | `src/types/index.ts` ← **NGUỒN CHUẨN** |
 | `backend/` | `*.schema.ts` + `dto/` + hàm map trả về |
 | `zalo-miniapp/` | `src/types/` |
-| `mobile/` | `lib/models/` (+ `fromJson`/`toJson`) |
 
 ## Lệnh
 
@@ -41,7 +40,6 @@ echo "=== zalo-miniapp ==="
 grep -rn "$FIELD" zalo-miniapp/src --include=*.ts --include=*.tsx
 
 echo "=== mobile ==="
-grep -rn "$FIELD" mobile/lib --include=*.dart
 ```
 
 Không truyền tham số → liệt kê toàn bộ tên trường trong `types/index.ts` rồi tìm những

@@ -1,6 +1,6 @@
 ---
 name: dong-bo-kieu-4-module
-description: Dùng khi thêm hoặc đổi tên trường dữ liệu nghiệp vụ, đổi kiểu, thêm trạng thái, và cần đồng bộ giữa backend, admin-web, mobile, zalo-miniapp. Kích hoạt bởi: đồng bộ kiểu, types/index.ts, tên trường, đổi tên trường, thêm trường, interface, model Dart, kiểu dữ liệu, 4 module, lệch trường, contract.
+description: Dùng khi thêm hoặc đổi tên trường dữ liệu nghiệp vụ, đổi kiểu, thêm trạng thái, và cần đồng bộ giữa backend, admin-web, zalo-miniapp. Kích hoạt bởi: đồng bộ kiểu, types/index.ts, tên trường, đổi tên trường, thêm trường, interface, kiểu dữ liệu, 3 module, lệch trường, contract.
 ---
 
 # Kỹ năng: Đồng bộ tên trường giữa 4 module
@@ -16,7 +16,6 @@ description: Dùng khi thêm hoặc đổi tên trường dữ liệu nghiệp v
 | `admin-web/` | `src/types/index.ts` ← **NGUỒN CHUẨN** | `npx tsc --noEmit` |
 | `backend/` | `*.schema.ts` + `dto/` (tên trường trả ra API) | `npx tsc --noEmit -p apps/api-gateway/tsconfig.app.json` |
 | `zalo-miniapp/` | `src/types/` | `npx tsc --noEmit` |
-| `mobile/` | `lib/models/` | `flutter analyze` |
 
 **TypeScript không bắt được lệch giữa module** — mỗi module biên dịch riêng, không import
 chéo nhau. Lệch trường chỉ hiện ra lúc chạy thật, dưới dạng ô trống hoặc `undefined`.
@@ -43,7 +42,7 @@ Trường **không** tới kênh công dân thì bỏ bước 4 và 5, nhưng ph
 | 3 | Trường ngày giờ truyền qua API dạng chuỗi ISO 8601; mỗi client tự định dạng khi hiển thị |
 | 4 | Trường tiền truyền dạng **số nguyên đơn vị đồng** |
 | 5 | Trường không có giá trị trả chuỗi rỗng hoặc mảng rỗng, **không** trả `null` (bốn client xử lý `null` khác nhau) |
-| 6 | Thêm trạng thái mới → cập nhật `status.config.ts` + `categories.ts` + `categories.dart` + `@IsIn` của DTO backend |
+| 6 | Thêm trạng thái mới → cập nhật `status.config.ts` + `categories.ts` + `@IsIn` của DTO backend |
 | 7 | Đổi tên trường trong API là **thay đổi phá vỡ** — nếu client cũ đang chạy thật, phải trả **cả hai** tên một thời gian rồi mới bỏ tên cũ |
 
 ## MUST NOT

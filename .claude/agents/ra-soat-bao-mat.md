@@ -19,7 +19,7 @@ Mặc định **chỉ đọc và báo cáo**. Sửa khi được yêu cầu tư�
 ### 1. Dữ liệu cá nhân (`rules/critical/du-lieu-ca-nhan.md`)
 
 ```
-grep -rn "console\.log\|logger\.\(log\|debug\|warn\|error\)\|print(\|debugPrint" --include=*.ts --include=*.dart backend admin-web zalo-miniapp mobile
+grep -rn "console\.log\|logger\.\(log\|debug\|warn\|error\)" --include=*.ts backend admin-web zalo-miniapp
 ```
 Tìm: log có biến tên `phone`, `cccd`, `otp`, `password`, `token`, `citizenName`.
 Tìm: endpoint trả `citizenPhone` / `applicantPhone` / số CCCD **không** qua hàm che.

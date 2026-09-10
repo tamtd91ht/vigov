@@ -60,7 +60,7 @@ Toàn bộ luật, kỹ năng, quy trình và chốt cưỡng chế nằm ở `.
 |---|---|
 | `.claude/CLAUDE.md` | Bối cảnh, kiến trúc, hành vi khi làm việc (tự nạp mọi phiên) |
 | `.claude/rules/critical/` | **8 luật tối quan trọng**, nạp sẵn: dữ liệu cá nhân · cách ly công dân · RBAC · nhật ký · bảo toàn dữ liệu · bí mật cấu hình · không hardcode · tiếng Việt hành chính |
-| `.claude/skills/` | 26 kỹ năng, tự bật theo từ khoá |
+| `.claude/skills/` | 25 kỹ năng, tự bật theo từ khoá |
 | `.claude/hooks/` | **7 hook cưỡng chế thật** — chặn secret, chặn log dữ liệu cá nhân, chặn xoá dữ liệu, nhắc thiếu quyền / hardcode / lệch env |
 | `.claude/workflows/` | 7 quy trình theo loại việc |
 | `.claude/agents/` · `.claude/commands/` | 9 agent · 17 lệnh `/` |

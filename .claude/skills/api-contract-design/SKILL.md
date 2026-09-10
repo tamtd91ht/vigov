@@ -13,7 +13,7 @@ Tiền tố: `API_PREFIX` (mặc định `api/v1`) — **không** viết cứng 
 | Nhóm | Mẫu đường dẫn | Ai gọi |
 |---|---|---|
 | Cán bộ (mặc định) | `/<phân-hệ>` · `/<phân-hệ>/:id` | Web Quản trị |
-| Công dân | `/<phân-hệ>/citizen/**` | Mini App, Flutter |
+| Công dân | `/<phân-hệ>/citizen/**` | Zalo Mini App |
 | Công khai (không đăng nhập) | `/<phân-hệ>/public/**` hoặc `@Public()` có comment | Bất kỳ |
 | Hệ thống | `/health`, `/health/ready` | Hạ tầng |
 | Webhook bên ngoài | `/zalo-webhook/**` | Zalo |

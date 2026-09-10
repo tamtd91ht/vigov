@@ -14,12 +14,11 @@ với một hạng mục "chắc là ổn".** Mỗi mục dưới đây phải t
 
 | # | Việc | Lệnh |
 |---|------|------|
-| 1 | Type-check + lint cả 4 module | `npm run check:all` (gốc) |
+| 1 | Type-check + lint cả 3 module | `npm run check:all` (gốc) |
 | 2 | Test đơn vị backend | `cd backend && npm test` |
 | 3 | Test e2e backend | `cd backend && npm run test:e2e` |
-| 4 | Flutter | `cd mobile && flutter analyze && flutter test` |
-| 5 | Rà phụ thuộc | `npm audit --production` ở 3 module Node (**chỉ đọc**, không `audit fix`) |
-| 6 | Dựng thử bằng Docker | `docker compose config` rồi `docker compose up -d` |
+| 4 | Rà phụ thuộc | `npm audit --production` ở 3 module Node (**chỉ đọc**, không `audit fix`) |
+| 5 | Dựng thử bằng Docker | `docker compose config` rồi `docker compose up -d` |
 
 Test đỏ hoặc lint đỏ → **không phát hành**. Dán nguyên văn kết quả vào báo cáo.
 
@@ -51,7 +50,6 @@ Test đỏ hoặc lint đỏ → **không phát hành**. Dán nguyên văn kết
 | `NEXT_PUBLIC_DEMO_USER`, `NEXT_PUBLIC_DEMO_PASSWORD` | **để trống** |
 | `VITE_DEMO_MODE` | `false` |
 | `CITIZEN_OTP_BYPASS_CODE` | **để trống** |
-| Chế độ mock của Flutter | tắt |
 
 ## 4. Rà soát bằng agent
 

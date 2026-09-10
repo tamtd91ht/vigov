@@ -16,9 +16,9 @@ và phát hành lại cho mỗi khách hàng mới. Với 11 phân hệ × 4 mod
 |---|---|
 | Tên đơn vị, cơ quan cấp trên, tên viết tắt | biến môi trường → `app.config.ts` của từng module |
 | URL API, URL bản đồ, URL kho tệp | biến môi trường → `app.config.ts` |
-| Toạ độ / mức thu phóng bản đồ mặc định | `admin-web/src/config/map.config.ts`, `zalo-miniapp/src/config/`, `mobile/lib/config/` |
+| Toạ độ / mức thu phóng bản đồ mặc định | `admin-web/src/config/map.config.ts`, `zalo-miniapp/src/config/` |
 | Trạng thái, nhãn, màu (nhiệm vụ, văn bản, phản ánh, giải ngân) | `admin-web/src/config/status.config.ts` |
-| Danh mục lĩnh vực phản ánh | `admin-web/src/config/sla.config.ts` · `zalo-miniapp/src/config/categories.ts` · `mobile/lib/config/categories.dart` |
+| Danh mục lĩnh vực phản ánh | `admin-web/src/config/sla.config.ts` · `zalo-miniapp/src/config/categories.ts` |
 | SLA theo lĩnh vực | `sla.config.ts` (`defaultSlaRules`) — sửa được từ trang Cấu hình |
 | Vai trò và bảng quyền | `libs/shared/src/auth/roles.ts` ↔ `admin-web/src/config/roles.config.ts` |
 | Menu điều hướng | `nav.config.ts` của từng module |

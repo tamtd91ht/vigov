@@ -102,4 +102,3 @@ Nguồn chuẩn: `admin-web/src/config/sla.config.ts` (`defaultSlaRules`).
 | Test đơn vị backend | `npm test` | `backend/` |
 | Test e2e backend | `npm run test:e2e` | `backend/` (cần ≥ 500 MB trống ở thư mục tạm) |
 | Type-check + lint web | `npx tsc --noEmit && npm run lint` | `admin-web/`, `zalo-miniapp/` |
-| Flutter | `flutter analyze && flutter test` | `mobile/` |

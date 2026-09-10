@@ -23,7 +23,6 @@ cũ, và không có test nào bắt được sự lệch đó.
 | Component giao diện | `admin-web/src/components/{ui,layout}/` |
 | Hằng số nghiệp vụ, danh mục, trạng thái | `<module>/src/config/` |
 | Logic gọi API | `<module>/src/services/` |
-| Widget Flutter dùng chung | `mobile/lib/widgets/` |
 | Kiểm quyền | `libs/shared/src/auth/roles.ts` — `hasPermission()` |
 | Che dữ liệu cá nhân | → `skills/che-du-lieu-ca-nhan` |
 

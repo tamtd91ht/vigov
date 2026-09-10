@@ -33,7 +33,6 @@ Làm việc theo `workflows/tinh-nang-moi.md`. Lệnh này là đường chính 
 npm run check:all                      # gốc — type-check + lint cả 4 module
 cd backend && npm test                 # nếu đã sửa backend
 cd backend && npm run test:e2e         # nếu đã chạm API
-cd mobile && flutter analyze && flutter test   # nếu đã sửa Flutter
 ```
 
 Dán **kết quả thật**. Test đỏ thì nói rõ đỏ ở đâu, không tóm thành "có lỗi".

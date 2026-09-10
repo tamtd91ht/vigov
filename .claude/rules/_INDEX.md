@@ -4,7 +4,7 @@
 Hai tầng:
 
 - **`rules/critical/`** (8 tệp) — **nạp sẵn mọi phiên**. Mức "không thương lượng".
-- **`skills/<tên>/SKILL.md`** (26 kỹ năng) — **nạp lười**, tự bật khi từ khoá khớp.
+- **`skills/<tên>/SKILL.md`** (25 kỹ năng) — **nạp lười**, tự bật khi từ khoá khớp.
 
 Tra ở đây trước khi đi tìm trong mã.
 
@@ -27,7 +27,7 @@ Tra ở đây trước khi đi tìm trong mã.
 
 ---
 
-## KỸ NĂNG (26) — nạp lười · `skills/<tên>/SKILL.md`
+## KỸ NĂNG (25) — nạp lười · `skills/<tên>/SKILL.md`
 
 ### Backend (7)
 
@@ -50,13 +50,12 @@ Tra ở đây trước khi đi tìm trong mã.
 | `xac-thuc-otp-cong-dan` | OTP `crypto.randomInt`, kho HMAC, `OTP_STORE`, mã tạm `CITIZEN_OTP_BYPASS_CODE` |
 | `che-du-lieu-ca-nhan` | `maskPhone` / `maskCccd`, ẩn danh theo yêu cầu xoá, **nợ 3 bản trùng** |
 
-### Client (4)
+### Client (3)
 
 | Kỹ năng | Nội dung |
 |---|---|
 | `nextjs-admin-web` | App Router, bảo vệ route ở tầng máy chủ, `NEXT_PUBLIC_*`, cấu hình, cổng 3100 |
 | `zalo-miniapp-platform` | `zmp-sdk` qua adapter, quyền API Zalo, vùng an toàn, chế độ demo, webhook |
-| `flutter-mobile` | `--dart-define`, `flutter_secure_storage`, provider + go_router, phát hành store |
 | `tiep-can-nguoi-cao-tuoi` | Cỡ chữ, vùng chạm, tương phản, biểu mẫu, thông báo lỗi cho công dân |
 
 ### Xuyên module (4)

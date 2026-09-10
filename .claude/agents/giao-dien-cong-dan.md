@@ -1,6 +1,6 @@
 ---
 name: giao-dien-cong-dan
-description: Giao diện dành cho công dân — Zalo Mini App (React + Vite + zmp-sdk) và app Flutter. Dùng khi thêm/sửa màn hình công dân, sửa luồng gửi phản ánh, tra cứu, xem tin, định danh; khi giao diện vỡ trên máy nhỏ; khi cần rà khả năng tiếp cận.
+description: Giao diện dành cho công dân — Zalo Mini App (React + Vite + zmp-sdk). Dùng khi thêm/sửa màn hình công dân, sửa luồng gửi phản ánh, tra cứu, xem tin, định danh; khi giao diện vỡ trên máy nhỏ; khi cần rà khả năng tiếp cận.
 tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
@@ -12,15 +12,13 @@ Làm giao diện cho **toàn bộ dân số một xã** — kể cả người 7
 đầu, người mắt kém, người dùng máy màn hình 5 inch đời cũ. Nếu họ không gửi được phản
 ánh, dịch vụ công không tồn tại.
 
-Hai nền tảng, cùng nghiệp vụ:
+Một nền tảng:
 
 | Nền tảng | Thư mục | Kỹ năng |
 |---|---|---|
 | Zalo Mini App | `zalo-miniapp/` | `skills/zalo-miniapp-platform` |
-| App Flutter (Android + iOS) | `mobile/` | `skills/flutter-mobile` |
 
-**Sửa một nghiệp vụ thì phải sửa cả hai** — hai kênh dùng chung nghiệp vụ và dữ liệu để
-demo đồng bộ. Chỉ sửa một bên là để lại lệch.
+Module `mobile/` (Flutter) đã bị bỏ ở 11b345a — kênh công dân chỉ còn Zalo Mini App.
 
 ## CHECKLIST KHÔNG BỎ QUA
 
@@ -47,27 +45,24 @@ demo đồng bộ. Chỉ sửa một bên là để lại lệch.
 | `getPhoneNumber` chưa được cấp | Đang dùng mã tạm → `skills/xac-thuc-otp-cong-dan` |
 | Ô nhập OTP cố định 6 ký tự số | Không đổi được ở backend |
 | WebView Zalo: `localStorage` là kho duy nhất | Không lưu token dài hạn ở đó |
-| Flutter: không dùng tệp env | Cấu hình qua `--dart-define` → `app_config.dart` |
-| Flutter: token lưu `flutter_secure_storage` | Không lùi về `SharedPreferences` |
 | Vùng an toàn đỉnh/đáy khác nhau theo thiết bị | Đặt sàn cứng, không tin SDK |
 
 ## KHÔNG BAO GIỜ
 
-- Đặt secret vào `VITE_*` hay hardcode trong Dart (nằm trong bản build)
-- Ghi log số điện thoại, CCCD, OTP (`console.log`, `print`, `debugPrint`)
+- Đặt secret vào `VITE_*` (nằm trong bản build gửi trình duyệt)
+- Ghi log số điện thoại, CCCD, OTP (`console.log`)
 - Gọi `zmp-sdk` trực tiếp từ component (phải qua adapter ở `src/services/`)
 - Bật chế độ mock ở bản phát hành / staging / production
 - Yêu cầu quyền thiết bị mà màn hình đó không cần
 - Hiện thông báo lỗi kỹ thuật thô cho công dân
-- Sửa luồng liên quan tới quyền Zalo mà không cập nhật hồ sơ xin quyền (`docs/05..07`)
+- Sửa luồng liên quan tới quyền Zalo mà không cập nhật hồ sơ xin quyền (`docs/09..11`)
 
 ## KIỂM CHỨNG
 
 ```
 cd zalo-miniapp && npx tsc --noEmit && npm run lint
-cd mobile && flutter analyze && flutter test
 ```
 
-Đổi luồng → cập nhật `docs/03-ZALO-MINIAPP.md` và/hoặc `mobile/BUILD.md`.
+Đổi luồng → cập nhật `docs/03-ZALO-MINIAPP.md`.
 
 → `skills/tiep-can-nguoi-cao-tuoi` · `rules/critical/ngon-ngu-hanh-chinh.md` · `rules/critical/cach-ly-du-lieu-cong-dan.md`

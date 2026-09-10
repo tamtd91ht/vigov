@@ -33,13 +33,12 @@ người dùng biết nó tốn thêm bao nhiêu.**
 
 ## KIẾN TRÚC
 
-Bốn module chung một thư mục, mỗi module tự chứa, sẵn sàng tách repo:
+Ba module chung một thư mục, mỗi module tự chứa, sẵn sàng tách repo:
 
 | Module | Sản phẩm | Stack | Người dùng |
 |---|---|---|---|
 | `backend/` | API nền tảng (~20 module nghiệp vụ) | NestJS 11 · MongoDB (Mongoose) · RabbitMQ · JWT+RBAC · Socket.IO | — |
 | `admin-web/` | Web Quản trị (11 phân hệ) | Next.js 16 App Router · TypeScript | Cán bộ, công chức xã |
-| `mobile/` | App công dân Android + iOS | Flutter · Material 3 · provider + go_router | Công dân |
 | `zalo-miniapp/` | Zalo Mini App công dân | React + Vite · zmp-sdk | Công dân |
 
 **Hai lớp người dùng, hai mức tin cậy hoàn toàn khác nhau:**
@@ -147,8 +146,7 @@ Chỉ mục đầy đủ + tra cứu: `rules/_INDEX.md`
   `hang-doi-rabbitmq` · `realtime-socket`
 - **Bảo mật / định danh**: `an-toan-tep-upload` · `phien-va-token` ·
   `xac-thuc-otp-cong-dan` · `che-du-lieu-ca-nhan`
-- **Client**: `nextjs-admin-web` · `zalo-miniapp-platform` · `flutter-mobile` ·
-  `tiep-can-nguoi-cao-tuoi`
+- **Client**: `nextjs-admin-web` · `zalo-miniapp-platform` · `tiep-can-nguoi-cao-tuoi`
 - **Xuyên module**: `dong-bo-kieu-4-module` · `sla-va-trang-thai` ·
   `adapter-ben-thu-ba` · `ke-thua-truoc-khi-viet-moi`
 - **Quy trình**: `kiem-thu-vigov` · `tai-lieu-dong-bo` · `quan-ly-task-plan` ·

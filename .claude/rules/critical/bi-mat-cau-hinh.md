@@ -11,7 +11,7 @@
 
 Vị trí: `backend/` · `admin-web/` · `zalo-miniapp/` mỗi nơi một cặp.
 **Ngoại lệ thư mục gốc**: dùng cặp `.env` / `.env.example` vì Docker Compose chỉ tự đọc
-tệp tên đúng `.env`. `mobile/` không dùng tệp env — cấu hình qua `--dart-define`.
+tệp tên đúng `.env`.
 
 ## MUST
 

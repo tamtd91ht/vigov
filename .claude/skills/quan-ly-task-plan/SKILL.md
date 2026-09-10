@@ -21,7 +21,7 @@ description: Dùng khi bắt đầu, tiếp tục, hoặc kết thúc một task
 }
 ```
 
-Mã task theo pha: `P0` khung · `P1` Web Quản trị · `P2` app Flutter · `P2Z` Mini App ·
+Mã task theo pha: `P0` khung · `P1` Web Quản trị · `P2Z` Mini App ·
 `P3` backend · `P4` hạ tầng/bảo mật/phát hành · `P5` gia cố sau rà soát.
 Nguồn gốc: WBS #1–#38 trong `ESTIMATE_TECHNICAL.md`.
 

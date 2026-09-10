@@ -20,7 +20,6 @@ Không có mục nào được để là "chắc là ổn".
 ```bash
 npm run check:all
 cd backend && npm test && npm run test:e2e
-cd mobile && flutter analyze && flutter test
 cd backend && npm audit --production          # chỉ đọc, KHÔNG audit fix
 cd admin-web && npm audit --production
 cd zalo-miniapp && npm audit --production

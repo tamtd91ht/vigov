@@ -1,6 +1,6 @@
 ---
 name: kiem-thu-vigov
-description: Dùng khi viết test, chạy test, hoặc quyết định cần test gì cho một thay đổi. Kích hoạt bởi: test, kiểm thử, jest, spec, e2e, supertest, mongodb-memory-server, flutter test, unit test, coverage, typecheck, check:all, kiểm chứng.
+description: Dùng khi viết test, chạy test, hoặc quyết định cần test gì cho một thay đổi. Kích hoạt bởi: test, kiểm thử, jest, spec, e2e, supertest, mongodb-memory-server, unit test, coverage, typecheck, check:all, kiểm chứng.
 ---
 
 # Kỹ năng: Kiểm thử trong ViGov
@@ -15,7 +15,6 @@ description: Dùng khi viết test, chạy test, hoặc quyết định cần te
 | Test đơn vị backend | `npm test` | `backend/` |
 | Test e2e backend | `npm run test:e2e` | `backend/` |
 | Type-check + lint web | `npx tsc --noEmit && npm run lint` | `admin-web/`, `zalo-miniapp/` |
-| Phân tích + test Flutter | `flutter analyze && flutter test` | `mobile/` |
 
 Test e2e dùng `mongodb-memory-server` — không cần MongoDB thật, nhưng **cần ≥ 500 MB
 trống** ở thư mục tạm, nếu không MongoDB từ chối tạo text index.

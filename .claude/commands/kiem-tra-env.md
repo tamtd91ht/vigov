@@ -17,8 +17,6 @@ không in giá trị.**
 | Web Quản trị | `admin-web/.env.local` | `admin-web/.env.example` |
 | Zalo Mini App | `zalo-miniapp/.env.local` | `zalo-miniapp/.env.example` |
 
-`mobile/` không dùng tệp env — cấu hình qua `--dart-define`, đọc ở
-`mobile/lib/config/app_config.dart`.
 
 ## Lệnh
 

@@ -27,15 +27,7 @@
       "nguoi_dung": "Công dân",
       "cong_dev": 5173,
       "kiem_chung": "npx tsc --noEmit && npm run lint",
-      "tai_lieu": "docs/03-ZALO-MINIAPP.md · docs/05..07-ZALO-*.md"
-    },
-    "mobile": {
-      "duong_dan": "mobile",
-      "stack": "Flutter · Material 3 · provider + go_router",
-      "nguoi_dung": "Công dân (Android + iOS)",
-      "cau_hinh": "Không dùng tệp env — truyền qua --dart-define, đọc ở lib/config/app_config.dart",
-      "kiem_chung": "flutter analyze && flutter test",
-      "tai_lieu": "mobile/BUILD.md · deploy/RELEASE.md"
+      "tai_lieu": "docs/03-ZALO-MINIAPP.md · docs/08..11-ZALO-*.md"
     }
   },
 

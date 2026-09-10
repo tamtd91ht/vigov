@@ -41,7 +41,7 @@ có trong `REDACTED_FIELDS`? Nhật ký có bị sửa/xoá ở đâu?
 ### 4. Tiếng Việt hành chính
 
 ```
-grep -rn "Loading\|No data\|Submit\|Error\|Success\|Cancel\|Delete\|Save" admin-web/src zalo-miniapp/src mobile/lib --include=*.tsx --include=*.ts --include=*.dart | grep -v "\.test\.\|spec\."
+grep -rn "Loading\|No data\|Submit\|Error\|Success\|Cancel\|Delete\|Save" admin-web/src zalo-miniapp/src --include=*.tsx --include=*.ts | grep -v "\.test\.\|spec\."
 ```
 Chuỗi hiển thị còn tiếng Anh? Có chữ sai dấu, sai chính tả?
 Thuật ngữ dùng đúng: **phản ánh** ≠ **khiếu nại** ≠ **tố cáo** ≠ **đơn thư**?
@@ -57,7 +57,7 @@ Có thông báo lỗi nào không nói làm gì tiếp? Biểu mẫu có mất d
 ### 6. Không hardcode — khả năng triển khai cho xã thứ hai
 
 ```
-grep -rniE "UBND|xã |phường |0[0-9]{9}|localhost:[0-9]+|https?://" admin-web/src zalo-miniapp/src mobile/lib backend/apps --include=*.ts --include=*.tsx --include=*.dart | grep -viE "config/|mocks/|\.test\.|spec\.|seed-data"
+grep -rniE "UBND|xã |phường |0[0-9]{9}|localhost:[0-9]+|https?://" admin-web/src zalo-miniapp/src backend/apps --include=*.ts --include=*.tsx | grep -viE "config/|mocks/|\.test\.|spec\.|seed-data"
 ```
 Tên đơn vị, URL, toạ độ, số ngày SLA, nhãn trạng thái có nằm ngoài `config/`?
 → `rules/critical/khong-hardcode.md`

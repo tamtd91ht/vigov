@@ -20,7 +20,7 @@ mã là một lần phải sửa mã và phát hành lại cho khách hàng mớ
 Loại trừ: `config/` · `mocks/` · `seed-data/` · test · `docs/` · `deploy/` · `node_modules`
 
 ```bash
-BASE="admin-web/src zalo-miniapp/src mobile/lib backend/apps backend/libs"
+BASE="admin-web/src zalo-miniapp/src backend/apps backend/libs"
 EXCL="config/|mocks/|seed-data/|\.spec\.|\.test\.|/test/|node_modules|dist/"
 
 # 1. Tên xã/phường CỤ THỂ (UBND/HĐND + cấp + tên riêng)
@@ -36,7 +36,7 @@ grep -rnE "(intakeDays|resolveDays|slaDays|deadlineDays)[[:space:]]*[:=][[:space
 grep -rnE "(lat|lng|latitude|longitude)[[:space:]]*[:=][[:space:]]*(1[0-9]|2[0-3])\.[0-9]{3,}" $BASE | grep -vE "$EXCL"
 
 # 5. Mã màu hex (nhiều — xem có nên chuyển sang CSS variable)
-grep -rnE "['\"\`]#[0-9a-fA-F]{6}['\"\`]" $BASE | grep -vE "$EXCL|globals\.css|theme\.dart"
+grep -rnE "['\"\`]#[0-9a-fA-F]{6}['\"\`]" $BASE | grep -vE "$EXCL|globals\.css"
 
 # 6. Nhãn trạng thái tiếng Việt viết cứng cạnh khoá
 grep -rnE "status[[:space:]]*===?[[:space:]]*['\"](moi|dang|cho|qua|xong|dangxl|choduyet)['\"]" $BASE | grep -vE "$EXCL"
@@ -62,7 +62,7 @@ grep -rnE "['\"\`]0(2[0-9]{1,2}|1[89]00)" $BASE | grep -vE "$EXCL"
 | Nợ | Nơi | Gom về |
 |---|---|---|
 | SLA mặc định lặp 2 nơi | `backend/.../settings/settings.service.ts` · `seed.ts` (lặp `admin-web/src/config/sla.config.ts`) | Một nguồn chuẩn |
-| Toạ độ trung tâm viết cứng | `zalo-miniapp/src/services/zalo.ts` · `mobile/lib/services/device/location_service.dart` · `integrations/geo/geo.provider.ts` (`DAI_THANG_CENTER`) | Cấu hình bản đồ |
+| Toạ độ trung tâm viết cứng | `zalo-miniapp/src/services/zalo.ts` · `integrations/geo/geo.provider.ts` (`DAI_THANG_CENTER`) | Cấu hình bản đồ |
 
 ## Định dạng báo cáo
 

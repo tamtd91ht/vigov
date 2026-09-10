@@ -1,6 +1,6 @@
 ---
 name: tiep-can-nguoi-cao-tuoi
-description: Dùng khi thiết kế hoặc sửa giao diện dành cho công dân (Mini App, app Flutter, trang tra cứu công khai) — cỡ chữ, vùng chạm, biểu mẫu, thông báo, khả năng tiếp cận. Kích hoạt bởi: giao diện công dân, UX, cỡ chữ, font size, vùng chạm, tap target, accessibility, tiếp cận, người cao tuổi, biểu mẫu, form, thông báo lỗi, màu sắc, tương phản, contrast.
+description: Dùng khi thiết kế hoặc sửa giao diện dành cho công dân (Zalo Mini App, trang tra cứu công khai) — cỡ chữ, vùng chạm, biểu mẫu, thông báo, khả năng tiếp cận. Kích hoạt bởi: giao diện công dân, UX, cỡ chữ, font size, vùng chạm, tap target, accessibility, tiếp cận, người cao tuổi, biểu mẫu, form, thông báo lỗi, màu sắc, tương phản, contrast.
 ---
 
 # Kỹ năng: Giao diện cho công dân — ai cũng phải dùng được
@@ -17,7 +17,7 @@ mã nguồn đúng đến đâu.
 
 | # | Luật |
 |---|------|
-| 1 | Cỡ chữ thân bài **tối thiểu 16px** (Mini App) / 16sp (Flutter). Chữ phụ không nhỏ hơn 14 |
+| 1 | Cỡ chữ thân bài **tối thiểu 16px**. Chữ phụ không nhỏ hơn 14 |
 | 2 | Vùng chạm **tối thiểu 44×44** điểm cho mọi nút, ô chọn, liên kết |
 | 3 | Tương phản chữ/nền đạt tối thiểu 4.5:1 |
 | 4 | Không truyền đạt thông tin **chỉ** bằng màu — kèm nhãn chữ hoặc biểu tượng (người mù màu, và màn hình ngoài trời) |
@@ -50,4 +50,4 @@ mã nguồn đúng đến đâu.
 4. Ngắt mạng giữa lúc gửi — có thông báo rõ và có giữ lại nội dung đã nhập không?
 5. Có thao tác nào cần hơn 3 lần chạm để tới được không?
 
-→ `rules/critical/ngon-ngu-hanh-chinh.md` · `skills/zalo-miniapp-platform` · `skills/flutter-mobile`
+→ `rules/critical/ngon-ngu-hanh-chinh.md` · `skills/zalo-miniapp-platform`

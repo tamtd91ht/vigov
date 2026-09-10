@@ -18,7 +18,7 @@ import os
 import re
 import sys
 
-# Hàm ghi log của 4 module: TypeScript/JS (console, Nest Logger), Dart (print).
+# Hàm ghi log của ba module: TypeScript/JS (console, Nest Logger).
 LOG_CALL = r"""(?:console\.(?:log|info|warn|error|debug|trace)|logger\.(?:log|info|warn|error|debug|verbose)|Logger\.(?:log|error|warn|debug|verbose)|print|debugPrint|stderr\.write|stdout\.write)"""
 
 # Tên biến/trường mang dữ liệu cá nhân hoặc bí mật xác thực.

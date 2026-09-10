@@ -41,7 +41,6 @@ description: Dùng khi làm việc với đăng nhập, JWT, refresh token, thu 
 | 1 | Tăng `JWT_EXPIRES_IN` (hiện 8 giờ) — token dài hạn khuếch đại độ trễ thu hồi |
 | 2 | Bỏ tra `SessionRegistry` "cho nhanh" hoặc "để giảm truy vấn Mongo" |
 | 3 | Lưu token dài hạn trong `localStorage` của Mini App → `skills/zalo-miniapp-platform` |
-| 4 | Lưu token trong `SharedPreferences` không mã hoá ở Flutter — dùng `flutter_secure_storage` |
 | 5 | Ghi log token, refresh token, `sid`, hay mật khẩu → `rules/critical/du-lieu-ca-nhan.md` |
 | 6 | Nới `AUTH_THROTTLE` khi `CITIZEN_OTP_BYPASS_CODE` còn bật |
 | 7 | Trả mật khẩu tạm trong phản hồi HTTP ở đường mới (đường `POST /users/staff` hiện có là rủi ro đã nhận, T-03) |

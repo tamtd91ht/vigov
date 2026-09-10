@@ -27,7 +27,6 @@ chứng là để lại một việc chưa xong trong hồ sơ bàn giao.
 npm run check:all                              # gốc
 cd backend && npm test                         # nếu sửa backend
 cd backend && npm run test:e2e                 # nếu chạm API
-cd mobile && flutter analyze && flutter test   # nếu sửa Flutter
 ```
 
 **Có lệnh nào đỏ → KHÔNG đánh dấu `done`.** Báo lỗi và dừng.

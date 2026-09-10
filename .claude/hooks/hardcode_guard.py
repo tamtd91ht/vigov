@@ -44,7 +44,7 @@ PATTERNS: list[tuple[str, str, str]] = [
         r"""(?:x[ãa]|ph[ưu][ờo]ng|th[ịi] tr[ấa]n|huy[ệe]n|t[ỉi]nh|qu[ậa]n)\s+"""
         + UPPER_VI + r"""\S+""",
         "tên xã/phường CỤ THỂ viết cứng",
-        "Đọc từ appConfig.org.name (NEXT_PUBLIC_ORG_NAME / VITE_ORG_NAME / --dart-define)",
+        "Đọc từ appConfig.org.name (NEXT_PUBLIC_ORG_NAME / VITE_ORG_NAME)",
     ),
     (
         # URL tuyệt đối tới máy chủ của HỆ THỐNG. Loại trừ: máy cục bộ, chuỗi giữ chỗ,
@@ -83,12 +83,12 @@ PATTERNS: list[tuple[str, str, str]] = [
 ALLOWED_FRAGMENTS = (
     "/config/", "/mocks/", "/seed-data/", "/test/", "/tests/", "/__tests__/",
     "/fixtures/", "/.claude/", "/node_modules/", "/dist/", "/build/", "/docs/",
-    "/plans/", "/deploy/", ".spec.", ".test.", ".config.ts", ".config.dart",
-    "theme.dart", "categories.dart", "categories.ts", "globals.css",
+    "/plans/", "/deploy/", ".spec.", ".test.", ".config.ts",
+    "categories.ts", "globals.css",
 )
 
-WATCHED_ROOTS = ("admin-web/", "zalo-miniapp/", "mobile/", "backend/")
-WATCHED_EXTENSIONS = (".ts", ".tsx", ".dart", ".js", ".jsx")
+WATCHED_ROOTS = ("admin-web/", "zalo-miniapp/", "backend/")
+WATCHED_EXTENSIONS = (".ts", ".tsx", ".js", ".jsx")
 
 
 def read_input() -> dict:

@@ -1,5 +1,5 @@
 ---
-description: Chạy toàn bộ kiểm chứng ViGov — type-check, lint, test đơn vị, test e2e, Flutter
+description: Chạy toàn bộ kiểm chứng ViGov — type-check, lint, test đơn vị, test e2e
 argument-hint: "[module: backend | admin-web | zalo-miniapp | mobile | all] — bỏ trống thì all"
 allowed-tools: Read, Bash
 ---
@@ -16,7 +16,6 @@ Chạy kiểm chứng **thật** và báo cáo kết quả thật. Không suy đ
 | `backend` | type-check + test đơn vị + test e2e |
 | `admin-web` | type-check + lint |
 | `zalo-miniapp` | type-check + lint |
-| `mobile` | `flutter analyze` + `flutter test` |
 
 ## Lệnh
 
@@ -34,8 +33,6 @@ npm run test:e2e
 cd admin-web && npx tsc --noEmit && npm run lint
 cd zalo-miniapp && npx tsc --noEmit && npm run lint
 
-# Flutter
-cd mobile && flutter analyze && flutter test
 ```
 
 ## Định dạng báo cáo

@@ -1,6 +1,6 @@
 ---
 name: kiem-thu
-description: Viết test và chạy kiểm chứng cho ViGov — jest, e2e supertest, mongodb-memory-server, flutter test, type-check, lint. Dùng sau mọi thay đổi mã, khi test đỏ, hoặc khi cần quyết định cần test gì cho một thay đổi.
+description: Viết test và chạy kiểm chứng cho ViGov — jest, e2e supertest, mongodb-memory-server, type-check, lint. Dùng sau mọi thay đổi mã, khi test đỏ, hoặc khi cần quyết định cần test gì cho một thay đổi.
 tools: Read, Grep, Glob, Bash, Edit, Write
 ---
 
@@ -22,7 +22,6 @@ Nguyên tắc: **không báo "đã xong" khi chưa chạy.** Với hệ thống 
 | Test đơn vị backend | `npm test` | `backend/` |
 | Test e2e backend | `npm run test:e2e` | `backend/` |
 | Web / Mini App | `npx tsc --noEmit && npm run lint` | `admin-web/`, `zalo-miniapp/` |
-| Flutter | `flutter analyze && flutter test` | `mobile/` |
 
 Test e2e dùng `mongodb-memory-server`. Cần **≥ 500 MB trống** ở thư mục tạm, nếu không
 MongoDB từ chối tạo text index (lỗi `text index required for $text query`). Xử lý: dọn
