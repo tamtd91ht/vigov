@@ -66,7 +66,7 @@ Kiểm chứng sau khi sửa: `npx tsc --noEmit -p apps/api-gateway/tsconfig.app
 | Mã | Phát hiện | Trạng thái |
 |---|---|---|
 | **C-01** | **Ai đăng nhập cũng xin được link đọc tệp riêng tư bất kỳ.** `GET /files/:id/signed-url` chỉ đi qua `JwtAuthGuard` mà không kiểm tra chủ sở hữu. Một tài khoản công dân (định danh chỉ bằng OTP) chỉ cần dò mã ObjectId là lấy được link ký sẵn để đọc bản scan văn bản, đơn thư nội bộ. | ✅ **ĐÃ SỬA** |
-| **C-02** | **Stored XSS qua tệp tải lên.** Mục đích `other` không giới hạn MIME, còn route đọc tệp luôn trả `Content-Disposition: inline`. Kẻ xấu tải lên tệp `text/html` (hoặc `image/svg+xml`) chứa script rồi phát tán link `/api/v1/files/<id>` — mã chạy ngay trên tên miền API. | ✅ **ĐÃ SỬA** |
+| **C-02** | **Stored XSS qua tệp tải lên.** Mục đích `other` không giới hạn MIME, còn route đọc tệp luôn trả `Content-Disposition: inline`. Kẻ xấu tải lên tệp `text/html` (hoặc `image/svg+xml`) chứa script rồi phát tán link `/api/v1/files/<id>` — mã chạy ngay trên tên miền API. | ✅ **ĐÃ SỬA** — gia cố thêm 10/09/2026: `other` chuyển sang danh sách trắng, và loại tệp nay kiểm qua ba tầng (MIME · đuôi tệp · magic bytes) thay vì chỉ MIME do client khai |
 | **C-03** | **Xác thực phía client hoàn toàn là mock.** `admin-web/src/services/auth.ts` so sánh mật khẩu ngay trong trình duyệt với `NEXT_PUBLIC_DEMO_*` rồi ghi phiên vào `localStorage`; `AuthGuard.tsx` chỉ ẩn giao diện phía client, không có middleware chặn ở tầng route. Mobile (`identity_service.dart`) và Zalo Mini App cũng lưu phiên mock. **Không được đưa lên môi trường thật ở trạng thái này.** | ✅ **ĐÃ SỬA** — cả 3 client đăng nhập qua API thật (P5-01/02/03); mock nay phải bật tường minh bằng cờ môi trường và bị cấm ở staging/production |
 | **C-04** | **`JWT_SECRET` mẫu dùng chung cho cả ký token và ký link tệp.** Nếu lên production mà quên đổi, mọi token và mọi link tệp riêng tư đều giả mạo được. | ✅ **ĐÃ SỬA** (chặn khởi động) — vẫn phải đổi khoá thật, xem mục 4 |
 
@@ -102,6 +102,8 @@ Kiểm chứng sau khi sửa: `npx tsc --noEmit -p apps/api-gateway/tsconfig.app
 | **T-08** | Luồng định danh Zalo chưa kiểm chứng được đầu-cuối với Zalo Open API. | ⚠️ Chờ bên ngoài — `exchangeZaloToken()` đã gọi Zalo Graph API thật, nhưng Zalo **chưa cấp quyền** `getPhoneNumber` nên hiện phải dùng `CITIZEN_OTP_BYPASS_CODE`; xoá biến này ngay khi được cấp quyền |
 | **T-09** | Chưa có refresh token / xoay vòng token dù đã khai báo `REFRESH_EXPIRES_IN`. Token sống 8 giờ, mất token là mất phiên trong 8 giờ. | ✅ **ĐÃ SỬA** — `POST /auth/refresh` có xoay vòng và phát hiện dùng lại token cũ (dùng lại thì thu hồi cả phiên). Đánh đổi đã nhận: ai biết `sid` có thể cố tình đóng phiên đó |
 | **T-10** | Chưa có chính sách độ mạnh mật khẩu cán bộ và chưa buộc đổi mật khẩu tạm ở lần đăng nhập đầu. | ✅ **ĐÃ SỬA** — chính sách dùng chung ở `libs/shared/src/auth/password-policy.ts` (≥10 ký tự, có chữ và số, không phải mật khẩu phổ biến, không chứa tên đăng nhập) áp cho cả ba đường đổi mật khẩu. Cờ `mustChangePassword` bật khi tạo tài khoản và khi quản trị viên đặt lại; `JwtAuthGuard` chặn MỌI endpoint trừ đường đổi mật khẩu cho tới khi chủ tài khoản tự đặt lại |
+| **T-11** | **Tệp Office có macro được phép tải lên** (`.docm .xlsm .pptm .dotm .xltm .potm`). Macro Office là đường lây mã độc phổ biến nhất trong môi trường hành chính: người nhận tải tệp về, mở ra rồi bấm "Enable Content" theo quán tính. Hệ thống **không quét được macro** bên trong. | ⚠️ **Rủi ro đã chấp nhận có ý thức** — khách yêu cầu 10/09/2026 vì cán bộ xã đang dùng biểu mẫu Excel/Word có macro trong công việc thật. Xem mục 4, việc 13 |
+| **T-12** | **Tệp nén được phép tải lên** (`.zip .rar .7z`) và hệ thống **không quét được nội dung bên trong** — một tệp thực thi giấu trong `.zip` vẫn vào được kho. | ⚠️ **Rủi ro đã chấp nhận có ý thức** — khách chốt 10/09/2026; cán bộ hay gửi nhiều văn bản một lượt. Chỉ gây hại khi người nhận giải nén rồi chạy |
 
 ---
 
@@ -175,6 +177,27 @@ Lệnh chạy: `npm audit --production` (chỉ đọc kết quả, **không** ch
 
 ---
 
+13. **Phổ biến rủi ro tệp đính kèm cho người dùng hệ thống.** Kho tệp nay nhận tệp Office
+    **có macro** (`.docm .xlsm .pptm`) và tệp **nén** (`.zip .rar .7z`) — hai nhóm hệ thống
+    KHÔNG kiểm được nội dung bên trong (phát hiện **T-11**, **T-12**). Cả hai đều là quyết định
+    của khách hàng, không phải sơ suất, nhưng đã mở thì phải bù bằng con người và quy trình:
+
+    - Nhắc cán bộ **không bấm "Enable Content"** khi mở tệp Office nhận từ hệ thống, trừ khi
+      biết rõ người gửi và mục đích. Đây là bước duy nhất chặn macro chạy.
+    - Bật phần mềm diệt virus có quét thời gian thực trên máy cán bộ. Máy chủ không quét được
+      macro, nên chốt chặn cuối nằm ở máy trạm.
+    - Cấu hình Group Policy của Office: **chặn macro trong tệp đến từ Internet** (Microsoft đã
+      mặc định bật từ 2022, nhưng máy cài bản cũ hoặc đã tắt thì phải bật lại).
+    - Cảnh báo người dân **không giải nén rồi chạy** tệp lạ nhận qua hệ thống.
+
+    *Nếu về sau có sự cố mã độc qua đường này:* đảo quyết định bằng cách đưa các đuôi macro
+    trở lại `BLOCKED_EXTENSIONS` ở
+    `backend/apps/api-gateway/src/modules/files/file-type.guard.ts` (khối chú thích ở đó ghi
+    đúng chỗ cần sửa và test nào sẽ đỏ). Cân nhắc thêm kho tệp có quét mã độc
+    (ClamAV hoặc dịch vụ quét của nhà cung cấp) — hiện thuộc mục 5, ngoài phạm vi Phase 1.
+
+---
+
 ## 5. Ngoài phạm vi Phase 1
 
 Các hạng mục dưới đây **không** thuộc khối lượng công việc Phase 1, cần lập kế hoạch và dự toán riêng:
@@ -201,6 +224,7 @@ Các hạng mục dưới đây **không** thuộc khối lượng công việc 
 | `backend/libs/shared/src/config/configuration.ts` | Thêm `security.corsOrigins`, `security.bodyLimit`, `security.hstsMaxAge`, `security.trustProxy` |
 | `backend/.env.example` | Thêm `CORS_ORIGINS`, `BODY_LIMIT`, `HSTS_MAX_AGE`, `TRUST_PROXY`, `STORAGE_MAX_FILE_SIZE` + cảnh báo `JWT_SECRET` |
 | `backend/apps/api-gateway/src/modules/files/files.service.ts` | Kiểm tra quyền cấp link tệp riêng tư (**C-01**), chặn MIME thực thi được (**C-02**), `openForDownload` kiểm chữ ký trước khi đọc đĩa (**T-02**) |
+| `backend/apps/api-gateway/src/modules/files/file-type.guard.ts` | Kiểm loại tệp ba tầng: MIME · đuôi tệp (danh sách đen + danh sách trắng theo `purpose`) · magic bytes đọc nội dung thật (**C-02**, bổ sung 10/09/2026). Cũng là nơi ghi rõ quyết định cho phép Office có macro (**T-11**) và tệp nén (**T-12**) |
 | `backend/apps/api-gateway/src/modules/files/files.controller.ts` | Truyền người gọi vào `signedUrl`, `Content-Disposition: attachment` cho định dạng không an toàn, thêm `nosniff` (**C-01**, **C-02**) |
 | `backend/apps/api-gateway/src/modules/feedback/feedback.service.ts` | Che số điện thoại công dân ở mọi phản hồi cho cán bộ (**TB-02**) |
 | `backend/apps/api-gateway/src/modules/auth/auth.controller.ts` | Hạn mức 5 lượt/phút cho login, OTP, định danh Zalo (**TB-03**) |

@@ -45,7 +45,52 @@ export const ALLOWED_MIME_BY_PURPOSE: Record<FilePurpose, readonly string[]> = {
     "audio/x-m4a",
   ],
   video: ["video/mp4", "video/quicktime", "video/webm", "video/x-matroska", "video/3gpp"],
-  other: [],
+  /**
+   * Tài liệu hành chính đính kèm (nhiệm vụ, văn bản). DANH SÁCH TRẮNG —
+   * phải khớp ALLOWED_MIME_BY_PURPOSE của backend (files.service.ts).
+   * Sửa một bên mà quên bên kia là giao diện cho chọn rồi API từ chối.
+   */
+  other: [
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-powerpoint",
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    // Office CÓ MACRO — khách yêu cầu mở 10/09/2026. Rủi ro và phần bù đắp ghi
+    // ở backend/apps/api-gateway/src/modules/files/file-type.guard.ts
+    "application/vnd.ms-word.document.macroenabled.12",
+    "application/vnd.ms-word.template.macroenabled.12",
+    "application/vnd.ms-excel.sheet.macroenabled.12",
+    "application/vnd.ms-excel.template.macroenabled.12",
+    "application/vnd.ms-excel.sheet.binary.macroenabled.12",
+    "application/vnd.ms-powerpoint.presentation.macroenabled.12",
+    "application/vnd.ms-powerpoint.slideshow.macroenabled.12",
+    "application/vnd.ms-powerpoint.template.macroenabled.12",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.template",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.template",
+    "application/vnd.openxmlformats-officedocument.presentationml.template",
+    "application/vnd.openxmlformats-officedocument.presentationml.slideshow",
+    "application/vnd.oasis.opendocument.text",
+    "application/vnd.oasis.opendocument.spreadsheet",
+    "application/vnd.oasis.opendocument.presentation",
+    "application/rtf",
+    "text/rtf",
+    "text/plain",
+    "text/csv",
+    ...IMAGE_MIME_TYPES,
+    "image/bmp",
+    "image/tiff",
+    "application/zip",
+    "application/x-zip-compressed",
+    "application/vnd.rar",
+    "application/x-rar-compressed",
+    "application/x-7z-compressed",
+    // Trình duyệt không nhận ra định dạng thì gửi octet-stream — cho qua ở tầng
+    // MIME, đuôi tệp vẫn chặn (backend kiểm thêm cả nội dung thật).
+    "application/octet-stream",
+  ],
 };
 
 /** Giá trị cho thuộc tính `accept` của thẻ input, suy ra từ bảng MIME */
@@ -55,7 +100,16 @@ export const ACCEPT_BY_PURPOSE: Record<FilePurpose, string> = {
   cover: "image/jpeg,image/png,image/webp",
   audio: "audio/mpeg,audio/mp4,audio/aac,audio/ogg,audio/wav,audio/webm,.mp3,.m4a,.wav,.ogg",
   video: "video/mp4,video/quicktime,video/webm,.mp4,.mov,.webm",
-  other: "",
+  // Liệt kê theo ĐUÔI TỆP thay vì MIME: Windows khai MIME cho .docx/.xlsx
+  // không nhất quán giữa các máy, lọc theo MIME sẽ làm hộp thoại chọn tệp ẩn
+  // mất tệp hợp lệ. Đây chỉ là bộ lọc hiển thị — chặn thật nằm ở backend.
+  other:
+    ".pdf,.rtf,.txt,.csv," +
+    ".doc,.docx,.docm,.dot,.dotx,.dotm," +
+    ".xls,.xlsx,.xlsm,.xlsb,.xlt,.xltx,.xltm," +
+    ".ppt,.pptx,.pptm,.pps,.ppsx,.ppsm,.pot,.potx,.potm," +
+    ".odt,.ods,.odp,.odg,.odf," +
+    ".jpg,.jpeg,.png,.webp,.gif,.heic,.heif,.bmp,.tif,.tiff,.zip,.rar,.7z",
 };
 
 /** Mô tả ngắn định dạng chấp nhận, hiện dưới ô kéo-thả */
@@ -65,7 +119,7 @@ export const FORMAT_HINT_BY_PURPOSE: Record<FilePurpose, string> = {
   cover: "Ảnh JPG, PNG, WEBP",
   audio: "Âm thanh MP3, M4A, AAC, WAV, OGG",
   video: "Video MP4, MOV, WEBM, MKV",
-  other: "Mọi định dạng trừ tệp có thể thực thi mã",
+  other: "Tài liệu Office (Word, Excel, PowerPoint, kể cả bản có macro), PDF, ảnh, văn bản hoặc tệp nén ZIP/RAR/7Z",
 };
 
 /**
@@ -85,6 +139,33 @@ const BLOCKED_MIME_TYPES: readonly string[] = [
   "application/x-sh",
   "application/x-httpd-php",
 ];
+
+/**
+ * Đuôi tệp bị chặn — sao chép BLOCKED_EXTENSIONS của backend
+ * (apps/api-gateway/src/modules/files/file-type.guard.ts).
+ *
+ * VÌ SAO CẦN CẢ ĐUÔI TỆP chứ không chỉ MIME: `file.type` do trình duyệt suy ra
+ * và có thể rỗng hoặc sai. Một tệp .exe thường được khai
+ * "application/x-msdownload", nhưng đổi tên thành .pdf thì nhiều trình duyệt
+ * khai luôn "application/pdf".
+ *
+ * Đây chỉ là kiểm SỚM cho trải nghiệm — báo lỗi ngay thay vì chờ tải xong.
+ * Chặn thật luôn nằm ở backend, nơi còn kiểm cả nội dung thật của tệp.
+ */
+const BLOCKED_EXTENSIONS: readonly string[] = [
+  ".exe", ".msi", ".bat", ".cmd", ".com", ".scr", ".pif", ".cpl", ".hta",
+  ".vbs", ".vbe", ".js", ".jse", ".wsf", ".wsh", ".ps1", ".psm1", ".lnk", ".reg",
+  ".sh", ".bash", ".zsh", ".run", ".bin", ".app", ".deb", ".rpm", ".dmg", ".jar",
+  ".html", ".htm", ".xhtml", ".shtml", ".svg", ".mhtml", ".xht",
+  ".php", ".php3", ".php4", ".php5", ".phtml", ".asp", ".aspx", ".jsp", ".jspx",
+  ".cgi", ".pl", ".py", ".rb",
+];
+
+/** Đuôi tệp dạng chữ thường, kèm dấu chấm; rỗng nếu tên không có đuôi */
+function extensionOf(fileName: string): string {
+  const dot = (fileName ?? "").lastIndexOf(".");
+  return dot > 0 ? fileName.slice(dot).toLowerCase() : "";
+}
 
 /** Dung lượng tối đa mỗi tệp (byte) — khớp STORAGE_MAX_FILE_SIZE của backend */
 export const MAX_FILE_SIZE = appConfig.files.maxSize;
@@ -196,6 +277,19 @@ export function validateFile(file: File, purpose: FilePurpose): string | null {
   const mimeType = file.type.toLowerCase();
   if (BLOCKED_MIME_TYPES.includes(mimeType)) {
     return "Định dạng tệp này không được phép tải lên vì có thể thực thi mã trong trình duyệt";
+  }
+
+  /* Kiểm đuôi tệp độc lập với MIME: hai thứ này sai lệch nhau rất thường xuyên,
+     và đuôi kép kiểu "bao-cao.pdf.exe" chỉ lộ ra khi soi tên tệp. */
+  const ext = extensionOf(file.name);
+  if (ext && BLOCKED_EXTENSIONS.includes(ext)) {
+    return `Không thể tải lên tệp "${ext}" vì định dạng này có thể thực thi mã. Vui lòng nén lại hoặc chuyển sang PDF`;
+  }
+  const parts = (file.name ?? "").toLowerCase().split(".");
+  for (let i = 1; i < parts.length - 1; i++) {
+    if (BLOCKED_EXTENSIONS.includes(`.${parts[i]}`)) {
+      return `Tên tệp chứa phần mở rộng ".${parts[i]}" không được phép. Vui lòng đổi tên tệp rồi thử lại`;
+    }
   }
 
   const allowed = ALLOWED_MIME_BY_PURPOSE[purpose];

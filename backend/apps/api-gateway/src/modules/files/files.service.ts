@@ -17,6 +17,11 @@ import { StoredFile, type StoredFileDocument } from '@vigov/shared';
 import { LocalStorageDriver } from './drivers/local.driver';
 import { S3StorageDriver } from './drivers/s3.driver';
 import { DEFAULT_LOCAL_DIR, type ByteRange, type StorageDriver } from './drivers/storage.driver';
+import {
+  assertContentMatchesExtension,
+  assertExtensionAllowed,
+  assertExtensionNotBlocked,
+} from './file-type.guard';
 
 /** Mục đích sử dụng tệp — khớp enum StoredFile.purpose trong misc.schema */
 export const FILE_PURPOSES = ['scan', 'feedback', 'audio', 'video', 'cover', 'other'] as const;
@@ -33,9 +38,8 @@ const IMAGE_MIME_TYPES = [
 ] as const;
 
 /**
- * Bảng MIME được phép theo mục đích.
- * Mảng rỗng nghĩa là KHÔNG giới hạn loại tệp (chỉ áp dụng cho 'other' —
- * tài liệu đính kèm nội bộ do cán bộ tải lên).
+ * Bảng MIME được phép theo mục đích. Mọi mục đích đều có danh sách trắng —
+ * không còn mục đích nào nhận mọi loại tệp.
  */
 const ALLOWED_MIME_BY_PURPOSE: Record<FilePurpose, readonly string[]> = {
   scan: ['application/pdf', ...IMAGE_MIME_TYPES],
@@ -43,7 +47,63 @@ const ALLOWED_MIME_BY_PURPOSE: Record<FilePurpose, readonly string[]> = {
   cover: [...IMAGE_MIME_TYPES],
   audio: ['audio/mpeg', 'audio/mp4', 'audio/aac', 'audio/ogg', 'audio/wav', 'audio/x-wav', 'audio/webm', 'audio/x-m4a'],
   video: ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-matroska', 'video/3gpp'],
-  other: [],
+  /**
+   * Tài liệu hành chính đính kèm (nhiệm vụ, văn bản). Trước đây để mảng rỗng
+   * nghĩa là KHÔNG giới hạn — chỉ dựa vào danh sách đen BLOCKED_MIME_TYPES.
+   * Nay chuyển sang DANH SÁCH TRẮNG theo nguyên tắc mặc định đóng: danh sách
+   * đen luôn thiếu, mỗi định dạng thực thi mới xuất hiện là một lỗ hổng mà
+   * không ai nhớ cập nhật.
+   *
+   * Đuôi tệp tương ứng khai ở ALLOWED_EXTENSIONS_BY_PURPOSE (file-type.guard.ts).
+   * Sửa một bên phải sửa bên kia — hai tầng cùng chặn một loại tệp.
+   */
+  other: [
+    // Tài liệu
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    // Office CÓ MACRO — khách yêu cầu mở 10/09/2026, xem file-type.guard.ts
+    'application/vnd.ms-word.document.macroenabled.12',
+    'application/vnd.ms-word.template.macroenabled.12',
+    'application/vnd.ms-excel.sheet.macroenabled.12',
+    'application/vnd.ms-excel.template.macroenabled.12',
+    'application/vnd.ms-excel.sheet.binary.macroenabled.12',
+    'application/vnd.ms-powerpoint.presentation.macroenabled.12',
+    'application/vnd.ms-powerpoint.slideshow.macroenabled.12',
+    'application/vnd.ms-powerpoint.template.macroenabled.12',
+    // Bản mẫu không macro
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.template',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.template',
+    'application/vnd.openxmlformats-officedocument.presentationml.template',
+    'application/vnd.openxmlformats-officedocument.presentationml.slideshow',
+    'application/vnd.oasis.opendocument.text',
+    'application/vnd.oasis.opendocument.spreadsheet',
+    'application/vnd.oasis.opendocument.presentation',
+    'application/rtf',
+    'text/rtf',
+    'text/plain',
+    'text/csv',
+    // Ảnh
+    ...IMAGE_MIME_TYPES,
+    'image/bmp',
+    'image/tiff',
+    // Nén — khách đã chốt cho phép (cán bộ hay gửi nhiều văn bản một lượt).
+    // Hệ thống KHÔNG quét được nội dung bên trong, nên tệp thực thi giấu trong
+    // .zip vẫn vào kho được; rủi ro này đã được chấp nhận có ý thức.
+    'application/zip',
+    'application/x-zip-compressed',
+    'application/vnd.rar',
+    'application/x-rar-compressed',
+    'application/x-7z-compressed',
+    // Trình duyệt không nhận ra định dạng thì gửi octet-stream. Cho qua ở tầng
+    // MIME vì đuôi tệp và magic bytes vẫn chặn — từ chối ở đây sẽ loại nhầm
+    // nhiều tệp .docx/.zip hợp lệ trên một số trình duyệt.
+    'application/octet-stream',
+  ],
 };
 
 /** Phần mở rộng suy ra từ MIME khi tên tệp gốc không có đuôi hợp lệ */
@@ -161,8 +221,8 @@ export class FilesService {
   }
 
   /**
-   * Tải tệp lên: kiểm tra dung lượng + MIME theo mục đích, sinh khoá duy nhất,
-   * ghi xuống driver rồi lưu bản ghi StoredFile.
+   * Tải tệp lên: kiểm dung lượng, rồi kiểm loại tệp qua BA TẦNG (MIME · đuôi
+   * tệp · magic bytes), sinh khoá duy nhất, ghi xuống driver và lưu StoredFile.
    */
   async upload(
     file: Express.Multer.File | undefined,
@@ -183,9 +243,16 @@ export class FilesService {
     }
 
     const mimeType = (file.mimetype ?? '').toLowerCase();
-    this.assertMimeAllowed(filePurpose, mimeType);
-
     const originalName = decodeMultipartFilename(file.originalname) || 'tệp-không-tên';
+
+    /* BA TẦNG kiểm tra loại tệp, phải cùng đồng ý mới nhận. MIME và đuôi tệp
+       đều do client khai nên đổi được; magic bytes đọc nội dung thật là tầng
+       duy nhất không nói dối được. Chi tiết vì sao: file-type.guard.ts */
+    this.assertMimeAllowed(filePurpose, mimeType);
+    assertExtensionNotBlocked(originalName);
+    assertExtensionAllowed(filePurpose, originalName);
+    assertContentMatchesExtension(file.buffer, originalName);
+
     const storageKey = this.buildStorageKey(filePurpose, originalName, mimeType);
     await this.driver.save(file.buffer, storageKey, mimeType);
 
