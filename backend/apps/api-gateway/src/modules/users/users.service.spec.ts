@@ -162,7 +162,7 @@ describe('UsersService.deleteCitizenById', () => {
     status: 'active',
     isDeleted: true,
     deletedAt: new Date('2026-09-06T00:00:00Z'),
-    deletedBy: 'admin',
+    deletedById: 'admin',
     get: () => undefined,
   };
 
@@ -196,8 +196,8 @@ describe('UsersService.deleteCitizenById', () => {
     // Chỉ xoá được bản ghi CHƯA xoá — gọi lại lần hai phải ra 404 chứ không ghi đè mốc xoá
     expect(filter).toMatchObject({ isDeleted: { $ne: true } });
     expect(update.$set.isDeleted).toBe(true);
-    expect(update.$set.deletedAt).toBeInstanceOf(Date);
-    expect(update.$set.deletedBy).toBe('admin');
+    expect(typeof update.$set.deletedAt).toBe('number');
+    expect(update.$set.deletedById).toBe('admin');
     // Lý do được cắt khoảng trắng thừa trước khi lưu
     expect(update.$set.deleteReason).toBe('Tài khoản kiểm thử');
   });
@@ -250,7 +250,7 @@ describe('UsersService.deleteCitizenById', () => {
     ];
     expect(filter).toMatchObject({ isDeleted: true });
     expect(update.$set).toEqual({ isDeleted: false, deletedAt: null });
-    expect(update.$unset).toEqual({ deletedBy: '', deleteReason: '' });
+    expect(update.$unset).toEqual({ deletedById: '', deleteReason: '' });
     expect(restored.displayName).toBe('Trần Thị Hoa');
   });
 });

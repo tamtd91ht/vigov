@@ -36,11 +36,17 @@ export class SoftDeletable {
    * Mốc xoá — chỉ để hiển thị và truy vết, KHÔNG lọc theo trường này.
    *
    * Milli-giây UTC theo khuôn thời gian v2 (`time/epoch.ts`). Phải khai
-   * `type: Number` tay: union `EpochMs | null` làm reflect-metadata trả về
+   * `type: Number` tay: union `number | null` làm reflect-metadata trả về
    * `Object` và Mongoose dựng sai kiểu cột.
+   *
+   * Khai `number` chứ KHÔNG phải bí danh `EpochMs`: dự án bật `declaration`,
+   * mà bí danh nằm trong trường schema làm kiểu `lean()` mà Mongoose suy ra
+   * phình quá giới hạn serialize của TypeScript — lỗi hiện ra ở những module
+   * không liên quan (TS7056 tại `map`, `settings`). Bí danh vẫn dùng ở chữ ký
+   * hàm, nơi nó có giá trị diễn giải mà không vào kiểu suy ra.
    */
   @Prop({ type: Number, default: null })
-  deletedAt?: EpochMs | null;
+  deletedAt?: number | null;
 
   /**
    * `staff_users._id` của cán bộ đã xoá — khuôn tham chiếu v2 (`refs.ts`).

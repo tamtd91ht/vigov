@@ -62,3 +62,54 @@ export function pinToLatLng(pin: { x: number; y: number }): { lat: number; lng: 
   const lng = MAP_CENTER.lng + ((pin.x - 50) / 100) * MAP_SPAN;
   return { lat: Number(lat.toFixed(6)), lng: Number(lng.toFixed(6)) };
 }
+
+/* ─────────────────── Nhật ký và bình luận cho dữ liệu seed ─────────────────── */
+
+/**
+ * Dựng một mốc nhật ký cho dữ liệu seed theo khuôn `ActivityEntry` của v2.
+ *
+ * Dữ liệu seed là nội dung DEMO: mỗi mốc là một câu tường thuật riêng, không
+ * quy về một tập hành động đóng như mã nghiệp vụ. Nên seed dùng một khoá chung
+ * `<phân hệ>.note` và đặt cả câu vào `detail` — đúng vai của `detail` là phần
+ * biến của hành động.
+ *
+ * `actorId` để rỗng (hệ thống): seed chưa tra được id cán bộ, vì tài khoản cán
+ * bộ do `users.seed.ts` chèn ở một bước khác. Khi P7-02 chặng 2c đổi `assignee`
+ * sang id, bộ seeder sẽ có sẵn bản đồ tên → id và chỗ này nối vào đó.
+ *
+ * @param action khoá dạng `<phân hệ>.note`
+ * @param detail câu tường thuật của mốc
+ * @param when   chuỗi `dd/MM/yyyy HH:mm` lấy từ dữ liệu mock; phần chữ đứng
+ *               trước (ví dụ "Từ 14/08/2026") được bỏ qua
+ */
+export function seedActivity(
+  action: string,
+  detail: string,
+  when?: string,
+  state: 'ok' | 'cur' = 'ok',
+): { at: number; actorId: string; action: string; detail: string; state: 'ok' | 'cur' } {
+  return { at: seedMoment(when), actorId: '', action, detail, state };
+}
+
+/** Bình luận cho dữ liệu seed theo khuôn `Comment` của v2 */
+export function seedComment(
+  content: string,
+  when?: string,
+): { at: number; authorId: string; content: string } {
+  return { at: seedMoment(when), authorId: '', content };
+}
+
+/** Mốc dự phòng khi chuỗi thời gian của mock không đọc được — tất định */
+const SEED_FALLBACK_AT = new Date(2026, 7, 1, 8, 0, 0).getTime();
+
+/**
+ * Bóc mốc `dd/MM/yyyy HH:mm` ra khỏi một chuỗi mô tả của mock.
+ * Không đọc được thì trả mốc dự phòng cố định — seed phải tất định, và một mốc
+ * đoán sai trong dữ liệu demo còn hơn `NaN` lọt vào cơ sở dữ liệu.
+ */
+function seedMoment(when?: string): number {
+  if (!when) return SEED_FALLBACK_AT;
+  const matched = /(\d{2}\/\d{2}\/\d{4})(?:\s+(\d{2}:\d{2}))?/.exec(when);
+  if (!matched) return SEED_FALLBACK_AT;
+  return parseVnDateTime(`${matched[1]} ${matched[2] ?? '00:00'}`).getTime();
+}

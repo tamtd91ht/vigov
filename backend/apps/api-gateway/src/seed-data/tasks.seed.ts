@@ -4,27 +4,27 @@
  * (dd/MM/yyyy, lấy mốc cuối ngày). Bình luận và nhật ký sinh theo đúng công thức
  * của mockTaskComments / mockTaskLog để giao diện có nội dung như bản demo.
  */
-import type { Comment, Task, TimelineStep } from '@vigov/shared';
-import { endOfVnDay } from './seed.util';
+import type { ActivityEntry, Comment, Task } from '@vigov/shared';
+import { endOfVnDay, seedActivity, seedComment } from './seed.util';
+
+/**
+ * Khoa hanh dong cho nhat ky cua du lieu seed.
+ *
+ * Seed la noi dung DEMO: moi moc la mot cau tuong thuat rieng nen dung mot khoa
+ * chung va dat ca cau vao `detail`. Ma nghiep vu thi nguoc lai - moi hanh dong
+ * mot khoa rieng (xem `ACT` trong tasks.service.ts).
+ */
+const ACT_NOTE = 'task.note';
 
 export type TaskSeed = Partial<Task> & { code: string };
 
-/** Danh bạ cán bộ — khớp admin-web/src/mocks/directory.ts (viết tắt + màu avatar) */
-const STAFF_BADGE: Record<string, { initials: string; color: string }> = {
-  'Nguyễn Văn Bình': { initials: 'NB', color: '#1B3A5C' },
-  'Trần Thị Hạnh': { initials: 'TH', color: '#E91E8C' },
-  'Lê Minh Tuấn': { initials: 'LT', color: '#3B82C4' },
-  'Phạm Thị Ngọc': { initials: 'PN', color: '#8E44AD' },
-  'Vũ Đức Anh': { initials: 'VA', color: '#27AE60' },
-  'Đỗ Thanh Hà': { initials: 'ĐH', color: '#E67E22' },
-  'Hoàng Văn Sơn': { initials: 'HS', color: '#17A2A2' },
-  'Ngô Thị Lan': { initials: 'NL', color: '#E74C3C' },
-  'Bùi Quang Khải': { initials: 'BK', color: '#5B6C8F' },
-};
+/*
+ * `STAFF_BADGE` và `FALLBACK_BADGE` đã bỏ: chữ viết tắt và màu avatar là cách
+ * TRÌNH BÀY, không còn lưu trong cơ sở dữ liệu từ bản v2 — client tự tính từ
+ * tên đã resolve.
+ */
 
-const FALLBACK_BADGE = { initials: 'CB', color: '#8896A6' };
-
-/** Nhãn trạng thái nhiệm vụ để ghi nhật ký */
+/** Nhãn trạng thái nhiệm vụ, chỉ dùng để dựng câu tường thuật của dữ liệu demo */
 const STATUS_LABELS: Record<string, string> = {
   moi: 'Mới giao',
   dang: 'Đang thực hiện',
@@ -407,16 +407,15 @@ const TASK_BASE: TaskBase[] = [
   },
 ];
 
-/** Một bình luận với avatar lấy theo danh bạ cán bộ */
+/**
+ * Một bình luận của dữ liệu seed.
+ *
+ * `authorId` để rỗng: seed chưa tra được id cán bộ vì tài khoản do
+ * `users.seed.ts` chèn ở bước khác. Tên người nói được giữ trong nội dung để
+ * bản demo vẫn đọc được. P7-02 chặng 2c sẽ nối vào bản đồ tên → id của seeder.
+ */
 function buildComment(name: string, time: string, content: string): Comment {
-  const badge = STAFF_BADGE[name] ?? FALLBACK_BADGE;
-  return {
-    authorName: name,
-    authorInitials: badge.initials,
-    authorColor: badge.color,
-    time,
-    content,
-  };
+  return seedComment(`${name}: ${content}`, time);
 }
 
 /** 3 bình luận trao đổi — cùng công thức với mockTaskComments của admin-web */
@@ -431,29 +430,30 @@ function buildComments(task: TaskBase): Comment[] {
 }
 
 /** Nhật ký xử lý — cùng công thức với mockTaskLog của admin-web */
-function buildTimeline(task: TaskBase): TimelineStep[] {
+function buildTimeline(task: TaskBase): ActivityEntry[] {
   const statusLabel = STATUS_LABELS[task.status] ?? task.status;
   return [
-    {
-      title: `Tạo nhiệm vụ và giao chủ trì cho ${task.assignee}`,
-      meta: `12/08/2026 08:10 · ${task.assigner}`,
-      state: 'ok',
-    },
-    {
-      title: `Bổ sung cán bộ phối hợp: ${task.collaborators.join(', ') || 'không có'}`,
-      meta: `12/08/2026 09:25 · ${task.assigner}`,
-      state: 'ok',
-    },
-    {
-      title: `Cập nhật tiến độ từ 0% lên ${Math.max(0, task.progress - 25)}%`,
-      meta: `16/08/2026 15:40 · ${task.assignee}`,
-      state: 'ok',
-    },
-    {
-      title: `Cập nhật tiến độ lên ${task.progress}% · Trạng thái: ${statusLabel}`,
-      meta: `22/08/2026 16:30 · ${task.assignee}`,
-      state: 'cur',
-    },
+    seedActivity(
+      ACT_NOTE,
+      `Tạo nhiệm vụ và giao chủ trì cho ${task.assignee} · ${task.assigner}`,
+      '12/08/2026 08:10',
+    ),
+    seedActivity(
+      ACT_NOTE,
+      `Bổ sung cán bộ phối hợp: ${task.collaborators.join(', ') || 'không có'}`,
+      '12/08/2026 09:25',
+    ),
+    seedActivity(
+      ACT_NOTE,
+      `Cập nhật tiến độ từ 0% lên ${Math.max(0, task.progress - 25)}%`,
+      '16/08/2026 15:40',
+    ),
+    seedActivity(
+      ACT_NOTE,
+      `Cập nhật tiến độ lên ${task.progress}% · Trạng thái: ${statusLabel}`,
+      '22/08/2026 16:30',
+      'cur',
+    ),
   ];
 }
 

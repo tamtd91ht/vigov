@@ -223,7 +223,8 @@ describe('DisbursementService.softDelete / restore', () => {
     return { service, findOneAndUpdate };
   }
 
-  const admin = { username: 'admin' } as unknown as JwtPayload;
+  // Khuôn v2 lưu ID cán bộ, nên phiên đăng nhập giả phải có `sub`
+  const admin = { sub: '66f10000000000000000ad01', username: 'admin' } as unknown as JwtPayload;
 
   it('bật cờ isDeleted chứ không xoá tài liệu khỏi CSDL', async () => {
     const { service, findOneAndUpdate } = makeService();
@@ -237,8 +238,8 @@ describe('DisbursementService.softDelete / restore', () => {
     // Chỉ xoá được bản ghi CHƯA xoá — gọi lần hai phải ra 404, không ghi đè mốc xoá cũ
     expect(filter).toMatchObject({ code: 'HM-09', isDeleted: { $ne: true } });
     expect(update.$set.isDeleted).toBe(true);
-    expect(update.$set.deletedAt).toBeInstanceOf(Date);
-    expect(update.$set.deletedBy).toBe('admin');
+    expect(typeof update.$set.deletedAt).toBe('number');
+    expect(update.$set.deletedById).toBe('66f10000000000000000ad01');
     // Lý do được cắt khoảng trắng thừa trước khi lưu
     expect(update.$set.deleteReason).toBe('Nhập trùng HM-04');
   });
@@ -269,7 +270,7 @@ describe('DisbursementService.softDelete / restore', () => {
     ];
     expect(filter).toMatchObject({ code: 'HM-09', isDeleted: true });
     expect(update.$set).toEqual({ isDeleted: false, deletedAt: null });
-    expect(update.$unset).toEqual({ deletedBy: '', deleteReason: '' });
+    expect(update.$unset).toEqual({ deletedById: '', deleteReason: '' });
   });
 
   it('khôi phục hạng mục chưa từng bị xoá thì trả 404', async () => {

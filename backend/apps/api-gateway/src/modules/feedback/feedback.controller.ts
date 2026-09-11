@@ -39,7 +39,7 @@ import {
   UpdateCitizenFeedbackDto,
   WithdrawFeedbackDto,
 } from './dto/feedback.dto';
-import { FeedbackService } from './feedback.service';
+import { FeedbackService, type ActorInfo } from './feedback.service';
 
 /** Vai trò của tài khoản công dân (Zalo Mini App) */
 const CITIZEN_ROLE_KEY = 'citizen';
@@ -58,9 +58,18 @@ function citizenOf(req: AuthedRequest): JwtPayload {
   return user;
 }
 
-/** Tên cán bộ đang thao tác để ghi vào timeline */
-function actorOf(req: AuthedRequest): string {
-  return req.user?.displayName || req.user?.username || 'Hệ thống';
+/**
+ * Cán bộ đang thao tác, để ghi vào nhật ký xử lý.
+ *
+ * Trả về CẢ id và tên: nhật ký v2 lưu `actorId` (khuôn `ActivityEntry`), còn
+ * trường `withdrawDecidedBy` của phiếu vẫn đang lưu tên. Truyền một chuỗi như
+ * bản v1 thì một trong hai chỗ phải đoán lại giá trị còn thiếu.
+ */
+function actorOf(req: AuthedRequest): ActorInfo {
+  return {
+    id: req.user?.sub ?? '',
+    name: req.user?.displayName || req.user?.username || 'Hệ thống',
+  };
 }
 
 /** Phản ánh người dân (WBS #6 — Web Quản trị, WBS #13 — app công dân) */

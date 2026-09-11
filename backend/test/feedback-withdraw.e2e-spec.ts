@@ -183,8 +183,8 @@ describe('ViGov API — thu hồi và sửa phản ánh', () => {
         .expect(200);
 
       const res = await asCitizen(api().get(`${API}/feedback/citizen/mine/${codePath(code)}`)).expect(200);
-      const titles = (res.body.timeline as { title: string }[]).map((t) => t.title);
-      expect(titles.some((t) => t.includes('Công dân sửa'))).toBe(true);
+      const actions = (res.body.timeline as { action: string }[]).map((t) => t.action);
+      expect(actions).toContain('feedback.citizen-edit');
     });
 
     it('gỡ thẳng được, và phiếu biến mất khỏi danh sách của công dân', async () => {

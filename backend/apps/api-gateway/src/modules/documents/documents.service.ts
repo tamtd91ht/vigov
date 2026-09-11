@@ -2,7 +2,8 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, type FilterQuery } from 'mongoose';
 import {
-  buildDateRangeFilter,
+  activity,
+  buildEpochRangeFilter,
   IncomingDocument,
   IS_DELETED,
   markDeleted,
@@ -43,16 +44,22 @@ const DEFAULT_DOC_TYPE_BY_KIND: Record<string, string> = {
 /** Bộ phận mặc định khi mới vào sổ, chưa phân công chủ trì */
 const DEFAULT_DEPARTMENT = 'Văn phòng';
 
-/** Nhãn timeline khi tiếp nhận văn bản */
-const TIMELINE_RECEIVED_TITLE = 'Văn phòng tiếp nhận, vào sổ văn bản đến';
-
-/** Nhãn trạng thái hiển thị trong timeline */
-const STATUS_LABELS: Record<string, string> = {
-  moi: 'Mới tiếp nhận',
-  dangxl: 'Đang xử lý',
-  choduyet: 'Chờ duyệt',
-  xong: 'Đã hoàn thành',
-};
+/**
+ * Khoá hành động ghi vào nhật ký xử lý — khuôn `ActivityEntry` của v2.
+ *
+ * Chỉ là KHOÁ, không phải nhãn hiển thị: nhãn tiếng Việt do client tra từ
+ * `admin-web/src/config/activity.config.ts`. Trước v2, nhãn nằm thẳng trong
+ * cơ sở dữ liệu nên đổi cách gọi một trạng thái là phải sửa dữ liệu lịch sử.
+ */
+const ACT = {
+  receive: 'document.receive',
+  transfer: 'document.transfer',
+  status: 'document.status',
+  attach: 'document.attach',
+  detach: 'document.detach',
+  delete: 'document.delete',
+  restore: 'document.restore',
+} as const;
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -103,16 +110,18 @@ export class DocumentsService {
     if (added.length > 0) {
       doc.markModified('attachmentFileIds');
       /*
-       * `state` chỉ nhận 'ok' | 'cur' (enum của TimelineStep). Giá trị 'done'
+       * `state` chỉ nhận 'ok' | 'cur' (enum của ActivityEntry). Giá trị 'done'
        * dùng trước đây làm Mongoose ném ValidationError ngay ở `save()` dưới
        * đây; đó không phải HttpException nên cả lời gọi đổ thành 500 — tệp
        * không bao giờ được gắn, giao diện chỉ thấy "Internal server error".
+       *
+       * `detail` chỉ ghi SỐ LƯỢNG tệp, không ghi tên tệp: tên tệp scan công văn
+       * thường mang tên người và nội dung vụ việc, mà nhật ký hiển thị cho mọi
+       * cán bộ có quyền xem văn bản. Tên tệp đã nằm ở `attachmentFiles`.
        */
-      doc.timeline.push({
-        title: `Đính kèm ${added.length} tệp: ${names.join(', ')}`,
-        meta: timelineMeta(actor),
-        state: 'ok',
-      });
+      doc.timeline.push(
+        activity(ACT.attach, { actorId: actor?.sub, detail: String(added.length) }),
+      );
       await doc.save();
     }
     return this.withAttachmentFiles(doc);
@@ -128,11 +137,7 @@ export class DocumentsService {
 
     doc.attachmentFileIds.splice(index, 1);
     doc.markModified('attachmentFileIds');
-    doc.timeline.push({
-      title: 'Gỡ một tệp đính kèm',
-      meta: timelineMeta(actor),
-      state: 'ok',
-    });
+    doc.timeline.push(activity(ACT.detach, { actorId: actor?.sub }));
     await doc.save();
     return this.withAttachmentFiles(doc);
   }
@@ -186,7 +191,7 @@ export class DocumentsService {
     if (query.department) filter.department = query.department;
     if (query.docType) filter.docType = query.docType;
     // Khoảng thời gian tiếp nhận, tính theo ngày giờ Việt Nam
-    const range = buildDateRangeFilter('createdAt', query.from, query.to);
+    const range = buildEpochRangeFilter('createdAt', query.from, query.to);
     if (range) Object.assign(filter, range);
     // Tìm toàn văn dựa trên text index (summary / refNo / sender) khai báo trong schema
     if (query.q?.trim()) filter.$text = { $search: query.q.trim() };
@@ -289,13 +294,7 @@ export class DocumentsService {
       pageCount: dto.pageCount ?? 1,
       scanFileId: dto.scanFileId,
       ocrFields: [],
-      timeline: [
-        {
-          title: TIMELINE_RECEIVED_TITLE,
-          meta: timelineMeta(actor),
-          state: 'cur',
-        },
-      ],
+      timeline: [activity(ACT.receive, { actorId: actor?.sub, state: 'cur' })],
     });
 
     this.logger.log(`Đã vào sổ văn bản số đến ${arrivalNo} (${kind})`);
@@ -307,14 +306,13 @@ export class DocumentsService {
     const doc = await this.docModel.findOne({ arrivalNo }).exec();
     if (!doc) throw new NotFoundException(`Không tìm thấy văn bản có số đến ${arrivalNo}`);
 
-    const steps: string[] = [];
+    /* Ghi KHOÁ trạng thái / tên bộ phận vào `detail`, không ghi nhãn tiếng Việt */
+    const steps: { action: string; detail: string }[] = [];
     if (dto.department && dto.department !== doc.department) {
-      steps.push(`Chuyển xử lý: ${doc.department} → ${dto.department}`);
+      steps.push({ action: ACT.transfer, detail: `${doc.department} → ${dto.department}` });
     }
     if (dto.status && dto.status !== doc.status) {
-      const from = STATUS_LABELS[doc.status] ?? doc.status;
-      const to = STATUS_LABELS[dto.status] ?? dto.status;
-      steps.push(`Cập nhật trạng thái: ${from} → ${to}`);
+      steps.push({ action: ACT.status, detail: `${doc.status} → ${dto.status}` });
     }
 
     if (dto.refNo !== undefined) doc.refNo = dto.refNo;
@@ -344,9 +342,14 @@ export class DocumentsService {
       doc.timeline.forEach((step) => {
         step.state = 'ok';
       });
-      const meta = timelineMeta(actor);
-      steps.forEach((title, index) => {
-        doc.timeline.push({ title, meta, state: index === steps.length - 1 ? 'cur' : 'ok' });
+      steps.forEach((buoc, index) => {
+        doc.timeline.push(
+          activity(buoc.action, {
+            actorId: actor?.sub,
+            detail: buoc.detail,
+            state: index === steps.length - 1 ? 'cur' : 'ok',
+          }),
+        );
       });
     }
 
@@ -461,14 +464,10 @@ export class DocumentsService {
     const who = actor?.displayName ?? 'Hệ thống';
     const trimmed = reason?.trim();
 
-    // `deletedBy` lưu TÊN ĐĂNG NHẬP (khớp nhật ký kiểm toán và 3 phân hệ còn
-    // lại); nhật ký hiển thị dùng họ tên cho cán bộ dễ đọc.
-    markDeleted(doc, actor?.username, reason);
-    doc.timeline.push({
-      title: trimmed ? `Xoá văn bản khỏi sổ: ${trimmed}` : 'Xoá văn bản khỏi sổ',
-      meta: timelineMeta(actor),
-      state: 'ok',
-    });
+    // `deletedById` lưu ID cán bộ theo khuôn tham chiếu v2; nhật ký kiểm toán
+    // (`audit_logs`) vẫn tra theo tên đăng nhập — đó là kho riêng.
+    markDeleted(doc, actor?.sub, reason);
+    doc.timeline.push(activity(ACT.delete, { actorId: actor?.sub, detail: trimmed ?? '' }));
     await doc.save();
 
     this.logger.warn(`Đã xoá mềm văn bản số đến ${arrivalNo} bởi ${who}`);
@@ -483,11 +482,7 @@ export class DocumentsService {
     }
 
     markRestored(doc);
-    doc.timeline.push({
-      title: 'Khôi phục văn bản vào sổ',
-      meta: timelineMeta(actor),
-      state: 'ok',
-    });
+    doc.timeline.push(activity(ACT.restore, { actorId: actor?.sub }));
     await doc.save();
 
     this.logger.log(`Đã khôi phục văn bản số đến ${arrivalNo}`);
@@ -534,15 +529,8 @@ function daysLeftFrom(deadlineAt?: Date): number {
   return Math.round((new Date(deadlineAt).getTime() - today) / MS_PER_DAY);
 }
 
-/** Dòng mô tả người thao tác + thời điểm cho timeline */
-function timelineMeta(actor?: JwtPayload): string {
-  const now = new Date();
-  const time = `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
-  const day = `${pad2(now.getDate())}/${pad2(now.getMonth() + 1)}/${now.getFullYear()}`;
-  const who = actor?.displayName ?? 'Hệ thống';
-  return `${time} • ${day} • ${who}`;
-}
-
-function pad2(n: number): string {
-  return String(n).padStart(2, '0');
-}
+/*
+ * `timelineMeta` đã bỏ: thời điểm và người thao tác giờ là hai trường riêng của
+ * `ActivityEntry` (`at` dạng số, `actorId` là id cán bộ), không còn ghép thành
+ * một chuỗi hiển thị lưu trong cơ sở dữ liệu.
+ */

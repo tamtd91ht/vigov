@@ -10,7 +10,8 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model } from 'mongoose';
 import {
-  buildDateRangeFilter,
+  activity,
+  buildEpochRangeFilter,
   EVENTS,
   Feedback,
   IS_DELETED,
@@ -94,12 +95,38 @@ const PHONE_MASK_HEAD = 3;
 const PHONE_MASK_TAIL = 3;
 const PHONE_MASK_FILL = '•••';
 
-/** Nhãn kênh gửi hiển thị trên timeline */
-const CHANNEL_LABELS: Record<string, string> = {
-  app: 'Ứng dụng công dân',
-  zalo: 'Zalo Mini App',
-  web: 'Cổng thông tin',
-};
+/*
+ * `CHANNEL_LABELS` đã bỏ: nhật ký v2 lưu KHOÁ kênh gửi ('app' | 'zalo' | 'web'),
+ * nhãn tiếng Việt do client tra từ bảng cấu hình.
+ */
+
+/**
+ * Cán bộ đang thao tác: `id` để ghi nhật ký (khuôn v2 lưu id), `name` cho các
+ * trường còn lưu tên như `withdrawDecidedBy` (sẽ đổi sang id ở P7-02 chặng 2c).
+ */
+export interface ActorInfo {
+  id: string;
+  name: string;
+}
+
+/**
+ * Khoá hành động ghi vào nhật ký xử lý. Chỉ là KHOÁ — nhãn tiếng Việt do client
+ * tra từ `admin-web/src/config/activity.config.ts`.
+ */
+const ACT = {
+  receiveOnline: 'feedback.receive-online',
+  receiveOffline: 'feedback.receive-offline',
+  awaitingAssign: 'feedback.awaiting-assign',
+  assign: 'feedback.assign',
+  resolve: 'feedback.resolve',
+  transfer: 'feedback.transfer',
+  rate: 'feedback.rate',
+  citizenEdit: 'feedback.citizen-edit',
+  withdrawRequest: 'feedback.withdraw-request',
+  withdraw: 'feedback.withdraw',
+  withdrawApprove: 'feedback.withdraw-approve',
+  withdrawReject: 'feedback.withdraw-reject',
+} as const;
 
 @Injectable()
 export class FeedbackService {
@@ -201,7 +228,7 @@ export class FeedbackService {
     if (query.assignee) filter.assignee = query.assignee;
     if (query.withdrawStatus) filter.withdrawStatus = query.withdrawStatus;
     // Khoảng thời gian tiếp nhận phiếu, tính theo ngày giờ Việt Nam
-    const range = buildDateRangeFilter('createdAt', query.from, query.to);
+    const range = buildEpochRangeFilter('createdAt', query.from, query.to);
     if (range) Object.assign(filter, range);
     if (query.q?.trim()) {
       const keyword = new RegExp(escapeRegex(query.q.trim()), 'i');
@@ -320,15 +347,16 @@ export class FeedbackService {
   }
 
   /** Phân công cán bộ + bộ phận xử lý; phiếu chuyển sang trạng thái đang xử lý */
-  async assign(code: string, dto: AssignFeedbackDto, actor: string) {
+  async assign(code: string, dto: AssignFeedbackDto, actor: ActorInfo) {
     const fb = await this.findOrFail(code);
     fb.assignee = dto.assignee;
     fb.department = dto.department;
     if (fb.status === 'received') fb.status = 'processing';
     pushTimeline(
       fb,
-      `Phân công ${dto.assignee} — ${dto.department}`,
-      [timeLabel(new Date()), actor, dto.note].filter(Boolean).join(' · '),
+      ACT.assign,
+      [`${dto.assignee} · ${dto.department}`, dto.note].filter(Boolean).join(' · '),
+      actor.id,
     );
     await fb.save();
 
@@ -366,7 +394,7 @@ export class FeedbackService {
   }
 
   /** Xác nhận đã xử lý xong + gửi kết quả cho công dân */
-  async resolve(code: string, dto: ResolveFeedbackDto, actor: string) {
+  async resolve(code: string, dto: ResolveFeedbackDto, actor: ActorInfo) {
     /*
      * Ảnh nghiệm thu cũng phải là tệp riêng tư, y như ảnh hiện trường: "đã tháo
      * biển quảng cáo nhà số 12" là ảnh của một căn nhà cụ thể, không phải ảnh vô
@@ -379,7 +407,7 @@ export class FeedbackService {
     const resolvedAt = new Date();
     fb.status = 'resolved';
     if (dto.resultImageFileIds?.length) fb.resultImageFileIds = dto.resultImageFileIds;
-    pushTimeline(fb, 'Đã xử lý xong', `${timeLabel(resolvedAt)} · ${actor} · ${dto.note}`);
+    pushTimeline(fb, ACT.resolve, dto.note, actor.id);
     await fb.save();
 
     const event: FeedbackResolvedEvent = {
@@ -409,18 +437,14 @@ export class FeedbackService {
   }
 
   /** Chuyển phản ánh sang bộ phận khác (sai địa chỉ / vượt thẩm quyền) */
-  async transfer(code: string, dto: TransferFeedbackDto, actor: string) {
+  async transfer(code: string, dto: TransferFeedbackDto, actor: ActorInfo) {
     const fb = await this.findOrFail(code);
     const previous = fb.department || 'chưa phân công';
     fb.department = dto.department;
     // Chuyển bộ phận thì cán bộ cũ hết trách nhiệm, trừ khi bàn giao đích danh
     fb.assignee = dto.assignee ?? '';
     if (fb.status === 'received' && dto.assignee) fb.status = 'processing';
-    pushTimeline(
-      fb,
-      `Chuyển từ ${previous} sang ${dto.department}`,
-      `${timeLabel(new Date())} · ${actor} · ${dto.reason}`,
-    );
+    pushTimeline(fb, ACT.transfer, `${previous} → ${dto.department} · ${dto.reason}`, actor.id);
     await fb.save();
 
     if (dto.assignee) {
@@ -450,7 +474,7 @@ export class FeedbackService {
    * SLA và hạn xử lý dùng CHUNG `resolveSla` với luồng công dân gửi, mã phiếu
    * dùng chung `createWithUniqueCode`, nên hai đường vào không thể lệch nhau.
    */
-  async createByStaff(dto: CreateStaffFeedbackDto, actor: string) {
+  async createByStaff(dto: CreateStaffFeedbackDto, actor: ActorInfo) {
     // Ảnh hiện trường do cán bộ chụp hộ dân cũng phải là tệp riêng tư (TB-09)
     await this.assertImagesPrivate(dto.imageFileIds, 'Ảnh hiện trường');
 
@@ -470,11 +494,9 @@ export class FeedbackService {
       channel: 'web',
       source: 'offline',
       openingStep: {
-        title: 'Cán bộ tiếp nhận trực tiếp tại xã',
-        // Ghi rõ ai LẬP phiếu và ai là người trình bày — hai người khác nhau
-        meta: [timeLabel(sentAt), `Cán bộ lập: ${actor}`, citizenLabel(dto.citizenName)]
-          .filter(Boolean)
-          .join(' · '),
+        action: ACT.receiveOffline,
+        // Ghi rõ ai là người trình bày; cán bộ lập phiếu nằm ở `actorId`
+        detail: citizenLabel(dto.citizenName) ?? '',
       },
     });
 
@@ -524,8 +546,9 @@ export class FeedbackService {
         channel,
         source: 'app',
         openingStep: {
-          title: 'Công dân gửi phản ánh',
-          meta: `${timeLabel(sentAt)} · ${CHANNEL_LABELS[channel] ?? channel}`,
+          action: ACT.receiveOnline,
+          // Kênh gửi là KHOÁ ('app' | 'zalo' | 'web'), không phải nhãn tiếng Việt
+          detail: channel,
         },
       }),
       lat: dto.lat,
@@ -603,7 +626,8 @@ export class FeedbackService {
 
     fb.rating = dto.rating;
     fb.ratingComment = dto.ratingComment ?? '';
-    pushTimeline(fb, `Công dân đánh giá ${dto.rating}/5 sao`, `${timeLabel(new Date())}${dto.ratingComment ? ` · ${dto.ratingComment}` : ''}`);
+    // Công dân tự đánh giá: actorId để rỗng, công dân không có tài khoản cán bộ
+    pushTimeline(fb, ACT.rate, [String(dto.rating), dto.ratingComment].filter(Boolean).join(' · '));
     await fb.save();
 
     return { code: fb.code, rating: fb.rating, ratingComment: fb.ratingComment };
@@ -634,11 +658,7 @@ export class FeedbackService {
     }
     if (changed.length === 0) return this.citizenView(fb.toObject());
 
-    pushTimeline(
-      fb,
-      `Công dân sửa ${changed.join(' và ')}`,
-      timeLabel(new Date()),
-    );
+    pushTimeline(fb, ACT.citizenEdit, changed.join(' · '));
     await fb.save();
     return this.citizenView(fb.toObject());
   }
@@ -678,8 +698,15 @@ export class FeedbackService {
     if (!this.isAccepted(fb)) {
       fb.withdrawStatus = 'approved';
       fb.withdrawDecidedAt = now;
-      pushTimeline(fb, 'Công dân thu hồi phản ánh', `${timeLabel(now)}${reasonSuffix}`);
-      markDeleted(fb, citizenPhone, reason || 'Công dân tự thu hồi khi chưa có người tiếp nhận');
+      pushTimeline(fb, ACT.withdraw, reason ?? '');
+      /*
+       * KHÔNG lưu số điện thoại công dân vào `deletedById`: trường đó trỏ
+       * `staff_users._id`, mà số điện thoại là dữ liệu cá nhân nằm trong một
+       * trường không chỗ nào che (`rules/critical/du-lieu-ca-nhan.md`). Việc
+       * công dân tự thu hồi đã được ghi đầy đủ ở `withdrawStatus`,
+       * `withdrawReason`, `withdrawRequestedAt` và mốc nhật ký ngay trên.
+       */
+      markDeleted(fb, '', reason || 'Công dân tự thu hồi khi chưa có người tiếp nhận');
       await fb.save();
       this.emitChanged('withdrawn', fb);
       return { code: fb.code, removed: true, withdrawStatus: fb.withdrawStatus };
@@ -687,32 +714,24 @@ export class FeedbackService {
 
     // Đã có người tiếp nhận → chờ cán bộ xác nhận
     fb.withdrawStatus = 'pending';
-    pushTimeline(
-      fb,
-      'Công dân xin thu hồi phản ánh — chờ cán bộ xác nhận',
-      `${timeLabel(now)}${reasonSuffix}`,
-    );
+    pushTimeline(fb, ACT.withdrawRequest, reason ?? '');
     await fb.save();
     this.emitChanged('withdraw-requested', fb);
     return { code: fb.code, removed: false, withdrawStatus: fb.withdrawStatus };
   }
 
   /** Cán bộ ĐỒNG Ý thu hồi — phiếu được gỡ khỏi màn hình người dân (xoá mềm) */
-  async approveWithdraw(code: string, dto: DecideWithdrawDto, actor: string) {
+  async approveWithdraw(code: string, dto: DecideWithdrawDto, actor: ActorInfo) {
     const fb = await this.findPendingWithdraw(code);
     const note = dto.note?.trim() ?? '';
     const now = new Date();
 
     fb.withdrawStatus = 'approved';
     fb.withdrawDecidedAt = now;
-    fb.withdrawDecidedBy = actor;
+    fb.withdrawDecidedBy = actor.name;
     fb.withdrawDecisionNote = note;
-    pushTimeline(
-      fb,
-      'Cán bộ đồng ý thu hồi — phiếu đã gỡ',
-      `${timeLabel(now)} · ${actor}${note ? ` · ${note}` : ''}`,
-    );
-    markDeleted(fb, actor, fb.withdrawReason || 'Công dân xin thu hồi, cán bộ đồng ý');
+    pushTimeline(fb, ACT.withdrawApprove, note ?? '', actor.id);
+    markDeleted(fb, actor.id, fb.withdrawReason || 'Công dân xin thu hồi, cán bộ đồng ý');
     await fb.save();
 
     this.emitChanged('withdrawn', fb);
@@ -725,16 +744,16 @@ export class FeedbackService {
    * `note` bắt buộc ở DTO: người dân phải đọc được vì sao đơn của mình không
    * được gỡ, nếu không họ chỉ thấy yêu cầu im lặng biến mất rồi gửi lại.
    */
-  async rejectWithdraw(code: string, dto: DecideWithdrawDto, actor: string) {
+  async rejectWithdraw(code: string, dto: DecideWithdrawDto, actor: ActorInfo) {
     const fb = await this.findPendingWithdraw(code);
     const note = (dto.note ?? '').trim();
     const now = new Date();
 
     fb.withdrawStatus = 'rejected';
     fb.withdrawDecidedAt = now;
-    fb.withdrawDecidedBy = actor;
+    fb.withdrawDecidedBy = actor.name;
     fb.withdrawDecisionNote = note;
-    pushTimeline(fb, 'Cán bộ từ chối thu hồi', `${timeLabel(now)} · ${actor} · ${note}`);
+    pushTimeline(fb, ACT.withdrawReject, note ?? '', actor.id);
     await fb.save();
 
     this.emitChanged('withdraw-rejected', fb);
@@ -919,8 +938,12 @@ interface NewFeedbackInput {
   area?: string;
   channel: string;
   source: 'app' | 'offline';
-  /** Mốc đầu tiên của nhật ký — nói AI đã đưa phiếu vào hệ thống */
-  openingStep: { title: string; meta: string };
+  /**
+   * Mốc đầu tiên của nhật ký — nói AI đã đưa phiếu vào hệ thống.
+   * Khuôn v2: `action` là khoá, `detail` là phần biến; nhãn tiếng Việt do
+   * client tra (`admin-web/src/config/activity.config.ts`).
+   */
+  openingStep: { action: string; detail: string };
 }
 
 /**
@@ -950,12 +973,12 @@ function buildNewFeedbackPayload(input: NewFeedbackInput): Record<string, unknow
     department: '',
     rating: 0,
     timeline: [
-      { title: input.openingStep.title, meta: input.openingStep.meta, state: 'ok' },
-      {
-        title: 'Chờ tiếp nhận & phân công',
-        meta: `Hạn xử lý theo SLA: ${timeLabel(input.slaDueAt)}`,
+      activity(input.openingStep.action, { detail: input.openingStep.detail }),
+      /* `detail` là mốc hạn SLA dạng SỐ — client tự định dạng để hiển thị */
+      activity(ACT.awaitingAssign, {
+        detail: String(input.slaDueAt.getTime()),
         state: 'cur',
-      },
+      }),
     ],
   };
 }
@@ -995,12 +1018,22 @@ function toStaffView<T extends { slaDueAt?: Date | null; citizenPhone?: string }
   return { ...withSlaHoursLeft(doc), citizenPhone: maskPhone(doc.citizenPhone) };
 }
 
-/** Ghi một mốc mới vào timeline; các mốc cũ chuyển sang trạng thái đã xong */
-function pushTimeline(fb: FeedbackDocument, title: string, meta: string): void {
+/**
+ * Ghi một mốc mới vào nhật ký; các mốc cũ chuyển sang trạng thái đã qua.
+ *
+ * `action` là khoá, `detail` là phần biến. Thời điểm và người thao tác là hai
+ * trường riêng của `ActivityEntry`, không còn ghép vào một chuỗi hiển thị.
+ */
+function pushTimeline(
+  fb: FeedbackDocument,
+  action: string,
+  detail = '',
+  actorId = '',
+): void {
   fb.timeline.forEach((step) => {
     step.state = 'ok';
   });
-  fb.timeline.push({ title, meta, state: 'cur' });
+  fb.timeline.push(activity(action, { actorId, detail, state: 'cur' }));
 }
 
 /** dd/MM/yyyy HH:mm — giữ nguyên định dạng hiển thị của FE */

@@ -5,6 +5,7 @@
  * đang vận hành (budgetYearConfig.current).
  */
 import type { BudgetItem, DisbursementEntry, DisbursementRequest } from '@vigov/shared';
+import { seedComment } from './seed.util';
 
 /**
  * Bản ghi seed — các mảng lồng nhau chỉ khai những trường có ý nghĩa cho dữ
@@ -62,27 +63,9 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
       },
     ],
     comments: [
-      {
-        authorName: 'Lê Minh Tuấn',
-        authorInitials: 'LT',
-        authorColor: '#3B82C4',
-        time: '02/08/2026 09:15',
-        content: 'Khối lượng thi công đạt 88%, dự kiến nghiệm thu toàn tuyến trong tháng 9/2026.',
-      },
-      {
-        authorName: 'Đỗ Thanh Hà',
-        authorInitials: 'ĐH',
-        authorColor: '#E67E22',
-        time: '05/08/2026 14:40',
-        content: 'Đề nghị nhà thầu bổ sung hồ sơ nghiệm thu đợt 2 để hoàn thiện thủ tục thanh toán.',
-      },
-      {
-        authorName: 'Nguyễn Văn Bình',
-        authorInitials: 'NB',
-        authorColor: '#1B3A5C',
-        time: '06/08/2026 08:05',
-        content: 'Đồng ý. Giao Địa chính – Xây dựng đôn đốc nhà thầu hoàn thiện trước 15/8/2026.',
-      },
+      seedComment('Khối lượng thi công đạt 88%, dự kiến nghiệm thu toàn tuyến trong tháng 9/2026.', '02/08/2026 09:15'),
+      seedComment('Đề nghị nhà thầu bổ sung hồ sơ nghiệm thu đợt 2 để hoàn thiện thủ tục thanh toán.', '05/08/2026 14:40'),
+      seedComment('Đồng ý. Giao Địa chính – Xây dựng đôn đốc nhà thầu hoàn thiện trước 15/8/2026.', '06/08/2026 08:05'),
     ],
     obstacles: [
       { content: 'Nhà thầu chậm nộp hồ sơ nghiệm thu khối lượng đợt 2', owner: 'Lê Minh Tuấn', deadline: '15/08/2026' },
@@ -137,29 +120,9 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
       },
     ],
     comments: [
-      {
-        authorName: 'Đỗ Thanh Hà',
-        authorInitials: 'ĐH',
-        authorColor: '#E67E22',
-        time: '01/08/2026 10:20',
-        content: 'Hạng mục mới giải ngân 26% kế hoạch, chậm so với tiến độ đề ra khoảng 8 tuần.',
-      },
-      {
-        authorName: 'Lê Minh Tuấn',
-        authorInitials: 'LT',
-        authorColor: '#3B82C4',
-        time: '03/08/2026 15:35',
-        content:
-          'Vướng mắc: thủ tục điều chỉnh thiết kế phần mái đang chờ Phòng Kinh tế – Hạ tầng huyện thẩm định, nhà thầu phải dừng thi công từ 20/7/2026.',
-      },
-      {
-        authorName: 'Nguyễn Văn Bình',
-        authorInitials: 'NB',
-        authorColor: '#1B3A5C',
-        time: '04/08/2026 08:50',
-        content:
-          'Giao Tài chính – Kế toán làm việc trực tiếp với Phòng Kinh tế – Hạ tầng huyện trong tuần này, báo cáo Chủ tịch UBND xã trước ngày 12/8/2026.',
-      },
+      seedComment('Hạng mục mới giải ngân 26% kế hoạch, chậm so với tiến độ đề ra khoảng 8 tuần.', '01/08/2026 10:20'),
+      seedComment('Vướng mắc: thủ tục điều chỉnh thiết kế phần mái đang chờ Phòng Kinh tế – Hạ tầng huyện thẩm định, nhà thầu phải dừng thi công từ 20/7/2026.', '03/08/2026 15:35'),
+      seedComment('Giao Tài chính – Kế toán làm việc trực tiếp với Phòng Kinh tế – Hạ tầng huyện trong tuần này, báo cáo Chủ tịch UBND xã trước ngày 12/8/2026.', '04/08/2026 08:50'),
     ],
     obstacles: [
       { content: 'Chờ thẩm định hồ sơ điều chỉnh thiết kế phần mái', owner: 'Đỗ Thanh Hà', deadline: '12/08/2026' },
@@ -238,27 +201,9 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
       },
     ],
     comments: [
-      {
-        authorName: 'Vũ Đức Anh',
-        authorInitials: 'VA',
-        authorColor: '#27AE60',
-        time: '28/07/2026 09:00',
-        content: 'Đã hoàn thành cải tạo khối nhà chính, đang lắp đặt trang thiết bị.',
-      },
-      {
-        authorName: 'Đỗ Thanh Hà',
-        authorInitials: 'ĐH',
-        authorColor: '#E67E22',
-        time: '29/07/2026 11:25',
-        content: 'Vướng mắc: một số thiết bị nhập về chậm so với hợp đồng 3 tuần.',
-      },
-      {
-        authorName: 'Trần Thị Hạnh',
-        authorInitials: 'TH',
-        authorColor: '#E91E8C',
-        time: '30/07/2026 08:15',
-        content: 'Đề nghị nhà cung cấp cam kết mốc bàn giao cụ thể, hoàn thành trước 20/8/2026.',
-      },
+      seedComment('Đã hoàn thành cải tạo khối nhà chính, đang lắp đặt trang thiết bị.', '28/07/2026 09:00'),
+      seedComment('Vướng mắc: một số thiết bị nhập về chậm so với hợp đồng 3 tuần.', '29/07/2026 11:25'),
+      seedComment('Đề nghị nhà cung cấp cam kết mốc bàn giao cụ thể, hoàn thành trước 20/8/2026.', '30/07/2026 08:15'),
     ],
     obstacles: [
       { content: 'Thiết bị y tế chuyên dụng về chậm so với hợp đồng', owner: 'Vũ Đức Anh', deadline: '20/08/2026' },
@@ -313,27 +258,9 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
       },
     ],
     comments: [
-      {
-        authorName: 'Lê Minh Tuấn',
-        authorInitials: 'LT',
-        authorColor: '#3B82C4',
-        time: '25/07/2026 16:10',
-        content: 'Đã lắp đặt xong 228/240 bộ đèn trên 12 tuyến đường thôn.',
-      },
-      {
-        authorName: 'Đỗ Thanh Hà',
-        authorInitials: 'ĐH',
-        authorColor: '#E67E22',
-        time: '26/07/2026 08:45',
-        content: 'Vướng mắc: 12 bộ còn lại phụ thuộc tiến độ giải phóng mặt bằng đường liên thôn.',
-      },
-      {
-        authorName: 'Nguyễn Văn Bình',
-        authorInitials: 'NB',
-        authorColor: '#1B3A5C',
-        time: '26/07/2026 15:00',
-        content: 'Chấp thuận lắp đặt sau khi bàn giao mặt bằng, không kéo dài quá 30/9/2026.',
-      },
+      seedComment('Đã lắp đặt xong 228/240 bộ đèn trên 12 tuyến đường thôn.', '25/07/2026 16:10'),
+      seedComment('Vướng mắc: 12 bộ còn lại phụ thuộc tiến độ giải phóng mặt bằng đường liên thôn.', '26/07/2026 08:45'),
+      seedComment('Chấp thuận lắp đặt sau khi bàn giao mặt bằng, không kéo dài quá 30/9/2026.', '26/07/2026 15:00'),
     ],
     obstacles: [
       { content: '12 bộ đèn chờ mặt bằng tuyến Đông – Trung', owner: 'Lê Minh Tuấn', deadline: '30/09/2026' },
@@ -388,28 +315,9 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
       },
     ],
     comments: [
-      {
-        authorName: 'Đỗ Thanh Hà',
-        authorInitials: 'ĐH',
-        authorColor: '#E67E22',
-        time: '10/08/2026 09:30',
-        content: 'Hạng mục mới đạt 20% kế hoạch vốn, chậm so với tiến độ khoảng 10 tuần.',
-      },
-      {
-        authorName: 'Vũ Đức Anh',
-        authorInitials: 'VA',
-        authorColor: '#27AE60',
-        time: '11/08/2026 10:05',
-        content: 'Vướng mắc: phải chờ hết vụ lúa mùa mới thi công được đoạn qua cánh đồng Thôn Đoài.',
-      },
-      {
-        authorName: 'Nguyễn Văn Bình',
-        authorInitials: 'NB',
-        authorColor: '#1B3A5C',
-        time: '11/08/2026 16:20',
-        content:
-          'Giao Tài chính – Kế toán xây dựng lại tiến độ chi tiết, bảo đảm giải ngân tối thiểu 80% trong năm 2026.',
-      },
+      seedComment('Hạng mục mới đạt 20% kế hoạch vốn, chậm so với tiến độ khoảng 10 tuần.', '10/08/2026 09:30'),
+      seedComment('Vướng mắc: phải chờ hết vụ lúa mùa mới thi công được đoạn qua cánh đồng Thôn Đoài.', '11/08/2026 10:05'),
+      seedComment('Giao Tài chính – Kế toán xây dựng lại tiến độ chi tiết, bảo đảm giải ngân tối thiểu 80% trong năm 2026.', '11/08/2026 16:20'),
     ],
     obstacles: [
       { content: 'Chờ thu hoạch vụ lúa mùa mới thi công được', owner: 'Vũ Đức Anh', deadline: '20/09/2026' },

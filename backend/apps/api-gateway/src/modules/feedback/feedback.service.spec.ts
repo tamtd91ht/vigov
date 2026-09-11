@@ -406,7 +406,11 @@ describe('FeedbackService.rateMine', () => {
 
     expect(result).toMatchObject({ rating: 4, ratingComment: 'Xử lý nhanh' });
     expect(fb.timeline).toHaveLength(1);
-    expect((fb.timeline[0] as { title: string }).title).toBe('Công dân đánh giá 4/5 sao');
+    const moc = fb.timeline[0] as { action: string; detail: string; actorId: string };
+    expect(moc.action).toBe('feedback.rate');
+    expect(moc.detail).toBe('4 · Xử lý nhanh');
+    // Công dân không có tài khoản cán bộ nên actorId để rỗng
+    expect(moc.actorId).toBe('');
     expect(fb.save).toHaveBeenCalled();
   });
 
@@ -496,7 +500,7 @@ describe('FeedbackService.resolve — ảnh nghiệm thu', () => {
     await h.service.resolve(
       '#PA-2026-0011',
       { note: 'Đã nạo vét cống', resultImageFileIds: RESULT_IMAGE_IDS } as never,
-      'Lê Minh Tuấn',
+      { id: '66f10000000000000000cb01', name: 'Lê Minh Tuấn' },
     );
 
     expect(h.files.findPrivateById).toHaveBeenCalledTimes(RESULT_IMAGE_IDS.length);
@@ -507,7 +511,10 @@ describe('FeedbackService.resolve — ảnh nghiệm thu', () => {
     const fb = fakeDoc({ code: '#PA-2026-0012', status: 'processing', timeline: [] as unknown[] });
     const h = buildHarness({ existing: fb });
 
-    await h.service.resolve('#PA-2026-0012', { note: 'Đã xử lý' } as never, 'Lê Minh Tuấn');
+    await h.service.resolve('#PA-2026-0012', { note: 'Đã xử lý' } as never, {
+      id: '66f10000000000000000cb01',
+      name: 'Lê Minh Tuấn',
+    });
 
     expect(h.files.findPrivateById).not.toHaveBeenCalled();
   });

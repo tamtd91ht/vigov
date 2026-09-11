@@ -9,8 +9,17 @@
  *   • `slaDueAt` = thời điểm gửi + resolveDays của lĩnh vực;
  *   • `channel` = 'app'; ghim bản đồ mock quy đổi thành lat/lng quanh trung tâm xã.
  */
-import type { Feedback, TimelineState } from '@vigov/shared';
-import { addDays, parseVnDateTime, pinToLatLng, unmaskPhone } from './seed.util';
+import type { ActivityEntry, Feedback } from '@vigov/shared';
+import { addDays, parseVnDateTime, pinToLatLng, unmaskPhone, seedActivity } from './seed.util';
+
+/**
+ * Khoá hành động cho nhật ký của dữ liệu seed.
+ *
+ * Seed là nội dung DEMO: mỗi mốc là một câu tường thuật riêng nên dùng một khoá
+ * chung và đặt cả câu vào `detail`. Mã nghiệp vụ thì ngược lại — mỗi hành động
+ * một khoá riêng (xem `ACT` trong service của từng phân hệ).
+ */
+const ACT_NOTE = 'feedback.note';
 
 export type FeedbackSeed = Partial<Feedback> & { code: string };
 
@@ -77,7 +86,7 @@ interface FeedbackBase {
   assignee: string;
   department: string;
   linkedTaskCode?: string;
-  timeline: { title: string; meta: string; state: TimelineState }[];
+  timeline: ActivityEntry[];
 }
 
 const FEEDBACK_BASE: FeedbackBase[] = [
@@ -97,11 +106,11 @@ const FEEDBACK_BASE: FeedbackBase[] = [
     department: 'Văn hoá – Xã hội',
     linkedTaskCode: 'NV-2603',
     timeline: [
-      { title: 'Người dân gửi phản ánh qua ứng dụng ViGov', meta: '18/08/2026 07:42', state: 'ok' },
-      { title: 'Trung tâm Phục vụ hành chính công tiếp nhận, phân loại', meta: '18/08/2026 08:10 · Ngô Thị Lan', state: 'ok' },
-      { title: 'Chuyển Văn hoá – Xã hội xử lý', meta: '18/08/2026 09:05 · Trần Thị Hạnh', state: 'ok' },
-      { title: 'Kiểm tra hiện trường, lập biên bản', meta: '19/08/2026 14:20 · Vũ Đức Anh', state: 'ok' },
-      { title: 'Đang tổ chức thu gom, cắm biển cấm đổ rác', meta: 'Từ 21/08/2026 · Vũ Đức Anh', state: 'cur' },
+      seedActivity(ACT_NOTE, 'Người dân gửi phản ánh qua ứng dụng ViGov', '18/08/2026 07:42'),
+      seedActivity(ACT_NOTE, 'Trung tâm Phục vụ hành chính công tiếp nhận, phân loại', '18/08/2026 08:10 · Ngô Thị Lan'),
+      seedActivity(ACT_NOTE, 'Chuyển Văn hoá – Xã hội xử lý', '18/08/2026 09:05 · Trần Thị Hạnh'),
+      seedActivity(ACT_NOTE, 'Kiểm tra hiện trường, lập biên bản', '19/08/2026 14:20 · Vũ Đức Anh'),
+      seedActivity(ACT_NOTE, 'Đang tổ chức thu gom, cắm biển cấm đổ rác', 'Từ 21/08/2026 · Vũ Đức Anh', 'cur'),
     ],
   },
   {
@@ -118,10 +127,10 @@ const FEEDBACK_BASE: FeedbackBase[] = [
     assignee: 'Lê Minh Tuấn',
     department: 'Địa chính – Xây dựng',
     timeline: [
-      { title: 'Người dân gửi phản ánh kèm 3 ảnh hiện trường', meta: '21/08/2026 16:05', state: 'ok' },
-      { title: 'Trung tâm Phục vụ hành chính công tiếp nhận', meta: '21/08/2026 16:30 · Ngô Thị Lan', state: 'ok' },
-      { title: 'Chuyển Địa chính – Xây dựng xử lý', meta: '22/08/2026 08:00 · Trần Thị Hạnh', state: 'ok' },
-      { title: 'Đang khảo sát, chuẩn bị vật liệu vá đường', meta: 'Từ 22/08/2026 · Lê Minh Tuấn', state: 'cur' },
+      seedActivity(ACT_NOTE, 'Người dân gửi phản ánh kèm 3 ảnh hiện trường', '21/08/2026 16:05'),
+      seedActivity(ACT_NOTE, 'Trung tâm Phục vụ hành chính công tiếp nhận', '21/08/2026 16:30 · Ngô Thị Lan'),
+      seedActivity(ACT_NOTE, 'Chuyển Địa chính – Xây dựng xử lý', '22/08/2026 08:00 · Trần Thị Hạnh'),
+      seedActivity(ACT_NOTE, 'Đang khảo sát, chuẩn bị vật liệu vá đường', 'Từ 22/08/2026 · Lê Minh Tuấn', 'cur'),
     ],
   },
   {
@@ -138,10 +147,10 @@ const FEEDBACK_BASE: FeedbackBase[] = [
     assignee: 'Lê Minh Tuấn',
     department: 'Địa chính – Xây dựng',
     timeline: [
-      { title: 'Người dân gửi phản ánh tập thể', meta: '17/08/2026 09:20', state: 'ok' },
-      { title: 'Trung tâm Phục vụ hành chính công tiếp nhận', meta: '17/08/2026 10:00 · Ngô Thị Lan', state: 'ok' },
-      { title: 'Chuyển Địa chính – Xây dựng xử lý', meta: '17/08/2026 14:15 · Trần Thị Hạnh', state: 'ok' },
-      { title: 'Đã nạo vét 2 hố ga, đang chờ bố trí kinh phí nâng cấp', meta: 'Từ 20/08/2026 · Lê Minh Tuấn', state: 'cur' },
+      seedActivity(ACT_NOTE, 'Người dân gửi phản ánh tập thể', '17/08/2026 09:20'),
+      seedActivity(ACT_NOTE, 'Trung tâm Phục vụ hành chính công tiếp nhận', '17/08/2026 10:00 · Ngô Thị Lan'),
+      seedActivity(ACT_NOTE, 'Chuyển Địa chính – Xây dựng xử lý', '17/08/2026 14:15 · Trần Thị Hạnh'),
+      seedActivity(ACT_NOTE, 'Đã nạo vét 2 hố ga, đang chờ bố trí kinh phí nâng cấp', 'Từ 20/08/2026 · Lê Minh Tuấn', 'cur'),
     ],
   },
   {
@@ -162,11 +171,11 @@ const FEEDBACK_BASE: FeedbackBase[] = [
     department: 'Địa chính – Xây dựng',
     linkedTaskCode: 'NV-2611',
     timeline: [
-      { title: 'Người dân gửi phản ánh qua ứng dụng ViGov', meta: '02/08/2026 19:30', state: 'ok' },
-      { title: 'Trung tâm Phục vụ hành chính công tiếp nhận', meta: '03/08/2026 08:05 · Ngô Thị Lan', state: 'ok' },
-      { title: 'Chuyển Địa chính – Xây dựng, tạo nhiệm vụ NV-2611', meta: '03/08/2026 09:40 · Trần Thị Hạnh', state: 'ok' },
-      { title: 'Thi công thay thế 18 bộ đèn, bổ sung 6 bộ mới', meta: '06/08/2026 · Lê Minh Tuấn', state: 'ok' },
-      { title: 'Hoàn thành, người dân đánh giá 5 sao', meta: '08/08/2026 17:10 · Lê Minh Tuấn', state: 'ok' },
+      seedActivity(ACT_NOTE, 'Người dân gửi phản ánh qua ứng dụng ViGov', '02/08/2026 19:30'),
+      seedActivity(ACT_NOTE, 'Trung tâm Phục vụ hành chính công tiếp nhận', '03/08/2026 08:05 · Ngô Thị Lan'),
+      seedActivity(ACT_NOTE, 'Chuyển Địa chính – Xây dựng, tạo nhiệm vụ NV-2611', '03/08/2026 09:40 · Trần Thị Hạnh'),
+      seedActivity(ACT_NOTE, 'Thi công thay thế 18 bộ đèn, bổ sung 6 bộ mới', '06/08/2026 · Lê Minh Tuấn'),
+      seedActivity(ACT_NOTE, 'Hoàn thành, người dân đánh giá 5 sao', '08/08/2026 17:10 · Lê Minh Tuấn'),
     ],
   },
   {
@@ -184,10 +193,10 @@ const FEEDBACK_BASE: FeedbackBase[] = [
     assignee: 'Vũ Đức Anh',
     department: 'Văn hoá – Xã hội',
     timeline: [
-      { title: 'Người dân gửi phản ánh kèm video', meta: '19/08/2026 11:15', state: 'ok' },
-      { title: 'Trung tâm Phục vụ hành chính công tiếp nhận', meta: '19/08/2026 13:40 · Ngô Thị Lan', state: 'ok' },
-      { title: 'Chuyển Văn hoá – Xã hội phối hợp Công an xã', meta: '19/08/2026 15:00 · Trần Thị Hạnh', state: 'ok' },
-      { title: 'Đã lập biên bản, yêu cầu cơ sở khắc phục trong 10 ngày', meta: 'Từ 20/08/2026 · Vũ Đức Anh', state: 'cur' },
+      seedActivity(ACT_NOTE, 'Người dân gửi phản ánh kèm video', '19/08/2026 11:15'),
+      seedActivity(ACT_NOTE, 'Trung tâm Phục vụ hành chính công tiếp nhận', '19/08/2026 13:40 · Ngô Thị Lan'),
+      seedActivity(ACT_NOTE, 'Chuyển Văn hoá – Xã hội phối hợp Công an xã', '19/08/2026 15:00 · Trần Thị Hạnh'),
+      seedActivity(ACT_NOTE, 'Đã lập biên bản, yêu cầu cơ sở khắc phục trong 10 ngày', 'Từ 20/08/2026 · Vũ Đức Anh', 'cur'),
     ],
   },
   {
@@ -205,9 +214,9 @@ const FEEDBACK_BASE: FeedbackBase[] = [
     assignee: 'Hoàng Văn Sơn',
     department: 'Công an xã',
     timeline: [
-      { title: 'Người dân gửi phản ánh qua tổng đài', meta: '20/08/2026 22:40', state: 'ok' },
-      { title: 'Trực ban Công an xã tiếp nhận', meta: '20/08/2026 22:55 · Hoàng Văn Sơn', state: 'ok' },
-      { title: 'Đang tăng cường tuần tra ban đêm khu vực chợ', meta: 'Từ 21/08/2026 · Hoàng Văn Sơn', state: 'cur' },
+      seedActivity(ACT_NOTE, 'Người dân gửi phản ánh qua tổng đài', '20/08/2026 22:40'),
+      seedActivity(ACT_NOTE, 'Trực ban Công an xã tiếp nhận', '20/08/2026 22:55 · Hoàng Văn Sơn'),
+      seedActivity(ACT_NOTE, 'Đang tăng cường tuần tra ban đêm khu vực chợ', 'Từ 21/08/2026 · Hoàng Văn Sơn', 'cur'),
     ],
   },
   {
@@ -227,11 +236,11 @@ const FEEDBACK_BASE: FeedbackBase[] = [
     assignee: 'Lê Minh Tuấn',
     department: 'Địa chính – Xây dựng',
     timeline: [
-      { title: 'Người dân gửi phản ánh qua ứng dụng ViGov', meta: '10/08/2026 08:25', state: 'ok' },
-      { title: 'Trung tâm Phục vụ hành chính công tiếp nhận', meta: '10/08/2026 09:10 · Ngô Thị Lan', state: 'ok' },
-      { title: 'Chuyển Địa chính – Xây dựng kiểm tra', meta: '10/08/2026 10:30 · Trần Thị Hạnh', state: 'ok' },
-      { title: 'Lập biên bản, yêu cầu chủ đầu tư che chắn', meta: '12/08/2026 · Lê Minh Tuấn', state: 'ok' },
-      { title: 'Hoàn thành, người dân đánh giá 4 sao', meta: '14/08/2026 16:00 · Lê Minh Tuấn', state: 'ok' },
+      seedActivity(ACT_NOTE, 'Người dân gửi phản ánh qua ứng dụng ViGov', '10/08/2026 08:25'),
+      seedActivity(ACT_NOTE, 'Trung tâm Phục vụ hành chính công tiếp nhận', '10/08/2026 09:10 · Ngô Thị Lan'),
+      seedActivity(ACT_NOTE, 'Chuyển Địa chính – Xây dựng kiểm tra', '10/08/2026 10:30 · Trần Thị Hạnh'),
+      seedActivity(ACT_NOTE, 'Lập biên bản, yêu cầu chủ đầu tư che chắn', '12/08/2026 · Lê Minh Tuấn'),
+      seedActivity(ACT_NOTE, 'Hoàn thành, người dân đánh giá 4 sao', '14/08/2026 16:00 · Lê Minh Tuấn'),
     ],
   },
   {
@@ -251,10 +260,10 @@ const FEEDBACK_BASE: FeedbackBase[] = [
     department: 'Trung tâm Phục vụ hành chính công',
     linkedTaskCode: 'NV-2614',
     timeline: [
-      { title: 'Người dân góp ý tại quầy tiếp nhận', meta: '08/08/2026 10:05', state: 'ok' },
-      { title: 'Trung tâm Phục vụ hành chính công ghi nhận', meta: '08/08/2026 10:20 · Ngô Thị Lan', state: 'ok' },
-      { title: 'Bố trí máy in dự phòng, rà soát quy trình', meta: '09/08/2026 · Ngô Thị Lan', state: 'ok' },
-      { title: 'Hoàn thành, người dân đánh giá 4 sao', meta: '11/08/2026 09:00 · Ngô Thị Lan', state: 'ok' },
+      seedActivity(ACT_NOTE, 'Người dân góp ý tại quầy tiếp nhận', '08/08/2026 10:05'),
+      seedActivity(ACT_NOTE, 'Trung tâm Phục vụ hành chính công ghi nhận', '08/08/2026 10:20 · Ngô Thị Lan'),
+      seedActivity(ACT_NOTE, 'Bố trí máy in dự phòng, rà soát quy trình', '09/08/2026 · Ngô Thị Lan'),
+      seedActivity(ACT_NOTE, 'Hoàn thành, người dân đánh giá 4 sao', '11/08/2026 09:00 · Ngô Thị Lan'),
     ],
   },
   {
@@ -271,8 +280,8 @@ const FEEDBACK_BASE: FeedbackBase[] = [
     assignee: UNASSIGNED,
     department: UNASSIGNED,
     timeline: [
-      { title: 'Người dân gửi phản ánh qua ứng dụng ViGov', meta: '22/08/2026 07:50', state: 'ok' },
-      { title: 'Chờ Trung tâm Phục vụ hành chính công phân loại', meta: 'Từ 22/08/2026', state: 'cur' },
+      seedActivity(ACT_NOTE, 'Người dân gửi phản ánh qua ứng dụng ViGov', '22/08/2026 07:50'),
+      seedActivity(ACT_NOTE, 'Chờ Trung tâm Phục vụ hành chính công phân loại', 'Từ 22/08/2026', 'cur'),
     ],
   },
 ];

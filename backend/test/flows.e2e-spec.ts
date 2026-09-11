@@ -194,7 +194,9 @@ describe('ViGov API — luồng nghiệp vụ đầu-cuối', () => {
 
       expect(doc.body.linkedTaskCode).toBe(taskCode);
       expect(
-        (doc.body.timeline as { title: string }[]).some((s) => s.title.includes(taskCode)),
+        (doc.body.timeline as { action: string; detail: string }[]).some(
+          (s) => s.action === 'document.to-task' && s.detail === taskCode,
+        ),
       ).toBe(true);
     });
 
@@ -295,8 +297,11 @@ describe('ViGov API — luồng nghiệp vụ đầu-cuối', () => {
         .expect(200);
 
       expect(res.body.status).toBe('resolved');
-      const timeline = res.body.timeline as { title: string; state: string }[];
-      expect(timeline[timeline.length - 1]).toMatchObject({ title: 'Đã xử lý xong', state: 'cur' });
+      const timeline = res.body.timeline as { action: string; state: string }[];
+      expect(timeline[timeline.length - 1]).toMatchObject({
+        action: 'feedback.resolve',
+        state: 'cur',
+      });
       // Chỉ mốc cuối cùng ở trạng thái đang diễn ra
       expect(timeline.filter((s) => s.state === 'cur')).toHaveLength(1);
     });

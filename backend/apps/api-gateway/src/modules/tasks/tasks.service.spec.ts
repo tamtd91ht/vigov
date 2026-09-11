@@ -436,7 +436,11 @@ describe('TasksService.update', () => {
     await service.update('NV-2601', { progress: 60 } as never, { displayName: 'Bình' } as never);
     expect(task.progress).toBe(60);
     expect(task.timeline).toHaveLength(1);
-    expect((task.timeline[0] as { title: string }).title).toBe('Cập nhật tiến độ 60%');
+    // Khuôn v2: khoá hành động + phần biến, KHÔNG phải câu tiếng Việt đã ghép
+    const moc = task.timeline[0] as { action: string; detail: string; at: number };
+    expect(moc.action).toBe('task.progress');
+    expect(moc.detail).toBe('60');
+    expect(typeof moc.at).toBe('number');
   });
 });
 
@@ -501,7 +505,7 @@ function attachmentHarness(
     code: 'NV-2601',
     attachments: ['bien-ban-hop.docx'],
     attachmentFileIds: [...attachmentFileIds],
-    timeline: [] as { title: string; meta: string; state: string }[],
+    timeline: [] as { action: string; detail: string; state: string; at: number; actorId: string }[],
   });
 
   const findById = jest.fn(async (id: string) => {
@@ -561,14 +565,22 @@ describe('TasksService.addAttachments', () => {
     expect(task.save).toHaveBeenCalledTimes(1);
   });
 
-  it('ghi nhật ký kèm tên tệp và người thực hiện', async () => {
+  it('ghi nhật ký kèm SỐ LƯỢNG tệp và id người thực hiện, KHÔNG ghi tên tệp', async () => {
     const { service, task } = attachmentHarness([], { f1: storedFile('f1') });
 
-    await service.addAttachments('NV-2601', ['f1'], { username: 'binh.nv', displayName: 'Nguyễn Văn Bình' } as never);
+    await service.addAttachments('NV-2601', ['f1'], {
+      sub: '66f10000000000000000cb01',
+      username: 'binh.nv',
+      displayName: 'Nguyễn Văn Bình',
+    } as never);
 
-    const step = (task.timeline as { title: string; meta: string }[])[0];
-    expect(step.title).toContain('minh-chung-f1.pdf');
-    expect(step.meta).toContain('Nguyễn Văn Bình');
+    const step = (task.timeline as { action: string; detail: string; actorId: string }[])[0];
+    expect(step.action).toBe('task.attach');
+    expect(step.detail).toBe('1');
+    expect(step.actorId).toBe('66f10000000000000000cb01');
+    /* Tên tệp minh chứng có thể mang tên người và nội dung vụ việc, mà nhật ký
+       hiển thị cho mọi cán bộ xem được nhiệm vụ — nên không ghi vào nhật ký */
+    expect(JSON.stringify(step)).not.toContain('minh-chung-f1.pdf');
   });
 
   it('TỪ CHỐI tệp công khai — hồ sơ minh chứng là tài liệu nội bộ (TB-09)', async () => {
@@ -670,9 +682,9 @@ function softDeleteHarness(deleted = false) {
     status: TASK_STATUS_NEW,
     isDeleted: deleted,
     deletedAt: deleted ? new Date('2026-09-01T00:00:00Z') : null,
-    deletedBy: undefined as string | undefined,
+    deletedById: undefined as string | undefined,
     deleteReason: undefined as string | undefined,
-    timeline: [] as { title: string; meta: string; state: string }[],
+    timeline: [] as { action: string; detail: string; state: string; at: number; actorId: string }[],
     attachmentFileIds: [] as string[],
   });
 
@@ -701,12 +713,16 @@ describe('TasksService.remove', () => {
   it('CHỈ đặt cờ isDeleted, không xoá tài liệu khỏi CSDL', async () => {
     const { service, task, emitChange } = softDeleteHarness();
 
-    await service.remove('NV-2601', { username: 'binh.nv', displayName: 'Nguyễn Văn Bình' } as never, 'Trùng nhiệm vụ NV-2599');
+    await service.remove(
+      'NV-2601',
+      { sub: '66f10000000000000000cb01', username: 'binh.nv', displayName: 'Nguyễn Văn Bình' } as never,
+      'Trùng nhiệm vụ NV-2599',
+    );
 
     expect(task.isDeleted).toBe(true);
-    expect(task.deletedAt).toBeInstanceOf(Date);
-    // `deletedBy` lưu TÊN ĐĂNG NHẬP, không phải họ tên hiển thị
-    expect(task.deletedBy).toBe('binh.nv');
+    // Khuôn v2: mốc thời gian là SỐ, người xoá là ID cán bộ
+    expect(typeof task.deletedAt).toBe('number');
+    expect(task.deletedById).toBe('66f10000000000000000cb01');
     expect(task.deleteReason).toBe('Trùng nhiệm vụ NV-2599');
     expect(task.save).toHaveBeenCalled();
     // Nhiệm vụ rời khỏi danh sách nên client đang mở phải được báo
@@ -718,7 +734,8 @@ describe('TasksService.remove', () => {
 
     await service.remove('NV-2601', undefined, 'Giao trùng');
 
-    expect(task.timeline.at(-1)?.title).toBe('Xoá nhiệm vụ: Giao trùng');
+    expect(task.timeline.at(-1)?.action).toBe('task.delete');
+    expect(task.timeline.at(-1)?.detail).toBe('Giao trùng');
   });
 
   it('không nêu lý do thì nhật ký chỉ ghi hành động', async () => {
@@ -726,7 +743,8 @@ describe('TasksService.remove', () => {
 
     await service.remove('NV-2601');
 
-    expect(task.timeline.at(-1)?.title).toBe('Xoá nhiệm vụ');
+    expect(task.timeline.at(-1)?.action).toBe('task.delete');
+    expect(task.timeline.at(-1)?.detail).toBe('');
     expect(task.deleteReason).toBeUndefined();
   });
 
@@ -741,16 +759,16 @@ describe('TasksService.remove', () => {
 describe('TasksService.restore', () => {
   it('bỏ cờ xoá và dọn luôn người xoá / lý do xoá', async () => {
     const { service, task } = softDeleteHarness(true);
-    task.deletedBy = 'Nguyễn Văn Bình';
+    task.deletedById = '66f10000000000000000cb01';
     task.deleteReason = 'Giao trùng';
 
     await service.restore('NV-2601', { username: 'hoa.tt', displayName: 'Trần Thị Hoa' } as never);
 
     expect(task.isDeleted).toBe(false);
     expect(task.deletedAt).toBeNull();
-    expect(task.deletedBy).toBeUndefined();
+    expect(task.deletedById).toBeUndefined();
     expect(task.deleteReason).toBeUndefined();
-    expect(task.timeline.at(-1)?.title).toBe('Khôi phục nhiệm vụ');
+    expect(task.timeline.at(-1)?.action).toBe('task.restore');
   });
 
   it('khôi phục nhiệm vụ chưa bị xoá thì 404', async () => {

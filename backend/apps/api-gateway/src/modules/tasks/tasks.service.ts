@@ -5,13 +5,15 @@ import {
   IS_DELETED,
   NOT_DELETED,
   Task,
-  buildDateRangeFilter,
+  activity,
+  buildEpochRangeFilter,
+  comment,
   markDeleted,
   markRestored,
   type ChecklistItem,
   type JwtPayload,
   type TaskDocument,
-  type TimelineStep,
+  type ActivityEntry,
 } from '@vigov/shared';
 import { FilesService } from '../files/files.service';
 import { REALTIME_EVENTS, RealtimeService } from '../realtime/realtime.service';
@@ -52,17 +54,24 @@ export const TASK_STATUS_WAITING_APPROVAL = 'cho';
 export const TASK_STATUS_OVERDUE = 'qua';
 export const TASK_STATUS_DONE = 'xong';
 
-/** Nhãn tiếng Việt để ghi nhật ký (timeline) */
-const STATUS_LABELS: Record<string, string> = {
-  moi: 'Mới giao',
-  dang: 'Đang thực hiện',
-  cho: 'Chờ duyệt',
-  qua: 'Quá hạn',
-  xong: 'Hoàn thành',
-};
-
-/** Bảng màu avatar người bình luận — khớp tông màu admin-web */
-const AUTHOR_COLORS = ['#2563eb', '#059669', '#d97706', '#dc2626', '#7c3aed', '#0891b2'];
+/**
+ * Khoá hành động ghi vào nhật ký xử lý — khuôn `ActivityEntry` của v2.
+ *
+ * Chỉ là KHOÁ, không phải nhãn hiển thị. Nhãn tiếng Việt do client tra từ
+ * `admin-web/src/config/activity.config.ts`; bảng nhãn nằm trong cơ sở dữ liệu
+ * như bản v1 nghĩa là đổi cách gọi một trạng thái phải sửa dữ liệu lịch sử.
+ */
+const ACT = {
+  assign: 'task.assign',
+  progress: 'task.progress',
+  status: 'task.status',
+  checklistDone: 'task.checklist-done',
+  attach: 'task.attach',
+  detach: 'task.detach',
+  delete: 'task.delete',
+  restore: 'task.restore',
+  overdue: 'task.overdue',
+} as const;
 
 /** Tên người giao mặc định khi không xác định được phiên đăng nhập */
 const SYSTEM_ACTOR = 'Hệ thống';
@@ -97,32 +106,23 @@ export function formatVnDate(date: Date): string {
   return `${dd}/${mm}/${date.getFullYear()}`;
 }
 
-/** Định dạng mốc thời gian ghi nhật ký: HH:mm dd/MM/yyyy */
-export function formatVnDateTime(date: Date): string {
-  const hh = String(date.getHours()).padStart(2, '0');
-  const mi = String(date.getMinutes()).padStart(2, '0');
-  return `${hh}:${mi} ${formatVnDate(date)}`;
-}
+/*
+ * `formatVnDateTime` đã bỏ: nhật ký và bình luận v2 lưu thời điểm dạng SỐ
+ * (`ActivityEntry.at`, `Comment.at`), không còn chuỗi đã định dạng sẵn. Việc
+ * định dạng chuyển sang tầng hiển thị; bản dùng cho tệp xuất nằm ở
+ * `formatVnDateTimeMs` trong `@vigov/shared`.
+ */
 
 /** Thoát ký tự đặc biệt trước khi ghép vào biểu thức chính quy tìm kiếm */
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/** Chữ cái viết tắt của người bình luận (Nguyễn Văn A → VA) */
-function initialsOf(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return 'CB';
-  const picked = words.slice(-2);
-  return picked.map((w) => w[0]?.toUpperCase() ?? '').join('') || 'CB';
-}
-
-/** Chọn màu avatar ổn định theo tên (cùng người → cùng màu) */
-function colorOf(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) >>> 0;
-  return AUTHOR_COLORS[hash % AUTHOR_COLORS.length];
-}
+/*
+ * `initialsOf` và `colorOf` đã bỏ: chữ viết tắt và màu avatar là cách TRÌNH BÀY,
+ * tính được từ tên nên không có lý do lưu vào cơ sở dữ liệu. `admin-web` đã có
+ * component `Avatar` tự tính hai thứ này từ tên đã resolve.
+ */
 
 /** Tiến độ = số việc con đã xong / tổng số việc con */
 function calcProgress(checklist: ChecklistItem[]): number {
@@ -191,8 +191,8 @@ export class TasksService {
     if (query.assignee?.length) filter.assignee = { $in: query.assignee };
     if (query.priority?.length) filter.priority = { $in: query.priority };
 
-    // Khoảng thời gian tính theo ngày giờ Việt Nam — xem buildDateRangeFilter
-    const range = buildDateRangeFilter('createdAt', query.from, query.to);
+    // Khoảng thời gian tính theo ngày giờ Việt Nam — xem buildEpochRangeFilter
+    const range = buildEpochRangeFilter('createdAt', query.from, query.to);
     if (range) Object.assign(filter, range);
 
     const keyword = query.q?.trim();
@@ -284,8 +284,6 @@ export class TasksService {
    */
   async addAttachments(code: string, fileIds: string[], user?: JwtPayload): Promise<Record<string, unknown>> {
     const task = await this.findByCode(code);
-    const actor = user?.displayName ?? SYSTEM_ACTOR;
-
     const names: string[] = [];
     const added: string[] = [];
     for (const fileId of fileIds) {
@@ -299,7 +297,10 @@ export class TasksService {
     if (added.length > 0) {
       task.markModified('attachmentFileIds');
       task.timeline.push(
-        this.buildTimelineStep(`Đính kèm ${added.length} tệp minh chứng: ${names.join(', ')}`, actor),
+        /* `detail` chỉ ghi SỐ LƯỢNG: tên tệp minh chứng có thể mang tên người và
+           nội dung vụ việc, mà nhật ký hiển thị cho mọi cán bộ xem được nhiệm vụ.
+           Tên tệp đã nằm ở `attachmentFiles` của bản ghi. */
+        activity(ACT.attach, { actorId: user?.sub, detail: String(added.length) }),
       );
       await task.save();
     }
@@ -317,7 +318,7 @@ export class TasksService {
     task.attachmentFileIds.splice(index, 1);
     task.markModified('attachmentFileIds');
     task.timeline.push(
-      this.buildTimelineStep('Gỡ một tệp minh chứng', user?.displayName ?? SYSTEM_ACTOR),
+      activity(ACT.detach, { actorId: user?.sub }),
     );
     await task.save();
     return this.withAttachmentFiles(task);
@@ -375,7 +376,7 @@ export class TasksService {
       sourceLabel: dto.sourceLabel ?? '',
       checklist,
       comments: [],
-      timeline: [this.buildTimelineStep('Giao nhiệm vụ', actor, 'cur')],
+      timeline: [activity(ACT.assign, { actorId: user?.sub, state: 'cur' })],
       attachments: [],
       attachmentFileIds: [],
     });
@@ -406,7 +407,8 @@ export class TasksService {
       sourceRefId: input.sourceRefId,
       checklist: [],
       comments: [],
-      timeline: [this.buildTimelineStep('Giao nhiệm vụ', input.assigner || SYSTEM_ACTOR, 'cur')],
+      // Nguồn là văn bản / phản ánh nên người giao là hệ thống: actorId để rỗng
+      timeline: [activity(ACT.assign, { state: 'cur' })],
       attachments: [],
       attachmentFileIds: [],
     });
@@ -421,8 +423,6 @@ export class TasksService {
    */
   async update(code: string, dto: UpdateTaskDto, user?: JwtPayload): Promise<Record<string, unknown>> {
     const task = await this.findByCode(code);
-    const actor = user?.displayName ?? SYSTEM_ACTOR;
-
     if (dto.title !== undefined) task.title = dto.title;
     if (dto.assignee !== undefined) task.assignee = dto.assignee;
     if (dto.department !== undefined) task.department = dto.department;
@@ -446,15 +446,19 @@ export class TasksService {
     // Ghi nhật ký khi tiến độ thay đổi (trước khi đổi trạng thái để giữ thứ tự đọc)
     if (dto.progress !== undefined && dto.progress !== task.progress) {
       task.progress = dto.progress;
-      task.timeline.push(this.buildTimelineStep(`Cập nhật tiến độ ${dto.progress}%`, actor));
+      task.timeline.push(
+        activity(ACT.progress, { actorId: user?.sub, detail: String(dto.progress) }),
+      );
     }
 
     const statusChanged = dto.status !== undefined && dto.status !== task.status;
     if (dto.status !== undefined && statusChanged) {
-      const label = STATUS_LABELS[dto.status] ?? dto.status;
       task.status = dto.status;
       if (dto.status === TASK_STATUS_DONE) task.progress = 100;
-      task.timeline.push(this.buildTimelineStep(`Chuyển trạng thái: ${label}`, actor, 'cur'));
+      // `detail` là KHOÁ trạng thái, không phải nhãn tiếng Việt
+      task.timeline.push(
+        activity(ACT.status, { actorId: user?.sub, detail: dto.status, state: 'cur' }),
+      );
     }
 
     await task.save();
@@ -478,7 +482,6 @@ export class TasksService {
       throw new NotFoundException(`Không tìm thấy việc con số ${index} trong nhiệm vụ ${code}`);
     }
 
-    const actor = user?.displayName ?? SYSTEM_ACTOR;
     const item = task.checklist[index];
     item.done = done ?? !item.done;
     task.markModified('checklist');
@@ -489,7 +492,7 @@ export class TasksService {
       statusChanged = task.status !== TASK_STATUS_WAITING_APPROVAL;
       task.status = TASK_STATUS_WAITING_APPROVAL;
       task.timeline.push(
-        this.buildTimelineStep('Hoàn thành toàn bộ việc con — chờ lãnh đạo duyệt', actor, 'cur'),
+        activity(ACT.checklistDone, { actorId: user?.sub, state: 'cur' }),
       );
     }
 
@@ -506,15 +509,7 @@ export class TasksService {
     user?: JwtPayload,
   ): Promise<Record<string, unknown>> {
     const task = await this.findByCode(code);
-    const authorName = user?.displayName ?? SYSTEM_ACTOR;
-
-    task.comments.push({
-      authorName,
-      authorInitials: initialsOf(authorName),
-      authorColor: colorOf(authorName),
-      time: formatVnDateTime(new Date()),
-      content: dto.content,
-    });
+    task.comments.push(comment(dto.content, { authorId: user?.sub }));
 
     await task.save();
     return this.withAttachmentFiles(task);
@@ -533,12 +528,11 @@ export class TasksService {
    */
   async remove(code: string, user?: JwtPayload, reason?: string): Promise<Record<string, unknown>> {
     const task = await this.findByCode(code);
-    const shownName = user?.displayName ?? SYSTEM_ACTOR;
     const trimmed = reason?.trim();
 
-    markDeleted(task, user?.username, reason);
+    markDeleted(task, user?.sub, reason);
     task.timeline.push(
-      this.buildTimelineStep(trimmed ? `Xoá nhiệm vụ: ${trimmed}` : 'Xoá nhiệm vụ', shownName),
+      activity(ACT.delete, { actorId: user?.sub, detail: trimmed ?? '' }),
     );
     await task.save();
 
@@ -554,7 +548,7 @@ export class TasksService {
 
     markRestored(task);
     task.timeline.push(
-      this.buildTimelineStep('Khôi phục nhiệm vụ', user?.displayName ?? SYSTEM_ACTOR),
+      activity(ACT.restore, { actorId: user?.sub }),
     );
     await task.save();
 
@@ -593,7 +587,8 @@ export class TasksService {
     if (task.status === TASK_STATUS_OVERDUE || task.status === TASK_STATUS_DONE) return task;
     task.status = TASK_STATUS_OVERDUE;
     task.timeline.push(
-      this.buildTimelineStep(`Nhiệm vụ quá hạn (hạn ${task.deadline})`, SYSTEM_ACTOR, 'cur'),
+      // Cron chạy: không có phiên đăng nhập nên actorId rỗng = hệ thống
+      activity(ACT.overdue, { detail: task.deadline, state: 'cur' }),
     );
     await task.save();
     this.emitTaskChanged('status', task);
@@ -623,10 +618,10 @@ export class TasksService {
     );
   }
 
-  /** Tạo một mục nhật ký chuẩn */
-  private buildTimelineStep(title: string, actor: string, state: 'ok' | 'cur' = 'ok'): TimelineStep {
-    return { title, meta: `${formatVnDateTime(new Date())} · ${actor}`, state };
-  }
+  /*
+   * `buildTimelineStep` đã bỏ — thay bằng `activity()` của `@vigov/shared`, để
+   * cả bốn phân hệ ghi nhật ký cùng một khuôn thay vì mỗi nơi một hàm riêng.
+   */
 
   /**
    * Sinh mã NV-<năm 2 số><số thứ tự> theo bản ghi lớn nhất hiện có trong năm.

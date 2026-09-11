@@ -19,7 +19,7 @@ import { nowMs, type EpochMs } from '../time/epoch';
 export class Comment {
   /** Thời điểm gửi, milli-giây UTC */
   @Prop({ type: Number, required: true })
-  at: EpochMs;
+  at: number;
 
   /**
    * `staff_users._id` của người gửi.

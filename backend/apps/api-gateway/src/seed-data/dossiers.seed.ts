@@ -16,7 +16,10 @@
  *     đặt số demo tất định ở đây; API luôn trả bản đã che.
  */
 import { DOSSIER_STEP_KEYS, type Dossier } from '@vigov/shared';
-import { endOfVnDay, parseVnDateTime } from './seed.util';
+import { endOfVnDay, parseVnDateTime, seedActivity } from './seed.util';
+
+/** Khoa hanh dong cho nhat ky cua du lieu seed - xem chu thich o tasks.seed.ts */
+const ACT_NOTE = 'dossier.note';
 
 export type DossierSeed = Partial<Dossier> & { code: string };
 
@@ -121,10 +124,13 @@ export const DOSSIER_SEED: DossierSeed[] = MOCKS.map((mock) => {
     dueAt,
     note: mock.note,
     stepTimes,
-    timeline: stepTimes.map((step, index) => ({
-      title: TIMELINE_TITLES[index],
-      meta: `${timeLabel(step.at)} · ${mock.assignee} — ${mock.department}`,
-      state: index === stepTimes.length - 1 ? 'cur' : 'ok',
-    })),
+    timeline: stepTimes.map((step, index) =>
+      seedActivity(
+        ACT_NOTE,
+        `${TIMELINE_TITLES[index]} · ${mock.assignee} — ${mock.department}`,
+        timeLabel(step.at),
+        index === stepTimes.length - 1 ? 'cur' : 'ok',
+      ),
+    ),
   };
 });

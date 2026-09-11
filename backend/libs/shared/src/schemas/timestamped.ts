@@ -36,7 +36,7 @@ export class Timestamped {
    * theo nó.
    */
   @Prop({ type: Number, index: true })
-  createdAt: EpochMs;
+  createdAt: number;
 
   /**
    * Mốc sửa gần nhất.
@@ -46,7 +46,7 @@ export class Timestamped {
    * truy vấn không tồn tại.
    */
   @Prop({ type: Number })
-  updatedAt: EpochMs;
+  updatedAt: number;
 }
 
 /** Bộ trường thời gian mà `applyEpochTimestamps` quản lý */

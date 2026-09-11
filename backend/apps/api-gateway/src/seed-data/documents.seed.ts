@@ -8,7 +8,16 @@
  *   • `ocrFields` để rỗng — chạy OCR thật ở bước sau (WBS #25).
  */
 import type { IncomingDocument } from '@vigov/shared';
-import { endOfVnDay } from './seed.util';
+import { endOfVnDay, seedActivity } from './seed.util';
+
+/**
+ * Khoá hành động cho nhật ký của dữ liệu seed.
+ *
+ * Seed là nội dung DEMO: mỗi mốc là một câu tường thuật riêng nên dùng một khoá
+ * chung và đặt cả câu vào `detail`. Mã nghiệp vụ thì ngược lại — mỗi hành động
+ * một khoá riêng (xem `ACT` trong service của từng phân hệ).
+ */
+const ACT_NOTE = 'document.note';
 
 export type DocumentSeed = Partial<IncomingDocument> & { arrivalNo: string };
 
@@ -33,11 +42,11 @@ const INCOMING_BASE: DocumentBase[] = [
     pageCount: 4,
     linkedTaskCode: 'NV-2605',
     timeline: [
-      { title: 'Văn phòng tiếp nhận, vào sổ văn bản đến', meta: '08/08/2026 09:12 · Trần Thị Hạnh', state: 'ok' },
-      { title: 'Trình Chủ tịch UBND xã cho ý kiến', meta: '08/08/2026 14:30 · Trần Thị Hạnh', state: 'ok' },
-      { title: 'Chuyển bộ phận Địa chính – Xây dựng chủ trì', meta: '09/08/2026 08:05 · Nguyễn Văn Bình', state: 'ok' },
-      { title: 'Chuyển Tư pháp – Hộ tịch phối hợp rà soát pháp lý', meta: '12/08/2026 10:40 · Lê Minh Tuấn', state: 'ok' },
-      { title: 'Đang xử lý — dự thảo văn bản phúc đáp', meta: 'Từ 14/08/2026 · Lê Minh Tuấn', state: 'cur' },
+      seedActivity(ACT_NOTE, 'Văn phòng tiếp nhận, vào sổ văn bản đến', '08/08/2026 09:12 · Trần Thị Hạnh'),
+      seedActivity(ACT_NOTE, 'Trình Chủ tịch UBND xã cho ý kiến', '08/08/2026 14:30 · Trần Thị Hạnh'),
+      seedActivity(ACT_NOTE, 'Chuyển bộ phận Địa chính – Xây dựng chủ trì', '09/08/2026 08:05 · Nguyễn Văn Bình'),
+      seedActivity(ACT_NOTE, 'Chuyển Tư pháp – Hộ tịch phối hợp rà soát pháp lý', '12/08/2026 10:40 · Lê Minh Tuấn'),
+      seedActivity(ACT_NOTE, 'Đang xử lý — dự thảo văn bản phúc đáp', 'Từ 14/08/2026 · Lê Minh Tuấn', 'cur'),
     ],
   },
   {
@@ -56,10 +65,10 @@ const INCOMING_BASE: DocumentBase[] = [
     signer: 'Phó Chủ tịch Trần Quốc Hưng',
     pageCount: 12,
     timeline: [
-      { title: 'Văn phòng tiếp nhận qua trục liên thông', meta: '11/08/2026 07:55 · Hệ thống', state: 'ok' },
-      { title: 'Trình Chủ tịch UBND xã', meta: '11/08/2026 10:20 · Trần Thị Hạnh', state: 'ok' },
-      { title: 'Chuyển Địa chính – Xây dựng nghiên cứu, triển khai', meta: '12/08/2026 08:15 · Nguyễn Văn Bình', state: 'ok' },
-      { title: 'Đang xử lý — xây dựng kế hoạch triển khai', meta: 'Từ 13/08/2026 · Lê Minh Tuấn', state: 'cur' },
+      seedActivity(ACT_NOTE, 'Văn phòng tiếp nhận qua trục liên thông', '11/08/2026 07:55 · Hệ thống'),
+      seedActivity(ACT_NOTE, 'Trình Chủ tịch UBND xã', '11/08/2026 10:20 · Trần Thị Hạnh'),
+      seedActivity(ACT_NOTE, 'Chuyển Địa chính – Xây dựng nghiên cứu, triển khai', '12/08/2026 08:15 · Nguyễn Văn Bình'),
+      seedActivity(ACT_NOTE, 'Đang xử lý — xây dựng kế hoạch triển khai', 'Từ 13/08/2026 · Lê Minh Tuấn', 'cur'),
     ],
   },
   {
@@ -79,9 +88,9 @@ const INCOMING_BASE: DocumentBase[] = [
     pageCount: 3,
     linkedTaskCode: 'NV-2604',
     timeline: [
-      { title: 'Văn phòng tiếp nhận, vào sổ văn bản đến', meta: '12/08/2026 08:40 · Trần Thị Hạnh', state: 'ok' },
-      { title: 'Chuyển Văn hoá – Xã hội chủ trì', meta: '12/08/2026 15:10 · Nguyễn Văn Bình', state: 'ok' },
-      { title: 'Đã tạo nhiệm vụ NV-2604 theo dõi', meta: '13/08/2026 09:00 · Vũ Đức Anh', state: 'cur' },
+      seedActivity(ACT_NOTE, 'Văn phòng tiếp nhận, vào sổ văn bản đến', '12/08/2026 08:40 · Trần Thị Hạnh'),
+      seedActivity(ACT_NOTE, 'Chuyển Văn hoá – Xã hội chủ trì', '12/08/2026 15:10 · Nguyễn Văn Bình'),
+      seedActivity(ACT_NOTE, 'Đã tạo nhiệm vụ NV-2604 theo dõi', '13/08/2026 09:00 · Vũ Đức Anh', 'cur'),
     ],
   },
   {
@@ -100,9 +109,9 @@ const INCOMING_BASE: DocumentBase[] = [
     signer: 'Trưởng Công an huyện Phạm Văn Đông',
     pageCount: 6,
     timeline: [
-      { title: 'Văn phòng tiếp nhận bản giấy', meta: '14/08/2026 09:25 · Trần Thị Hạnh', state: 'ok' },
-      { title: 'Chuyển Công an xã chủ trì', meta: '14/08/2026 11:00 · Nguyễn Văn Bình', state: 'ok' },
-      { title: 'Đang xử lý — xây dựng phương án', meta: 'Từ 15/08/2026 · Hoàng Văn Sơn', state: 'cur' },
+      seedActivity(ACT_NOTE, 'Văn phòng tiếp nhận bản giấy', '14/08/2026 09:25 · Trần Thị Hạnh'),
+      seedActivity(ACT_NOTE, 'Chuyển Công an xã chủ trì', '14/08/2026 11:00 · Nguyễn Văn Bình'),
+      seedActivity(ACT_NOTE, 'Đang xử lý — xây dựng phương án', 'Từ 15/08/2026 · Hoàng Văn Sơn', 'cur'),
     ],
   },
   {
@@ -122,9 +131,9 @@ const INCOMING_BASE: DocumentBase[] = [
     pageCount: 2,
     linkedTaskCode: 'NV-2612',
     timeline: [
-      { title: 'Văn phòng tiếp nhận qua trục liên thông', meta: '15/08/2026 08:02 · Hệ thống', state: 'ok' },
-      { title: 'Chuyển Văn phòng UBND chủ trì tổng hợp', meta: '15/08/2026 09:30 · Nguyễn Văn Bình', state: 'ok' },
-      { title: 'Đang xử lý — chờ số liệu các bộ phận', meta: 'Từ 16/08/2026 · Trần Thị Hạnh', state: 'cur' },
+      seedActivity(ACT_NOTE, 'Văn phòng tiếp nhận qua trục liên thông', '15/08/2026 08:02 · Hệ thống'),
+      seedActivity(ACT_NOTE, 'Chuyển Văn phòng UBND chủ trì tổng hợp', '15/08/2026 09:30 · Nguyễn Văn Bình'),
+      seedActivity(ACT_NOTE, 'Đang xử lý — chờ số liệu các bộ phận', 'Từ 16/08/2026 · Trần Thị Hạnh', 'cur'),
     ],
   },
   {
@@ -144,9 +153,9 @@ const INCOMING_BASE: DocumentBase[] = [
     pageCount: 8,
     linkedTaskCode: 'NV-2608',
     timeline: [
-      { title: 'Văn phòng tiếp nhận, vào sổ văn bản đến', meta: '17/08/2026 08:15 · Trần Thị Hạnh', state: 'ok' },
-      { title: 'Chuyển Tư pháp – Hộ tịch chủ trì', meta: '17/08/2026 14:00 · Nguyễn Văn Bình', state: 'ok' },
-      { title: 'Đang xử lý — triển khai nhiệm vụ NV-2608', meta: 'Từ 18/08/2026 · Phạm Thị Ngọc', state: 'cur' },
+      seedActivity(ACT_NOTE, 'Văn phòng tiếp nhận, vào sổ văn bản đến', '17/08/2026 08:15 · Trần Thị Hạnh'),
+      seedActivity(ACT_NOTE, 'Chuyển Tư pháp – Hộ tịch chủ trì', '17/08/2026 14:00 · Nguyễn Văn Bình'),
+      seedActivity(ACT_NOTE, 'Đang xử lý — triển khai nhiệm vụ NV-2608', 'Từ 18/08/2026 · Phạm Thị Ngọc', 'cur'),
     ],
   },
   {
@@ -166,9 +175,9 @@ const INCOMING_BASE: DocumentBase[] = [
     pageCount: 5,
     linkedTaskCode: 'NV-2610',
     timeline: [
-      { title: 'Văn phòng tiếp nhận qua trục liên thông', meta: '18/08/2026 07:48 · Hệ thống', state: 'ok' },
-      { title: 'Chuyển Tài chính – Kế toán chủ trì', meta: '18/08/2026 09:10 · Nguyễn Văn Bình', state: 'ok' },
-      { title: 'Dự thảo báo cáo trình Chủ tịch UBND xã ký', meta: '20/08/2026 16:20 · Đỗ Thanh Hà', state: 'cur' },
+      seedActivity(ACT_NOTE, 'Văn phòng tiếp nhận qua trục liên thông', '18/08/2026 07:48 · Hệ thống'),
+      seedActivity(ACT_NOTE, 'Chuyển Tài chính – Kế toán chủ trì', '18/08/2026 09:10 · Nguyễn Văn Bình'),
+      seedActivity(ACT_NOTE, 'Dự thảo báo cáo trình Chủ tịch UBND xã ký', '20/08/2026 16:20 · Đỗ Thanh Hà', 'cur'),
     ],
   },
   {
@@ -187,8 +196,8 @@ const INCOMING_BASE: DocumentBase[] = [
     signer: 'Chánh Văn phòng Đinh Thị Mai',
     pageCount: 1,
     timeline: [
-      { title: 'Văn phòng tiếp nhận qua trục liên thông', meta: '20/08/2026 10:05 · Hệ thống', state: 'ok' },
-      { title: 'Chờ trình Chủ tịch UBND xã phân công dự', meta: 'Từ 20/08/2026 · Trần Thị Hạnh', state: 'cur' },
+      seedActivity(ACT_NOTE, 'Văn phòng tiếp nhận qua trục liên thông', '20/08/2026 10:05 · Hệ thống'),
+      seedActivity(ACT_NOTE, 'Chờ trình Chủ tịch UBND xã phân công dự', 'Từ 20/08/2026 · Trần Thị Hạnh', 'cur'),
     ],
   },
 ];
@@ -210,10 +219,10 @@ const PETITION_BASE: DocumentBase[] = [
     signer: 'Người làm đơn: Nguyễn Văn Thắng',
     pageCount: 3,
     timeline: [
-      { title: 'Trung tâm Phục vụ hành chính công tiếp nhận', meta: '09/08/2026 08:20 · Ngô Thị Lan', state: 'ok' },
-      { title: 'Chuyển Văn phòng UBND vào sổ theo dõi', meta: '09/08/2026 10:15 · Trần Thị Hạnh', state: 'ok' },
-      { title: 'Chuyển Địa chính – Xây dựng xác minh', meta: '10/08/2026 08:30 · Nguyễn Văn Bình', state: 'ok' },
-      { title: 'Đang xử lý — đã mời hai bên hoà giải lần 1', meta: 'Từ 16/08/2026 · Lê Minh Tuấn', state: 'cur' },
+      seedActivity(ACT_NOTE, 'Trung tâm Phục vụ hành chính công tiếp nhận', '09/08/2026 08:20 · Ngô Thị Lan'),
+      seedActivity(ACT_NOTE, 'Chuyển Văn phòng UBND vào sổ theo dõi', '09/08/2026 10:15 · Trần Thị Hạnh'),
+      seedActivity(ACT_NOTE, 'Chuyển Địa chính – Xây dựng xác minh', '10/08/2026 08:30 · Nguyễn Văn Bình'),
+      seedActivity(ACT_NOTE, 'Đang xử lý — đã mời hai bên hoà giải lần 1', 'Từ 16/08/2026 · Lê Minh Tuấn', 'cur'),
     ],
   },
   {
@@ -232,9 +241,9 @@ const PETITION_BASE: DocumentBase[] = [
     signer: 'Người làm đơn: Trần Thị Mến',
     pageCount: 2,
     timeline: [
-      { title: 'Trung tâm Phục vụ hành chính công tiếp nhận', meta: '12/08/2026 09:40 · Ngô Thị Lan', state: 'ok' },
-      { title: 'Chuyển Công an xã kiểm tra, xử lý', meta: '12/08/2026 15:00 · Trần Thị Hạnh', state: 'ok' },
-      { title: 'Đang xử lý — đã lập biên bản nhắc nhở', meta: 'Từ 14/08/2026 · Hoàng Văn Sơn', state: 'cur' },
+      seedActivity(ACT_NOTE, 'Trung tâm Phục vụ hành chính công tiếp nhận', '12/08/2026 09:40 · Ngô Thị Lan'),
+      seedActivity(ACT_NOTE, 'Chuyển Công an xã kiểm tra, xử lý', '12/08/2026 15:00 · Trần Thị Hạnh'),
+      seedActivity(ACT_NOTE, 'Đang xử lý — đã lập biên bản nhắc nhở', 'Từ 14/08/2026 · Hoàng Văn Sơn', 'cur'),
     ],
   },
   {
@@ -253,9 +262,9 @@ const PETITION_BASE: DocumentBase[] = [
     signer: 'Người làm đơn: Lê Văn Hoà',
     pageCount: 2,
     timeline: [
-      { title: 'Trung tâm Phục vụ hành chính công tiếp nhận', meta: '14/08/2026 08:05 · Ngô Thị Lan', state: 'ok' },
-      { title: 'Chuyển Tư pháp – Hộ tịch thụ lý', meta: '14/08/2026 09:30 · Trần Thị Hạnh', state: 'ok' },
-      { title: 'Đang xử lý — chờ xác minh nơi cư trú trước đây', meta: 'Từ 15/08/2026 · Phạm Thị Ngọc', state: 'cur' },
+      seedActivity(ACT_NOTE, 'Trung tâm Phục vụ hành chính công tiếp nhận', '14/08/2026 08:05 · Ngô Thị Lan'),
+      seedActivity(ACT_NOTE, 'Chuyển Tư pháp – Hộ tịch thụ lý', '14/08/2026 09:30 · Trần Thị Hạnh'),
+      seedActivity(ACT_NOTE, 'Đang xử lý — chờ xác minh nơi cư trú trước đây', 'Từ 15/08/2026 · Phạm Thị Ngọc', 'cur'),
     ],
   },
   {
@@ -274,9 +283,9 @@ const PETITION_BASE: DocumentBase[] = [
     signer: 'Người làm đơn: Phạm Thị Xuân',
     pageCount: 5,
     timeline: [
-      { title: 'Trung tâm Phục vụ hành chính công tiếp nhận', meta: '16/08/2026 08:50 · Ngô Thị Lan', state: 'ok' },
-      { title: 'Trình Chủ tịch UBND xã xem xét thẩm quyền', meta: '16/08/2026 14:20 · Trần Thị Hạnh', state: 'ok' },
-      { title: 'Chờ ban hành quyết định thụ lý giải quyết', meta: 'Từ 18/08/2026 · Nguyễn Văn Bình', state: 'cur' },
+      seedActivity(ACT_NOTE, 'Trung tâm Phục vụ hành chính công tiếp nhận', '16/08/2026 08:50 · Ngô Thị Lan'),
+      seedActivity(ACT_NOTE, 'Trình Chủ tịch UBND xã xem xét thẩm quyền', '16/08/2026 14:20 · Trần Thị Hạnh'),
+      seedActivity(ACT_NOTE, 'Chờ ban hành quyết định thụ lý giải quyết', 'Từ 18/08/2026 · Nguyễn Văn Bình', 'cur'),
     ],
   },
   {
@@ -295,8 +304,8 @@ const PETITION_BASE: DocumentBase[] = [
     signer: 'Đại diện: Tổ trưởng Vũ Ngọc Bảo',
     pageCount: 4,
     timeline: [
-      { title: 'Trung tâm Phục vụ hành chính công tiếp nhận', meta: '18/08/2026 09:15 · Ngô Thị Lan', state: 'ok' },
-      { title: 'Chờ phân công bộ phận chủ trì', meta: 'Từ 18/08/2026 · Trần Thị Hạnh', state: 'cur' },
+      seedActivity(ACT_NOTE, 'Trung tâm Phục vụ hành chính công tiếp nhận', '18/08/2026 09:15 · Ngô Thị Lan'),
+      seedActivity(ACT_NOTE, 'Chờ phân công bộ phận chủ trì', 'Từ 18/08/2026 · Trần Thị Hạnh', 'cur'),
     ],
   },
   {
@@ -315,9 +324,9 @@ const PETITION_BASE: DocumentBase[] = [
     signer: 'Người làm đơn: Đinh Văn Cường',
     pageCount: 2,
     timeline: [
-      { title: 'Trung tâm Phục vụ hành chính công tiếp nhận', meta: '20/08/2026 08:30 · Ngô Thị Lan', state: 'ok' },
-      { title: 'Chuyển Văn hoá – Xã hội thẩm định điều kiện', meta: '20/08/2026 11:00 · Trần Thị Hạnh', state: 'ok' },
-      { title: 'Đang xử lý — đối chiếu danh sách lao động', meta: 'Từ 21/08/2026 · Vũ Đức Anh', state: 'cur' },
+      seedActivity(ACT_NOTE, 'Trung tâm Phục vụ hành chính công tiếp nhận', '20/08/2026 08:30 · Ngô Thị Lan'),
+      seedActivity(ACT_NOTE, 'Chuyển Văn hoá – Xã hội thẩm định điều kiện', '20/08/2026 11:00 · Trần Thị Hạnh'),
+      seedActivity(ACT_NOTE, 'Đang xử lý — đối chiếu danh sách lao động', 'Từ 21/08/2026 · Vũ Đức Anh', 'cur'),
     ],
   },
 ];

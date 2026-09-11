@@ -53,7 +53,7 @@ export const ACTION_PATTERN = /^[a-z][a-z0-9]*\.[a-z][a-z0-9-]*$/;
 export class ActivityEntry {
   /** Thời điểm xảy ra, milli-giây UTC */
   @Prop({ type: Number, required: true })
-  at: EpochMs;
+  at: number;
 
   /**
    * `staff_users._id` của cán bộ thực hiện.

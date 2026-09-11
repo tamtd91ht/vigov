@@ -216,9 +216,13 @@ describe('ViGov API — luồng đính kèm tệp', () => {
 
     it('ghi một mốc hợp lệ vào nhật ký luân chuyển', async () => {
       const res = await asAdmin(api().get(`${API}/documents/${encodeURIComponent(arrivalNo)}`)).expect(200);
-      const step = (res.body.timeline as { title: string; state: string }[]).at(-1);
+      const step = (res.body.timeline as { action: string; detail: string; state: string }[]).at(-1);
 
-      expect(step?.title).toContain(VN_FILENAME);
+      // Khuôn v2: khoá hành động + SỐ LƯỢNG tệp. Tên tệp KHÔNG ghi vào nhật ký —
+      // tên tệp scan công văn thường mang tên người và nội dung vụ việc.
+      expect(step?.action).toBe('document.attach');
+      expect(step?.detail).toBe('1');
+      expect(JSON.stringify(step)).not.toContain(VN_FILENAME);
       // 'done' không thuộc enum ⇒ save() ném ValidationError ⇒ 500 ở lời gọi trước
       expect(['ok', 'cur']).toContain(step?.state);
     });

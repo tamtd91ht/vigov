@@ -488,20 +488,20 @@
   {
     "id": "P7-01",
     "name": "Nâng cấp v2 — Khuôn dữ liệu dùng chung: thời gian dạng số, tham chiếu bằng id, nhật ký và bình luận chuẩn hoá",
-    "description": "Dựng khuôn dùng chung trong libs/shared cho toàn bộ nâng cấp v2, theo 4 quyết định của khách ngày 11/09/2026: (1) tham chiếu LUÔN lưu id, tên hiển thị resolve ở tầng đọc; (2) MỌI mốc thời gian lưu dạng số epoch milliseconds, kể cả createdAt/updatedAt/deletedAt/slaDueAt/dueAt - không còn chuỗi, không còn Date; (3) nhật ký và bình luận chuẩn hoá chung một khuôn; (4) một đợt phát hành, di trú một lần, KHÔNG viết mã tương thích ngược. Tệp mới: time/epoch.ts (7 tiện ích thời gian), schemas/timestamped.ts (thay timestamps:true của Mongoose), schemas/activity-log.ts (ActivityEntry thay TimelineStep - tách at/actorId/action/detail, không lưu nhãn tiếng Việt), schemas/comment.ts (bỏ authorInitials/authorColor là dữ liệu trình bày), schemas/refs.ts. Sửa SoftDeletable. Xoá buildDateRangeFilter cũ. Build backend sẽ đỏ hàng loạt sau task này - đó là CỐ Ý, danh sách lỗi biên dịch chính là checklist của P7-02.",
+    "description": "Dựng khuôn dùng chung trong libs/shared cho toàn bộ nâng cấp v2, theo 4 quyết định của khách ngày 11/09/2026: (1) tham chiếu LUÔN lưu id, tên hiển thị resolve ở tầng đọc; (2) MỌI mốc thời gian lưu dạng số epoch milliseconds, kể cả createdAt/updatedAt/deletedAt/slaDueAt/dueAt - không còn chuỗi, không còn Date; (3) nhật ký và bình luận chuẩn hoá chung một khuôn; (4) một đợt phát hành, di trú một lần, KHÔNG viết mã tương thích ngược. Tệp mới: time/epoch.ts (7 tiện ích thời gian), schemas/timestamped.ts (thay timestamps:true của Mongoose), schemas/activity-log.ts (ActivityEntry thay TimelineStep - tách at/actorId/action/detail, không lưu nhãn tiếng Việt), schemas/comment.ts (bỏ authorInitials/authorColor là dữ liệu trình bày), schemas/refs.ts. Sửa SoftDeletable. Xoá buildDateRangeFilter cũ. Build backend sẽ đỏ hàng loạt sau task này - đó là CỐ Ý, danh sách lỗi biên dịch chính là checklist của P7-02. XONG 11/09/2026: 5 tệp khuôn mới trong libs/shared, 32 test đơn vị riêng cho khuôn đều xanh, libs/shared biên dịch 0 lỗi. Phép kiểm quan trọng nhất là \"tôn trọng mốc truyền tường minh\" - nó khoá đúng cái bẫy sẽ làm script di trú P7-04 đổi mốc sửa của toàn bộ hồ sơ hành chính thành ngày chạy di trú. Chuyển luôn Comment và TimelineStep ra khỏi task.schema.ts vì khuôn dùng chung của cả hệ thống không nên nằm trong schema của một phân hệ.",
     "planFilePath": "plans/p7-01-khuon-du-lieu-v2.md",
     "createdAt": "2026-09-11T00:00:00.000Z",
     "updatedAt": "2026-09-11T00:00:00.000Z",
-    "status": "in-progress"
+    "status": "done"
   },
   {
     "id": "P7-02",
     "name": "Nâng cấp v2 — Áp khuôn vào 13 collection và toàn bộ module backend",
-    "description": "Đổi 13 collection sang khuôn v2: tasks, documents, feedbacks, dossiers, budget_items, staff_users, citizen_users, articles, audit_logs, blacklist_records, login_sessions, sla_rules, stored_files. Bỏ timestamps:true ở mọi schema, thay bằng applyEpochTimestamps. Đổi 13 trường tham chiếu đang lưu TÊN sang id: assignee->assigneeId, assigner->assignerId, collaborators->collaboratorIds, department->departmentId, deletedBy->deletedById, signer->signerId, authorName->authorId. Dựng DirectoryResolverService đọc theo lô để tránh N+1 khi resolve tên hiển thị. Sửa mọi DTO, exporter, reports, search, workflow, seed-data. CHƯA CHỐT hai việc phải hỏi khách trước khi bắt đầu: (1) nâng org_nodes thành danh mục bộ phận chuẩn của toàn hệ thống - departmentId không tồn tại được nếu bộ phận vẫn là chuỗi tự do như hiện nay; (2) luật xử lý bộ phận trong dữ liệu cũ không khớp nút nào.",
+    "description": "Đổi 13 collection sang khuôn v2: tasks, documents, feedbacks, dossiers, budget_items, staff_users, citizen_users, articles, audit_logs, blacklist_records, login_sessions, sla_rules, stored_files. Bỏ timestamps:true ở mọi schema, thay bằng applyEpochTimestamps. Đổi 13 trường tham chiếu đang lưu TÊN sang id: assignee->assigneeId, assigner->assignerId, collaborators->collaboratorIds, department->departmentId, deletedBy->deletedById, signer->signerId, authorName->authorId. Dựng DirectoryResolverService đọc theo lô để tránh N+1 khi resolve tên hiển thị. Sửa mọi DTO, exporter, reports, search, workflow, seed-data. CHƯA CHỐT hai việc phải hỏi khách trước khi bắt đầu: (1) nâng org_nodes thành danh mục bộ phận chuẩn của toàn hệ thống - departmentId không tồn tại được nếu bộ phận vẫn là chuỗi tự do như hiện nay; (2) luật xử lý bộ phận trong dữ liệu cũ không khớp nút nào. CHIA BA CHẶNG (11/09/2026) vì quá lớn để kiểm chứng một lần. CHẶNG 2a XONG: nhật ký và bình luận chuẩn hoá trên 6 service + 5 tệp seed (80 mốc nhật ký, 15 bình luận); 16 test phải sửa theo khuôn mới và trong đó test bắt được một lỗi thật - tasks.service.remove vẫn truyền tên đăng nhập vào markDeleted thay vì id, TypeScript không phát hiện được vì cả hai đều là string. Kiểm chứng: 588/588 test đơn vị xanh; e2e 27 đỏ/73 xanh ĐÚNG BẰNG mốc 545f914 nên không hồi quy. CHẶNG 2b (mốc thời gian dạng số cho 13 collection) và 2c (tham chiếu id + DirectoryResolverService) chưa làm; 2c vẫn chờ quyết định về danh mục bộ phận.",
     "planFilePath": "plans/p7-02-ap-khuon-backend.md",
     "createdAt": "2026-09-11T00:00:00.000Z",
     "updatedAt": "2026-09-11T00:00:00.000Z",
-    "status": "pending"
+    "status": "in-progress"
   },
   {
     "id": "P7-03",
@@ -535,6 +535,24 @@
     "name": "Nâng cấp v2 — Phân hệ Nhiệm vụ: sáu hạn chế còn lại",
     "description": "Sáu hạn chế riêng của phân hệ Nhiệm vụ, không giải quyết được bằng khuôn dùng chung (nguồn: docs/nang-cap-v2/nhiem-vu.md mục 8-9). H-01 bỏ 'qua' khỏi enum status, suy ra quá hạn từ deadline mỗi lần đọc và KHÔNG lưu cờ, theo đúng nguyên tắc đã chốt ở phân hệ Giải ngân; cron markOverdue chỉ còn ghi nhật ký. ĐÁNG LÀM TRƯỚC NHẤT: cron 07:00 đang ghi status='qua' đè mất trạng thái nghiệp vụ trước đó, dữ liệu đã đè không khôi phục được, nên mỗi ngày trì hoãn là thêm một lô bản ghi mất thông tin. H-02 thêm ô tìm từ khoá (API đã nhận sẵn q). H-03 thêm lọc theo hạn xử lý, tách khỏi lọc ngày giao. H-04 thêm GET /tasks/stats vì số đếm cột Kanban đang sai khi quá 100 nhiệm vụ. H-10/H-11 việc con có id ổn định thay cho chỉ số mảng, thêm khoá phiên bản lạc quan. H-12 progress thành giá trị suy ra, bỏ khỏi UpdateTaskDto. Cần khách xác nhận: bản ghi đã bị cron đè mất trạng thái thì di trú đặt về giá trị nào.",
     "planFilePath": "plans/p7-06-nhiem-vu-v2.md",
+    "createdAt": "2026-09-11T00:00:00.000Z",
+    "updatedAt": "2026-09-11T00:00:00.000Z",
+    "status": "pending"
+  },
+  {
+    "id": "P7-07",
+    "name": "Sửa 8 lỗi biên dịch có sẵn ở phân hệ Bản đồ và Cấu hình (TS7056/TS4053)",
+    "description": "ĐỎ CÓ SẴN TRÊN MAIN, không do nâng cấp v2. npm run check:api báo 8 lỗi: 4 ở map.controller.ts, 3 ở map.service.ts, 1 ở settings.controller.ts. Nguyên nhân: dự án bật declaration:true, mà kiểu TRẢ VỀ của các phương thức công khai được suy ra từ truy vấn Mongoose lean() nên vượt giới hạn serialize của TypeScript (TS7056); thêm một chỗ dùng kiểu SummaryItem không được export (TS4053). Cách sửa: thêm kiểu trả về tường minh cho từng phương thức, và export các kiểu đang dùng trong chữ ký công khai. VÌ SAO TRƯỚC ĐÂY KHÔNG THẤY: tsconfig bật incremental:true, bộ đệm dist/tsconfig.tsbuildinfo ghi nhớ kết quả cũ nên chạy với bộ đệm ấm thì xanh; xoá bộ đệm rồi chạy lại là hiện đủ 8 lỗi. Đã kiểm chứng bằng cách checkout 545f914 với bộ đệm đã xoá. ĐÁNG LÀM SỚM vì 8 lỗi này che mất mọi lỗi biên dịch khác: TypeScript chỉ báo lỗi declaration khi không còn lỗi ngữ nghĩa nào, nên trong lúc chúng còn đó thì không tin được kết quả check:api.",
+    "planFilePath": null,
+    "createdAt": "2026-09-11T00:00:00.000Z",
+    "updatedAt": "2026-09-11T00:00:00.000Z",
+    "status": "pending"
+  },
+  {
+    "id": "P7-08",
+    "name": "Sửa 27 test e2e đỏ có sẵn — POST /files/upload trả 415",
+    "description": "ĐỎ CÓ SẴN TRÊN MAIN, không do nâng cấp v2: mốc 545f914 cũng 27 đỏ/73 xanh. Suite test/attachments.e2e-spec.ts đỏ 32 ca, gốc rễ là POST /files/upload trả 415 Unsupported Media Type khi tải tệp .docx trong test; mọi ca sau đó đổ theo vì không có tệp để đính kèm. Thêm một ca ở flows.e2e-spec.ts: kế toán tạo hạng mục giải ngân trả 400 thay vì 201. Cần xác định whitelist MIME của module Files có khớp với tệp mà test gửi hay không, và DTO của POST /disbursement đang từ chối trường nào. MỨC ƯU TIÊN CAO: e2e đỏ nghĩa là đợt nâng cấp v2 đang chạy mà KHÔNG có lưới an toàn - chính suite này là chỗ duy nhất kiểm luồng đính kèm tệp đầu-cuối.",
+    "planFilePath": null,
     "createdAt": "2026-09-11T00:00:00.000Z",
     "updatedAt": "2026-09-11T00:00:00.000Z",
     "status": "pending"

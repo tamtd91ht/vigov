@@ -41,9 +41,9 @@ function softDeleteHarness(deleted = false) {
     kind: 'incoming',
     isDeleted: deleted,
     deletedAt: deleted ? new Date('2026-09-01T00:00:00Z') : null,
-    deletedBy: undefined as string | undefined,
+    deletedById: undefined as string | undefined,
     deleteReason: undefined as string | undefined,
-    timeline: [] as { title: string; meta: string; state: string }[],
+    timeline: [] as { action: string; detail: string; state: string; at: number }[],
     attachmentFileIds: [] as string[],
   });
 
@@ -72,12 +72,16 @@ describe('DocumentsService.remove', () => {
   it('CHỈ đặt cờ isDeleted, không xoá tài liệu khỏi CSDL', async () => {
     const { service, doc } = softDeleteHarness();
 
-    await service.remove('128', { username: 'binh.nv', displayName: 'Nguyễn Văn Bình' } as never, 'Vào sổ trùng số đến');
+    await service.remove(
+      '128',
+      { sub: '66f10000000000000000cb01', username: 'binh.nv', displayName: 'Nguyễn Văn Bình' } as never,
+      'Vào sổ trùng số đến',
+    );
 
     expect(doc.isDeleted).toBe(true);
-    expect(doc.deletedAt).toBeInstanceOf(Date);
-    // `deletedBy` lưu TÊN ĐĂNG NHẬP, không phải họ tên hiển thị
-    expect(doc.deletedBy).toBe('binh.nv');
+    // Khuôn v2: mốc thời gian là SỐ, người xoá là ID cán bộ
+    expect(typeof doc.deletedAt).toBe('number');
+    expect(doc.deletedById).toBe('66f10000000000000000cb01');
     expect(doc.deleteReason).toBe('Vào sổ trùng số đến');
     expect(doc.save).toHaveBeenCalled();
   });
@@ -87,7 +91,8 @@ describe('DocumentsService.remove', () => {
 
     await service.remove('128', undefined, 'Gửi sai địa chỉ');
 
-    expect(doc.timeline.at(-1)?.title).toBe('Xoá văn bản khỏi sổ: Gửi sai địa chỉ');
+    expect(doc.timeline.at(-1)?.action).toBe('document.delete');
+    expect(doc.timeline.at(-1)?.detail).toBe('Gửi sai địa chỉ');
   });
 
   it('không nêu lý do thì nhật ký chỉ ghi hành động', async () => {
@@ -95,7 +100,8 @@ describe('DocumentsService.remove', () => {
 
     await service.remove('128');
 
-    expect(doc.timeline.at(-1)?.title).toBe('Xoá văn bản khỏi sổ');
+    expect(doc.timeline.at(-1)?.action).toBe('document.delete');
+    expect(doc.timeline.at(-1)?.detail).toBe('');
     expect(doc.deleteReason).toBeUndefined();
   });
 
@@ -110,16 +116,16 @@ describe('DocumentsService.remove', () => {
 describe('DocumentsService.restore', () => {
   it('bỏ cờ xoá và dọn luôn người xoá / lý do xoá', async () => {
     const { service, doc } = softDeleteHarness(true);
-    doc.deletedBy = 'Nguyễn Văn Bình';
+    doc.deletedById = '66f10000000000000000cb01';
     doc.deleteReason = 'Vào sổ trùng';
 
     await service.restore('128', { username: 'hoa.tt', displayName: 'Trần Thị Hoa' } as never);
 
     expect(doc.isDeleted).toBe(false);
     expect(doc.deletedAt).toBeNull();
-    expect(doc.deletedBy).toBeUndefined();
+    expect(doc.deletedById).toBeUndefined();
     expect(doc.deleteReason).toBeUndefined();
-    expect(doc.timeline.at(-1)?.title).toBe('Khôi phục văn bản vào sổ');
+    expect(doc.timeline.at(-1)?.action).toBe('document.restore');
   });
 
   it('khôi phục văn bản chưa bị xoá thì 404', async () => {

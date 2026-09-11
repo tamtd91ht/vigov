@@ -13,14 +13,14 @@ import {
   type IncomingDocumentDocument,
   type TaskDeadlineWarningEvent,
   type TaskDocument,
-  type TimelineStep,
+  activity,
+  formatVnDateTimeMs,
 } from '@vigov/shared';
 import { MessagingService } from '../messaging/messaging.service';
 import {
   TASK_STATUS_DONE,
   TasksService,
   formatVnDate,
-  formatVnDateTime,
   parseVnDate,
 } from '../tasks/tasks.service';
 
@@ -32,6 +32,17 @@ export const DEADLINE_WARNING_DAYS = 3;
 export const FEEDBACK_SLA_WARNING_HOURS = 24;
 /** Hạn mặc định cho nhiệm vụ sinh từ phản ánh khi phiếu chưa có mốc SLA */
 export const FEEDBACK_TASK_DEFAULT_DAYS = 3;
+
+/**
+ * Khoá hành động ghi vào nhật ký của bản ghi NGUỒN (văn bản / phản ánh).
+ * Nhãn tiếng Việt do client tra — xem `admin-web/src/config/activity.config.ts`.
+ */
+const ACT = {
+  documentToTask: 'document.to-task',
+  feedbackToTask: 'feedback.to-task',
+  documentDoneByTask: 'document.done-by-task',
+  feedbackDoneByTask: 'feedback.done-by-task',
+} as const;
 
 /** Nguồn nhiệm vụ — khớp enum sourceType trong task.schema.ts */
 const SOURCE_TYPE_DOCUMENT = 'vb';
@@ -108,7 +119,7 @@ export class WorkflowService {
     });
 
     doc.linkedTaskCode = task.code;
-    doc.timeline.push(step(`Chuyển thành nhiệm vụ ${task.code}`, assigner, 'cur'));
+    doc.timeline.push(activity(ACT.documentToTask, { detail: task.code, state: 'cur' }));
     await doc.save();
 
     this.logger.log(`Văn bản ${doc.refNo} → nhiệm vụ ${task.code} (bộ phận ${department})`);
@@ -169,7 +180,7 @@ export class WorkflowService {
     });
 
     feedback.linkedTaskCode = task.code;
-    feedback.timeline.push(step(`Chuyển thành nhiệm vụ ${task.code}`, SYSTEM_ACTOR, 'cur'));
+    feedback.timeline.push(activity(ACT.feedbackToTask, { detail: task.code, state: 'cur' }));
     await feedback.save();
 
     this.logger.log(`Phản ánh ${feedback.code} → nhiệm vụ ${task.code} (cán bộ ${assignee})`);
@@ -207,7 +218,7 @@ export class WorkflowService {
         .exec();
       if (!doc) return;
       doc.status = DOCUMENT_STATUS_DONE;
-      doc.timeline.push(step(`Hoàn thành xử lý theo nhiệm vụ ${taskCode}`, SYSTEM_ACTOR, 'cur'));
+      doc.timeline.push(activity(ACT.documentDoneByTask, { detail: taskCode, state: 'cur' }));
       await doc.save();
       this.logger.log(`Nhiệm vụ ${taskCode} hoàn thành → văn bản ${doc.refNo} chuyển 'xong'`);
       return;
@@ -219,7 +230,7 @@ export class WorkflowService {
         .exec();
       if (!feedback) return;
       feedback.status = FEEDBACK_STATUS_RESOLVED;
-      feedback.timeline.push(step(`Hoàn thành xử lý theo nhiệm vụ ${taskCode}`, SYSTEM_ACTOR, 'cur'));
+      feedback.timeline.push(activity(ACT.feedbackDoneByTask, { detail: taskCode, state: 'cur' }));
       await feedback.save();
       this.logger.log(`Nhiệm vụ ${taskCode} hoàn thành → phản ánh ${feedback.code} chuyển 'resolved'`);
       // TODO: phát NotificationRequestedEvent (ZNS báo công dân) khi NotificationModule sẵn sàng
@@ -283,7 +294,7 @@ export class WorkflowService {
       const label = isOverdue ? 'QUÁ HẠN SLA' : 'SẮP HẾT HẠN SLA';
       this.logger.warn(
         `${label} — ${item.code} "${item.title}" | ${item.assignee || item.department || 'chưa phân công'} ` +
-          `| hạn ${formatVnDateTime(due)}`,
+          `| hạn ${formatVnDateTimeMs(due.getTime())}`,
       );
       // TODO: gửi cảnh báo cho cán bộ phụ trách qua NotificationModule (module khác đảm nhiệm)
     }
@@ -373,7 +384,7 @@ export class WorkflowService {
   }
 }
 
-/** Tạo một mục nhật ký cho bản ghi nguồn (văn bản / phản ánh) */
-function step(title: string, actor: string, state: 'ok' | 'cur' = 'ok'): TimelineStep {
-  return { title, meta: `${formatVnDateTime(new Date())} · ${actor}`, state };
-}
+/*
+ * `step()` đã bỏ — dùng `activity()` của `@vigov/shared` để cả bốn phân hệ ghi
+ * nhật ký cùng một khuôn. Khoá hành động khai ở `ACT` đầu tệp.
+ */

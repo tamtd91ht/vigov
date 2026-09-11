@@ -147,7 +147,7 @@ export class UsersService {
       lastActiveAt: lastActiveAt ?? (doc.get('lastActiveAt') as Date | undefined),
       // Chỉ có giá trị với bản ghi đã xoá mềm; danh sách mặc định không trả bản ghi nào như vậy
       deletedAt: doc.deletedAt ?? undefined,
-      deletedBy: doc.deletedBy,
+      deletedById: doc.deletedById,
       deleteReason: doc.deleteReason,
     };
   }

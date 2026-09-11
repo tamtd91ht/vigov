@@ -12,6 +12,7 @@ import {
   SCHEDULE_STATE_LABELS,
   formatVnd,
   isValidVnd,
+  comment,
   softDeleteUpdate,
   softRestoreUpdate,
   percentOf,
@@ -972,15 +973,15 @@ export class DisbursementService {
    * đầu — mất mốc đó là mất vết ai xoá thật.
    */
   async softDelete(code: string, dto: DeleteBudgetItemDto, user?: JwtPayload) {
-    const actor = user?.username ?? SYSTEM_AUTHOR;
+    const actorId = user?.sub ?? '';
     const updated = await this.budgetModel
-      .findOneAndUpdate({ code, ...NOT_DELETED }, softDeleteUpdate(actor, dto.reason), { new: true })
+      .findOneAndUpdate({ code, ...NOT_DELETED }, softDeleteUpdate(actorId, dto.reason), { new: true })
       .lean()
       .exec();
 
     if (!updated) throw new NotFoundException(`Không tìm thấy hạng mục ${code}`);
     this.logger.warn(
-      `Xoá mềm hạng mục ${code} bởi ${actor}` + (dto.reason?.trim() ? `. Lý do: ${dto.reason.trim()}` : ''),
+      `Xoá mềm hạng mục ${code} bởi ${user?.username ?? SYSTEM_AUTHOR}` + (dto.reason?.trim() ? `. Lý do: ${dto.reason.trim()}` : ''),
     );
     return this.withProgress(updated as LeanBudgetItem);
   }
@@ -1137,16 +1138,14 @@ export class DisbursementService {
     return `${REQUEST_PREFIX}${String(next).padStart(REQUEST_DIGITS, '0')}`;
   }
 
-  /** Dựng bình luận theo đúng cấu trúc Comment dùng chung với nhiệm vụ */
+  /**
+   * Dựng bình luận theo khuôn `Comment` dùng chung (`@vigov/shared`).
+   *
+   * v2 lưu id người gửi và thời điểm dạng số; chữ viết tắt và màu avatar là
+   * cách trình bày nên client tự tính từ tên đã resolve.
+   */
   private buildComment(content: string, user?: JwtPayload, system = false): Comment {
-    const authorName = system ? SYSTEM_AUTHOR : user?.displayName ?? SYSTEM_AUTHOR;
-    return {
-      authorName,
-      authorInitials: this.initials(authorName),
-      authorColor: DEFAULT_COMMENT_COLOR,
-      time: this.nowLabel(),
-      content,
-    };
+    return comment(content, { authorId: system ? '' : (user?.sub ?? '') });
   }
 
   /** Dựng một mốc lịch sử tiến độ */
