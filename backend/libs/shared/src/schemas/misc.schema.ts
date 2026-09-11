@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import { Comment, CommentSchema } from './task.schema';
+import { Comment, CommentSchema } from './comment';
 
 export type ArticleDocument = HydratedDocument<Article>;
 export type AuditLogDocument = HydratedDocument<AuditLog>;

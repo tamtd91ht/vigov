@@ -1,5 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SoftDeletable } from './soft-delete';
+import { ActivityEntry, ActivityEntrySchema } from './activity-log';
+import { Comment, CommentSchema } from './comment';
 import { HydratedDocument } from 'mongoose';
 
 export type TaskDocument = HydratedDocument<Task>;
@@ -15,53 +17,15 @@ export class ChecklistItem {
 }
 export const ChecklistItemSchema = SchemaFactory.createForClass(ChecklistItem);
 
-/** Bình luận trao đổi trong nhiệm vụ */
-@Schema({ _id: false })
-export class Comment {
-  @Prop({ required: true })
-  authorName: string;
-
-  @Prop({ required: true })
-  authorInitials: string;
-
-  @Prop({ required: true })
-  authorColor: string;
-
-  @Prop({ required: true })
-  time: string;
-
-  @Prop({ required: true })
-  content: string;
-}
-export const CommentSchema = SchemaFactory.createForClass(Comment);
-
-/** Giá trị hợp lệ của `TimelineStep.state` — nguồn chuẩn cho cả enum Mongoose lẫn kiểu TS */
-export const TIMELINE_STATES = ['ok', 'cur'] as const;
-export type TimelineState = (typeof TIMELINE_STATES)[number];
-
-/** Mục nhật ký / timeline */
-@Schema({ _id: false })
-export class TimelineStep {
-  @Prop({ required: true })
-  title: string;
-
-  @Prop({ required: true })
-  meta: string;
-
-  /**
-   * Trạng thái mốc: 'ok' = đã qua, 'cur' = đang ở đây.
-   *
-   * Khai UNION chứ không phải `string` là có chủ ý. Trước đây để `string` nên
-   * TypeScript không chặn được `state: 'done'` — giá trị ngoài enum của Mongoose
-   * — và nó lọt tới lúc chạy thành `ValidationError` ở `save()`. Vì đó không
-   * phải `HttpException`, cả lời gọi trả 500: cùng một lỗi đã làm vỡ "đính kèm
-   * phụ lục văn bản" rồi vỡ tiếp "xoá mềm văn bản" (TB-19 trong SECURITY.md).
-   * Với union, sai giá trị là lỗi BIÊN DỊCH, không còn ra được bản chạy thật.
-   */
-  @Prop({ enum: TIMELINE_STATES, default: 'ok' })
-  state: TimelineState;
-}
-export const TimelineStepSchema = SchemaFactory.createForClass(TimelineStep);
+/*
+ * `Comment` và `TimelineStep` từng khai tại tệp này, và được Văn bản, Hồ sơ một
+ * cửa, Phản ánh, Ngân sách, Nội dung dùng lại — tức là khuôn dùng chung của cả
+ * hệ thống lại nằm trong schema của một phân hệ.
+ *
+ * Nâng cấp v2 chuyển chúng về đúng chỗ, kèm chuẩn hoá:
+ *   `Comment`      → `./comment`       (thời điểm dạng số, người gửi là id)
+ *   `TimelineStep` → `./activity-log`  (`ActivityEntry`: at · actorId · action · detail)
+ */
 
 /**
  * Nhiệm vụ (WBS #3) — tên field khớp admin-web/src/types Task
@@ -129,8 +93,8 @@ export class Task extends SoftDeletable {
   @Prop({ type: [CommentSchema], default: [] })
   comments: Comment[];
 
-  @Prop({ type: [TimelineStepSchema], default: [] })
-  timeline: TimelineStep[];
+  @Prop({ type: [ActivityEntrySchema], default: [] })
+  timeline: ActivityEntry[];
 
   /**
    * Tên tệp đính kèm dạng chuỗi — DI SẢN, giữ lại cho tương thích ngược.

@@ -1,5 +1,6 @@
 import { Prop, Schema } from '@nestjs/mongoose';
 import type { FilterQuery } from 'mongoose';
+import { nowMs, type EpochMs } from '../time/epoch';
 
 /**
  * Xoá MỀM dùng chung cho mọi phân hệ (Nhiệm vụ, Văn bản, Công dân, Ngân sách…).
@@ -34,19 +35,25 @@ export class SoftDeletable {
   /**
    * Mốc xoá — chỉ để hiển thị và truy vết, KHÔNG lọc theo trường này.
    *
-   * Phải khai `type: Date` tay: union `Date | null` làm reflect-metadata trả về
+   * Milli-giây UTC theo khuôn thời gian v2 (`time/epoch.ts`). Phải khai
+   * `type: Number` tay: union `EpochMs | null` làm reflect-metadata trả về
    * `Object` và Mongoose dựng sai kiểu cột.
    */
-  @Prop({ type: Date, default: null })
-  deletedAt?: Date | null;
+  @Prop({ type: Number, default: null })
+  deletedAt?: EpochMs | null;
 
   /**
-   * TÊN ĐĂNG NHẬP (`JwtPayload.username`) của cán bộ đã xoá — KHÔNG phải
-   * `displayName`. Nhật ký kiểm toán tra theo tên đăng nhập, mà hai cán bộ có
-   * thể trùng họ tên. Cả 4 phân hệ phải thống nhất một kiểu giá trị.
+   * `staff_users._id` của cán bộ đã xoá — khuôn tham chiếu v2 (`refs.ts`).
+   *
+   * v1 lưu TÊN ĐĂNG NHẬP ở trường `deletedBy`. Đổi sang id vì tên đăng nhập vẫn
+   * đổi được, và vì mọi tham chiếu trong v2 phải cùng một kiểu giá trị để tra
+   * được về tài khoản.
+   *
+   * Nhật ký kiểm toán (`audit_logs`) vẫn tra theo tên đăng nhập — đó là kho
+   * riêng, không đổi ở task này.
    */
   @Prop()
-  deletedBy?: string;
+  deletedById?: string;
 
   /** Lý do xoá (không bắt buộc) — chỉ lưu để truy vết nội bộ */
   @Prop()
@@ -74,8 +81,8 @@ export const IS_DELETED: FilterQuery<SoftDeletable> = { isDeleted: true };
  */
 export interface SoftDeletableDoc {
   isDeleted: boolean;
-  deletedAt?: Date | null;
-  deletedBy?: string;
+  deletedAt?: EpochMs | null;
+  deletedById?: string;
   deleteReason?: string;
 }
 
@@ -88,13 +95,13 @@ export interface SoftDeletableDoc {
  * Lý do rỗng / chỉ có khoảng trắng thì KHÔNG ghi trường `deleteReason`, tránh
  * để lại chuỗi rỗng vô nghĩa trong CSDL.
  *
- * @param actor TÊN ĐĂNG NHẬP (`user.username`), không phải `displayName`.
+ * @param actorId `staff_users._id` (`JwtPayload.sub`), không phải tên đăng nhập.
  */
-export function markDeleted(doc: SoftDeletableDoc, actor?: string, reason?: string): void {
+export function markDeleted(doc: SoftDeletableDoc, actorId?: string, reason?: string): void {
   const trimmed = reason?.trim();
   doc.isDeleted = true;
-  doc.deletedAt = new Date();
-  doc.deletedBy = actor;
+  doc.deletedAt = nowMs();
+  doc.deletedById = actorId;
   if (trimmed) doc.deleteReason = trimmed;
 }
 
@@ -106,14 +113,14 @@ export function markDeleted(doc: SoftDeletableDoc, actor?: string, reason?: stri
  * của lần trước.
  *
  * Gán `undefined` là ĐỦ để Mongoose sinh `$unset` khi `save()` (đã kiểm chứng
- * bằng `doc.getChanges()`: `{$set:{isDeleted:false}, $unset:{deletedBy:1,
+ * bằng `doc.getChanges()`: `{$set:{isDeleted:false}, $unset:{deletedById:1,
  * deleteReason:1}}`), nên hàm này tương đương `softRestoreUpdate()` dùng cho
  * `findOneAndUpdate`.
  */
 export function markRestored(doc: SoftDeletableDoc): void {
   doc.isDeleted = false;
   doc.deletedAt = null;
-  doc.deletedBy = undefined;
+  doc.deletedById = undefined;
   doc.deleteReason = undefined;
 }
 
@@ -121,15 +128,15 @@ export function markRestored(doc: SoftDeletableDoc): void {
  * Toán tử cập nhật để xoá mềm bằng `findOneAndUpdate` (không nạp tài liệu về).
  * Dùng khi không cần ghi nhật ký nghiệp vụ — ví dụ phân hệ Công dân, Ngân sách.
  *
- * @param actor TÊN ĐĂNG NHẬP (`user.username`), không phải `displayName`.
+ * @param actorId `staff_users._id` (`JwtPayload.sub`), không phải tên đăng nhập.
  */
-export function softDeleteUpdate(actor?: string, reason?: string) {
+export function softDeleteUpdate(actorId?: string, reason?: string) {
   const trimmed = reason?.trim();
   return {
     $set: {
       isDeleted: true,
-      deletedAt: new Date(),
-      deletedBy: actor,
+      deletedAt: nowMs(),
+      deletedById: actorId,
       ...(trimmed ? { deleteReason: trimmed } : {}),
     },
   };
@@ -139,6 +146,6 @@ export function softDeleteUpdate(actor?: string, reason?: string) {
 export function softRestoreUpdate() {
   return {
     $set: { isDeleted: false, deletedAt: null },
-    $unset: { deletedBy: '', deleteReason: '' },
+    $unset: { deletedById: '', deleteReason: '' },
   };
 }

@@ -484,5 +484,59 @@
     "createdAt": "2026-09-10T00:00:00.000Z",
     "updatedAt": "2026-09-10T00:00:00.000Z",
     "status": "pending"
+  },
+  {
+    "id": "P7-01",
+    "name": "Nâng cấp v2 — Khuôn dữ liệu dùng chung: thời gian dạng số, tham chiếu bằng id, nhật ký và bình luận chuẩn hoá",
+    "description": "Dựng khuôn dùng chung trong libs/shared cho toàn bộ nâng cấp v2, theo 4 quyết định của khách ngày 11/09/2026: (1) tham chiếu LUÔN lưu id, tên hiển thị resolve ở tầng đọc; (2) MỌI mốc thời gian lưu dạng số epoch milliseconds, kể cả createdAt/updatedAt/deletedAt/slaDueAt/dueAt - không còn chuỗi, không còn Date; (3) nhật ký và bình luận chuẩn hoá chung một khuôn; (4) một đợt phát hành, di trú một lần, KHÔNG viết mã tương thích ngược. Tệp mới: time/epoch.ts (7 tiện ích thời gian), schemas/timestamped.ts (thay timestamps:true của Mongoose), schemas/activity-log.ts (ActivityEntry thay TimelineStep - tách at/actorId/action/detail, không lưu nhãn tiếng Việt), schemas/comment.ts (bỏ authorInitials/authorColor là dữ liệu trình bày), schemas/refs.ts. Sửa SoftDeletable. Xoá buildDateRangeFilter cũ. Build backend sẽ đỏ hàng loạt sau task này - đó là CỐ Ý, danh sách lỗi biên dịch chính là checklist của P7-02.",
+    "planFilePath": "plans/p7-01-khuon-du-lieu-v2.md",
+    "createdAt": "2026-09-11T00:00:00.000Z",
+    "updatedAt": "2026-09-11T00:00:00.000Z",
+    "status": "in-progress"
+  },
+  {
+    "id": "P7-02",
+    "name": "Nâng cấp v2 — Áp khuôn vào 13 collection và toàn bộ module backend",
+    "description": "Đổi 13 collection sang khuôn v2: tasks, documents, feedbacks, dossiers, budget_items, staff_users, citizen_users, articles, audit_logs, blacklist_records, login_sessions, sla_rules, stored_files. Bỏ timestamps:true ở mọi schema, thay bằng applyEpochTimestamps. Đổi 13 trường tham chiếu đang lưu TÊN sang id: assignee->assigneeId, assigner->assignerId, collaborators->collaboratorIds, department->departmentId, deletedBy->deletedById, signer->signerId, authorName->authorId. Dựng DirectoryResolverService đọc theo lô để tránh N+1 khi resolve tên hiển thị. Sửa mọi DTO, exporter, reports, search, workflow, seed-data. CHƯA CHỐT hai việc phải hỏi khách trước khi bắt đầu: (1) nâng org_nodes thành danh mục bộ phận chuẩn của toàn hệ thống - departmentId không tồn tại được nếu bộ phận vẫn là chuỗi tự do như hiện nay; (2) luật xử lý bộ phận trong dữ liệu cũ không khớp nút nào.",
+    "planFilePath": "plans/p7-02-ap-khuon-backend.md",
+    "createdAt": "2026-09-11T00:00:00.000Z",
+    "updatedAt": "2026-09-11T00:00:00.000Z",
+    "status": "pending"
+  },
+  {
+    "id": "P7-03",
+    "name": "Nâng cấp v2 — Bộ quyền theo tính năng: phân hệ x 5 hành động (xem/thêm/sửa/xoá/duyệt)",
+    "description": "Đóng câu hỏi mở #12 theo quyết định của khách ngày 11/09/2026. Đổi khung phân quyền từ THỨ BẬC (view<edit<approve<admin, không diễn tả được 'được duyệt nhưng không được sửa') sang TẬP HỢP hành động cho từng phân hệ. Giữ 'duyệt' làm hành động riêng, không gộp vào 'sửa' - nếu gộp thì Kế toán duyệt được chính đề nghị của mình. Menu tính năng suy ra từ việc tập hành động có 'xem', không khai riêng, để giao diện và API không thể lệch nhau. Phải ánh xạ lại 136 điểm khai @RequirePermission trong 16 controller; giữ nguyên 22 chỗ @Public/@AnyAuthenticated. Bảng ánh xạ v1->v2 giữ nguyên hành vi hiện tại; việc siết lại cho từng vai trò là quyết định nghiệp vụ của khách, để bảng cho khách tick. Rủi ro cao nhất: ánh xạ sai một điểm là khoá đúng người cần dùng.",
+    "planFilePath": "plans/p7-03-quyen-theo-tinh-nang.md",
+    "createdAt": "2026-09-11T00:00:00.000Z",
+    "updatedAt": "2026-09-11T00:00:00.000Z",
+    "status": "pending"
+  },
+  {
+    "id": "P7-04",
+    "name": "Nâng cấp v2 — Script di trú dữ liệu một lần cho 13 collection",
+    "description": "TASK NGUY HIỂM NHẤT CỦA PHA P7. Di trú chạm toàn bộ hồ sơ hành chính có giá trị pháp lý; sai một bước là mất mốc thời gian hoặc đứt tham chiếu của tài liệu lưu trữ. Không có mã tương thích ngược (quyết định của khách) nên đường lùi DUY NHẤT là mongorestore. Script làm 7 bước: đếm trước, dựng danh mục bộ phận từ tên phân biệt trong dữ liệu, đổi mốc thời gian (Date và chuỗi dd/MM/yyyy, chuỗi HH:mm dd/MM/yyyy của bình luận/nhật ký) sang số, đổi tham chiếu tên sang id, tách nhật ký meta thành at+actorId và title thành action+detail, dọn trường trình bày, đối soát sau. Mặc định --dry-run, phải có --apply cộng xác nhận tương tác mới ghi. Phải idempotent. Ba tình huống không khớp (cán bộ đã nghỉ, bộ phận không khớp nút, chuỗi thời gian sai định dạng) đều KHÔNG được đoán: giữ bản gốc vào trường legacy và báo cáo - luật xử lý cần khách chốt. Điều kiện bắt buộc trước khi chạy thật: mongodump đã thử khôi phục và đếm khớp, đã dry-run trên bản sao, ứng dụng đã dừng nhận ghi, khách xác nhận tường minh.",
+    "planFilePath": "plans/p7-04-di-tru-du-lieu.md",
+    "createdAt": "2026-09-11T00:00:00.000Z",
+    "updatedAt": "2026-09-11T00:00:00.000Z",
+    "status": "pending"
+  },
+  {
+    "id": "P7-05",
+    "name": "Nâng cấp v2 — Đồng bộ admin-web và zalo-miniapp theo khuôn mới",
+    "description": "Không có mã tương thích ngược nên hai client phải lên CÙNG LÚC với backend; bản client cũ hỏng ngay khi phát hành. Đổi admin-web/src/types/index.ts (nguồn chuẩn) trước: thời gian là number, tham chiếu là {id, displayName}. Ba việc dễ bỏ sót: (1) bảng nhãn nhật ký admin-web/src/config/activity.config.ts - backend v2 không còn trả nhãn tiếng Việt, thiếu bảng này là khoá kỹ thuật kiểu task.status lọt ra giao diện cán bộ, vi phạm luật ngôn ngữ hành chính; (2) định dạng thời gian gom vào lib/format.ts, không rải toLocaleString trong component, phải giữ dd/MM/yyyy và giờ 24h; (3) mọi ô chọn cán bộ/bộ phận phải gửi id thay vì tên như hiện nay. Bỏ hàm phân tích chuỗi ngày ở TaskTable. Ẩn/hiện nút theo 5 hành động. Cập nhật cả src/mocks/ nếu không chế độ demo sẽ vỡ.",
+    "planFilePath": "plans/p7-05-dong-bo-client.md",
+    "createdAt": "2026-09-11T00:00:00.000Z",
+    "updatedAt": "2026-09-11T00:00:00.000Z",
+    "status": "pending"
+  },
+  {
+    "id": "P7-06",
+    "name": "Nâng cấp v2 — Phân hệ Nhiệm vụ: sáu hạn chế còn lại",
+    "description": "Sáu hạn chế riêng của phân hệ Nhiệm vụ, không giải quyết được bằng khuôn dùng chung (nguồn: docs/nang-cap-v2/nhiem-vu.md mục 8-9). H-01 bỏ 'qua' khỏi enum status, suy ra quá hạn từ deadline mỗi lần đọc và KHÔNG lưu cờ, theo đúng nguyên tắc đã chốt ở phân hệ Giải ngân; cron markOverdue chỉ còn ghi nhật ký. ĐÁNG LÀM TRƯỚC NHẤT: cron 07:00 đang ghi status='qua' đè mất trạng thái nghiệp vụ trước đó, dữ liệu đã đè không khôi phục được, nên mỗi ngày trì hoãn là thêm một lô bản ghi mất thông tin. H-02 thêm ô tìm từ khoá (API đã nhận sẵn q). H-03 thêm lọc theo hạn xử lý, tách khỏi lọc ngày giao. H-04 thêm GET /tasks/stats vì số đếm cột Kanban đang sai khi quá 100 nhiệm vụ. H-10/H-11 việc con có id ổn định thay cho chỉ số mảng, thêm khoá phiên bản lạc quan. H-12 progress thành giá trị suy ra, bỏ khỏi UpdateTaskDto. Cần khách xác nhận: bản ghi đã bị cron đè mất trạng thái thì di trú đặt về giá trị nào.",
+    "planFilePath": "plans/p7-06-nhiem-vu-v2.md",
+    "createdAt": "2026-09-11T00:00:00.000Z",
+    "updatedAt": "2026-09-11T00:00:00.000Z",
+    "status": "pending"
   }
 ]

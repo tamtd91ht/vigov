@@ -1,7 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { SoftDeletable } from './soft-delete';
-import { TimelineStep, TimelineStepSchema } from './task.schema';
+import { ActivityEntry, ActivityEntrySchema } from './activity-log';
 
 export type FeedbackDocument = HydratedDocument<Feedback>;
 
@@ -115,8 +115,8 @@ export class Feedback extends SoftDeletable {
   @Prop({ default: '', index: true })
   department: string;
 
-  @Prop({ type: [TimelineStepSchema], default: [] })
-  timeline: TimelineStep[];
+  @Prop({ type: [ActivityEntrySchema], default: [] })
+  timeline: ActivityEntry[];
 
   @Prop({ default: 0, min: 0, max: 5 })
   rating: number;

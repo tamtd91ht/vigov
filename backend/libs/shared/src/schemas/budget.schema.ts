@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import { Comment, CommentSchema } from './task.schema';
+import { Comment, CommentSchema } from './comment';
 import { SoftDeletable } from './soft-delete';
 
 export type BudgetItemDocument = HydratedDocument<BudgetItem>;

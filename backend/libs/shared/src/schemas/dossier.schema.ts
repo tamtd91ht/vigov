@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import { TimelineStep, TimelineStepSchema } from './task.schema';
+import { ActivityEntry, ActivityEntrySchema } from './activity-log';
 
 export type DossierDocument = HydratedDocument<Dossier>;
 
@@ -25,7 +25,7 @@ export const DOSSIER_STEP_LABELS: Record<DossierStepKey, string> = {
 /**
  * Mốc thời gian hồ sơ ĐI VÀO một bước.
  *
- * VÌ SAO KHÔNG DÙNG `timeline` cho việc này: `TimelineStep` (dùng chung với
+ * VÌ SAO KHÔNG DÙNG `timeline` cho việc này: `ActivityEntry` (dùng chung với
  * Nhiệm vụ và Phản ánh) chỉ có {title, meta, state} — `meta` là chuỗi hiển thị
  * đã định dạng sẵn, không phải Date, nên không tra ngược ra mốc ISO mà API phải
  * trả trong `steps[].at`. Hai trường tồn tại song song có chủ ý: `stepTimes` là
@@ -100,8 +100,8 @@ export class Dossier {
   stepTimes: DossierStepTime[];
 
   /** Nhật ký cho người đọc, cùng kiểu với Nhiệm vụ và Phản ánh */
-  @Prop({ type: [TimelineStepSchema], default: [] })
-  timeline: TimelineStep[];
+  @Prop({ type: [ActivityEntrySchema], default: [] })
+  timeline: ActivityEntry[];
 }
 
 export const DossierSchema = SchemaFactory.createForClass(Dossier);

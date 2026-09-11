@@ -18,7 +18,14 @@ export * from './money/vnd';
 
 export * from './dto/soft-delete.dto';
 export * from './dto/list-query.dto';
+
+/* Khuôn dùng chung v2 — thời gian dạng số, tham chiếu bằng id, nhật ký chuẩn hoá */
+export * from './time/epoch';
 export * from './schemas/soft-delete';
+export * from './schemas/timestamped';
+export * from './schemas/activity-log';
+export * from './schemas/comment';
+export * from './schemas/refs';
 
 export * from './schemas/task.schema';
 export * from './schemas/document.schema';

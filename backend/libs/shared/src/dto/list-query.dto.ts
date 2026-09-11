@@ -1,6 +1,5 @@
 import { Transform } from 'class-transformer';
 import { IsISO8601, IsOptional } from 'class-validator';
-import type { FilterQuery } from 'mongoose';
 
 /**
  * DTO và tiện ích dùng chung cho bộ lọc danh sách: chọn nhiều giá trị và lọc
@@ -53,45 +52,15 @@ export class DateRangeQueryDto {
   to?: string;
 }
 
-/**
- * Lệch múi giờ giữa giờ Việt Nam (UTC+7) và UTC, tính bằng phút.
+/*
+ * `vnStartOfDay` và `buildDateRangeFilter` đã chuyển sang `time/epoch.ts` dưới
+ * dạng `vnStartOfDayMs` / `buildEpochRangeFilter` — nâng cấp v2 lưu mọi mốc
+ * thời gian bằng số, nên điều kiện lọc khoảng cũng phải so trên số.
  *
- * VÌ SAO PHẢI CỐ ĐỊNH, KHÔNG DÙNG GIỜ MÁY CHỦ: container thường chạy UTC. Nếu
- * suy mốc ngày theo giờ máy chủ thì "ngày 01/03" thành 01/03 07:00 giờ Việt
- * Nam — bản ghi tạo lúc 2 giờ sáng bị loại khỏi báo cáo. Nghiệp vụ hành chính
- * Việt Nam luôn tính theo ngày giờ Việt Nam.
+ * Không giữ bản cũ song song: hai hàm cùng nghĩa mà khác kiểu trả về là chỗ để
+ * người sau gọi nhầm, và lọc sai khoảng thời gian thì báo cáo thiếu bản ghi mà
+ * không báo lỗi gì.
  */
-const VN_OFFSET_MINUTES = 7 * 60;
-
-/** Mốc UTC ứng với 00:00 giờ Việt Nam của ngày `yyyy-MM-dd` */
-function vnStartOfDay(isoDate: string): Date {
-  const [y, m, d] = isoDate.split('-').map((p) => parseInt(p, 10));
-  return new Date(Date.UTC(y, (m ?? 1) - 1, d ?? 1, 0, 0, 0) - VN_OFFSET_MINUTES * 60_000);
-}
-
-/**
- * Điều kiện Mongo cho một khoảng ngày trên trường `field`.
- *
- * Mốc cuối là 00:00 của NGÀY KẾ TIẾP với toán tử `$lt` — không dùng 23:59:59
- * của ngày cuối, vì bản ghi tạo lúc 23:59:59.500 sẽ bị loại và không ai hiểu
- * vì sao báo cáo thiếu một phiếu.
- *
- * Trả `undefined` khi không có mốc nào, để nơi gọi không gán một điều kiện rỗng.
- */
-export function buildDateRangeFilter(
-  field: string,
-  from?: string,
-  to?: string,
-): FilterQuery<Record<string, unknown>> | undefined {
-  const range: { $gte?: Date; $lt?: Date } = {};
-  if (from) range.$gte = vnStartOfDay(from);
-  if (to) {
-    const start = vnStartOfDay(to);
-    range.$lt = new Date(start.getTime() + 24 * 60 * 60_000);
-  }
-  if (range.$gte === undefined && range.$lt === undefined) return undefined;
-  return { [field]: range };
-}
 
 /** Nhãn khoảng thời gian in trên tệp xuất — `dd/MM/yyyy`, nêu rõ hai mốc */
 export function dateRangeLabel(from?: string, to?: string): string {

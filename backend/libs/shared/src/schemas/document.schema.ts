@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import { TimelineStep, TimelineStepSchema } from './task.schema';
+import { ActivityEntry, ActivityEntrySchema } from './activity-log';
 import { SoftDeletable } from './soft-delete';
 
 export type IncomingDocumentDocument = HydratedDocument<IncomingDocument>;
@@ -112,8 +112,8 @@ export class IncomingDocument extends SoftDeletable {
   @Prop({ type: [OcrFieldSchema], default: [] })
   ocrFields: OcrField[];
 
-  @Prop({ type: [TimelineStepSchema], default: [] })
-  timeline: TimelineStep[];
+  @Prop({ type: [ActivityEntrySchema], default: [] })
+  timeline: ActivityEntry[];
 
   /** Mã nhiệm vụ đã tạo từ văn bản này (workflow P3-30) */
   @Prop()

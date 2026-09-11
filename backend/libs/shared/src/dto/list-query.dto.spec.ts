@@ -1,4 +1,4 @@
-import { buildDateRangeFilter, dateRangeLabel, toStringArray } from './list-query.dto';
+import { dateRangeLabel, toStringArray } from './list-query.dto';
 
 /**
  * Hai thứ được khoá ở đây đều là chỗ đã từng làm lệch số liệu báo cáo ở các dự
@@ -29,44 +29,11 @@ describe('toStringArray', () => {
   });
 });
 
-describe('buildDateRangeFilter', () => {
-  it('mốc đầu là 00:00 giờ VIỆT NAM, không phải giờ máy chủ', () => {
-    const f = buildDateRangeFilter('createdAt', '2026-03-01') as { createdAt: { $gte: Date } };
-    // 00:00 ngày 01/03 giờ Việt Nam = 17:00 ngày 28/02 UTC
-    expect(f.createdAt.$gte.toISOString()).toBe('2026-02-28T17:00:00.000Z');
-  });
-
-  it('mốc cuối là 00:00 ngày KẾ TIẾP với $lt — không cắt mất ngày cuối kỳ', () => {
-    const f = buildDateRangeFilter('createdAt', undefined, '2026-03-31') as {
-      createdAt: { $lt: Date };
-    };
-    // Hết ngày 31/03 giờ Việt Nam = 17:00 ngày 31/03 UTC
-    expect(f.createdAt.$lt.toISOString()).toBe('2026-03-31T17:00:00.000Z');
-  });
-
-  it('bản ghi lúc 23h59 ngày cuối kỳ vẫn nằm trong khoảng', () => {
-    const f = buildDateRangeFilter('createdAt', '2026-03-01', '2026-03-31') as {
-      createdAt: { $gte: Date; $lt: Date };
-    };
-    const cuoiNgay = new Date('2026-03-31T23:59:59+07:00');
-
-    expect(cuoiNgay >= f.createdAt.$gte).toBe(true);
-    expect(cuoiNgay < f.createdAt.$lt).toBe(true);
-  });
-
-  it('bản ghi lúc 00h30 ngày đầu kỳ vẫn nằm trong khoảng', () => {
-    const f = buildDateRangeFilter('createdAt', '2026-03-01', '2026-03-31') as {
-      createdAt: { $gte: Date; $lt: Date };
-    };
-    const dauNgay = new Date('2026-03-01T00:30:00+07:00');
-
-    expect(dauNgay >= f.createdAt.$gte).toBe(true);
-  });
-
-  it('không có mốc nào thì trả undefined, không trả điều kiện rỗng', () => {
-    expect(buildDateRangeFilter('createdAt')).toBeUndefined();
-  });
-});
+/*
+ * Các phép kiểm cho bộ lọc khoảng thời gian đã chuyển sang
+ * `libs/shared/src/time/epoch.spec.ts` cùng với `buildEpochRangeFilter` —
+ * nâng cấp v2 lọc trên trường số thay vì `Date`.
+ */
 
 describe('dateRangeLabel', () => {
   it('nêu rõ cả hai mốc theo định dạng Việt Nam', () => {
