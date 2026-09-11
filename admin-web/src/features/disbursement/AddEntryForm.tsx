@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { appConfig } from "@/config/app.config";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 import { Icon } from "@/lib/icons";
 import type { CreateEntryInput } from "@/services/disbursement.service";
 
@@ -13,9 +13,13 @@ function today(): string {
 }
 
 /**
- * Biểu mẫu ghi nhận một lần giải ngân của hạng mục (POST /disbursement/:code/entries).
- * Số tiền nhập dạng chuỗi ("1,25 tỷ") đúng như hợp đồng API — server tự quy đổi
- * sang tỷ đồng và cộng vào luỹ kế.
+ * Biểu mẫu ghi nhận một giao dịch của hạng mục (POST /disbursement/:code/entries).
+ *
+ * Số tiền nhập bằng SỐ NGUYÊN ĐỒNG qua `MoneyInput` — cách nhập chuỗi có đơn vị
+ * ("1,25 tỷ") đã bỏ vì gõ "1,200 triệu" bị hiểu sai 1000 lần.
+ *
+ * Có hai loại giao dịch: `chi` cộng vào luỹ kế, `hoan-tra` trừ khỏi luỹ kế. Nhờ
+ * loại thứ hai mà việc thu hồi khoản chi sai không phải xoá chứng từ cũ.
  */
 export function AddEntryForm({
   saving,
@@ -28,19 +32,23 @@ export function AddEntryForm({
 }) {
   const [date, setDate] = useState(today());
   const [content, setContent] = useState("");
-  const [amount, setAmount] = useState("");
+  /** Số nguyên ĐỒNG; null = ô trống */
+  const [amountDong, setAmountDong] = useState<number | null>(null);
+  /** Loại giao dịch: chi trả hay hoàn trả / thu hồi */
+  const [type, setType] = useState<"chi" | "hoan-tra">("chi");
   const [vendor, setVendor] = useState("");
   const [voucherNo, setVoucherNo] = useState("");
 
-  const valid = date.trim() && content.trim() && amount.trim();
+  const valid = Boolean(date.trim() && content.trim() && amountDong && amountDong > 0);
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
     if (!valid || saving) return;
     onSubmit({
       date: date.trim(),
+      type,
       content: content.trim(),
-      amount: amount.trim(),
+      amountDong: amountDong ?? 0,
       vendor: vendor.trim(),
       voucherNo: voucherNo.trim(),
     });
@@ -61,17 +69,29 @@ export function AddEntryForm({
           <input id="de-date" className="finp" value={date} onChange={(e) => setDate(e.target.value)} placeholder="dd/MM/yyyy" />
         </div>
         <div className="fgroup">
-          <label htmlFor="de-amount">
-            Số tiền <span className="req">*</span>
-          </label>
-          <input
-            id="de-amount"
+          <label htmlFor="de-type">Loại giao dịch</label>
+          <select
+            id="de-type"
             className="finp"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            placeholder={`Ví dụ: 1,25 ${appConfig.currencyUnit.split(" ")[0]}`}
-          />
+            value={type}
+            onChange={(e) => setType(e.target.value as "chi" | "hoan-tra")}
+          >
+            <option value="chi">Chi trả</option>
+            <option value="hoan-tra">Hoàn trả / thu hồi</option>
+          </select>
+          <div className="fhint">
+            {type === "chi"
+              ? "Cộng vào luỹ kế đã giải ngân."
+              : "Trừ khỏi luỹ kế — dùng khi thu hồi khoản chi sai hoặc nhà thầu trả lại."}
+          </div>
         </div>
+      </div>
+
+      <div className="fgroup">
+        <label htmlFor="de-amount">
+          Số tiền <span className="req">*</span>
+        </label>
+        <MoneyInput id="de-amount" value={amountDong} onChange={setAmountDong} />
       </div>
 
       <div className="fgroup">

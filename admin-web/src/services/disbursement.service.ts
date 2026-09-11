@@ -9,7 +9,7 @@ import type {
   DisbursementRequestStatus,
   Obstacle,
 } from "@/types";
-import { ApiError, apiClient, buildQuery } from "./api";
+import { ApiError, apiClient, buildQuery, downloadFile } from "./api";
 import { authService } from "./auth";
 
 /**
@@ -20,16 +20,27 @@ import { authService } from "./auth";
  * không cộng lại ở trình duyệt để hai nơi không lệch nhau.
  */
 
-/** Số liệu tổng hợp giải ngân toàn xã do server tính */
+/**
+ * Số liệu tổng hợp — MỌI TRƯỜNG TIỀN LÀ ĐỒNG, SỐ NGUYÊN, do máy chủ tính.
+ * Giao diện không tự cộng lại: xem `lib/money.ts`.
+ */
 export interface DisbursementSummary {
-  /** Tổng kế hoạch vốn (tỷ đồng) */
-  totalPlanned: number;
-  /** Tổng đã giải ngân (tỷ đồng) */
-  totalActual: number;
-  /** Tỷ lệ giải ngân (%) */
-  percent: number;
-  /** Số hạng mục chậm tiến độ */
-  delayedCount: number;
+  totalItems: number;
+  totalPlannedDong: number;
+  totalActualDong: number;
+  totalRemainingDong: number;
+  /** `null` = chưa có kế hoạch vốn nào, KHÁC "giải ngân 0%" */
+  percent: number | null;
+  /** Đếm hạng mục theo tình trạng tiến độ */
+  schedule: {
+    onTrack: number;
+    atRisk: number;
+    late: number;
+    done: number;
+    notStarted: number;
+  };
+  /** Đã cam kết qua đề nghị nhưng chưa chi — đồng */
+  committedDong: number;
 }
 
 /** Kết quả danh sách hạng mục theo năm ngân sách */
@@ -42,9 +53,22 @@ export interface DisbursementListResult {
 /** Bộ lọc danh sách hạng mục gửi lên server */
 export interface DisbursementListFilter {
   year?: number;
-  /** true: chỉ lấy hạng mục chậm tiến độ */
-  delayed?: boolean;
   owner?: string;
+  expenseType?: string;
+  fundingSource?: string;
+  program?: string;
+  /** Chọn nhiều trạng thái hồ sơ */
+  approvalStatus?: string[];
+  /** Chọn nhiều tình trạng tiến độ (chậm, nguy cơ chậm…) */
+  scheduleState?: string[];
+  /** Chọn nhiều mức giải ngân */
+  disbursementState?: string[];
+  /** Khoảng tỷ lệ giải ngân, % */
+  minPercent?: number;
+  maxPercent?: number;
+  /** Chỉ hạng mục sắp hết hạn */
+  dueSoon?: boolean;
+  q?: string;
   /** true: xem các hạng mục ĐÃ xoá mềm (bộ lọc "Đã xoá") */
   deleted?: boolean;
 }
@@ -63,8 +87,8 @@ export interface RequestSummary {
   approved: number;
   rejected: number;
   disbursed: number;
-  /** Tổng tiền đang chờ duyệt (tỷ đồng) */
-  pendingAmount: number;
+  /** Tổng tiền đang chờ duyệt — ĐỒNG. Phần ngân sách đã cam kết nhưng chưa quyết */
+  pendingAmountDong: number;
 }
 
 /** Kết quả danh sách đề nghị giải ngân toàn xã */
@@ -82,9 +106,13 @@ interface BudgetApiItem {
   fundingColor?: string;
   owner?: string;
   year?: number;
-  planned?: number;
-  actual?: number;
-  delayed?: boolean;
+  /** Tiền — ĐỒNG, số nguyên */
+  initialPlannedDong?: number;
+  plannedDong?: number;
+  actualDong?: number;
+  /* Phần máy chủ tính sẵn (remainingDong, percent, scheduleState, các nhãn…)
+     không liệt kê ở đây: `toBudgetItem` chép nguyên bản ghi sang `BudgetItem`,
+     nên khai thêm ở đây chỉ là nhân bản danh sách trường. */
   entries?: DisbursementEntry[];
   comments?: Comment[];
   obstacles?: Obstacle[];
@@ -108,30 +136,73 @@ export interface CreateBudgetInput {
   fundingSource: string;
   owner: string;
   year: number;
-  /** Kế hoạch vốn, đơn vị tỷ đồng */
-  planned: number;
+  /** Dự toán giao đầu năm — ĐỒNG, số nguyên */
+  initialPlannedDong: number;
   fundingColor?: string;
+  purpose?: string;
+  expenseType?: string;
+  budgetLevel?: string;
+  program?: string;
+  beneficiary?: string;
+  beneficiaryType?: string;
+  beneficiaryTaxCode?: string;
+  carryOverFromYear?: number;
+  /** dd/MM/yyyy */
+  startDate?: string;
+  endDate?: string;
+  quarterPlans?: { quarter: number; amountDong: number }[];
+}
+
+/** Sửa hạng mục — không đổi được dự toán, phải qua điều chỉnh dự toán */
+export type UpdateBudgetInput = Partial<Omit<CreateBudgetInput, "initialPlannedDong" | "year">> & {
+  note?: string;
+};
+
+/** Đổi trạng thái hồ sơ theo workflow */
+export interface ChangeStatusInput {
+  status: string;
+  /** Bắt buộc khi từ chối / tạm dừng / huỷ */
+  note?: string;
+  lateReason?: string;
+}
+
+/** Một lần điều chỉnh dự toán — căn cứ bắt buộc là số quyết định */
+export interface CreateAdjustmentInput {
+  decisionNo: string;
+  /** dd/MM/yyyy */
+  decidedAt: string;
+  /** ĐỒNG, số nguyên. ÂM là giảm dự toán */
+  deltaDong: number;
+  reason: string;
+  fileIds?: string[];
+}
+
+/** Gắn một hồ sơ vào hạng mục */
+export interface AddDocumentInput {
+  fileId: string;
+  refNo?: string;
+  docType?: string;
+  issuedDate?: string;
+  issuer?: string;
+  summary?: string;
 }
 
 /** Dữ liệu ghi nhận một lần giải ngân */
 export interface CreateEntryInput {
   date: string;
   content: string;
-  /** Số tiền dạng chuỗi, ví dụ "1,25 tỷ" — server tự quy đổi */
-  amount: string;
+  /** Số tiền — ĐỒNG, số nguyên. Bỏ hẳn cách nhập chuỗi "1,25 tỷ" */
+  amountDong: number;
+  /** Bỏ trống = chi trả. `hoan-tra` trừ khỏi luỹ kế */
+  type?: "chi" | "hoan-tra";
   vendor?: string;
+  vendorTaxCode?: string;
   voucherNo?: string;
+  fileIds?: string[];
 }
 
 /** Kết quả sau khi ghi nhận giải ngân — luỹ kế do server tính lại */
-export interface EntryResult {
-  code: string;
-  planned: number;
-  actual: number;
-  percent: number;
-  delayed: boolean;
-  entry: DisbursementEntry;
-}
+export type EntryResult = BudgetItem & { entry: DisbursementEntry };
 
 /** Dữ liệu thêm vướng mắc cần tháo gỡ */
 export interface CreateObstacleInput {
@@ -142,60 +213,46 @@ export interface CreateObstacleInput {
 
 /** Dữ liệu đề nghị giải ngân đợt tiếp theo */
 export interface CreateRequestInput {
-  /** Số tiền dạng chuỗi, ví dụ "0,8 tỷ" */
-  amount: string;
+  /** Số tiền đề nghị — ĐỒNG, số nguyên */
+  amountDong: number;
   content: string;
   vendor?: string;
+  vendorTaxCode?: string;
+  fileIds?: string[];
 }
 
 /** Phản hồi của POST /disbursement/:code/requests */
 export interface RequestResult {
   code: string;
-  status: string;
   message: string;
-  amount: string;
-  amountTyDong: number;
-  requestedBy: string;
   /** Đề nghị vừa tạo, kèm mã DN-xx do server cấp */
   request: DisbursementRequest;
-  /** Phần vốn còn đề nghị được sau lần này (tỷ đồng) */
-  remaining: number;
-  comment: Comment;
+  /** Phần vốn còn đề nghị được sau lần này — đồng */
+  remainingDong: number;
 }
 
 /** Kết quả sau khi ghi nhận đề nghị đã chi — luỹ kế do server tính lại */
-export interface DisburseResult {
-  code: string;
+export type DisburseResult = BudgetItem & {
   request: DisbursementRequest;
-  planned: number;
-  actual: number;
-  percent: number;
-  delayed: boolean;
   entry: DisbursementEntry;
-}
+};
 
 /** Đường dẫn tải báo cáo Excel của kỳ báo cáo năm */
 const EXCEL_EXPORT_PATH = "/reports/export/excel";
 
-/** Ánh xạ hạng mục backend sang kiểu dùng cho giao diện (code → id) */
+/**
+ * Ánh xạ hạng mục backend sang kiểu dùng cho giao diện.
+ *
+ * Giữ NGUYÊN mọi trường máy chủ trả về (kể cả phần tính toán: `percent`,
+ * `remainingDong`, `scheduleState`, các nhãn) rồi chỉ đổi `code` → `id`. Liệt kê
+ * từng trường như bản trước là mỗi lần backend thêm một trường tính toán lại
+ * phải sửa ở đây, và quên một trường thì giao diện im lặng hiện thiếu.
+ */
 function toBudgetItem(raw: BudgetApiItem): BudgetItem {
   return {
+    ...(raw as unknown as BudgetItem),
     id: raw.code,
-    name: raw.name ?? "",
-    fundingSource: raw.fundingSource ?? "",
     fundingColor: raw.fundingColor || "var(--blue)",
-    owner: raw.owner ?? "",
-    planned: raw.planned ?? 0,
-    actual: raw.actual ?? 0,
-    delayed: raw.delayed ?? false,
-    entries: raw.entries ?? [],
-    comments: raw.comments ?? [],
-    obstacles: raw.obstacles ?? [],
-    requests: raw.requests ?? [],
-    isDeleted: raw.isDeleted,
-    deletedAt: raw.deletedAt,
-    deletedBy: raw.deletedBy,
-    deleteReason: raw.deleteReason,
   };
 }
 
@@ -213,14 +270,33 @@ function mockDetail(code: string): BudgetItem {
 
 /** Tổng hợp trên dữ liệu mock — chỉ dùng khi useMocks, bản thật lấy từ server */
 function mockSummary(items: BudgetItem[]): DisbursementSummary {
-  const round = (n: number) => Math.round(n * 100) / 100;
-  const totalPlanned = items.reduce((sum, it) => sum + it.planned, 0);
-  const totalActual = items.reduce((sum, it) => sum + it.actual, 0);
+  const sum = (pick: (it: BudgetItem) => number) =>
+    items.reduce((total, it) => total + Math.trunc(pick(it) || 0), 0);
+  const totalPlanned = sum((it) => it.plannedDong);
+  const totalActual = sum((it) => it.actualDong);
+  const countBy = (state: string) => items.filter((it) => it.scheduleState === state).length;
+
   return {
-    totalPlanned: round(totalPlanned),
-    totalActual: round(totalActual),
-    percent: totalPlanned > 0 ? round((totalActual / totalPlanned) * 100) : 0,
-    delayedCount: items.filter((it) => it.delayed).length,
+    totalItems: items.length,
+    totalPlannedDong: totalPlanned,
+    totalActualDong: totalActual,
+    totalRemainingDong: totalPlanned - totalActual,
+    percent: totalPlanned > 0 ? Math.round((totalActual * 10_000) / totalPlanned) / 100 : null,
+    schedule: {
+      onTrack: countBy("dung-tien-do"),
+      atRisk: countBy("nguy-co-cham"),
+      late: countBy("cham"),
+      done: countBy("hoan-thanh"),
+      notStarted: countBy("chua-den-han"),
+    },
+    committedDong: items.reduce(
+      (total, it) =>
+        total +
+        (it.requests ?? [])
+          .filter((r) => r.status === "pending" || r.status === "approved")
+          .reduce((s, r) => s + Math.trunc(r.amountDong || 0), 0),
+      0,
+    ),
   };
 }
 
@@ -282,8 +358,10 @@ export const disbursementService = {
     if (appConfig.api.useMocks) {
       /* Dữ liệu mẫu không có hạng mục đã xoá nên bộ lọc "Đã xoá" trả danh sách rỗng */
       const live = filter.deleted ? [] : budgetItems;
-      const items = filter.delayed ? live.filter((it) => it.delayed) : live;
-      const scoped = filter.owner ? items.filter((it) => it.owner === filter.owner) : items;
+      const byState = filter.scheduleState?.length
+        ? live.filter((it) => filter.scheduleState?.includes(it.scheduleState ?? ""))
+        : live;
+      const scoped = filter.owner ? byState.filter((it) => it.owner === filter.owner) : byState;
       return mockDelay({
         year: filter.year ?? new Date().getFullYear(),
         items: scoped,
@@ -293,8 +371,17 @@ export const disbursementService = {
 
     const qs = buildQuery({
       year: filter.year,
-      delayed: filter.delayed,
       owner: filter.owner,
+      expenseType: filter.expenseType,
+      fundingSource: filter.fundingSource,
+      program: filter.program,
+      approvalStatus: filter.approvalStatus,
+      scheduleState: filter.scheduleState,
+      disbursementState: filter.disbursementState,
+      minPercent: filter.minPercent,
+      maxPercent: filter.maxPercent,
+      dueSoon: filter.dueSoon ? "true" : undefined,
+      q: filter.q,
       deleted: filter.deleted,
     });
     const res = await apiClient.get<DisbursementApiList>(`/disbursement${qs}`);
@@ -320,10 +407,20 @@ export const disbursementService = {
         fundingSource: input.fundingSource,
         fundingColor: input.fundingColor ?? "var(--blue)",
         owner: input.owner,
-        planned: input.planned,
-        actual: 0,
-        delayed: input.planned > 0,
+        year: input.year,
+        initialPlannedDong: input.initialPlannedDong,
+        plannedDong: input.initialPlannedDong,
+        actualDong: 0,
+        /* Hạng mục mới luôn ở Nháp — phải trình duyệt mới phát sinh tiền được */
+        approvalStatus: "nhap",
+        remainingDong: input.initialPlannedDong,
+        percent: input.initialPlannedDong > 0 ? 0 : null,
+        disbursementState: "chua-chi",
+        scheduleState: "chua-den-han",
         entries: [],
+        adjustments: [],
+        documents: [],
+        progressLogs: [],
         comments: [],
         obstacles: [],
         requests: [],
@@ -338,18 +435,21 @@ export const disbursementService = {
       const item = mockDetail(code);
       const entry: DisbursementEntry = {
         date: input.date,
+        type: input.type ?? "chi",
+        amountDong: input.amountDong,
         content: input.content,
-        amount: input.amount,
+        voucherNo: input.voucherNo ?? "",
         vendor: input.vendor ?? "",
         by: "Cán bộ xã",
-        voucherNo: input.voucherNo ?? "",
       };
-      return mockDelay({
-        code,
-        planned: item.planned,
-        actual: item.actual,
-        percent: item.planned > 0 ? Math.round((item.actual / item.planned) * 100) : 0,
-        delayed: item.delayed,
+      const delta = entry.type === "hoan-tra" ? -entry.amountDong : entry.amountDong;
+      const actualDong = item.actualDong + delta;
+      return mockDelay<EntryResult>({
+        ...item,
+        actualDong,
+        remainingDong: item.plannedDong - actualDong,
+        percent:
+          item.plannedDong > 0 ? Math.round((actualDong * 10_000) / item.plannedDong) / 100 : null,
         entry,
       });
     }
@@ -402,11 +502,9 @@ export const disbursementService = {
   async createRequest(code: string, input: CreateRequestInput): Promise<RequestResult> {
     if (appConfig.api.useMocks) {
       const item = mockDetail(code);
-      const amountTyDong = Number(input.amount.replace(",", ".")) || 0;
       const request: DisbursementRequest = {
         code: `DN-${String(item.requests.length + 1).padStart(2, "0")}`,
-        amount: input.amount,
-        amountTyDong,
+        amountDong: input.amountDong,
         content: input.content,
         vendor: input.vendor ?? "",
         status: "pending",
@@ -420,14 +518,9 @@ export const disbursementService = {
       };
       return mockDelay<RequestResult>({
         code,
-        status: "pending",
         message: "Đề nghị giải ngân chờ duyệt",
-        amount: input.amount,
-        amountTyDong,
-        requestedBy: request.requestedBy,
         request,
-        remaining: Math.max(0, item.planned - item.actual - amountTyDong),
-        comment: mockComment(`Gửi đề nghị giải ngân ${request.code}: ${input.amount} cho "${input.content}"`),
+        remainingDong: Math.max(0, item.plannedDong - item.actualDong - input.amountDong),
       });
     }
     return apiClient.post<RequestResult>(`/disbursement/${encodeURIComponent(code)}/requests`, input);
@@ -458,12 +551,9 @@ export const disbursementService = {
           approved: all.filter((r) => r.status === "approved").length,
           rejected: all.filter((r) => r.status === "rejected").length,
           disbursed: all.filter((r) => r.status === "disbursed").length,
-          pendingAmount:
-            Math.round(
-              all
-                .filter((r) => r.status === "pending")
-                .reduce((s, r) => s + r.amountTyDong, 0) * 100,
-            ) / 100,
+          pendingAmountDong: all
+            .filter((r) => r.status === "pending")
+            .reduce((s, r) => s + Math.trunc(r.amountDong || 0), 0),
         },
       });
     }
@@ -523,20 +613,23 @@ export const disbursementService = {
       const item = mockDetail(code);
       const request = mockRequest(code, requestCode);
       const date = input.date?.trim() || mockToday();
+      const actualDong = item.actualDong + request.amountDong;
       return mockDelay<DisburseResult>({
-        code,
+        ...item,
+        actualDong,
+        remainingDong: item.plannedDong - actualDong,
+        percent:
+          item.plannedDong > 0 ? Math.round((actualDong * 10_000) / item.plannedDong) / 100 : null,
         request: { ...request, status: "disbursed", voucherNo: input.voucherNo, disbursedAt: date },
-        planned: item.planned,
-        actual: item.actual,
-        percent: item.planned > 0 ? Math.round((item.actual / item.planned) * 100) : 0,
-        delayed: item.delayed,
         entry: {
           date,
+          type: "chi",
+          amountDong: request.amountDong,
           content: request.content,
-          amount: request.amount,
+          voucherNo: input.voucherNo,
           vendor: request.vendor,
           by: "Cán bộ xã",
-          voucherNo: input.voucherNo,
+          requestCode: request.code,
         },
       });
     }
@@ -544,6 +637,99 @@ export const disbursementService = {
       `/disbursement/${encodeURIComponent(code)}/requests/${encodeURIComponent(requestCode)}/disburse`,
       input,
     );
+  },
+
+  /**
+   * Sửa thông tin hạng mục (quyền edit).
+   * KHÔNG đổi được dự toán qua đường này — phải dùng `addAdjustment`.
+   */
+  async update(code: string, input: UpdateBudgetInput): Promise<BudgetItem> {
+    if (appConfig.api.useMocks) return mockDelay({ ...mockDetail(code), ...input } as BudgetItem);
+    return toBudgetItem(
+      await apiClient.patch<BudgetApiItem>(`/disbursement/${encodeURIComponent(code)}`, input),
+    );
+  },
+
+  /**
+   * Đổi trạng thái hồ sơ theo workflow.
+   *
+   * Mức quyền của từng bước do MÁY CHỦ kiểm (gửi duyệt cần `edit`, duyệt cần
+   * `approve`, huỷ cần `admin`). Giao diện chỉ ẩn nút cho gọn — ẩn nút là trải
+   * nghiệm, chặn ở API mới là bảo mật.
+   */
+  async changeStatus(code: string, input: ChangeStatusInput): Promise<BudgetItem> {
+    if (appConfig.api.useMocks) {
+      return mockDelay({
+        ...mockDetail(code),
+        approvalStatus: input.status,
+        statusNote: input.note ?? "",
+      } as BudgetItem);
+    }
+    return toBudgetItem(
+      await apiClient.patch<BudgetApiItem>(
+        `/disbursement/${encodeURIComponent(code)}/status`,
+        input,
+      ),
+    );
+  },
+
+  /** Điều chỉnh dự toán (quyền approve) — đường DUY NHẤT đổi kế hoạch vốn */
+  async addAdjustment(code: string, input: CreateAdjustmentInput): Promise<BudgetItem> {
+    if (appConfig.api.useMocks) {
+      const item = mockDetail(code);
+      const plannedDong = item.plannedDong + input.deltaDong;
+      return mockDelay({ ...item, plannedDong, remainingDong: plannedDong - item.actualDong });
+    }
+    return toBudgetItem(
+      await apiClient.post<BudgetApiItem>(
+        `/disbursement/${encodeURIComponent(code)}/adjustments`,
+        input,
+      ),
+    );
+  },
+
+  /** Gắn một văn bản / hồ sơ vào hạng mục (quyền edit) */
+  async addDocument(code: string, input: AddDocumentInput): Promise<BudgetItem> {
+    if (appConfig.api.useMocks) return mockDelay(mockDetail(code));
+    return toBudgetItem(
+      await apiClient.post<BudgetApiItem>(
+        `/disbursement/${encodeURIComponent(code)}/documents`,
+        input,
+      ),
+    );
+  },
+
+  /** Gỡ liên kết một hồ sơ — tệp vẫn còn trong kho tệp */
+  async removeDocument(code: string, fileId: string): Promise<BudgetItem> {
+    if (appConfig.api.useMocks) return mockDelay(mockDetail(code));
+    return toBudgetItem(
+      await apiClient.delete<BudgetApiItem>(
+        `/disbursement/${encodeURIComponent(code)}/documents/${encodeURIComponent(fileId)}`,
+      ),
+    );
+  },
+
+  /**
+   * Xuất Excel danh sách hạng mục theo ĐÚNG bộ lọc đang áp dụng.
+   * Khác `exportYearReport` (báo cáo tổng hợp cả xã): đây là bảng danh sách.
+   */
+  async exportListExcel(filter: DisbursementListFilter = {}): Promise<string> {
+    const qs = buildQuery({
+      year: filter.year,
+      owner: filter.owner,
+      expenseType: filter.expenseType,
+      fundingSource: filter.fundingSource,
+      program: filter.program,
+      approvalStatus: filter.approvalStatus,
+      scheduleState: filter.scheduleState,
+      disbursementState: filter.disbursementState,
+      minPercent: filter.minPercent,
+      maxPercent: filter.maxPercent,
+      dueSoon: filter.dueSoon ? "true" : undefined,
+      q: filter.q,
+      deleted: filter.deleted,
+    });
+    return downloadFile(`/disbursement/export/excel${qs}`, "danh-sach-giai-ngan.xlsx");
   },
 
   /** Xoá mềm hạng mục (quyền admin) — dữ liệu vẫn giữ, khôi phục được */

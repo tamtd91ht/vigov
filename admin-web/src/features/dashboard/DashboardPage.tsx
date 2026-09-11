@@ -8,6 +8,7 @@ import { KpiCard } from "@/components/ui/KpiCard";
 import { DataState } from "@/components/ui/DataState";
 import { Icon } from "@/lib/icons";
 import { deadlineLabel, formatNumber } from "@/lib/format";
+import { formatVndShort } from "@/lib/money";
 import { useApiResource } from "@/hooks/useApiResource";
 import { fetchDashboard, type DashboardKpis, type DashboardOverview } from "@/services/dashboard.service";
 import type { DashboardPeriod, KpiCardMeta } from "./types";
@@ -65,7 +66,7 @@ function buildKpiText(k: DashboardKpis): Record<string, { value: string; sub: st
     k3: { value: formatNumber(k.pendingDocuments), sub: `Trong đó ${formatNumber(k.dueDocuments)} văn bản đến hạn` },
     k4: {
       value: `${k.disbursementPercent}%`,
-      sub: `${formatDecimal(k.disbursementActual)} / ${formatDecimal(k.disbursementPlanned)} tỷ đồng`,
+      sub: `${formatVndShort(k.disbursementActual)} / ${formatVndShort(k.disbursementPlanned)}`,
     },
     k5: {
       value: `${k.feedbackOnTimeRate}%`,

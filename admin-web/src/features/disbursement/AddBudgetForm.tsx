@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
-import { appConfig } from "@/config/app.config";
+import { MoneyInput } from "@/components/ui/MoneyInput";
 import { Icon } from "@/lib/icons";
 import { Drawer } from "@/components/ui/Drawer";
 import type { CreateBudgetInput } from "@/services/disbursement.service";
@@ -69,7 +69,11 @@ export function AddBudgetForm({
   const [customSource, setCustomSource] = useState("");
   const [owner, setOwner] = useState("");
   const [year, setYear] = useState(defaultYear);
-  const [planned, setPlanned] = useState("");
+  /** Dự toán giao đầu năm — SỐ NGUYÊN ĐỒNG; null = ô trống */
+  const [plannedDong, setPlannedDong] = useState<number | null>(null);
+  /** Mốc kế hoạch dd/MM/yyyy — để tính tiến độ theo thời gian */
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
 
   // Mở lại form → xoá nội dung nháp của lần trước (điều chỉnh state trong render)
@@ -82,7 +86,9 @@ export function AddBudgetForm({
       setCustomSource("");
       setOwner("");
       setYear(defaultYear);
-      setPlanned("");
+      setPlannedDong(null);
+      setStartDate("");
+      setEndDate("");
       setErrors({});
     }
   }
@@ -92,18 +98,13 @@ export function AddBudgetForm({
   /** Nguồn tự nhập không có màu quy ước — để backend dùng màu mặc định của nó */
   const fundingColor = FUNDING_SOURCES.find((s) => s.label === fundingSource)?.color;
 
-  /** "1,25" và "1.25" đều là 1.25; chuỗi không phải số trả về NaN */
-  const parsedPlanned = Number(planned.replace(",", ".").trim());
-
   function validate(): FieldErrors {
     const next: FieldErrors = {};
     if (!name.trim()) next.name = "Vui lòng nhập tên hạng mục";
     if (!fundingSource) next.fundingSource = "Vui lòng nhập tên nguồn vốn";
     if (!owner.trim()) next.owner = "Vui lòng chọn đơn vị chủ trì";
-    if (!planned.trim()) next.planned = "Vui lòng nhập kế hoạch vốn được giao";
-    else if (!Number.isFinite(parsedPlanned) || parsedPlanned <= 0) {
-      next.planned = "Kế hoạch vốn phải là số lớn hơn 0";
-    }
+    if (plannedDong === null) next.planned = "Vui lòng nhập dự toán giao đầu năm";
+    else if (plannedDong <= 0) next.planned = "Dự toán giao đầu năm phải lớn hơn 0";
     return next;
   }
 
@@ -118,7 +119,9 @@ export function AddBudgetForm({
       fundingSource,
       owner: owner.trim(),
       year,
-      planned: parsedPlanned,
+      initialPlannedDong: plannedDong ?? 0,
+      startDate: startDate.trim() || undefined,
+      endDate: endDate.trim() || undefined,
       fundingColor,
     });
   }
@@ -240,27 +243,53 @@ export function AddBudgetForm({
           </div>
           <div className="fgroup">
             <label htmlFor="ab-planned">
-              Kế hoạch vốn ({appConfig.currencyUnit}) <span className="req">*</span>
+              Dự toán giao đầu năm <span className="req">*</span>
             </label>
-            <input
+            <MoneyInput
               id="ab-planned"
-              className={errors.planned ? "finp err" : "finp"}
-              inputMode="decimal"
-              value={planned}
-              placeholder="Ví dụ: 3,7"
-              onChange={(e) => setPlanned(e.target.value)}
+              value={plannedDong}
+              onChange={setPlannedDong}
+              error={Boolean(errors.planned)}
             />
             {errors.planned ? (
               <div className="ferr">{errors.planned}</div>
             ) : (
-              <div className="fhint">Đơn vị tính: {appConfig.currencyUnit}</div>
+              <div className="fhint">
+                Đổi con số này về sau phải đi qua chức năng Điều chỉnh dự toán, kèm số quyết định.
+              </div>
             )}
           </div>
         </div>
 
+        <div className="grid2">
+          <div className="fgroup">
+            <label htmlFor="ab-start">Ngày bắt đầu kế hoạch</label>
+            <input
+              id="ab-start"
+              className="finp"
+              value={startDate}
+              placeholder="dd/MM/yyyy"
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+          <div className="fgroup">
+            <label htmlFor="ab-end">Ngày kết thúc kế hoạch</label>
+            <input
+              id="ab-end"
+              className="finp"
+              value={endDate}
+              placeholder="dd/MM/yyyy"
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+            <div className="fhint">
+              Hai mốc này là căn cứ kết luận tiến độ. Bỏ trống thì hệ thống không kết luận chậm.
+            </div>
+          </div>
+        </div>
+
         <div className="fhint">
-          Mã hạng mục (HM-xx) do máy chủ cấp. Hạng mục mới có số giải ngân bằng 0 nên sẽ xuất hiện trong
-          nhóm chậm tiến độ cho tới khi ghi nhận lần chi đầu tiên.
+          Mã hạng mục (HM-xx) do máy chủ cấp. Hạng mục mới ở trạng thái <b>Nháp</b> — phải trình
+          duyệt và được phê duyệt thì mới ghi nhận được giao dịch giải ngân.
         </div>
       </form>
     </Drawer>

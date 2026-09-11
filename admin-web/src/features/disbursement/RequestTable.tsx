@@ -8,7 +8,7 @@ import { Drawer } from "@/components/ui/Drawer";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { Icon } from "@/lib/icons";
-import { formatBillion } from "@/lib/format";
+import { formatVnd, formatVndShort } from "@/lib/money";
 import type { DisbursementRequestStatus } from "@/types";
 import type { DisbursementRequestRow, RequestSummary } from "@/services/disbursement.service";
 import { findRequestStatus, requestStatuses } from "./requestStatus";
@@ -108,8 +108,8 @@ export function RequestTable({
             label="Chờ duyệt"
             value={String(summary.pending)}
             sub={
-              summary.pendingAmount > 0
-                ? `${formatBillion(summary.pendingAmount)} đang chờ quyết`
+              summary.pendingAmountDong > 0
+                ? `${formatVndShort(summary.pendingAmountDong)} đang chờ quyết`
                 : "Không có đề nghị chờ"
             }
             color="var(--orange)"
@@ -208,7 +208,7 @@ export function RequestTable({
                           </div>
                         )}
                       </td>
-                      <td style={{ whiteSpace: "nowrap", fontWeight: 600 }}>{row.amount}</td>
+                      <td style={{ whiteSpace: "nowrap", fontWeight: 600 }}>{formatVnd(row.amountDong)}</td>
                       <td>{row.requestedBy}</td>
                       <td style={{ whiteSpace: "nowrap" }}>{row.requestedAt}</td>
                       <td>
@@ -279,7 +279,7 @@ export function RequestTable({
         open={rejecting !== null}
         onClose={() => setRejecting(null)}
         title="Từ chối đề nghị giải ngân"
-        meta={rejecting ? `${rejecting.code} · ${rejecting.budgetName} · ${rejecting.amount}` : ""}
+        meta={rejecting ? `${rejecting.code} · ${rejecting.budgetName} · ${formatVnd(rejecting.amountDong)}` : ""}
         footer={
           <>
             <button className="btn pri danger" type="button" onClick={submitReject} disabled={saving}>
@@ -316,7 +316,7 @@ export function RequestTable({
         open={disbursing !== null}
         onClose={() => setDisbursing(null)}
         title="Ghi nhận đã giải ngân"
-        meta={disbursing ? `${disbursing.code} · ${disbursing.budgetName} · ${disbursing.amount}` : ""}
+        meta={disbursing ? `${disbursing.code} · ${disbursing.budgetName} · ${formatVnd(disbursing.amountDong)}` : ""}
         footer={
           <>
             <button className="btn pri" type="button" onClick={submitDisburse} disabled={saving}>
@@ -330,7 +330,7 @@ export function RequestTable({
       >
         <div className="note" style={{ marginBottom: 14 }}>
           Xác nhận tiền đã thực sự chuyển cho đơn vị thụ hưởng. Thao tác này cộng{" "}
-          <b>{disbursing?.amount}</b> vào luỹ kế giải ngân của hạng mục và thêm một dòng vào Lịch sử
+          <b>{formatVnd(disbursing?.amountDong ?? 0)}</b> vào luỹ kế giải ngân của hạng mục và thêm một dòng vào Lịch sử
           giải ngân — không hoàn tác được.
         </div>
         <div className="fgroup">

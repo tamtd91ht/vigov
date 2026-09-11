@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
-import { formatBillion } from "@/lib/format";
+import { formatVndShort } from "@/lib/money";
 import type { DisbursementSeries } from "./types";
 
 /** Cấu hình vẽ SVG — port từ hàm lineChart() của mockup */
@@ -12,10 +12,16 @@ const CHART = {
   padRight: 14,
   padTop: 12,
   padBottom: 28,
-  /** Trần trục tung mặc định (tỷ đồng); vượt mức này thì trục tự co giãn theo số liệu */
-  maxValue: 13,
-  /** Các mốc kẻ lưới ngang mặc định (tỷ đồng) */
-  gridSteps: [0, 3, 6, 9, 12],
+  /**
+   * Trần trục tung mặc định — ĐƠN VỊ ĐỒNG. Vượt mức này thì trục tự co giãn.
+   *
+   * Backend đổi đơn vị tiền sang đồng (xem `libs/shared/src/money/vnd.ts`), nên
+   * trần và các mốc lưới phải đổi theo. Để nguyên 13 (tỷ) thì mọi đường biểu đồ
+   * đụng trần ngay và nhìn như đã giải ngân hết.
+   */
+  maxValue: 13_000_000_000,
+  /** Các mốc kẻ lưới ngang mặc định — đồng */
+  gridSteps: [0, 3_000_000_000, 6_000_000_000, 9_000_000_000, 12_000_000_000],
   /** Số khoảng chia khi phải co giãn trục */
   gridDivisions: 4,
   /** Màu lưới/nhãn trục — mockup dùng màu riêng, chưa có CSS var tương ứng */
@@ -83,7 +89,7 @@ export function DisbursementLineChart({ data }: { data: DisbursementSeries }) {
             <g key={v}>
               <line x1={pl} y1={y(v)} x2={W - pr} y2={y(v)} stroke={CHART.gridColor} />
               <text x={pl - 9} y={y(v) + 4} fill={CHART.axisTextColor} fontSize={10.5} textAnchor="end">
-                {v.toLocaleString("vi-VN", { maximumFractionDigits: 1 })} tỷ
+                {formatVndShort(v)}
               </text>
             </g>
           ))}
@@ -113,7 +119,7 @@ export function DisbursementLineChart({ data }: { data: DisbursementSeries }) {
           {/* Nhãn giá trị thực tế mới nhất */}
           {lastActual != null && (
             <text x={x(lastIdx) + 8} y={y(lastActual) - 10} fill={CHART.actualColor} fontSize={11} fontWeight={700}>
-              {formatBillion(lastActual)}
+              {formatVndShort(lastActual)}
             </text>
           )}
         </svg>

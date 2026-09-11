@@ -1,5 +1,4 @@
 import type { BudgetItem } from "@/types";
-import { appConfig } from "@/config/app.config";
 import { itemPercent } from "./percent";
 
 /**
@@ -14,16 +13,15 @@ function csvCell(value: string | number): string {
 }
 
 export function exportDisbursementCsv(items: BudgetItem[], year: number): void {
-  const unit = appConfig.currencyUnit;
   const header = [
     "Mã hạng mục",
     "Tên hạng mục",
     "Nguồn vốn",
     "Người phụ trách",
-    `Kế hoạch vốn (${unit})`,
-    `Đã giải ngân (${unit})`,
+    "Kế hoạch vốn (đồng)",
+    "Đã giải ngân (đồng)",
     "Tỷ lệ đạt (%)",
-    "Trạng thái",
+    "Tình trạng tiến độ",
     "Số lần giải ngân",
     "Số vướng mắc",
   ];
@@ -33,10 +31,12 @@ export function exportDisbursementCsv(items: BudgetItem[], year: number): void {
     it.name,
     it.fundingSource,
     it.owner,
-    it.planned.toLocaleString(appConfig.locale, { maximumFractionDigits: 1 }),
-    it.actual.toLocaleString(appConfig.locale, { maximumFractionDigits: 1 }),
-    itemPercent(it),
-    it.delayed ? "Chậm tiến độ" : "Đúng tiến độ",
+    /* Xuất SỐ THÔ (đồng) chứ không định dạng: người nhận cộng lại được bằng
+       chính Excel và đối chiếu với sổ kế toán. Đơn vị ghi ở tiêu đề cột. */
+    it.plannedDong,
+    it.actualDong,
+    itemPercent(it) ?? "",
+    it.scheduleLabel ?? "",
     it.entries.length,
     it.obstacles.length,
   ]);

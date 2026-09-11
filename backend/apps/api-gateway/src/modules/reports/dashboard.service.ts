@@ -3,13 +3,15 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
   BudgetItem,
-  type BudgetItemDocument,
   Feedback,
-  type FeedbackDocument,
   IncomingDocument,
-  type IncomingDocumentDocument,
   NOT_DELETED,
+  percentOf,
+  sumVnd,
   Task,
+  type BudgetItemDocument,
+  type FeedbackDocument,
+  type IncomingDocumentDocument,
   type TaskDocument,
 } from '@vigov/shared';
 
@@ -78,8 +80,9 @@ export class DashboardService {
       (d) => d.status !== 'xong' && d.deadlineAt && new Date(d.deadlineAt) <= soon,
     ).length;
 
-    const planned = budgets.reduce((sum, b) => sum + (b.planned ?? 0), 0);
-    const actual = budgets.reduce((sum, b) => sum + (b.actual ?? 0), 0);
+    // Đơn vị ĐỒNG, số nguyên — xem libs/shared/src/money/vnd.ts
+    const planned = sumVnd(budgets.map((b) => b.plannedDong ?? 0));
+    const actual = sumVnd(budgets.map((b) => b.actualDong ?? 0));
 
     const resolved = feedbacks.filter((f) => f.status === 'resolved');
     // `updatedAt` do tuỳ chọn timestamps sinh ra nên không nằm trong lớp schema
@@ -94,7 +97,8 @@ export class DashboardService {
         overdueTasks,
         pendingDocuments,
         dueDocuments,
-        disbursementPercent: planned > 0 ? Math.round((actual / planned) * 100) : 0,
+        disbursementPercent: percentOf(actual, planned) ?? 0,
+        /** Đồng, số nguyên */
         disbursementPlanned: planned,
         disbursementActual: actual,
         feedbackOnTimeRate: resolved.length > 0 ? Math.round((onTime.length / resolved.length) * 100) : 0,
@@ -129,15 +133,18 @@ export class DashboardService {
    * Giải ngân luỹ kế: kế hoạch chia đều 12 tháng, thực tế cộng dồn theo ngày
    * ghi nhận trong `entries`. Tháng chưa tới thì để null để đường biểu đồ dừng lại.
    */
-  private buildCumulative(budgets: Pick<BudgetItem, 'planned' | 'entries'>[], now: Date) {
-    const totalPlanned = budgets.reduce((sum, b) => sum + (b.planned ?? 0), 0);
+  private buildCumulative(budgets: Pick<BudgetItem, 'plannedDong' | 'entries'>[], now: Date) {
+    const totalPlanned = sumVnd(budgets.map((b) => b.plannedDong ?? 0));
     const monthlyActual = new Array<number>(12).fill(0);
 
     for (const item of budgets) {
       for (const entry of item.entries ?? []) {
         const month = this.monthFromVnDate(entry.date);
         if (month === null) continue;
-        monthlyActual[month] += this.parseAmount(entry.amount);
+        /* Giao dịch hoàn trả TRỪ vào luỹ kế: nếu cộng cả vào thì đường thực tế
+           trên biểu đồ vượt số tiền thật đã chi. */
+        const amount = Math.trunc(entry.amountDong ?? 0);
+        monthlyActual[month] += entry.type === 'hoan-tra' ? -amount : amount;
       }
     }
 
@@ -146,7 +153,8 @@ export class DashboardService {
     const actual: (number | null)[] = [];
 
     for (let i = 0; i < 12; i++) {
-      planned.push(Number(((totalPlanned / 12) * (i + 1)).toFixed(2)));
+      // Kế hoạch chia đều 12 tháng, làm tròn tới ĐỒNG (không giữ số thập phân)
+      planned.push(Math.round((totalPlanned / 12) * (i + 1)));
       if (i > now.getMonth()) {
         actual.push(null);
       } else {
@@ -181,10 +189,4 @@ export class DashboardService {
     return Number(match[2]) - 1;
   }
 
-  /** "1,25 tỷ" -> 1.25 (đơn vị tỷ đồng) */
-  private parseAmount(value: string): number {
-    const numeric = (value ?? '').replace(/[^\d,.-]/g, '').replace(/\./g, '').replace(',', '.');
-    const parsed = Number.parseFloat(numeric);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
 }

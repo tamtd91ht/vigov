@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { MoneyInput } from "@/components/ui/MoneyInput";
+import { formatVnd } from "@/lib/money";
 import type { BudgetItem } from "@/types";
-import { appConfig } from "@/config/app.config";
 import { formatBillion } from "@/lib/format";
 
 export interface DisburseRequestValues {
-  amount: string;
+  /** Số tiền đề nghị — SỐ NGUYÊN ĐỒNG */
+  amountDong: number;
   content: string;
   vendor: string;
 }
@@ -32,19 +34,20 @@ export function DisburseRequestForm({
   item: BudgetItem;
   onSubmit: (values: DisburseRequestValues) => void;
 }) {
-  const [amount, setAmount] = useState("");
+  const [amountDong, setAmountDong] = useState<number | null>(null);
   const [content, setContent] = useState("");
   const [vendor, setVendor] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
 
-  const remaining = Math.max(0, item.planned - item.actual);
+  const remaining = Math.max(0, (item.remainingDong ?? item.plannedDong - item.actualDong));
 
   function validate(): FieldErrors {
     const next: FieldErrors = {};
-    const parsed = Number(amount.replace(",", "."));
-    if (!amount.trim()) next.amount = "Vui lòng nhập số tiền đề nghị";
-    else if (!Number.isFinite(parsed) || parsed <= 0) next.amount = "Số tiền phải là số lớn hơn 0";
-    else if (parsed > remaining) next.amount = `Vượt phần vốn còn lại (${formatBillion(remaining)})`;
+    if (amountDong === null) next.amount = "Vui lòng nhập số tiền đề nghị";
+    else if (amountDong <= 0) next.amount = "Số tiền phải lớn hơn 0";
+    else if (amountDong > remaining) {
+      next.amount = `Vượt phần vốn còn lại (${formatVnd(remaining)})`;
+    }
     if (!content.trim()) next.content = "Vui lòng nhập nội dung chi";
     if (!vendor.trim()) next.vendor = "Vui lòng nhập đơn vị thụ hưởng";
     return next;
@@ -55,7 +58,7 @@ export function DisburseRequestForm({
     const next = validate();
     setErrors(next);
     if (Object.keys(next).length > 0) return;
-    onSubmit({ amount: amount.trim(), content: content.trim(), vendor: vendor.trim() });
+    onSubmit({ amountDong: amountDong ?? 0, content: content.trim(), vendor: vendor.trim() });
   }
 
   return (
@@ -67,18 +70,19 @@ export function DisburseRequestForm({
 
       <div className="fgroup">
         <label htmlFor="dr-amount">
-          Số tiền đề nghị ({appConfig.currencyUnit}) <span className="req">*</span>
+          Số tiền đề nghị <span className="req">*</span>
         </label>
-        <input
+        <MoneyInput
           id="dr-amount"
-          className={errors.amount ? "finp err" : "finp"}
-          type="text"
-          inputMode="decimal"
-          placeholder="Ví dụ: 0,5"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
+          value={amountDong}
+          onChange={setAmountDong}
+          error={Boolean(errors.amount)}
         />
-        {errors.amount ? <div className="ferr">{errors.amount}</div> : <div className="fhint">Đơn vị tính: {appConfig.currencyUnit}</div>}
+        {errors.amount ? (
+          <div className="ferr">{errors.amount}</div>
+        ) : (
+          <div className="fhint">Phần vốn còn đề nghị được: {formatVnd(remaining)}</div>
+        )}
       </div>
 
       <div className="fgroup">

@@ -7,6 +7,18 @@ export default () => ({
   port: parseInt(process.env.PORT ?? '3001', 10),
   apiPrefix: process.env.API_PREFIX ?? 'api/v1',
 
+  /**
+   * Tên đơn vị, dùng cho phần đầu biểu mẫu của tệp xuất (Excel, PDF).
+   *
+   * Một mã nguồn chạy cho nhiều xã nên tên đơn vị KHÔNG được viết cứng trong bộ
+   * xuất — sai tên đơn vị trên một bảng biểu gửi cấp trên là sự cố có người phải
+   * giải trình. Mặc định là chuỗi trung tính, không phải tên của khách nào.
+   */
+  org: {
+    name: process.env.ORG_NAME ?? 'UBND xã',
+    parent: process.env.ORG_PARENT ?? '',
+  },
+
   mongo: {
     uri: process.env.MONGO_URI ?? 'mongodb://localhost:27017/vigov',
   },
@@ -71,6 +83,24 @@ export default () => ({
     },
     /** Dung lượng tối đa mỗi tệp (byte) */
     maxFileSize: parseInt(process.env.STORAGE_MAX_FILE_SIZE ?? '20971520', 10),
+  },
+
+  /**
+   * Ngưỡng cảnh báo tiến độ giải ngân.
+   *
+   * Bản đầu viết cứng 0.7 trong `disbursement.service.ts`. Mỗi địa phương có
+   * cách siết tiến độ khác nhau và ngưỡng này sẽ được bàn lại hằng năm, nên nó
+   * phải là cấu hình — xem `rules/critical/khong-hardcode.md`.
+   *
+   * Dùng `||` thay vì `??`: đường triển khai Docker sinh ra CHUỖI RỖNG chứ
+   * không phải undefined, và `Number.parseFloat('')` là NaN — cả hai đều phải
+   * rơi về mặc định.
+   */
+  disbursement: {
+    /** Đạt dưới tỷ lệ này so với kế hoạch luỹ kế đã tới hạn → cảnh báo nguy cơ chậm */
+    riskRatio: Number.parseFloat(process.env.DISBURSEMENT_RISK_RATIO || '') || 0.8,
+    /** Còn bao nhiêu ngày tới hạn kết thúc thì coi là "sắp đến hạn" */
+    dueSoonDays: Number.parseInt(process.env.DISBURSEMENT_DUE_SOON_DAYS || '', 10) || 30,
   },
 
   /** Provider bên thứ 3 — chốt sau (câu hỏi mở #1, #2, #3) */

@@ -13,6 +13,7 @@
     "seed:fresh": "ts-node -r tsconfig-paths/register apps/api-gateway/src/seed.ts --fresh",
     "seed:prod": "node dist/apps/api-gateway/apps/api-gateway/src/seed",
     "backfill:is-deleted": "ts-node -r tsconfig-paths/register apps/api-gateway/src/backfill-is-deleted.ts",
+    "migrate:budget-dong": "ts-node -r tsconfig-paths/register apps/api-gateway/src/migrate-budget-to-dong.ts",
     "lint": "eslint \"{apps,libs}/**/*.ts\"",
     "test": "jest",
     "test:e2e": "jest --config test/jest-e2e.json --runInBand",

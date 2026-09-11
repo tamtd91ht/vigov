@@ -83,13 +83,70 @@ export interface IncomingDocument {
 }
 
 /** Lần giải ngân của một hạng mục */
+export type DisbursementEntryType = "chi" | "hoan-tra";
+
 export interface DisbursementEntry {
+  /** dd/MM/yyyy — ngày trên chứng từ */
   date: string;
+  /** `hoan-tra` TRỪ khỏi luỹ kế; số tiền luôn dương, dấu do loại quyết định */
+  type: DisbursementEntryType;
+  /** Số tiền — ĐỒNG, số nguyên */
+  amountDong: number;
   content: string;
-  amount: string;
-  vendor: string;
-  by: string;
   voucherNo: string;
+  vendor: string;
+  vendorTaxCode?: string;
+  /** Tệp chứng từ trong kho tệp dùng chung */
+  fileIds?: string[];
+  by: string;
+  /** Mã đề nghị sinh ra giao dịch này; rỗng nếu nhập trực tiếp */
+  requestCode?: string;
+}
+
+/** Một lần điều chỉnh dự toán — đường duy nhất đổi kế hoạch vốn */
+export interface BudgetAdjustment {
+  /** Số quyết định điều chỉnh — căn cứ bắt buộc */
+  decisionNo: string;
+  /** dd/MM/yyyy */
+  decidedAt: string;
+  /** ĐỒNG, số nguyên. ÂM là giảm dự toán */
+  deltaDong: number;
+  reason: string;
+  fileIds?: string[];
+  by: string;
+}
+
+/** Một văn bản / hồ sơ gắn với hạng mục */
+export interface BudgetDocumentRef {
+  refNo: string;
+  docType: string;
+  issuedDate: string;
+  issuer: string;
+  summary: string;
+  fileId: string;
+  addedBy: string;
+}
+
+/** Một mốc trong lịch sử tiến độ — chỉ thêm, không sửa, không xoá */
+export interface BudgetProgressLog {
+  at: string;
+  by: string;
+  action: string;
+  fromStatus: string;
+  toStatus: string;
+  /** Kế hoạch vốn và luỹ kế TẠI THỜI ĐIỂM ghi — đồng */
+  plannedDong: number;
+  actualDong: number;
+  note: string;
+  lateReason: string;
+}
+
+/** Kế hoạch giải ngân một quý */
+export interface QuarterPlan {
+  /** 1..4 */
+  quarter: number;
+  /** ĐỒNG, số nguyên */
+  amountDong: number;
 }
 
 /** Vướng mắc cần tháo gỡ */
@@ -110,12 +167,11 @@ export type DisbursementRequestStatus = "pending" | "approved" | "rejected" | "d
 export interface DisbursementRequest {
   /** Mã đề nghị trong phạm vi hạng mục: DN-01, DN-02… */
   code: string;
-  /** Số tiền dạng chuỗi người dùng nhập, ví dụ "0,8 tỷ" */
-  amount: string;
-  /** Số tiền đã quy đổi về tỷ đồng, do server tính */
-  amountTyDong: number;
+  /** Số tiền đề nghị — ĐỒNG, số nguyên */
+  amountDong: number;
   content: string;
   vendor: string;
+  vendorTaxCode?: string;
   status: DisbursementRequestStatus;
   requestedBy: string;
   requestedAt: string;
@@ -127,19 +183,91 @@ export interface DisbursementRequest {
   /** Số chứng từ lúc ghi nhận đã chi */
   voucherNo: string;
   disbursedAt: string;
+  fileIds?: string[];
 }
 
 /** Hạng mục ngân sách / giải ngân */
+/** Trạng thái hồ sơ hạng mục — do NGƯỜI quyết, có workflow và quyền */
+export type BudgetApprovalStatus =
+  | "nhap"
+  | "cho-duyet"
+  | "da-duyet"
+  | "tu-choi"
+  | "tam-dung"
+  | "huy"
+  | "quyet-toan";
+
+/** Mức giải ngân — máy chủ SUY RA từ số tiền, giao diện không tự tính */
+export type DisbursementState = "chua-chi" | "mot-phan" | "du";
+
+/** Tình trạng tiến độ — máy chủ SUY RA từ kế hoạch quý và ngày hiện tại */
+export type ScheduleState =
+  | "chua-den-han"
+  | "dung-tien-do"
+  | "nguy-co-cham"
+  | "cham"
+  | "hoan-thanh";
+
+export type BeneficiaryType = "to-chuc" | "ca-nhan" | "khong-xac-dinh";
+
+/**
+ * Hạng mục ngân sách / giải ngân.
+ *
+ * MỌI TRƯỜNG TIỀN LÀ SỐ NGUYÊN ĐƠN VỊ ĐỒNG (`*Dong`). Xem `lib/money.ts`.
+ *
+ * Phần TÍNH TOÁN (`remainingDong`, `percent`, `disbursementState`,
+ * `scheduleState`, `daysLeft`, các nhãn) do MÁY CHỦ trả về, giao diện chỉ hiển
+ * thị lại — tính ở hai nơi là sớm muộn lệch nhau.
+ */
 export interface BudgetItem {
   id: string;
+  code?: string;
   name: string;
+  purpose?: string;
+  expenseType?: string;
+  budgetLevel?: string;
   fundingSource: string;
   fundingColor: string;
+  program?: string;
   owner: string;
-  planned: number; // tỷ đồng
-  actual: number; // tỷ đồng
-  delayed: boolean;
+  beneficiary?: string;
+  beneficiaryType?: BeneficiaryType;
+  beneficiaryTaxCode?: string;
+  year?: number;
+  carryOverFromYear?: number;
+  /** dd/MM/yyyy */
+  startDate?: string;
+  endDate?: string;
+
+  /** Dự toán giao đầu năm — đồng. Đổi phải qua điều chỉnh dự toán */
+  initialPlannedDong: number;
+  /** Kế hoạch vốn hiện hành = dự toán đầu năm + tổng điều chỉnh — đồng */
+  plannedDong: number;
+  /** Luỹ kế đã giải ngân = tổng chi − tổng hoàn trả — đồng */
+  actualDong: number;
+  quarterPlans?: QuarterPlan[];
+
+  approvalStatus: BudgetApprovalStatus;
+  statusNote?: string;
+
+  /* ── Phần máy chủ tính, chỉ để hiển thị ── */
+  remainingDong?: number;
+  /** `null` = chưa có kế hoạch vốn, KHÁC "giải ngân 0%" */
+  percent?: number | null;
+  planCumulativeDong?: number;
+  planExpectedDong?: number;
+  /** Số ngày tới hạn; âm là quá hạn; `null` là chưa đặt hạn */
+  daysLeft?: number | null;
+  disbursementState?: DisbursementState;
+  scheduleState?: ScheduleState;
+  approvalLabel?: string;
+  disbursementLabel?: string;
+  scheduleLabel?: string;
+
   entries: DisbursementEntry[];
+  adjustments?: BudgetAdjustment[];
+  documents?: BudgetDocumentRef[];
+  progressLogs?: BudgetProgressLog[];
   comments: Comment[];
   obstacles: Obstacle[];
   requests: DisbursementRequest[];

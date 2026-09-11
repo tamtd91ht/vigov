@@ -4,9 +4,18 @@
  * Mock dùng `id` còn schema dùng `code`; thêm `year: 2026` theo năm ngân sách
  * đang vận hành (budgetYearConfig.current).
  */
-import type { BudgetItem } from '@vigov/shared';
+import type { BudgetItem, DisbursementEntry, DisbursementRequest } from '@vigov/shared';
 
-export type BudgetItemSeed = Partial<BudgetItem> & { code: string };
+/**
+ * Bản ghi seed — các mảng lồng nhau chỉ khai những trường có ý nghĩa cho dữ
+ * liệu demo; phần còn lại do Mongoose điền mặc định lúc tạo (fileIds rỗng,
+ * recordedAt là thời điểm chạy seed…).
+ */
+export type BudgetItemSeed = Omit<Partial<BudgetItem>, 'entries' | 'requests'> & {
+  code: string;
+  entries?: Partial<DisbursementEntry>[];
+  requests?: Partial<DisbursementRequest>[];
+};
 
 /** Năm ngân sách của bộ dữ liệu demo */
 export const BUDGET_YEAR = 2026;
@@ -19,14 +28,16 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
     fundingColor: 'var(--blue)',
     owner: 'Lê Minh Tuấn',
     year: BUDGET_YEAR,
-    planned: 3.7,
-    actual: 3.2,
-    delayed: false,
+    initialPlannedDong: 3_700_000_000,
+    plannedDong: 3_700_000_000,
+    actualDong: 3_200_000_000,
+    approvalStatus: 'da-duyet',
     entries: [
       {
         date: '12/03/2026',
         content: 'Tạm ứng hợp đồng thi công đợt 1',
-        amount: '1,10 tỷ',
+        type: 'chi',
+        amountDong: 1_100_000_000,
         vendor: 'Công ty TNHH Xây dựng Phú Thành',
         by: 'Đỗ Thanh Hà',
         voucherNo: 'UNC 041/2026',
@@ -34,7 +45,8 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
       {
         date: '28/05/2026',
         content: 'Thanh toán khối lượng hoàn thành đợt 1',
-        amount: '1,25 tỷ',
+        type: 'chi',
+        amountDong: 1_250_000_000,
         vendor: 'Công ty TNHH Xây dựng Phú Thành',
         by: 'Đỗ Thanh Hà',
         voucherNo: 'UNC 118/2026',
@@ -42,7 +54,8 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
       {
         date: '30/07/2026',
         content: 'Thanh toán khối lượng hoàn thành đợt 2',
-        amount: '0,85 tỷ',
+        type: 'chi',
+        amountDong: 850_000_000,
         vendor: 'Công ty TNHH Xây dựng Phú Thành',
         by: 'Đỗ Thanh Hà',
         voucherNo: 'UNC 176/2026',
@@ -78,8 +91,7 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
     requests: [
       {
         code: 'DN-01',
-        amount: '0,45 tỷ',
-        amountTyDong: 0.45,
+        amountDong: 450_000_000,
         content: 'Thanh toán khối lượng hoàn thành đợt 3',
         vendor: 'Công ty TNHH Xây dựng Phú Thành',
         status: 'pending',
@@ -100,14 +112,16 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
     fundingColor: 'var(--purple)',
     owner: 'Đỗ Thanh Hà',
     year: BUDGET_YEAR,
-    planned: 4.2,
-    actual: 1.1,
-    delayed: true,
+    initialPlannedDong: 4_200_000_000,
+    plannedDong: 4_200_000_000,
+    actualDong: 1_100_000_000,
+    approvalStatus: 'da-duyet',
     entries: [
       {
         date: '20/04/2026',
         content: 'Chi phí khảo sát, lập báo cáo kinh tế – kỹ thuật',
-        amount: '0,18 tỷ',
+        type: 'chi',
+        amountDong: 180_000_000,
         vendor: 'Công ty CP Tư vấn Đại Việt',
         by: 'Đỗ Thanh Hà',
         voucherNo: 'UNC 072/2026',
@@ -115,7 +129,8 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
       {
         date: '15/06/2026',
         content: 'Tạm ứng hợp đồng thi công phần móng',
-        amount: '0,92 tỷ',
+        type: 'chi',
+        amountDong: 920_000_000,
         vendor: 'Công ty TNHH Xây dựng Hoàng Long',
         by: 'Đỗ Thanh Hà',
         voucherNo: 'UNC 135/2026',
@@ -153,8 +168,7 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
     requests: [
       {
         code: 'DN-01',
-        amount: '0,8 tỷ',
-        amountTyDong: 0.8,
+        amountDong: 800_000_000,
         content: 'Tạm ứng thi công phần móng và khung nhà',
         vendor: 'Công ty CP Xây lắp Hồng Hà',
         status: 'approved',
@@ -168,8 +182,7 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
       },
       {
         code: 'DN-02',
-        amount: '0,6 tỷ',
-        amountTyDong: 0.6,
+        amountDong: 600_000_000,
         content: 'Thanh toán chi phí điều chỉnh thiết kế phần mái',
         vendor: 'Công ty CP Tư vấn Đại Việt',
         status: 'rejected',
@@ -191,14 +204,16 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
     fundingColor: 'var(--green)',
     owner: 'Vũ Đức Anh',
     year: BUDGET_YEAR,
-    planned: 2.4,
-    actual: 2.1,
-    delayed: false,
+    initialPlannedDong: 2_400_000_000,
+    plannedDong: 2_400_000_000,
+    actualDong: 2_100_000_000,
+    approvalStatus: 'da-duyet',
     entries: [
       {
         date: '10/02/2026',
         content: 'Tạm ứng thi công cải tạo khối nhà chính',
-        amount: '0,70 tỷ',
+        type: 'chi',
+        amountDong: 700_000_000,
         vendor: 'Công ty TNHH Xây dựng Tân Tiến',
         by: 'Đỗ Thanh Hà',
         voucherNo: 'UNC 022/2026',
@@ -206,7 +221,8 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
       {
         date: '18/05/2026',
         content: 'Thanh toán khối lượng hoàn thành',
-        amount: '0,95 tỷ',
+        type: 'chi',
+        amountDong: 950_000_000,
         vendor: 'Công ty TNHH Xây dựng Tân Tiến',
         by: 'Đỗ Thanh Hà',
         voucherNo: 'UNC 104/2026',
@@ -214,7 +230,8 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
       {
         date: '05/07/2026',
         content: 'Mua sắm trang thiết bị y tế',
-        amount: '0,45 tỷ',
+        type: 'chi',
+        amountDong: 450_000_000,
         vendor: 'Công ty CP Thiết bị Y tế Hà Nội',
         by: 'Vũ Đức Anh',
         voucherNo: 'UNC 152/2026',
@@ -250,8 +267,7 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
     requests: [
       {
         code: 'DN-01',
-        amount: '0,95 tỷ',
-        amountTyDong: 0.95,
+        amountDong: 950_000_000,
         content: 'Thanh toán thiết bị y tế đợt 1',
         vendor: 'Công ty TNHH Thiết bị Y tế Hà Nội',
         status: 'pending',
@@ -272,14 +288,16 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
     fundingColor: 'var(--blue)',
     owner: 'Lê Minh Tuấn',
     year: BUDGET_YEAR,
-    planned: 1.2,
-    actual: 1.1,
-    delayed: false,
+    initialPlannedDong: 1_200_000_000,
+    plannedDong: 1_200_000_000,
+    actualDong: 1_100_000_000,
+    approvalStatus: 'da-duyet',
     entries: [
       {
         date: '14/03/2026',
         content: 'Mua sắm 240 bộ đèn LED chiếu sáng',
-        amount: '0,62 tỷ',
+        type: 'chi',
+        amountDong: 620_000_000,
         vendor: 'Công ty CP Thiết bị điện Thăng Long',
         by: 'Đỗ Thanh Hà',
         voucherNo: 'UNC 048/2026',
@@ -287,7 +305,8 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
       {
         date: '22/06/2026',
         content: 'Chi phí lắp đặt, đấu nối',
-        amount: '0,48 tỷ',
+        type: 'chi',
+        amountDong: 480_000_000,
         vendor: 'Hợp tác xã Dịch vụ điện Đại Thắng',
         by: 'Lê Minh Tuấn',
         voucherNo: 'UNC 141/2026',
@@ -323,8 +342,7 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
     requests: [
       {
         code: 'DN-01',
-        amount: '0,35 tỷ',
-        amountTyDong: 0.35,
+        amountDong: 350_000_000,
         content: 'Thanh toán vật tư kênh mương đợt cuối',
         vendor: 'Công ty TNHH Vật liệu Xây dựng Sông Đà',
         status: 'approved',
@@ -345,14 +363,16 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
     fundingColor: 'var(--orange)',
     owner: 'Đỗ Thanh Hà',
     year: BUDGET_YEAR,
-    planned: 1.0,
-    actual: 0.2,
-    delayed: true,
+    initialPlannedDong: 1_000_000_000,
+    plannedDong: 1_000_000_000,
+    actualDong: 200_000_000,
+    approvalStatus: 'da-duyet',
     entries: [
       {
         date: '08/05/2026',
         content: 'Chi phí khảo sát, thiết kế bản vẽ thi công',
-        amount: '0,12 tỷ',
+        type: 'chi',
+        amountDong: 120_000_000,
         vendor: 'Công ty CP Tư vấn Đại Việt',
         by: 'Đỗ Thanh Hà',
         voucherNo: 'UNC 096/2026',
@@ -360,7 +380,8 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
       {
         date: '19/07/2026',
         content: 'Tạm ứng thi công đoạn K0+000 – K0+350',
-        amount: '0,08 tỷ',
+        type: 'chi',
+        amountDong: 80_000_000,
         vendor: 'Hợp tác xã Nông nghiệp Đại Thắng',
         by: 'Đỗ Thanh Hà',
         voucherNo: 'UNC 164/2026',

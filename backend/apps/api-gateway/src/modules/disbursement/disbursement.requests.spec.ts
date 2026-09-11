@@ -1,17 +1,25 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import type { Model } from 'mongoose';
 import type { BudgetItemDocument, JwtPayload } from '@vigov/shared';
+import type { ConfigService } from '@nestjs/config';
 import { fakeDoc, queryChain } from '../../../../../test/support/mongoose-mock';
 import { DisbursementService } from './disbursement.service';
+
+const TY = 1_000_000_000;
+
+/** Cấu hình giả: ngưỡng cảnh báo tiến độ mặc định */
+const CONFIG = {
+  get: (key: string) =>
+    ({ 'disbursement.riskRatio': 0.8, 'disbursement.dueSoonDays': 30 })[key],
+} as unknown as ConfigService;
 
 /** Người dùng giả đóng vai lãnh đạo duyệt */
 const LEADER = { username: 'binh.nv', displayName: 'Nguyễn Văn Bình' } as unknown as JwtPayload;
 
-/** Đề nghị mẫu: 0,5 tỷ đang chờ duyệt */
+/** Đề nghị mẫu: 500 triệu đồng đang chờ duyệt */
 const REQUEST = {
   code: 'DN-01',
-  amount: '0,5 tỷ',
-  amountTyDong: 0.5,
+  amountDong: 500_000_000,
   content: 'Thanh toán khối lượng đợt 2',
   vendor: 'Công ty A',
   status: 'pending',
@@ -22,6 +30,8 @@ const REQUEST = {
   rejectReason: '',
   voucherNo: '',
   disbursedAt: '',
+  vendorTaxCode: '',
+  fileIds: [] as string[],
 };
 
 /**
@@ -34,20 +44,38 @@ const REQUEST = {
  */
 describe('DisbursementService — vòng đời đề nghị giải ngân', () => {
   /** Hạng mục giả: kế hoạch 3 tỷ, đã chi 1 tỷ, sẵn một đề nghị theo `overrides` */
-  function makeService(overrides: Partial<typeof REQUEST> = {}, planned = 3, actual = 1) {
+  function makeService(
+    overrides: Partial<typeof REQUEST> = {},
+    plannedDong = 3 * TY,
+    actualDong = 1 * TY,
+  ) {
     const item = fakeDoc({
       code: 'HM-01',
       name: 'Đường giao thông thôn Đông',
-      planned,
-      actual,
-      delayed: false,
-      entries: [] as Record<string, unknown>[],
+      year: 2026,
+      /* Hạng mục phải ĐÃ PHÊ DUYỆT mới phát sinh tiền được — xem assertApproved */
+      approvalStatus: 'da-duyet',
+      initialPlannedDong: plannedDong,
+      plannedDong,
+      actualDong,
+      /* Một giao dịch đúng bằng luỹ kế: `recompute` tính lại actualDong từ
+         entries ở mọi đường ghi, nên dữ liệu giả phải tự khớp */
+      entries: [
+        { type: 'chi', amountDong: actualDong, date: '10/03/2026', content: 'Đợt 1' },
+      ] as Record<string, unknown>[],
+      adjustments: [] as Record<string, unknown>[],
+      documents: [] as Record<string, unknown>[],
+      progressLogs: [] as Record<string, unknown>[],
+      quarterPlans: [] as Record<string, unknown>[],
       comments: [] as Record<string, unknown>[],
       obstacles: [] as Record<string, unknown>[],
       requests: [{ ...REQUEST, ...overrides }],
     });
     const findOne = jest.fn(() => queryChain(item));
-    const service = new DisbursementService({ findOne } as unknown as Model<BudgetItemDocument>);
+    const service = new DisbursementService(
+      { findOne } as unknown as Model<BudgetItemDocument>,
+      CONFIG,
+    );
     return { service, item };
   }
 
@@ -59,8 +87,8 @@ describe('DisbursementService — vòng đời đề nghị giải ngân', () =>
     expect(item.requests[0].status).toBe('approved');
     expect(item.requests[0].decidedBy).toBe('Nguyễn Văn Bình');
     // Mấu chốt: duyệt xong tiền vẫn chưa rời kho bạc nên luỹ kế giữ nguyên
-    expect(item.actual).toBe(1);
-    expect(item.entries).toHaveLength(0);
+    expect(item.actualDong).toBe(1 * TY);
+    expect(item.entries).toHaveLength(1); // vẫn chỉ có giao dịch cũ
   });
 
   it('từ chối: lưu lý do và chuyển sang rejected', async () => {
@@ -70,7 +98,7 @@ describe('DisbursementService — vòng đời đề nghị giải ngân', () =>
 
     expect(item.requests[0].status).toBe('rejected');
     expect(item.requests[0].rejectReason).toBe('Thiếu hồ sơ thẩm định');
-    expect(item.actual).toBe(1);
+    expect(item.actualDong).toBe(1 * TY);
   });
 
   it('ghi nhận đã chi: cộng luỹ kế và sinh một dòng lịch sử giải ngân', async () => {
@@ -84,13 +112,16 @@ describe('DisbursementService — vòng đời đề nghị giải ngân', () =>
     );
 
     expect(item.requests[0].status).toBe('disbursed');
-    expect(item.actual).toBe(1.5); // 1 + 0,5
-    expect(item.entries).toHaveLength(1);
-    expect(item.entries[0]).toMatchObject({
+    expect(item.actualDong).toBe(1_500_000_000); // 1 tỷ + 500 triệu
+    expect(item.entries).toHaveLength(2);
+    expect(item.entries[1]).toMatchObject({
       date: '25/08/2026',
-      amount: '0,5 tỷ',
+      type: 'chi',
+      amountDong: 500_000_000,
       voucherNo: 'UNC 118/2026',
       content: 'Thanh toán khối lượng đợt 2',
+      // Truy ngược được về đề nghị đã duyệt sinh ra khoản chi này
+      requestCode: 'DN-01',
     });
     expect(res.percent).toBe(50);
   });
@@ -102,7 +133,7 @@ describe('DisbursementService — vòng đời đề nghị giải ngân', () =>
       service.disburseRequest('HM-01', 'DN-01', { voucherNo: 'UNC 999' }, LEADER),
     ).rejects.toThrow(BadRequestException);
     // Luỹ kế không bị cộng thêm lần nữa
-    expect(item.actual).toBe(1);
+    expect(item.actualDong).toBe(1 * TY);
   });
 
   it('không duyệt được đề nghị đã bị từ chối', async () => {
@@ -134,7 +165,7 @@ describe('DisbursementService — vòng đời đề nghị giải ngân', () =>
     const { service } = makeService({ status: 'pending' });
 
     await expect(
-      service.createRequest('HM-01', { amount: '2 tỷ', content: 'Đợt 3' }, LEADER),
+      service.createRequest('HM-01', { amountDong: 2 * TY, content: 'Đợt 3' }, LEADER),
     ).rejects.toThrow(BadRequestException);
   });
 
@@ -143,25 +174,29 @@ describe('DisbursementService — vòng đời đề nghị giải ngân', () =>
 
     const res = await service.createRequest(
       'HM-01',
-      { amount: '1 tỷ', content: 'Đợt 3', vendor: 'Công ty B' },
+      { amountDong: 1 * TY, content: 'Đợt 3', vendor: 'Công ty B' },
       LEADER,
     );
 
     expect(res.request.code).toBe('DN-02');
     expect(res.request.status).toBe('pending');
     expect(item.requests).toHaveLength(2);
-    // Còn lại = 3 − 1 đã chi − (0,5 treo + 1 vừa gửi) = 0,5
-    expect(res.remaining).toBeCloseTo(0.5, 9);
+    // Còn lại = 3 tỷ − 1 tỷ đã chi − (500 triệu treo + 1 tỷ vừa gửi) = 500 triệu
+    expect(res.remainingDong).toBe(500_000_000);
   });
 
   it('đề nghị đã bị từ chối không chiếm phần vốn còn lại', async () => {
     const { service } = makeService({ status: 'rejected' });
 
     // Kế hoạch 3, đã chi 1, đề nghị cũ bị từ chối → còn nguyên 2 tỷ để đề nghị
-    const res = await service.createRequest('HM-01', { amount: '2 tỷ', content: 'Đợt 3' }, LEADER);
+    const res = await service.createRequest(
+      'HM-01',
+      { amountDong: 2 * TY, content: 'Đợt 3' },
+      LEADER,
+    );
 
     expect(res.request.code).toBe('DN-02');
-    expect(res.remaining).toBeCloseTo(0, 9);
+    expect(res.remainingDong).toBe(0);
   });
 });
 
@@ -181,9 +216,10 @@ describe('DisbursementService.softDelete / restore', () => {
 
   function makeService(doc: Record<string, unknown> | null = deletedDoc) {
     const findOneAndUpdate: jest.Mock = jest.fn(() => queryChain(doc));
-    const service = new DisbursementService({
-      findOneAndUpdate,
-    } as unknown as Model<BudgetItemDocument>);
+    const service = new DisbursementService(
+      { findOneAndUpdate } as unknown as Model<BudgetItemDocument>,
+      CONFIG,
+    );
     return { service, findOneAndUpdate };
   }
 
@@ -250,7 +286,10 @@ describe('DisbursementService.softDelete / restore', () => {
 describe('DisbursementService.list — lọc hạng mục đã xoá', () => {
   function makeService() {
     const find: jest.Mock = jest.fn(() => queryChain([] as Record<string, unknown>[]));
-    const service = new DisbursementService({ find } as unknown as Model<BudgetItemDocument>);
+    const service = new DisbursementService(
+      { find } as unknown as Model<BudgetItemDocument>,
+      CONFIG,
+    );
     return { service, find };
   }
 

@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { formatVnd } from "@/lib/money";
 import type { BudgetItem, DisbursementRequestStatus } from "@/types";
 import { DataState } from "@/components/ui/DataState";
 import { PageHead } from "@/components/ui/PageHead";
 import { SegmentControl } from "@/components/ui/SegmentControl";
+import { MultiSelect } from "@/components/ui/MultiSelect";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { useToast } from "@/components/ui/Toast";
 import { Icon } from "@/lib/icons";
@@ -28,6 +30,18 @@ import { RequestTable } from "./RequestTable";
 import type { DisburseRequestValues } from "./DisburseRequestForm";
 
 /** Hai màn hình của phân hệ: hạng mục ngân sách và đề nghị giải ngân */
+/**
+ * Tình trạng tiến độ để lọc — khớp `SCHEDULE_STATES` của backend.
+ * Nhãn giữ đúng từ nghiệp vụ: "chậm tiến độ" khác "có nguy cơ chậm".
+ */
+const SCHEDULE_OPTIONS = [
+  { value: "cham", label: "Chậm tiến độ" },
+  { value: "nguy-co-cham", label: "Có nguy cơ chậm" },
+  { value: "dung-tien-do", label: "Đúng tiến độ" },
+  { value: "hoan-thanh", label: "Hoàn thành" },
+  { value: "chua-den-han", label: "Chưa đến kỳ" },
+];
+
 const VIEW_OPTIONS = [
   { key: "items", label: "Hạng mục ngân sách" },
   { key: "requests", label: "Đề nghị giải ngân" },
@@ -60,10 +74,15 @@ export function DisbursementPage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [exportingList, setExportingList] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [view, setView] = useState("items");
   const [scope, setScope] = useState("active");
   const [requestStatus, setRequestStatus] = useState<DisbursementRequestStatus | "all">("all");
+  /** Lọc theo TÌNH TRẠNG TIẾN ĐỘ — máy chủ tính lại mỗi lần đọc, không phải cờ lưu sẵn */
+  const [scheduleFilter, setScheduleFilter] = useState<string[]>([]);
+  /** Chỉ hạng mục sắp hết hạn (ngưỡng ngày do máy chủ cấu hình) */
+  const [dueSoon, setDueSoon] = useState(false);
 
   /*
    * Quyền lấy từ vai trò của phiên đăng nhập. Ẩn hẳn nút vượt quyền thay vì để
@@ -79,8 +98,14 @@ export function DisbursementPage() {
 
   // Năm ngân sách là tham số truy vấn gửi server; summary cũng do server tính
   const list = useApiResource(
-    () => disbursementService.list({ year, deleted: showingDeleted || undefined }),
-    [year, showingDeleted],
+    () =>
+      disbursementService.list({
+        year,
+        scheduleState: scheduleFilter,
+        dueSoon: dueSoon || undefined,
+        deleted: showingDeleted || undefined,
+      }),
+    [year, scheduleFilter, dueSoon, showingDeleted],
   );
   const detail = useApiResource(
     () => (selectedId ? disbursementService.detail(selectedId) : Promise.resolve(null)),
@@ -145,15 +170,14 @@ export function DisbursementPage() {
     const item = selected;
     void runWrite(async () => {
       const res = await disbursementService.addEntry(item.id, values);
-      patchItem(item.id, {
-        planned: res.planned,
-        actual: res.actual,
-        delayed: res.delayed,
-        entries: [...item.entries, res.entry],
-      });
+      /* Máy chủ trả về NGUYÊN hạng mục đã tính lại (luỹ kế, tỷ lệ, tình trạng
+         tiến độ) nên chép thẳng thay vì tự ghép từng trường — tự ghép là quên
+         một trường thì màn hình hiện số cũ. */
+      patchItem(item.id, res);
       // Luỹ kế đổi thì số liệu tổng hợp toàn xã cũng đổi — lấy lại từ server
       list.reload();
-      return `Đã ghi nhận giải ngân ${res.entry.amount} cho hạng mục ${res.code} (đạt ${res.percent}%)`;
+      const label = res.entry.type === "hoan-tra" ? "hoàn trả" : "giải ngân";
+      return `Đã ghi nhận ${label} ${formatVnd(res.entry.amountDong)} cho hạng mục ${res.id} (đạt ${res.percent ?? 0}%)`;
     }, "Không ghi nhận được lần giải ngân");
   }
 
@@ -184,11 +208,8 @@ export function DisbursementPage() {
     const item = selected;
     void runWrite(async () => {
       const res = await disbursementService.createRequest(item.id, values);
-      patchItem(item.id, {
-        comments: [...item.comments, res.comment],
-        requests: [...item.requests, res.request],
-      });
-      return `Đã gửi đề nghị ${res.request.code}: ${res.amount} — chờ lãnh đạo duyệt`;
+      patchItem(item.id, { requests: [...item.requests, res.request] });
+      return `Đã gửi đề nghị ${res.request.code}: ${formatVnd(res.request.amountDong)} — chờ lãnh đạo duyệt`;
     }, "Không gửi được đề nghị giải ngân");
   }
 
@@ -203,7 +224,7 @@ export function DisbursementPage() {
       const updated = await disbursementService.approveRequest(budgetCode, requestCode);
       requests.reload();
       if (selectedId === budgetCode) detail.reload();
-      return `Đã duyệt đề nghị ${updated.code} · ${updated.amount} — chờ ghi nhận đã chi`;
+      return `Đã duyệt đề nghị ${updated.code} · ${formatVnd(updated.amountDong)} — chờ ghi nhận đã chi`;
     }, "Không duyệt được đề nghị giải ngân");
   }
 
@@ -228,8 +249,61 @@ export function DisbursementPage() {
       requests.reload();
       list.reload();
       if (selectedId === budgetCode) detail.reload();
-      return `Đã ghi nhận giải ngân ${res.request.amount} cho ${res.code} (đạt ${res.percent}%)`;
+      return `Đã ghi nhận giải ngân ${formatVnd(res.request.amountDong)} cho ${res.id} (đạt ${res.percent ?? 0}%)`;
     }, "Không ghi nhận được lần chi");
+  }
+
+  /** Xuất Excel danh sách hạng mục theo ĐÚNG bộ lọc đang áp dụng */
+  async function exportList() {
+    setExportingList(true);
+    try {
+      const fileName = await disbursementService.exportListExcel({
+        year,
+        scheduleState: scheduleFilter,
+        dueSoon: dueSoon || undefined,
+        deleted: showingDeleted || undefined,
+      });
+      showToast(`Đã tải tệp ${fileName}`);
+    } catch (err) {
+      showToast(err instanceof ApiError ? err.message : "Không xuất được tệp Excel.");
+    } finally {
+      setExportingList(false);
+    }
+  }
+
+  /**
+   * Đổi trạng thái hồ sơ theo workflow.
+   * Mức quyền của từng bước do MÁY CHỦ kiểm — giao diện chỉ ẩn nút cho gọn.
+   */
+  function changeStatus(status: string, note: string) {
+    if (!selected) return;
+    const item = selected;
+    void runWrite(async () => {
+      const updated = await disbursementService.changeStatus(item.id, { status, note });
+      patchItem(item.id, updated);
+      detail.reload();
+      list.reload();
+      return `Hạng mục ${updated.id} chuyển sang trạng thái ${updated.approvalLabel ?? status}`;
+    }, "Không đổi được trạng thái hạng mục");
+  }
+
+  /** Điều chỉnh dự toán — đường duy nhất đổi kế hoạch vốn */
+  function addAdjustment(values: {
+    decisionNo: string;
+    decidedAt: string;
+    deltaDong: number;
+    reason: string;
+  }) {
+    if (!selected) return;
+    const item = selected;
+    void runWrite(async () => {
+      const updated = await disbursementService.addAdjustment(item.id, values);
+      patchItem(item.id, updated);
+      detail.reload();
+      list.reload();
+      const huong = values.deltaDong > 0 ? "Tăng" : "Giảm";
+      return `${huong} dự toán ${formatVnd(Math.abs(values.deltaDong))} theo Quyết định ${values.decisionNo}`;
+    }, "Không ghi được điều chỉnh dự toán");
   }
 
   /** Xoá mềm hạng mục (quyền admin) — dữ liệu vẫn giữ, khôi phục được */
@@ -345,6 +419,38 @@ export function DisbursementPage() {
             allLabel="Đang dùng"
           />
         )}
+        {view === "items" && (
+          <>
+            <MultiSelect
+              options={SCHEDULE_OPTIONS}
+              value={scheduleFilter}
+              onChange={setScheduleFilter}
+              allLabel="Mọi tình trạng tiến độ"
+              searchPlaceholder="Tìm tình trạng…"
+            />
+            <button
+              type="button"
+              className={dueSoon ? "btn sm pri" : "btn sm"}
+              aria-pressed={dueSoon}
+              onClick={() => setDueSoon((v) => !v)}
+              title="Chỉ hạng mục sắp tới hạn kết thúc kế hoạch"
+            >
+              <Icon name="clock" size={14} />
+              Sắp hết hạn
+            </button>
+            <button
+              className="btn sm"
+              type="button"
+              style={{ marginLeft: "auto" }}
+              onClick={() => void exportList()}
+              disabled={exportingList}
+              title="Xuất toàn bộ hạng mục khớp bộ lọc ra tệp Excel"
+            >
+              <Icon name="file" size={14} />
+              {exportingList ? "Đang xuất…" : "Xuất danh sách"}
+            </button>
+          </>
+        )}
       </div>
 
       {view === "requests" ? (
@@ -412,6 +518,8 @@ export function DisbursementPage() {
         onDisburseRequest={disburseRequestIn}
         onSoftDelete={softDeleteItem}
         onRestore={restoreItem}
+        onChangeStatus={changeStatus}
+        onAddAdjustment={addAdjustment}
         saving={saving}
       />
 
