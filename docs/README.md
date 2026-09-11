@@ -36,6 +36,16 @@ viết ADR **mới** đặt cái cũ thành "Đã thay thế", không sửa đè
 |---|---|---|
 | [0001](quyet-dinh/0001-thu-hoi-phan-anh.md) | Thu hồi phản ánh: xoá mềm · quyền `approve` · đếm cả phiếu đã gỡ vào chống spam | Đã chốt 10/09/2026 |
 
+### Nâng cấp v2
+
+[`nang-cap-v2/`](nang-cap-v2/) — ghi chép hiện trạng từng phân hệ ở bản v1 kèm đề xuất
+nâng cấp. Mỗi tệp có ba phần: hiện trạng đã đối chiếu mã · hạn chế · đề xuất. **Phần đề
+xuất chưa phải quyết định** — mỗi tệp kết bằng danh sách câu hỏi phải hỏi khách trước khi làm.
+
+| Phân hệ | Tài liệu |
+|---|---|
+| Nhiệm vụ | [`nang-cap-v2/nhiem-vu.md`](nang-cap-v2/nhiem-vu.md) |
+
 ---
 
 ## Toàn cảnh hệ thống
