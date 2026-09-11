@@ -57,6 +57,11 @@ Kiểm chứng sau khi sửa: `npx tsc --noEmit -p apps/api-gateway/tsconfig.app
 | 37 | Ảnh riêng tư hiển thị được trong webview Zalo | ✅ Đã sửa | `Cross-Origin-Resource-Policy: cross-origin` cho tệp đã qua kiểm chữ ký (TB-17) |
 | 38 | Endpoint mở cho công dân được khai TƯỜNG MINH | ⚠️ Một phần | `@AnyAuthenticated('<lý do>')` — đã khai 2 route kho tệp; còn 12 route, xem TB-18 |
 | 39 | Mã hoá khoá API nhà cung cấp trước khi lưu vào MongoDB | ✅ Đã làm 10/09/2026 | AES-256-GCM, khoá suy từ `JWT_SECRET` bằng HKDF (`libs/shared/src/crypto/secret-box.ts`). Bản `mongodump` lọt ra ngoài mà không có tệp env thì không giải mã được. Trường `select: false`; API chỉ trả khoá đã che |
+| 40 | Xuất tệp Excel danh sách có ghi vết | ✅ Đã làm 10/09/2026 | Xuất là `GET` nên `AuditInterceptor` không bắt; `streamExcelExport` tự ghi `EXPORT` kèm số dòng + bộ lọc (không kèm nội dung bản ghi). Trần 5000 dòng/tệp |
+| 41 | Tệp xuất áp dụng đúng chính sách che dữ liệu cá nhân | ✅ Đã làm 10/09/2026 | Tệp xuất phản ánh **không** có nội dung phản ánh và **không** có số điện thoại đầy đủ (đi qua `toStaffView` như đường đọc thường) |
+| 42 | Số tiền ngân sách lưu đúng tới ĐỒNG | ✅ Đã làm 11/09/2026 | Mô hình cũ lưu số thực đơn vị tỷ đồng, làm tròn tới 10 triệu đồng (nhập 823 triệu → lưu 820 triệu) và parse chuỗi tự do sai 1000 lần với "1,200 triệu". Nay số nguyên đơn vị đồng, DTO chặn số thập phân. Di trú: `npm run migrate:budget-dong` |
+| 43 | Hạng mục chưa phê duyệt KHÔNG phát sinh được tiền | ✅ Đã làm 11/09/2026 | `assertApproved` chặn ghi giao dịch và gửi đề nghị khi hồ sơ chưa ở trạng thái Đã phê duyệt; hồ sơ đã quyết toán / đã huỷ khoá mọi đường ghi |
+| 44 | Đổi kế hoạch vốn phải có căn cứ | ✅ Đã làm 11/09/2026 | Không sửa đè `plannedDong`; chỉ cộng qua bản ghi điều chỉnh có số quyết định, ngày và lý do. Không giảm xuống dưới số đã giải ngân |
 
 ---
 
@@ -133,6 +138,12 @@ Lệnh chạy: `npm audit --production` (chỉ đọc kết quả, **không** ch
 ---
 
 ## 4. Việc BẮT BUỘC làm trước khi lên production
+
+0-ter. **Chạy di trú tiền của phân hệ Giải ngân** nếu cơ sở dữ liệu đã có hạng mục lập bằng
+   mô hình cũ: `npm run migrate:budget-dong` (xem trước) rồi `-- --write` (ghi thật).
+   **Sao lưu bằng `deploy/backup-mongo.sh` TRƯỚC.** Phần tiền đã bị mô hình cũ làm tròn mất thì
+   không phục hồi được từ CSDL — sau khi chạy, kế toán phải đối chiếu luỹ kế từng hạng mục với
+   sổ kế toán và chứng từ giấy. Script in ra danh sách hạng mục có luỹ kế cũ lệch tổng chứng từ.
 
 0-bis. **Đưa nhà cung cấp OCR về `mock` hoặc về nhà cung cấp đã có hợp đồng** (phát hiện
    **C-05**). Kiểm ở **Cấu hình → Tích hợp** trên Web Quản trị *và* biến `OCR_PROVIDER` —

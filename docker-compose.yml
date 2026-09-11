@@ -114,6 +114,9 @@ services:
       # Cổng BÊN TRONG container luôn là 3001; ánh xạ ra host ở khối ports.
       PORT: "3001"
       API_PREFIX: ${API_PREFIX:-api/v1}
+      # Tên đơn vị in ở đầu biểu mẫu tệp xuất — xem .env.example
+      ORG_NAME: ${ORG_NAME:-}
+      ORG_PARENT: ${ORG_PARENT:-}
 
       # Hạ tầng — dùng tên service làm hostname trong mạng nội bộ vigov-net
       MONGO_URI: ${MONGO_URI}
@@ -156,6 +159,10 @@ services:
       S3_BUCKET: ${S3_BUCKET:-}
       S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
       S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+
+      # Ngưỡng cảnh báo tiến độ giải ngân — để trống thì dùng mặc định 0.8 / 30 ngày
+      DISBURSEMENT_RISK_RATIO: ${DISBURSEMENT_RISK_RATIO:-}
+      DISBURSEMENT_DUE_SOON_DAYS: ${DISBURSEMENT_DUE_SOON_DAYS:-}
 
       # Tích hợp bên thứ 3 — provider chốt sau (câu hỏi mở #1, #2, #3)
       OCR_PROVIDER: ${OCR_PROVIDER:-mock}

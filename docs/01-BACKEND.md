@@ -49,12 +49,12 @@ vào `shared` sẽ làm ranh giới module nhoè đi.
 |---|---|---|
 | `users` | 19 | Tài khoản cán bộ, tài khoản công dân, phiên đăng nhập, danh sách chặn |
 | `content` | 19 | CMS: bài viết, video, bản tin truyền thanh — kèm nhóm `/public` cho công dân |
-| `settings` | 14 | SLA, cây tổ chức, lĩnh vực phản ánh, danh mục vai trò, nhà cung cấp tích hợp |
+| `settings` | 18 | SLA, cây tổ chức, lĩnh vực phản ánh, danh mục vai trò, cơ quan ban hành, nhà cung cấp tích hợp |
 | `feedback` | 10 | Phản ánh của người dân, luồng xử lý và SLA |
 | `catalogs` | 9 | Danh mục dùng chung cho dropdown + danh bạ công khai |
 | `map` | 8 | Bản đồ kinh tế số: lớp dữ liệu và ghim |
 | `documents` | 8 | Văn bản đến, đơn thư, OCR |
-| `disbursement` | 8 | Giải ngân, đề nghị, vướng mắc |
+| `disbursement` | 16 | Hạng mục ngân sách, workflow phê duyệt, điều chỉnh dự toán, giao dịch chi/hoàn trả, hồ sơ, đề nghị, vướng mắc |
 | `tasks` | 9 | Nhiệm vụ, checklist, bình luận, tệp minh chứng |
 | `reports` | 5 | Tổng hợp, dashboard, kết xuất Excel / PDF / PowerPoint |
 | `auth` | 7 | Đăng nhập cán bộ, OTP công dân, định danh Zalo, cấp lại token, đổi mật khẩu |
@@ -357,6 +357,67 @@ quyết định hành chính của xã và đảo ngược được. Đừng g�
 
 **Không hardcode.** Mọi cấu hình đọc qua `ConfigService`, khai báo tại
 `libs/shared/src/config/configuration.ts`. Không đọc `process.env` rải rác.
+
+**Tiền là SỐ NGUYÊN ĐƠN VỊ ĐỒNG** — `libs/shared/src/money/vnd.ts`.
+
+Mọi trường tiền đặt tên `*Dong`. Bản đầu của phân hệ Giải ngân lưu số thực đơn
+vị tỷ đồng, làm tròn 2 chữ số thập phân — tức làm tròn tới **10 triệu đồng**:
+nhập 823 triệu lưu thành 820 triệu. DTO chặn số thập phân bằng
+`maxDecimalPlaces: 0`; `percentOf` trả `null` khi mẫu số 0 ("chưa có kế hoạch
+vốn" khác "giải ngân 0%").
+
+**Phân hệ Giải ngân — ba chiều trạng thái TÁCH RIÊNG** (`budget.schema.ts`):
+
+| Chiều | Lưu? | Ai quyết |
+|---|---|---|
+| `approvalStatus` — hồ sơ | Có | Người, qua workflow + quyền |
+| mức giải ngân | **Không** | Suy từ số tiền |
+| tình trạng tiến độ | **Không** | Suy từ kế hoạch quý + ngày hiện tại |
+
+Gộp ba chiều vào một trường là mất thông tin: một hạng mục có thể VỪA "giải ngân
+một phần" VỪA "chậm tiến độ". Hai chiều suy ra không lưu trong CSDL — cờ lưu sẵn
+là cờ cũ. Tính ở `progress.ts` (hàm thuần, có test cho từng mốc thời gian).
+
+Kết luận "chậm" so **luỹ kế thực tế ↔ luỹ kế kế hoạch các quý ĐÃ KẾT THÚC**, chứ
+không so tỷ lệ giải ngân với một ngưỡng cố định — ngưỡng cố định làm hạng mục mới
+giao dự toán tháng 1 bị báo chậm ngay. Ngưỡng cảnh báo ở `DISBURSEMENT_RISK_RATIO`
+và `DISBURSEMENT_DUE_SOON_DAYS`.
+
+**Kế hoạch vốn không sửa đè.** `plannedDong = initialPlannedDong + Σ adjustments`,
+tính lại ở mọi đường ghi. Đổi dự toán phải qua `POST /disbursement/:code/adjustments`
+kèm số quyết định — không có căn cứ thì cuối năm không giải trình được.
+
+**Giao dịch có loại `chi` / `hoan-tra`**, số tiền luôn dương, dấu do loại quyết
+định. Nhờ vậy thu hồi khoản chi sai không phải xoá chứng từ cũ.
+
+**Bộ lọc danh sách dùng chung một khuôn** — `libs/shared/src/dto/list-query.dto.ts`:
+
+| Thứ | Dùng thế nào |
+|---|---|
+| Chọn nhiều giá trị | `@TransformStringArray()` trên trường DTO → service lọc bằng `$in`. Tham số gửi lặp lại (`?status=moi&status=dang`); một giá trị vẫn dùng được |
+| Khoảng thời gian | `from`/`to` dạng `yyyy-MM-dd` → `buildDateRangeFilter(field, from, to)`. Mốc tính theo **giờ Việt Nam**, mốc cuối là `$lt` 00:00 ngày kế tiếp nên không cắt mất ngày cuối kỳ |
+| Điều kiện lọc | Mỗi service có `buildListFilter(query)` dùng CHUNG cho `list()` và `listForExport()` — hai bên tự dựng thì tệp xuất lệch bảng trên màn hình |
+
+**Xuất Excel danh sách** — `modules/reports/exporters/`:
+
+| Endpoint | Quyền | Tệp cột |
+|---|---|---|
+| `GET /tasks/export/excel` | `tasks:view` | `tasks/tasks.export.ts` |
+| `GET /documents/export/excel` | `documents:view` | `documents/documents.export.ts` |
+| `GET /feedback/export/excel` | `feedback:view` | `feedback/feedback.export.ts` |
+
+`buildListWorkbook` dựng phần khung dùng chung: tên đơn vị (`ORG_NAME` /
+`ORG_PARENT`, **không viết cứng**), kỳ số liệu nêu rõ hai mốc, bộ lọc đang áp
+dụng, cột STT, cố định hàng tiêu đề, chân trang ghi tổng số bản ghi + ai xuất +
+lúc nào. Trần **5000 dòng** mỗi tệp — vượt thì báo thu hẹp bộ lọc, **không cắt
+bớt im lặng**.
+
+Xuất tệp là `GET` nên `AuditInterceptor` không bắt → `streamExcelExport` tự gọi
+`AuditService.record` (action `EXPORT`, kèm số dòng và bộ lọc, **không** kèm nội
+dung bản ghi). Module nào có endpoint xuất thì phải `imports: [AuditModule]`.
+
+Tệp xuất phản ánh **không** chứa nội dung phản ánh và số điện thoại đầy đủ — xem
+khối chú thích đầu `feedback.export.ts`.
 
 **Adapter cho dịch vụ bên thứ ba.** OCR, GIS, ZNS, FCM đều đi qua adapter trong
 module `integrations`. Đổi nhà cung cấp chỉ sửa một tệp adapter, không đụng tầng

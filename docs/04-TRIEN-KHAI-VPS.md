@@ -341,6 +341,7 @@ là hệ thống không chạy hoặc mất an toàn:
 | `SEED_DEFAULT_PASSWORD` | Như trên |
 | `TRUST_PROXY` | `1` (có đúng một nginx đứng trước) |
 | `NODE_ENV` | `production` |
+| `ORG_NAME` · `ORG_PARENT` | Tên đơn vị và cơ quan chủ quản. In ở đầu biểu mẫu mọi tệp Excel xuất ra — để trống thì tệp ghi "UBND XÃ" trung tính |
 
 Ba điều dễ sai:
 

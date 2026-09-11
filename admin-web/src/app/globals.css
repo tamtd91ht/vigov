@@ -48,8 +48,52 @@ h1,h2,h3,h4{color:var(--navy);font-weight:700;line-height:1.3}
 .badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;border-radius:9px;background:var(--pink);color:#fff;font-size:10.5px;font-weight:700;display:grid;place-items:center;border:2px solid #fff;padding:0 4px}
 .user{display:flex;align-items:center;gap:10px;padding:5px 10px 5px 5px;border-radius:10px;cursor:pointer}
 .user:hover{background:var(--bg2)}
-.user b{display:block;font-size:13px;color:var(--navy)}
-.user span{display:block;font-size:11.5px;color:var(--mut)}
+.user b{display:block;font-size:13px;color:var(--navy);line-height:1.35}
+.user span{display:block;font-size:11.5px;color:var(--mut);line-height:1.3}
+/* Cột chữ tự căn giữa theo chiều dọc dù có 1 hay 2 dòng (cán bộ không có chức
+   danh thì chỉ còn dòng tên) — tránh tên nằm lệch lên so với tâm avatar */
+.user-id{display:flex;flex-direction:column;justify-content:center;min-width:0}
+.user-id b,.user-id span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Ô giữ chỗ avatar lúc chưa khôi phục xong phiên */
+.av-ph{background:var(--bg2)}
+
+/* ---------- CHỌN NHIỀU CÓ TÌM KIẾM (MultiSelect) ---------- */
+.msel{position:relative}
+.msel-btn{display:flex;align-items:center;gap:8px;justify-content:space-between;min-width:190px;cursor:pointer;text-align:left}
+.msel-btn.on{border-color:var(--blue);color:var(--navy);font-weight:600}
+.msel-sum{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.msel-pop{position:absolute;top:calc(100% + 5px);left:0;z-index:40;width:280px;background:#fff;border:1px solid var(--bd);border-radius:10px;box-shadow:0 10px 28px rgba(20,40,70,.14);overflow:hidden}
+.msel-search{display:flex;align-items:center;gap:8px;padding:9px 11px;border-bottom:1px solid var(--bd);color:var(--mut)}
+.msel-search input{border:none;outline:none;background:none;width:100%;font-size:13px}
+.msel-list{max-height:250px;overflow-y:auto}
+.msel-item{display:flex;align-items:flex-start;gap:9px;width:100%;padding:8px 11px;border:none;background:none;cursor:pointer;text-align:left;font-size:13px;color:var(--tx)}
+.msel-item:hover{background:var(--bg2)}
+.msel-item.on{background:rgba(42,111,201,.08);color:var(--navy);font-weight:600}
+.msel-tick{width:15px;flex:none;color:var(--blue);display:grid;place-items:center;padding-top:1px}
+.msel-lb{min-width:0}
+.msel-lb em{display:block;font-style:normal;font-size:11px;color:var(--mut);font-weight:400}
+.msel-empty{padding:14px 11px;font-size:12.5px;color:var(--mut);text-align:center}
+.msel-clear{width:100%;border:none;border-top:1px solid var(--bd);background:none;padding:8px;font-size:12px;color:var(--mut);cursor:pointer}
+.msel-clear:hover{background:var(--bg2);color:var(--red)}
+
+/* ---------- LỌC KHOẢNG THỜI GIAN (DateRangeFilter) ---------- */
+.drf{position:relative}
+.drf-btn{display:flex;align-items:center;gap:8px;min-width:180px;cursor:pointer;text-align:left}
+.drf-btn.on{border-color:var(--blue);color:var(--navy);font-weight:600}
+.drf-sum{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drf-pop{position:absolute;top:calc(100% + 5px);left:0;z-index:40;width:308px;background:#fff;border:1px solid var(--bd);border-radius:10px;box-shadow:0 10px 28px rgba(20,40,70,.14);padding:11px}
+.drf-kinds{display:flex;gap:5px;margin-bottom:10px}
+.drf-kind{flex:1;border:1px solid var(--bd);background:none;border-radius:8px;padding:6px 0;font-size:12px;color:var(--mut);cursor:pointer}
+.drf-kind.on{background:var(--navy);border-color:var(--navy);color:#fff;font-weight:600}
+.drf-year{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;font-size:12.5px;color:var(--navy)}
+.drf-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:11px}
+.drf-grid.weeks{grid-template-columns:repeat(8,1fr);max-height:130px;overflow-y:auto}
+.drf-cell{border:1px solid var(--bd);background:none;border-radius:7px;padding:6px 0;font-size:12px;color:var(--tx);cursor:pointer}
+.drf-cell:hover{background:rgba(42,111,201,.1);border-color:var(--blue);color:var(--navy)}
+.drf-manual{display:flex;gap:9px;border-top:1px solid var(--bd);padding-top:10px}
+.drf-manual label{flex:1;font-size:11.5px;color:var(--mut);display:block}
+.drf-manual .finp{margin-top:4px;font-size:12.5px;padding:6px 8px}
+.drf-foot{display:flex;gap:8px;justify-content:space-between;margin-top:10px}
 .usermenu{position:absolute;top:56px;right:0;width:220px;background:#fff;border:1px solid var(--bd);border-radius:12px;box-shadow:0 8px 26px rgba(27,58,92,.14);padding:6px;z-index:60}
 .usermenu button{display:flex;align-items:center;gap:9px;width:100%;border:none;background:none;padding:9px 11px;border-radius:8px;font-size:12.8px;cursor:pointer;text-align:left}
 .usermenu button:hover{background:var(--bg2)}
