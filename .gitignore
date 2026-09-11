@@ -56,3 +56,11 @@ key.properties
 # ── Thư mục nháp cục bộ ──────────────────────────────────────
 # Ảnh chụp màn hình, tệp thử nghiệm khi làm việc — không thuộc mã nguồn.
 /tmp/
+
+# ── Báo cáo giới thiệu cho đối tác ───────────────────────────
+# Tệp dựng lại mỗi lần cần gửi, nội dung thay đổi theo từng đối tác nên không
+# phải mã nguồn. Các trang tĩnh khác ở thư mục gốc (vigov-demo, vigov-slide,
+# vigov-prototype, vigov-tinh-nang, vigov-web-quan-tri) VẪN được theo dõi —
+# đừng đổi dòng dưới thành mẫu chung `*.html`.
+/vigov-bao.html
+/vigov-bao-cao-doi-tac.html
