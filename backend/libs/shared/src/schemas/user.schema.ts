@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { SoftDeletable } from './soft-delete';
+import { applyEpochTimestamps } from './timestamped';
 
 export type StaffUserDocument = HydratedDocument<StaffUser>;
 export type CitizenUserDocument = HydratedDocument<CitizenUser>;
@@ -8,7 +9,7 @@ export type LoginSessionDocument = HydratedDocument<LoginSession>;
 export type BlacklistRecordDocument = HydratedDocument<BlacklistRecord>;
 
 /** Tài khoản cán bộ đăng nhập Web Quản trị (WBS #9) */
-@Schema({ collection: 'staff_users', timestamps: true })
+@Schema({ collection: 'staff_users' })
 export class StaffUser {
   @Prop({ required: true, unique: true, index: true })
   username: string;
@@ -51,13 +52,13 @@ export class StaffUser {
    * Chặn theo tài khoản chứ không theo IP: hạn mức của ThrottlerGuard đếm theo
    * IP nên kẻ dò mật khẩu chỉ cần đổi IP là thoát, còn tài khoản thì không đổi.
    */
-  /* Phải khai `type: Date` tay: @nestjs/mongoose đọc kiểu qua reflect-metadata,
-     mà union `Date | null` thì metadata trả về Object nên nó không đoán được. */
-  @Prop({ type: Date, default: null })
-  lockedUntil?: Date | null;
+  /* Phải khai `type: Number` tay: @nestjs/mongoose đọc kiểu qua reflect-metadata,
+     mà union `number | null` thì metadata trả về Object nên nó không đoán được. */
+  @Prop({ type: Number, default: null })
+  lockedUntil?: number | null;
 
   @Prop()
-  lastLoginAt?: Date;
+  lastLoginAt?: number;
 
   /**
    * Đang giữ mật khẩu do hệ thống/quản trị viên đặt, PHẢI tự đổi trước khi dùng.
@@ -71,6 +72,7 @@ export class StaffUser {
   mustChangePassword: boolean;
 }
 export const StaffUserSchema = SchemaFactory.createForClass(StaffUser);
+applyEpochTimestamps(StaffUserSchema);
 
 /**
  * Công dân dùng Zalo Mini App (WBS #11).
@@ -84,7 +86,7 @@ export const StaffUserSchema = SchemaFactory.createForClass(StaffUser);
  * chủ thể dữ liệu (NĐ 13/2023) — có xoá thật các trường nhận dạng, không khôi
  * phục được. Hai việc khác nhau, đừng gộp.
  */
-@Schema({ collection: 'citizen_users', timestamps: true })
+@Schema({ collection: 'citizen_users' })
 export class CitizenUser extends SoftDeletable {
   @Prop({ required: true, unique: true, index: true })
   phone: string;
@@ -126,13 +128,14 @@ export class CitizenUser extends SoftDeletable {
    * phản ánh mà xã có nghĩa vụ lưu trữ.
    */
   @Prop()
-  erasedAt?: Date;
+  erasedAt?: number;
 
 }
 export const CitizenUserSchema = SchemaFactory.createForClass(CitizenUser);
+applyEpochTimestamps(CitizenUserSchema);
 
 /** Phiên đăng nhập đang hoạt động (WBS #11) */
-@Schema({ collection: 'login_sessions', timestamps: true })
+@Schema({ collection: 'login_sessions' })
 export class LoginSession {
   @Prop({ required: true, index: true })
   subject: string;
@@ -147,10 +150,10 @@ export class LoginSession {
   ip: string;
 
   @Prop({ required: true })
-  startedAt: Date;
+  startedAt: number;
 
-  @Prop({ required: true })
-  lastActiveAt: Date;
+  @Prop({ required: true, index: true })
+  lastActiveAt: number;
 
   @Prop({ default: false })
   revoked: boolean;
@@ -172,14 +175,15 @@ export class LoginSession {
   @Prop({ select: false })
   refreshTokenHash?: string;
 
-  /** Hạn dùng của refresh token hiện tại (REFRESH_EXPIRES_IN) */
+  /** Hạn dùng của refresh token hiện tại (REFRESH_EXPIRES_IN) — milli-giây UTC */
   @Prop()
-  refreshExpiresAt?: Date;
+  refreshExpiresAt?: number;
 }
 export const LoginSessionSchema = SchemaFactory.createForClass(LoginSession);
+applyEpochTimestamps(LoginSessionSchema);
 
 /** Bản ghi chặn công dân / thiết bị / IP (WBS #11, P3-31) */
-@Schema({ collection: 'blacklist_records', timestamps: true })
+@Schema({ collection: 'blacklist_records' })
 export class BlacklistRecord {
   @Prop({ required: true, index: true })
   subject: string;
@@ -197,3 +201,4 @@ export class BlacklistRecord {
   active: boolean;
 }
 export const BlacklistRecordSchema = SchemaFactory.createForClass(BlacklistRecord);
+applyEpochTimestamps(BlacklistRecordSchema);

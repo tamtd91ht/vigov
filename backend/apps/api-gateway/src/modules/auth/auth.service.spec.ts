@@ -78,15 +78,15 @@ describe('isTemporarilyLocked', () => {
   });
 
   it('hạn khoá còn ở tương lai thì vẫn đang khoá', () => {
-    expect(isTemporarilyLocked(new Date(now + 60_000), now)).toBe(true);
+    expect(isTemporarilyLocked(now + 60_000, now)).toBe(true);
   });
 
   it('hạn khoá đã qua thì tự mở, không cần ai can thiệp', () => {
-    expect(isTemporarilyLocked(new Date(now - 1), now)).toBe(false);
+    expect(isTemporarilyLocked(now - 1, now)).toBe(false);
   });
 
   it('đúng khoảnh khắc hết hạn thì coi như đã mở', () => {
-    expect(isTemporarilyLocked(new Date(now), now)).toBe(false);
+    expect(isTemporarilyLocked(now, now)).toBe(false);
   });
 });
 
@@ -103,7 +103,7 @@ describe('nextLockState', () => {
 
   it('chạm ngưỡng lần thứ 5 — khoá 15 phút', () => {
     const state = nextLockState(5, now);
-    expect(state.lockedUntil).toEqual(new Date(now + 15 * 60 * 1000));
+    expect(state.lockedUntil).toBe(now + 15 * 60 * 1000);
   });
 
   it('khoá xong thì đưa bộ đếm về 0 — hết hạn là có lại trọn 5 lượt', () => {
@@ -111,6 +111,6 @@ describe('nextLockState', () => {
   });
 
   it('vượt ngưỡng do request song song vẫn ra đúng một hạn khoá', () => {
-    expect(nextLockState(9, now).lockedUntil).toEqual(new Date(now + 15 * 60 * 1000));
+    expect(nextLockState(9, now).lockedUntil).toBe(now + 15 * 60 * 1000);
   });
 });

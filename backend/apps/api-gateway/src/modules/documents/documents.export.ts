@@ -1,4 +1,5 @@
 import type { ListColumn } from '../reports/exporters/list-workbook';
+import { formatVnDateMs } from '@vigov/shared';
 
 /**
  * Khai báo cột cho tệp Excel sổ văn bản đến / đơn thư.
@@ -26,36 +27,31 @@ export const DOCUMENT_KIND_LABELS: Record<string, string> = {
 interface DocumentRow {
   arrivalNo?: string;
   refNo?: string;
-  date?: string;
+  date?: number;
   sender?: string;
   summary?: string;
   docType?: string;
   kind?: string;
   department?: string;
   status?: string;
-  deadline?: string;
+  deadline?: number;
   daysLeft?: number;
   confidentiality?: string;
   urgency?: string;
   signer?: string;
   pageCount?: number;
-  createdAt?: Date | string;
+  createdAt?: number;
 }
 
-function vnDate(value?: Date | string): string {
-  if (!value) return '';
-  const d = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(d.getTime())) return '';
-  const vn = new Date(d.getTime() + 7 * 60 * 60_000);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${p(vn.getUTCDate())}/${p(vn.getUTCMonth() + 1)}/${vn.getUTCFullYear()}`;
+function vnDate(ms?: number): string {
+  return ms === undefined || ms === null ? '' : formatVnDateMs(ms);
 }
 
 export const DOCUMENT_EXPORT_COLUMNS: ListColumn<DocumentRow>[] = [
   { header: 'Số đến', value: (r) => r.arrivalNo ?? '', width: 12 },
   { header: 'Ngày đến', value: (r) => vnDate(r.createdAt), width: 13 },
   { header: 'Số, ký hiệu', value: (r) => r.refNo ?? '', width: 18 },
-  { header: 'Ngày văn bản', value: (r) => r.date ?? '', width: 14 },
+  { header: 'Ngày văn bản', value: (r) => vnDate(r.date), width: 14 },
   { header: 'Cơ quan ban hành', value: (r) => r.sender ?? '', width: 32 },
   { header: 'Trích yếu nội dung', value: (r) => r.summary ?? '', width: 50 },
   { header: 'Loại văn bản', value: (r) => r.docType ?? '', width: 16 },
@@ -69,7 +65,7 @@ export const DOCUMENT_EXPORT_COLUMNS: ListColumn<DocumentRow>[] = [
   { header: 'Người ký', value: (r) => r.signer ?? '', width: 20 },
   { header: 'Số trang', value: (r) => r.pageCount ?? '', width: 10, numeric: true },
   { header: 'Bộ phận xử lý', value: (r) => r.department ?? '', width: 22 },
-  { header: 'Hạn xử lý', value: (r) => r.deadline ?? '', width: 13 },
+  { header: 'Hạn xử lý', value: (r) => vnDate(r.deadline), width: 13 },
   /* Số ngày còn lại: 0 nghĩa là ĐẾN HẠN HÔM NAY, khác hẳn với "chưa có hạn".
      Giá trị âm là đã quá hạn — ghi rõ chữ để người đọc bảng không phải suy. */
   {

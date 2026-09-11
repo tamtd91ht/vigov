@@ -12,6 +12,8 @@ import { Model, isValidObjectId } from 'mongoose';
 import { randomBytes, randomInt, timingSafeEqual } from 'node:crypto';
 import * as bcrypt from 'bcryptjs';
 import {
+  formatVnDateTimeMs,
+  nowMs,
   CitizenUser,
   type CitizenUserDocument,
   LoginSession,
@@ -78,8 +80,11 @@ const LOGIN_LOCK_MS = 15 * 60 * 1000;
 const LOGIN_FAILED_MESSAGE = 'Tài khoản hoặc mật khẩu không đúng';
 
 /** Tài khoản có đang trong thời gian khoá tạm không */
-export function isTemporarilyLocked(lockedUntil: Date | null | undefined, now = Date.now()): boolean {
-  return !!lockedUntil && lockedUntil.getTime() > now;
+export function isTemporarilyLocked(
+  lockedUntil: number | null | undefined,
+  now = Date.now(),
+): boolean {
+  return !!lockedUntil && lockedUntil > now;
 }
 
 /**
@@ -92,9 +97,9 @@ export function isTemporarilyLocked(lockedUntil: Date | null | undefined, now = 
 export function nextLockState(
   attempts: number,
   now = Date.now(),
-): { failedLoginAttempts: number; lockedUntil: Date | null } {
+): { failedLoginAttempts: number; lockedUntil: number | null } {
   if (attempts >= LOGIN_MAX_FAILED_ATTEMPTS) {
-    return { failedLoginAttempts: 0, lockedUntil: new Date(now + LOGIN_LOCK_MS) };
+    return { failedLoginAttempts: 0, lockedUntil: now + LOGIN_LOCK_MS };
   }
   return { failedLoginAttempts: attempts, lockedUntil: null };
 }
@@ -178,7 +183,8 @@ export class AuthService {
        không vào được, và không tốn một lượt bcrypt cho mỗi request dò. */
     if (isTemporarilyLocked(user.lockedUntil)) {
       this.logger.warn(
-        `Từ chối đăng nhập ${username} từ ${ip}: tài khoản đang khoá tạm tới ${user.lockedUntil?.toISOString()}`,
+        `Từ chối đăng nhập ${username} từ ${ip}: tài khoản đang khoá tạm tới ` +
+          `${user.lockedUntil ? formatVnDateTimeMs(user.lockedUntil) : ''}`,
       );
       throw new UnauthorizedException(LOGIN_FAILED_MESSAGE);
     }
@@ -204,7 +210,7 @@ export class AuthService {
     };
 
     // Vào được rồi thì xoá dấu vết các lần sai trước — 5 lượt lại đầy
-    user.lastLoginAt = new Date();
+    user.lastLoginAt = nowMs();
     user.failedLoginAttempts = 0;
     user.lockedUntil = null;
     await user.save();
@@ -243,7 +249,7 @@ export class AuthService {
 
     await this.staffModel.updateOne({ _id: user._id }, { $set: state }).exec();
     this.logger.warn(
-      `Khoá tạm tài khoản ${user.username} tới ${state.lockedUntil.toISOString()} — ` +
+      `Khoá tạm tài khoản ${user.username} tới ${formatVnDateTimeMs(state.lockedUntil)} — ` +
         `sai mật khẩu ${LOGIN_MAX_FAILED_ATTEMPTS} lần liên tiếp, lần cuối từ ${ip}`,
     );
   }
@@ -433,7 +439,7 @@ export class AuthService {
       throw new UnauthorizedException(REFRESH_FAILED_MESSAGE);
     }
 
-    if (session.refreshExpiresAt && session.refreshExpiresAt.getTime() <= Date.now()) {
+    if (session.refreshExpiresAt && session.refreshExpiresAt <= nowMs()) {
       /* Hết hạn refresh (7 ngày) thì access token 8 giờ đã chết từ lâu —
          đóng hẳn phiên để nó không nằm lại trong danh sách phiên đang mở. */
       await this.markRevoked(session);
@@ -442,7 +448,7 @@ export class AuthService {
 
     const payload = await this.buildPayloadForSession(session.subject, session.kind, sessionId);
 
-    session.lastActiveAt = new Date();
+    session.lastActiveAt = nowMs();
     if (ip) session.ip = ip;
     if (device) session.device = device;
     await session.save();
@@ -585,7 +591,7 @@ export class AuthService {
   private async issueRefreshToken(sessionId: string): Promise<string> {
     const secret = randomBytes(REFRESH_TOKEN_BYTES).toString('base64url');
     const refreshTokenHash = await bcrypt.hash(secret, BCRYPT_ROUNDS);
-    const refreshExpiresAt = new Date(Date.now() + this.refreshTtlSeconds * 1000);
+    const refreshExpiresAt = nowMs() + this.refreshTtlSeconds * 1000;
 
     await this.sessionModel
       .updateOne({ _id: sessionId }, { $set: { refreshTokenHash, refreshExpiresAt } })

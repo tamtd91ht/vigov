@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { Comment, CommentSchema } from './comment';
+import { applyEpochTimestamps } from './timestamped';
 
 export type ArticleDocument = HydratedDocument<Article>;
 export type AuditLogDocument = HydratedDocument<AuditLog>;
@@ -9,7 +10,7 @@ export type SlaRuleDocument = HydratedDocument<SlaRule>;
 
 
 /** Nội dung CMS đẩy sang app công dân (WBS #10/#16) */
-@Schema({ collection: 'articles', timestamps: true })
+@Schema({ collection: 'articles' })
 export class Article {
   @Prop({ enum: ['news', 'event', 'notice'], required: true, index: true }) type: string;
   @Prop({ required: true }) title: string;
@@ -24,10 +25,11 @@ export class Article {
   @Prop({ default: 0 }) views: number;
 }
 export const ArticleSchema = SchemaFactory.createForClass(Article);
+applyEpochTimestamps(ArticleSchema);
 ArticleSchema.index({ title: 'text', excerpt: 'text', content: 'text' });
 
 /** Nhật ký thao tác — ghi vết mọi hành động ghi/duyệt/khoá (WBS #29) */
-@Schema({ collection: 'audit_logs', timestamps: true })
+@Schema({ collection: 'audit_logs' })
 export class AuditLog {
   @Prop({ required: true, index: true }) actor: string;
   @Prop({ required: true, index: true }) action: string;
@@ -38,9 +40,10 @@ export class AuditLog {
   @Prop({ default: '' }) ip: string;
 }
 export const AuditLogSchema = SchemaFactory.createForClass(AuditLog);
+applyEpochTimestamps(AuditLogSchema);
 
 /** Tệp đã lưu trong file storage (WBS #24) */
-@Schema({ collection: 'stored_files', timestamps: true })
+@Schema({ collection: 'stored_files' })
 export class StoredFile {
   @Prop({ required: true }) originalName: string;
   @Prop({ required: true }) mimeType: string;
@@ -54,9 +57,10 @@ export class StoredFile {
   @Prop({ default: false }) isPrivate: boolean;
 }
 export const StoredFileSchema = SchemaFactory.createForClass(StoredFile);
+applyEpochTimestamps(StoredFileSchema);
 
 /** Cấu hình SLA theo lĩnh vực phản ánh (WBS #9) */
-@Schema({ collection: 'sla_rules', timestamps: true })
+@Schema({ collection: 'sla_rules' })
 export class SlaRule {
   @Prop({ required: true, unique: true, index: true }) categoryKey: string;
   @Prop({ required: true }) intakeDays: number;
@@ -65,3 +69,4 @@ export class SlaRule {
   @Prop({ default: '' }) warnBefore: string;
 }
 export const SlaRuleSchema = SchemaFactory.createForClass(SlaRule);
+applyEpochTimestamps(SlaRuleSchema);

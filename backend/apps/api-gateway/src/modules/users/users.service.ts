@@ -141,10 +141,10 @@ export class UsersService {
       feedbackCount: doc.feedbackCount,
       status: doc.status,
       lockReason: doc.lockReason,
-      // Ngày đăng ký — do `timestamps: true` của CitizenUserSchema tự gán
-      createdAt: doc.get('createdAt') as Date | undefined,
+      // Ngày đăng ký — do `applyEpochTimestamps` của CitizenUserSchema tự gán
+      createdAt: doc.createdAt,
       // Lần hoạt động gần nhất — suy từ phiên đăng nhập, chỉ có khi tra được
-      lastActiveAt: lastActiveAt ?? (doc.get('lastActiveAt') as Date | undefined),
+      lastActiveAt: lastActiveAt ?? undefined,
       // Chỉ có giá trị với bản ghi đã xoá mềm; danh sách mặc định không trả bản ghi nào như vậy
       deletedAt: doc.deletedAt ?? undefined,
       deletedById: doc.deletedById,

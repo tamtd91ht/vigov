@@ -8,7 +8,7 @@
  *   • `ocrFields` để rỗng — chạy OCR thật ở bước sau (WBS #25).
  */
 import type { IncomingDocument } from '@vigov/shared';
-import { endOfVnDay, seedActivity } from './seed.util';
+import { endOfVnDay, seedActivity, vnDay } from './seed.util';
 
 /**
  * Khoá hành động cho nhật ký của dữ liệu seed.
@@ -21,8 +21,17 @@ const ACT_NOTE = 'document.note';
 
 export type DocumentSeed = Partial<IncomingDocument> & { arrivalNo: string };
 
-/** Phần dữ liệu gốc từ mock (chưa gắn kind/deadlineAt) */
-type DocumentBase = Omit<DocumentSeed, 'kind' | 'deadlineAt' | 'ocrFields'>;
+/**
+ * Phần dữ liệu gốc từ mock.
+ *
+ * `date` và `deadline` khai là CHUỖI `dd/MM/yyyy` để tệp seed đọc được bằng
+ * mắt; `withKind` quy đổi sang mốc số trước khi chèn — xem chú thích ở
+ * `seed.util.ts`.
+ */
+type DocumentBase = Omit<DocumentSeed, 'kind' | 'ocrFields' | 'date' | 'deadline'> & {
+  date: string;
+  deadline?: string;
+};
 
 const INCOMING_BASE: DocumentBase[] = [
   {
@@ -331,12 +340,14 @@ const PETITION_BASE: DocumentBase[] = [
   },
 ];
 
-/** Gắn kind + deadlineAt, để ocrFields rỗng (OCR chạy sau) */
+/** Gắn kind, quy đổi hai mốc ngày sang số, để ocrFields rỗng (OCR chạy sau) */
 function withKind(rows: DocumentBase[], kind: 'incoming' | 'petition'): DocumentSeed[] {
   return rows.map((row) => ({
     ...row,
     kind,
-    deadlineAt: row.deadline ? endOfVnDay(row.deadline) : undefined,
+    date: vnDay(row.date),
+    // Văn bản chưa ấn định hạn thì để trống, KHÔNG dùng 0 (0 là 01/01/1970)
+    deadline: row.deadline ? endOfVnDay(row.deadline) : undefined,
     ocrFields: [],
   }));
 }

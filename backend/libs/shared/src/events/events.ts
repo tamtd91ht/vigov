@@ -26,7 +26,8 @@ export interface DocumentAssignedEvent {
   arrivalNo: string;
   summary: string;
   department: string;
-  deadline: string;
+  /** Hạn xử lý — milli-giây UTC (khuôn thời gian v2) */
+  deadline: number;
   assignedBy: string;
 }
 
@@ -59,7 +60,8 @@ export interface TaskDeadlineWarningEvent {
   taskId: string;
   title: string;
   assignee: string;
-  deadline: string;
+  /** Hạn xử lý — milli-giây UTC (khuôn thời gian v2) */
+  deadline: number;
   daysLeft: number;
 }
 

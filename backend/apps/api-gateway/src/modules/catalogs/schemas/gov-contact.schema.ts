@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { applyEpochTimestamps } from '@vigov/shared';
 
 export type GovContactDocument = HydratedDocument<GovContact>;
 
@@ -17,7 +18,7 @@ export const CONTACT_GROUPS = ['leader', 'department', 'emergency'] as const;
  * Số điện thoại ở đây là số máy công vụ công bố công khai, không phải số cá
  * nhân, nên endpoint đọc để `@Public()`.
  */
-@Schema({ collection: 'gov_contacts', timestamps: true })
+@Schema({ collection: 'gov_contacts' })
 export class GovContact {
   @Prop({ required: true, index: true })
   name: string;
@@ -42,3 +43,4 @@ export class GovContact {
 }
 
 export const GovContactSchema = SchemaFactory.createForClass(GovContact);
+applyEpochTimestamps(GovContactSchema);

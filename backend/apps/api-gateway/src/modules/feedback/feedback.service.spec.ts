@@ -202,7 +202,8 @@ describe('FeedbackService — sinh mã #PA-<năm>-<4 chữ số>', () => {
 /* ───────────────────────────── SLA ───────────────────────────── */
 
 describe('FeedbackService — hạn xử lý SLA', () => {
-  const NOW = new Date(2026, 2, 10, 9, 30, 0);
+  /** 09:30 giờ Việt Nam ngày 10/03/2026 */
+  const NOW = new Date(Date.UTC(2026, 2, 10, 2, 30, 0));
 
   beforeEach(() => jest.useFakeTimers().setSystemTime(NOW));
   afterEach(() => jest.useRealTimers());
@@ -211,16 +212,16 @@ describe('FeedbackService — hạn xử lý SLA', () => {
     const h = buildHarness({ resolveDays: 5 });
     await h.service.createByCitizen(VALID_DTO as never, CITIZEN_PHONE, CITIZEN_NAME);
 
-    const due = h.created[0].slaDueAt as Date;
-    expect(due.getTime() - NOW.getTime()).toBe(5 * MS_PER_DAY);
+    const due = h.created[0].slaDueAt as number;
+    expect(due - NOW.getTime()).toBe(5 * MS_PER_DAY);
   });
 
   it('lĩnh vực chưa cấu hình SLA thì dùng mặc định 7 ngày', async () => {
     const h = buildHarness({ resolveDays: null });
     await h.service.createByCitizen(VALID_DTO as never, CITIZEN_PHONE, CITIZEN_NAME);
 
-    const due = h.created[0].slaDueAt as Date;
-    expect(due.getTime() - NOW.getTime()).toBe(7 * MS_PER_DAY);
+    const due = h.created[0].slaDueAt as number;
+    expect(due - NOW.getTime()).toBe(7 * MS_PER_DAY);
   });
 
   it('slaHoursLeft ngay sau khi gửi = resolveDays × 24 giờ', async () => {
@@ -235,7 +236,7 @@ describe('FeedbackService — hạn xử lý SLA', () => {
       leanDoc: {
         code: '#PA-2026-0007',
         status: 'processing',
-        slaDueAt: new Date(NOW.getTime() - overdueBy),
+        slaDueAt: NOW.getTime() - overdueBy,
       },
     });
 
@@ -249,7 +250,7 @@ describe('FeedbackService — hạn xử lý SLA', () => {
       leanDoc: {
         code: '#PA-2026-0007',
         status: 'processing',
-        slaDueAt: new Date(NOW.getTime() + 12 * MS_PER_HOUR),
+        slaDueAt: NOW.getTime() + 12 * MS_PER_HOUR,
       },
     });
 
@@ -319,7 +320,10 @@ describe('FeedbackService — chống spam phản ánh', () => {
 /* ─────────────────── Nội dung phiếu vừa tạo ─────────────────── */
 
 describe('FeedbackService.createByCitizen — nội dung phiếu', () => {
-  beforeEach(() => jest.useFakeTimers().setSystemTime(new Date(2026, 2, 10, 9, 30, 0)));
+  /** 09:30 giờ Việt Nam ngày 10/03/2026 */
+  const LUC_GUI = Date.UTC(2026, 2, 10, 2, 30, 0);
+
+  beforeEach(() => jest.useFakeTimers().setSystemTime(LUC_GUI));
   afterEach(() => jest.useRealTimers());
 
   it('phiếu mới ở trạng thái "received", chưa phân công, chưa đánh giá', async () => {
@@ -332,7 +336,8 @@ describe('FeedbackService.createByCitizen — nội dung phiếu', () => {
       department: '',
       rating: 0,
       citizenPhone: CITIZEN_PHONE,
-      sentAt: '10/03/2026 09:30',
+      // Khuôn v2: mốc gửi là SỐ, không phải chuỗi đã định dạng
+      sentAt: LUC_GUI,
     });
   });
 
@@ -340,11 +345,13 @@ describe('FeedbackService.createByCitizen — nội dung phiếu', () => {
     const h = buildHarness();
     await h.service.createByCitizen(VALID_DTO as never, CITIZEN_PHONE, CITIZEN_NAME);
 
-    const timeline = h.created[0].timeline as { title: string; state: string }[];
+    const timeline = h.created[0].timeline as { action: string; detail: string; state: string }[];
     expect(timeline).toHaveLength(2);
-    expect(timeline[0]).toMatchObject({ state: 'ok' });
-    expect(timeline[0].title).toContain('Công dân gửi phản ánh');
-    expect(timeline[1]).toMatchObject({ state: 'cur' });
+    // Mốc 1: công dân gửi, `detail` là KHOÁ kênh gửi chứ không phải nhãn tiếng Việt
+    expect(timeline[0]).toMatchObject({ action: 'feedback.receive-online', state: 'ok' });
+    expect(timeline[0].detail).toBe('app');
+    // Mốc 2: chờ phân công, `detail` là mốc hạn SLA dạng số
+    expect(timeline[1]).toMatchObject({ action: 'feedback.awaiting-assign', state: 'cur' });
   });
 
   it('lấy tên công dân từ hồ sơ khi phiếu không khai tên', async () => {

@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { SoftDeleteBodyDto, SoftDeleteQueryDto } from '@vigov/shared';
+import { IsEpochMs, SoftDeleteBodyDto, SoftDeleteQueryDto } from '@vigov/shared';
 import {
   ArrayMaxSize,
   ArrayNotEmpty,
@@ -17,7 +17,6 @@ import {
 } from 'class-validator';
 
 /** Định dạng ngày FE đang dùng: dd/MM/yyyy */
-export const DATE_PATTERN = /^\d{2}\/\d{2}\/\d{4}$/;
 
 export const DOCUMENT_KINDS = ['incoming', 'petition'] as const;
 export const DOCUMENT_STATUSES = ['moi', 'dangxl', 'choduyet', 'xong'] as const;
@@ -28,9 +27,8 @@ export class CreateDocumentDto {
   @IsNotEmpty({ message: 'Vui lòng nhập số ký hiệu văn bản' })
   refNo: string;
 
-  @IsString()
-  @Matches(DATE_PATTERN, { message: 'Ngày văn bản phải theo định dạng dd/MM/yyyy' })
-  date: string;
+  @IsEpochMs('Ngày văn bản')
+  date: number;
 
   @IsString()
   @IsNotEmpty({ message: 'Vui lòng nhập cơ quan / người gửi' })
@@ -55,8 +53,8 @@ export class CreateDocumentDto {
   department?: string;
 
   @IsOptional()
-  @Matches(DATE_PATTERN, { message: 'Hạn xử lý phải theo định dạng dd/MM/yyyy' })
-  deadline?: string;
+  @IsEpochMs('Hạn xử lý')
+  deadline?: number;
 
   @IsOptional()
   @IsString()
@@ -89,8 +87,8 @@ export class UpdateDocumentDto {
   refNo?: string;
 
   @IsOptional()
-  @Matches(DATE_PATTERN, { message: 'Ngày văn bản phải theo định dạng dd/MM/yyyy' })
-  date?: string;
+  @IsEpochMs('Ngày văn bản')
+  date?: number;
 
   @IsOptional()
   @IsString()
@@ -119,8 +117,8 @@ export class UpdateDocumentDto {
   status?: (typeof DOCUMENT_STATUSES)[number];
 
   @IsOptional()
-  @Matches(DATE_PATTERN, { message: 'Hạn xử lý phải theo định dạng dd/MM/yyyy' })
-  deadline?: string;
+  @IsEpochMs('Hạn xử lý')
+  deadline?: number;
 
   @IsOptional()
   @IsString()

@@ -11,7 +11,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
 import request from 'supertest';
-import { SlaRule, type SlaRuleDocument, StaffUser, type StaffUserDocument } from '@vigov/shared';
+import { parseVnDateMs, SlaRule, type SlaRuleDocument, StaffUser, type StaffUserDocument} from '@vigov/shared';
 
 const ADMIN = { username: 'binh.nv', password: 'ViGov@2026' };
 /** Mã tạm thời dùng để định danh công dân trong test */
@@ -111,7 +111,7 @@ describe('ViGov API — smoke Phase 1', () => {
         title: 'Rà soát quỹ đất công ích năm 2026',
         assignee: 'Lê Minh Tuấn',
         department: 'Địa chính – Xây dựng',
-        deadline: '30/09/2026',
+        deadline: parseVnDateMs('30/09/2026'),
         priority: 'cao',
         description: 'Rà soát, thống kê toàn bộ diện tích đất công ích trên địa bàn xã.',
         checklist: [{ title: 'Trích lục hồ sơ địa chính' }, { title: 'Đo đạc hiện trạng' }],
@@ -138,13 +138,13 @@ describe('ViGov API — smoke Phase 1', () => {
       .set('Authorization', `Bearer ${staffToken}`)
       .send({
         refNo: '214/UBND-VP',
-        date: '08/08/2026',
+        date: parseVnDateMs('08/08/2026'),
         sender: 'UBND huyện Phú Xuyên',
         summary: 'V/v báo cáo kết quả quản lý, sử dụng đất công ích trên địa bàn',
         docType: 'Công văn',
         kind: 'incoming',
         department: 'Địa chính – Xây dựng',
-        deadline: '19/09/2026',
+        deadline: parseVnDateMs('19/09/2026'),
       })
       .expect(201);
     expect(res.body.arrivalNo).toBeDefined();

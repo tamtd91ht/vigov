@@ -15,6 +15,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import {
+  IsEpochMs,
   BENEFICIARY_TYPES,
   BUDGET_APPROVAL_STATUSES,
   DISBURSEMENT_ENTRY_TYPES,
@@ -35,7 +36,6 @@ const MIN_BUDGET_YEAR = 2000;
 const MAX_BUDGET_YEAR = 2100;
 
 /** dd/MM/yyyy — định dạng ngày của văn bản hành chính Việt Nam */
-const VN_DATE_PATTERN = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
 
 /** Số tệp tối đa gắn một lần */
 const MAX_FILES = 10;
@@ -225,14 +225,12 @@ export class CreateBudgetItemDto {
   carryOverFromYear?: number;
 
   @IsOptional()
-  @IsString()
-  @Matches(VN_DATE_PATTERN, { message: 'Ngày bắt đầu kế hoạch phải theo định dạng dd/MM/yyyy' })
-  startDate?: string;
+  @IsEpochMs('Ngày bắt đầu kế hoạch')
+  startDate?: number;
 
   @IsOptional()
-  @IsString()
-  @Matches(VN_DATE_PATTERN, { message: 'Ngày kết thúc kế hoạch phải theo định dạng dd/MM/yyyy' })
-  endDate?: string;
+  @IsEpochMs('Ngày kết thúc kế hoạch')
+  endDate?: number;
 
   /** Dự toán giao đầu năm — đồng, số nguyên. Đổi sau này phải qua điều chỉnh dự toán */
   @Type(() => Number)
@@ -285,14 +283,12 @@ export class UpdateBudgetItemDto {
   carryOverFromYear?: number;
 
   @IsOptional()
-  @IsString()
-  @Matches(VN_DATE_PATTERN, { message: 'Ngày bắt đầu kế hoạch phải theo định dạng dd/MM/yyyy' })
-  startDate?: string;
+  @IsEpochMs('Ngày bắt đầu kế hoạch')
+  startDate?: number;
 
   @IsOptional()
-  @IsString()
-  @Matches(VN_DATE_PATTERN, { message: 'Ngày kết thúc kế hoạch phải theo định dạng dd/MM/yyyy' })
-  endDate?: string;
+  @IsEpochMs('Ngày kết thúc kế hoạch')
+  endDate?: number;
 
   @IsOptional()
   @ValidateNested()
@@ -348,8 +344,8 @@ export class CreateAdjustmentDto {
   decisionNo: string;
 
   @IsString()
-  @Matches(VN_DATE_PATTERN, { message: 'Ngày quyết định phải theo định dạng dd/MM/yyyy' })
-  decidedAt: string;
+  @IsEpochMs('Ngày quyết định')
+  decidedAt: number;
 
   @Type(() => Number)
   @IsNumber(
@@ -377,8 +373,8 @@ export class CreateAdjustmentDto {
 /** Ghi nhận một giao dịch chi trả hoặc hoàn trả đã phát sinh */
 export class CreateEntryDto {
   @IsString()
-  @Matches(VN_DATE_PATTERN, { message: 'Ngày giao dịch phải theo định dạng dd/MM/yyyy' })
-  date: string;
+  @IsEpochMs('Ngày giao dịch')
+  date: number;
 
   /** Bỏ trống thì hiểu là chi trả */
   @IsOptional()
@@ -433,8 +429,8 @@ export class AddBudgetDocumentDto {
 
   @IsOptional()
   @IsString()
-  @Matches(VN_DATE_PATTERN, { message: 'Ngày ban hành phải theo định dạng dd/MM/yyyy' })
-  issuedDate?: string;
+  @IsEpochMs('Ngày ban hành')
+  issuedDate?: number;
 
   @IsOptional() @IsString() @MaxLength(300) issuer?: string;
   @IsOptional() @IsString() @MaxLength(1000) summary?: string;
@@ -462,8 +458,8 @@ export class CreateObstacleDto {
   owner?: string;
 
   @IsOptional()
-  @IsString({ message: 'Hạn tháo gỡ phải là chuỗi ký tự' })
-  deadline?: string;
+  @IsEpochMs('Hạn tháo gỡ')
+  deadline?: number;
 }
 
 /* ────────────────────────────── Đề nghị giải ngân ────────────────────────────── */
@@ -540,8 +536,8 @@ export class DisburseRequestDto {
   /** Ngày chi thật; bỏ trống thì lấy ngày hôm nay */
   @IsOptional()
   @IsString()
-  @Matches(VN_DATE_PATTERN, { message: 'Ngày chi phải theo định dạng dd/MM/yyyy' })
-  date?: string;
+  @IsEpochMs('Ngày chi')
+  date?: number;
 
   @IsOptional()
   @IsArray()

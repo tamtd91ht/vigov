@@ -1,8 +1,6 @@
 import { Type } from 'class-transformer';
-import { IsInt, IsMongoId, IsNotEmpty, IsOptional, IsString, Matches, Min } from 'class-validator';
-
-/** dd/MM/yyyy — giữ nguyên định dạng hiển thị của FE */
-const VN_DATE_PATTERN = /^\d{2}\/\d{2}\/\d{4}$/;
+import { IsInt, IsMongoId, IsNotEmpty, IsOptional, IsString, Min } from 'class-validator';
+import { IsEpochMs } from '@vigov/shared';
 
 /**
  * Nút "Chuyển thành công việc" trên màn hình Văn bản đến.
@@ -23,9 +21,8 @@ export class DocumentToTaskDto {
   department?: string;
 
   @IsOptional()
-  @IsString()
-  @Matches(VN_DATE_PATTERN, { message: 'Hạn xử lý phải theo định dạng dd/MM/yyyy' })
-  deadline?: string;
+  @IsEpochMs('Hạn xử lý')
+  deadline?: number;
 }
 
 /**
@@ -46,9 +43,8 @@ export class FeedbackToTaskDto {
   department?: string;
 
   @IsOptional()
-  @IsString()
-  @Matches(VN_DATE_PATTERN, { message: 'Hạn xử lý phải theo định dạng dd/MM/yyyy' })
-  deadline?: string;
+  @IsEpochMs('Hạn xử lý')
+  deadline?: number;
 }
 
 /** Tham số cho GET /workflow/deadline-warnings */

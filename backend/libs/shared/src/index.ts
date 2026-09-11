@@ -18,6 +18,7 @@ export * from './money/vnd';
 
 export * from './dto/soft-delete.dto';
 export * from './dto/list-query.dto';
+export * from './dto/epoch.dto';
 
 /* Khuôn dùng chung v2 — thời gian dạng số, tham chiếu bằng id, nhật ký chuẩn hoá */
 export * from './time/epoch';

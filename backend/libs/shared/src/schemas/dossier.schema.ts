@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { ActivityEntry, ActivityEntrySchema } from './activity-log';
+import { applyEpochTimestamps } from './timestamped';
 
 export type DossierDocument = HydratedDocument<Dossier>;
 
@@ -37,7 +38,7 @@ export class DossierStepTime {
   key: string;
 
   @Prop({ required: true })
-  at: Date;
+  at: number;
 }
 export const DossierStepTimeSchema = SchemaFactory.createForClass(DossierStepTime);
 
@@ -49,7 +50,7 @@ export const DossierStepTimeSchema = SchemaFactory.createForClass(DossierStepTim
  * mục liên thông đó khách đã xác nhận nằm NGOÀI phạm vi WBS. Dữ liệu hiện tại
  * trong collection này là seed demo (xem docs/01-BACKEND.md mục Hồ sơ một cửa).
  */
-@Schema({ collection: 'dossiers', timestamps: true })
+@Schema({ collection: 'dossiers' })
 export class Dossier {
   /** Mã tra cứu in trên giấy tiếp nhận: HS-2026-04182 */
   @Prop({ required: true, unique: true, index: true })
@@ -83,13 +84,13 @@ export class Dossier {
   @Prop({ enum: DOSSIER_STEP_KEYS, default: 'received', index: true })
   status: string;
 
-  /** Thời điểm tiếp nhận hồ sơ */
-  @Prop({ required: true })
-  submittedAt: Date;
+  /** Thời điểm tiếp nhận hồ sơ — milli-giây UTC */
+  @Prop({ required: true, index: true })
+  submittedAt: number;
 
-  /** Hạn trả kết quả theo giấy hẹn */
+  /** Hạn trả kết quả theo giấy hẹn — milli-giây UTC, hết ngày giờ Việt Nam */
   @Prop({ index: true })
-  dueAt?: Date;
+  dueAt?: number;
 
   /** Ghi chú hiển thị cho công dân (ví dụ hướng dẫn đến nhận kết quả) */
   @Prop({ default: '' })
@@ -105,3 +106,4 @@ export class Dossier {
 }
 
 export const DossierSchema = SchemaFactory.createForClass(Dossier);
+applyEpochTimestamps(DossierSchema);

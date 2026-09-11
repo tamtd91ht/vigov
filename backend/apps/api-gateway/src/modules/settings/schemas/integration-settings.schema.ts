@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { applyEpochTimestamps } from '@vigov/shared';
 
 export type IntegrationSettingsDocument = HydratedDocument<IntegrationSettings>;
 
@@ -42,6 +43,7 @@ export class OcrIntegrationConfig {
 }
 
 export const OcrIntegrationConfigSchema = SchemaFactory.createForClass(OcrIntegrationConfig);
+applyEpochTimestamps(OcrIntegrationConfigSchema);
 
 /**
  * Cấu hình nhà cung cấp bên thứ 3, sửa được từ trang Cấu hình — WBS #9.
@@ -57,7 +59,7 @@ export const OcrIntegrationConfigSchema = SchemaFactory.createForClass(OcrIntegr
  * Mở rộng dần: thêm nhà cung cấp loại khác (đọc thẻ căn cước, GIS, ZNS) thì
  * thêm một trường lồng theo đúng khuôn `ocr`, KHÔNG tạo collection mới.
  */
-@Schema({ collection: 'integration_settings', timestamps: true })
+@Schema({ collection: 'integration_settings' })
 export class IntegrationSettings {
   /** Luôn là `INTEGRATION_SETTINGS_KEY` — chỉ mục duy nhất chặn bản ghi thứ hai */
   @Prop({ required: true, unique: true, index: true, default: INTEGRATION_SETTINGS_KEY })
@@ -78,3 +80,4 @@ export class IntegrationSettings {
 }
 
 export const IntegrationSettingsSchema = SchemaFactory.createForClass(IntegrationSettings);
+applyEpochTimestamps(IntegrationSettingsSchema);

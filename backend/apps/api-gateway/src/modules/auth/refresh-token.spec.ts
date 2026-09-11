@@ -47,7 +47,7 @@ interface Harness {
 interface HarnessOptions {
   /** Bí mật ĐANG có hiệu lực; null = phiên chưa từng cấp refresh token */
   storedSecret?: string | null;
-  refreshExpiresAt?: Date | null;
+  refreshExpiresAt?: number | null;
   revoked?: boolean;
   /** SessionRegistry.isActive trả về gì (phiên bị thu hồi / chủ tài khoản bị khoá) */
   active?: boolean;
@@ -59,7 +59,7 @@ interface HarnessOptions {
 function makeService(options: HarnessOptions = {}): Harness {
   const {
     storedSecret = 'bi-mat-dang-co-hieu-luc',
-    refreshExpiresAt = new Date(Date.now() + 7 * 24 * 3600 * 1000),
+    refreshExpiresAt = Date.now() + 7 * 24 * 3600 * 1000,
     revoked = false,
     active = true,
     staff = STAFF,
@@ -73,7 +73,7 @@ function makeService(options: HarnessOptions = {}): Harness {
     ip: '10.0.0.1',
     device: 'Chrome',
     revoked,
-    lastActiveAt: new Date(0),
+    lastActiveAt: 0,
     refreshTokenHash: storedSecret === null ? undefined : bcrypt.hashSync(storedSecret, 4),
     refreshExpiresAt: refreshExpiresAt ?? undefined,
   });
@@ -194,8 +194,8 @@ describe('AuthService.refresh — xoay vòng', () => {
 
     await service.refresh(VALID_TOKEN, '', '');
 
-    const patch = sessionUpdateOne.mock.calls[0][1] as { $set: { refreshExpiresAt: Date } };
-    const seconds = (patch.$set.refreshExpiresAt.getTime() - Date.now()) / 1000;
+    const patch = sessionUpdateOne.mock.calls[0][1] as { $set: { refreshExpiresAt: number } };
+    const seconds = (patch.$set.refreshExpiresAt - Date.now()) / 1000;
     expect(seconds).toBeGreaterThan(604_800 - 60);
     expect(seconds).toBeLessThanOrEqual(604_800);
   });
@@ -207,7 +207,7 @@ describe('AuthService.refresh — xoay vòng', () => {
 
     expect(session.ip).toBe('10.0.0.2');
     expect(session.device).toBe('Firefox');
-    expect((session.lastActiveAt as Date).getTime()).toBeGreaterThan(0);
+    expect(session.lastActiveAt as number).toBeGreaterThan(0);
   });
 
   it('đọc LẠI vai trò từ cơ sở dữ liệu, không nhân bản payload cũ', async () => {
@@ -276,7 +276,7 @@ describe('AuthService.refresh — phiên không dùng được', () => {
   });
 
   it('refresh token hết hạn thì đóng hẳn phiên và trả 401', async () => {
-    const { service, session } = makeService({ refreshExpiresAt: new Date(Date.now() - 1000) });
+    const { service, session } = makeService({ refreshExpiresAt: Date.now() - 1000 });
 
     await expect(service.refresh(VALID_TOKEN, '', '')).rejects.toBeInstanceOf(UnauthorizedException);
 

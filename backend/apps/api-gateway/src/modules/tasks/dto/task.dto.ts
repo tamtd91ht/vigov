@@ -1,5 +1,10 @@
 import { Type } from 'class-transformer';
-import { SoftDeleteBodyDto, SoftDeleteQueryDto, TransformStringArray } from '@vigov/shared';
+import {
+  IsEpochMs,
+  SoftDeleteBodyDto,
+  SoftDeleteQueryDto,
+  TransformStringArray,
+} from '@vigov/shared';
 import {
   ArrayMaxSize,
   ArrayNotEmpty,
@@ -11,7 +16,6 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  Matches,
   Max,
   MaxLength,
   Min,
@@ -23,8 +27,11 @@ export const TASK_STATUSES = ['moi', 'dang', 'cho', 'qua', 'xong'] as const;
 export const TASK_PRIORITIES = ['cao', 'tb', 'thap'] as const;
 export const TASK_SOURCE_TYPES = ['vb', 'pa', 'hop'] as const;
 
-/** dd/MM/yyyy — giữ nguyên định dạng hiển thị của FE */
-export const VN_DATE_PATTERN = /^\d{2}\/\d{2}\/\d{4}$/;
+/*
+ * `VN_DATE_PATTERN` đã bỏ: hạn xử lý nhận vào dạng SỐ milli-giây (khuôn thời
+ * gian v2), không còn chuỗi `dd/MM/yyyy`. Máy chủ tự chuẩn hoá về hết ngày giờ
+ * Việt Nam, xem `endOfVnDayMs`.
+ */
 
 /** Một việc con trong checklist nhiệm vụ */
 export class ChecklistItemDto {
@@ -53,9 +60,8 @@ export class CreateTaskDto {
   @IsNotEmpty({ message: 'Vui lòng chọn bộ phận chủ trì' })
   department: string;
 
-  @IsString()
-  @Matches(VN_DATE_PATTERN, { message: 'Hạn xử lý phải theo định dạng dd/MM/yyyy' })
-  deadline: string;
+  @IsEpochMs('Hạn xử lý')
+  deadline: number;
 
   @IsOptional()
   @IsIn(TASK_PRIORITIES, { message: 'Mức ưu tiên chỉ nhận: cao, tb, thap' })
@@ -106,9 +112,8 @@ export class UpdateTaskDto {
   department?: string;
 
   @IsOptional()
-  @IsString()
-  @Matches(VN_DATE_PATTERN, { message: 'Hạn xử lý phải theo định dạng dd/MM/yyyy' })
-  deadline?: string;
+  @IsEpochMs('Hạn xử lý')
+  deadline?: number;
 
   @IsOptional()
   @IsIn(TASK_PRIORITIES, { message: 'Mức ưu tiên chỉ nhận: cao, tb, thap' })

@@ -1,7 +1,7 @@
 /**
  * Dữ liệu seed phân hệ Nhiệm vụ (WBS #3) — port từ admin-web/src/mocks/tasks.ts.
- * Mock dùng `id` (NV-2601) còn schema dùng `code`; `deadlineAt` sinh từ `deadline`
- * (dd/MM/yyyy, lấy mốc cuối ngày). Bình luận và nhật ký sinh theo đúng công thức
+ * Mock dùng `id` (NV-2601) còn schema dùng `code`. Hạn xử lý khai dạng chuỗi
+ * `dd/MM/yyyy` cho người đọc, quy đổi sang mốc số (hết ngày giờ VN) khi dựng. Bình luận và nhật ký sinh theo đúng công thức
  * của mockTaskComments / mockTaskLog để giao diện có nội dung như bản demo.
  */
 import type { ActivityEntry, Comment, Task } from '@vigov/shared';
@@ -460,7 +460,7 @@ function buildTimeline(task: TaskBase): ActivityEntry[] {
 /** 15 nhiệm vụ NV-2601…NV-2615 đã chuyển đổi sang schema Task của backend */
 export const TASK_SEED: TaskSeed[] = TASK_BASE.map((task) => ({
   ...task,
-  deadlineAt: endOfVnDay(task.deadline),
+  deadline: endOfVnDay(task.deadline),
   comments: buildComments(task),
   timeline: buildTimeline(task),
   attachments: TASK_ATTACHMENTS,

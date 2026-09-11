@@ -16,7 +16,7 @@
  *     đặt số demo tất định ở đây; API luôn trả bản đã che.
  */
 import { DOSSIER_STEP_KEYS, type Dossier } from '@vigov/shared';
-import { endOfVnDay, parseVnDateTime, seedActivity } from './seed.util';
+import { endOfVnDay, parseVnDateTime, seedActivityAt } from './seed.util';
 
 /** Khoa hanh dong cho nhat ky cua du lieu seed - xem chu thich o tasks.seed.ts */
 const ACT_NOTE = 'dossier.note';
@@ -87,23 +87,22 @@ const TIMELINE_TITLES = [
   'Trả kết quả cho công dân',
 ];
 
-/** dd/MM/yyyy HH:mm — cùng định dạng nhật ký của Nhiệm vụ và Phản ánh */
-function timeLabel(value: Date): string {
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${p(value.getDate())}/${p(value.getMonth() + 1)}/${value.getFullYear()} ${p(value.getHours())}:${p(value.getMinutes())}`;
-}
+/*
+ * `timeLabel` cục bộ đã bỏ — `seedActivity` nhận thẳng mốc số, không cần dựng
+ * lại chuỗi để rồi bóc ngược ra.
+ */
 
 /**
  * Mốc vào từng bước đã đi qua.
  * Mock chỉ có ngày nộp và ngày hẹn trả, nên chia đều khoảng giữa hai mốc cho
  * các bước — đủ để tracker hiển thị mốc thời gian hợp lý và TẤT ĐỊNH.
  */
-function buildStepTimes(submitted: Date, due: Date, currentStep: number) {
-  const span = Math.max(due.getTime() - submitted.getTime(), 0);
+function buildStepTimes(submitted: number, due: number, currentStep: number) {
+  const span = Math.max(due - submitted, 0);
   const slot = span / DOSSIER_STEP_KEYS.length;
   return DOSSIER_STEP_KEYS.slice(0, currentStep).map((key, index) => ({
     key,
-    at: index === 0 ? submitted : new Date(submitted.getTime() + slot * index),
+    at: index === 0 ? submitted : Math.round(submitted + slot * index),
   }));
 }
 
@@ -125,10 +124,10 @@ export const DOSSIER_SEED: DossierSeed[] = MOCKS.map((mock) => {
     note: mock.note,
     stepTimes,
     timeline: stepTimes.map((step, index) =>
-      seedActivity(
+      seedActivityAt(
         ACT_NOTE,
         `${TIMELINE_TITLES[index]} · ${mock.assignee} — ${mock.department}`,
-        timeLabel(step.at),
+        step.at,
         index === stepTimes.length - 1 ? 'cur' : 'ok',
       ),
     ),

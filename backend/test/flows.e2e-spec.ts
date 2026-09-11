@@ -18,7 +18,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
 import request from 'supertest';
-import { SlaRule, type SlaRuleDocument, StaffUser, type StaffUserDocument } from '@vigov/shared';
+import { parseVnDateMs, SlaRule, type SlaRuleDocument, StaffUser, type StaffUserDocument} from '@vigov/shared';
 
 const PASSWORD = 'ViGov@2026';
 const ADMIN = { username: 'binh.nv', password: PASSWORD };
@@ -145,13 +145,13 @@ describe('ViGov API — luồng nghiệp vụ đầu-cuối', () => {
       const res = await asAdmin(api().post(`${API}/documents`))
         .send({
           refNo: '512/UBND-VP',
-          date: '10/08/2026',
+          date: parseVnDateMs('10/08/2026'),
           sender: 'UBND huyện Phú Xuyên',
           summary: 'V/v triển khai kế hoạch chỉnh trang đô thị quý IV',
           docType: 'Kế hoạch',
           kind: 'incoming',
           department: 'Địa chính – Xây dựng',
-          deadline: '25/09/2026',
+          deadline: parseVnDateMs('25/09/2026'),
           urgency: 'Khẩn',
         })
         .expect(201);
@@ -181,7 +181,7 @@ describe('ViGov API — luồng nghiệp vụ đầu-cuối', () => {
         sourceLabel: 'Từ 512/UBND-VP',
         department: 'Địa chính – Xây dựng',
         assignee: 'Lê Minh Tuấn',
-        deadline: '25/09/2026',
+        deadline: parseVnDateMs('25/09/2026'),
         // urgency 'Khẩn' → mức ưu tiên 'cao'
         priority: 'cao',
         status: 'moi',
@@ -366,7 +366,7 @@ describe('ViGov API — luồng nghiệp vụ đầu-cuối', () => {
       title: 'Kế toán thử tạo nhiệm vụ',
       assignee: 'Phạm Thị Hoa',
       department: 'Tài chính – Kế toán',
-      deadline: '30/11/2026',
+      deadline: parseVnDateMs('30/11/2026'),
     };
 
     it('kế toán KHÔNG được tạo nhiệm vụ (403)', async () => {

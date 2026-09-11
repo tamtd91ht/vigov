@@ -1,6 +1,6 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import type { Model } from 'mongoose';
-import type { TaskDocument } from '@vigov/shared';
+import { parseVnDateMs, type TaskDocument } from '@vigov/shared';
 import { duplicateKeyError, fakeDoc, queryChain } from '../../../../../test/support/mongoose-mock';
 import type { FilesService } from '../files/files.service';
 import type { RealtimeService } from '../realtime/realtime.service';
@@ -9,8 +9,6 @@ import {
   TASK_STATUS_NEW,
   TASK_STATUS_WAITING_APPROVAL,
   TasksService,
-  formatVnDate,
-  parseVnDate,
 } from './tasks.service';
 
 /* ─────────────────────────── Tiện ích dựng mock ─────────────────────────── */
@@ -60,69 +58,15 @@ const VALID_TASK = {
   title: 'Rà soát quỹ đất công ích',
   assignee: 'Lê Minh Tuấn',
   department: 'Địa chính – Xây dựng',
-  deadline: '30/09/2026',
+  deadline: parseVnDateMs('30/09/2026') as number,
 };
 
-/* ─────────────────────────────── parseVnDate ─────────────────────────────── */
-
-describe('parseVnDate', () => {
-  it('trả mốc CUỐI ngày 23:59:59.999 để hạn tính hết ngày', () => {
-    const date = parseVnDate('30/09/2026') as Date;
-    expect(date.getFullYear()).toBe(2026);
-    expect(date.getMonth()).toBe(8); // tháng 9 (đếm từ 0)
-    expect(date.getDate()).toBe(30);
-    expect([date.getHours(), date.getMinutes(), date.getSeconds(), date.getMilliseconds()]).toEqual([
-      23, 59, 59, 999,
-    ]);
-  });
-
-  it.each([
-    ['31/02/2026', 'ngày 31 tháng 2 không tồn tại'],
-    ['30/02/2026', 'tháng 2 chỉ có tối đa 29 ngày'],
-    ['29/02/2026', '2026 không phải năm nhuận'],
-    ['31/04/2026', 'tháng 4 chỉ có 30 ngày'],
-    ['31/06/2026', 'tháng 6 chỉ có 30 ngày'],
-    ['32/01/2026', 'không có ngày 32'],
-    ['00/01/2026', 'không có ngày 0'],
-    ['15/13/2026', 'không có tháng 13'],
-    ['15/00/2026', 'không có tháng 0'],
-  ])('từ chối %s (%s)', (input) => {
-    expect(parseVnDate(input)).toBeUndefined();
-  });
-
-  it('chấp nhận 29/02/2024 vì 2024 là năm nhuận', () => {
-    const date = parseVnDate('29/02/2024') as Date;
-    expect(date).toBeInstanceOf(Date);
-    expect(date.getDate()).toBe(29);
-    expect(date.getMonth()).toBe(1);
-  });
-
-  it.each([
-    ['', 'chuỗi rỗng'],
-    ['1/1/2026', 'thiếu số 0 đứng đầu'],
-    ['2026-09-30', 'định dạng ISO'],
-    ['30/09/26', 'năm chỉ 2 chữ số'],
-    ['ngày mai', 'không phải ngày'],
-    ['30/09/2026 08:00', 'thừa phần giờ'],
-  ])('trả undefined với %s (%s)', (input) => {
-    expect(parseVnDate(input)).toBeUndefined();
-  });
-
-  it('trả undefined khi không truyền gì', () => {
-    expect(parseVnDate()).toBeUndefined();
-    expect(parseVnDate(null)).toBeUndefined();
-  });
-
-  it('bỏ qua khoảng trắng thừa hai đầu', () => {
-    expect(parseVnDate('  30/09/2026  ')).toBeInstanceOf(Date);
-  });
-
-  it('formatVnDate là phép nghịch đảo của parseVnDate', () => {
-    expect(formatVnDate(parseVnDate('05/03/2026') as Date)).toBe('05/03/2026');
-  });
-});
-
-/* ─────────────────────────── Sinh mã nhiệm vụ ─────────────────────────── */
+/*
+ * Phép kiểm cho `parseVnDate` / `formatVnDate` đã chuyển sang
+ * `libs/shared/src/time/epoch.spec.ts` cùng với hai hàm. Bản cũ ở đây neo vào
+ * giờ MÁY CHỦ nên trên container UTC hạn bị nới thêm 7 giờ; bản dùng chung neo
+ * vào giờ Việt Nam và có phép kiểm múi giờ riêng.
+ */
 
 describe('TasksService — sinh mã NV-<yy><stt>', () => {
   beforeEach(() => {
@@ -199,14 +143,24 @@ describe('TasksService — sinh mã NV-<yy><stt>', () => {
 /* ───────────────────── Tạo nhiệm vụ: hạn & tiến độ ban đầu ───────────────────── */
 
 describe('TasksService.create', () => {
-  it('từ chối hạn xử lý không tồn tại (31/02/2026)', async () => {
+  /*
+   * ĐỔI HÀNH VI Ở v2: hạn xử lý nhận vào là MỐC SỐ, nên không còn tồn tại "ngày
+   * 31/02" để service từ chối. Hai lớp chặn thay thế, mỗi lớp có test riêng:
+   *   · `IsEpochMs` ở DTO — chặn giá trị ngoài khoảng và chặn lẫn giây/milli-giây;
+   *   · `parseVnDateMs` — nơi duy nhất còn phân tích chuỗi, từ chối 31/02
+   *     (`libs/shared/src/time/epoch.spec.ts`).
+   * Việc service phải bảo đảm là CHUẨN HOÁ, khoá ở hai ca dưới đây.
+   */
+  it('chuẩn hoá hạn xử lý về HẾT ngày giờ Việt Nam, dù client gửi mốc giữa ngày', async () => {
     const mock = taskModelMock([]);
     const service = new TasksService(mock.model, realtimeMock(), filesMock());
 
-    await expect(service.create({ ...VALID_TASK, deadline: '31/02/2026' } as never)).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
-    expect(mock.createMock).not.toHaveBeenCalled();
+    // 10:00 giờ VN ngày 30/09/2026
+    const giuaNgay = Date.UTC(2026, 8, 30, 3, 0, 0);
+    await service.create({ ...VALID_TASK, deadline: giuaNgay } as never);
+
+    const saved = mock.createMock.mock.calls[0][0] as { deadline: number };
+    expect(saved.deadline).toBe(parseVnDateMs('30/09/2026'));
   });
 
   it('tiến độ ban đầu = 0 khi mọi việc con chưa tick', async () => {
@@ -261,7 +215,7 @@ describe('TasksService.toggleChecklistItem', () => {
       progress: 0,
       department: 'Địa chính – Xây dựng',
       assignee: 'Lê Minh Tuấn',
-      deadline: '30/09/2026',
+      deadline: parseVnDateMs('30/09/2026') as number,
       timeline: [] as unknown[],
       checklist: titles.map((title, i) => ({ title, done: done[i] ?? false })),
     });
@@ -374,8 +328,7 @@ describe('TasksService.update', () => {
       progress: 0,
       department: 'Địa chính – Xây dựng',
       assignee: 'Lê Minh Tuấn',
-      deadline: '30/09/2026',
-      deadlineAt: parseVnDate('30/09/2026'),
+      deadline: parseVnDateMs('30/09/2026') as number,
       timeline: [] as unknown[],
       checklist: [] as { title: string; done: boolean }[],
     });
@@ -419,14 +372,15 @@ describe('TasksService.update', () => {
     expect(task.title).toBe('mới');
   });
 
-  it('từ chối đổi sang hạn xử lý không tồn tại và giữ nguyên hạn cũ', async () => {
+  it('đổi hạn xử lý cũng chuẩn hoá về hết ngày giờ Việt Nam', async () => {
     const task = buildTask();
     const { service } = serviceFor(task);
 
-    await expect(service.update('NV-2601', { deadline: '31/11/2026' } as never)).rejects.toBeInstanceOf(
-      BadRequestException,
-    );
-    expect(task.deadline).toBe('30/09/2026');
+    // 00:30 giờ VN ngày 15/10/2026 — mốc đầu ngày vẫn phải thành hết ngày đó,
+    // nếu không thì client gửi 00:00 là tự cắt mất một ngày làm việc
+    await service.update('NV-2601', { deadline: Date.UTC(2026, 9, 14, 17, 30, 0) } as never);
+
+    expect(task.deadline).toBe(parseVnDateMs('15/10/2026'));
   });
 
   it('ghi nhật ký khi tiến độ được sửa tay', async () => {
@@ -449,18 +403,22 @@ describe('TasksService.update', () => {
 describe('TasksService.daysLeft', () => {
   const service = () => new TasksService(taskModelMock().model, realtimeMock(), filesMock());
 
+  /** 12:00 giờ Việt Nam ngày 15/06/2026 */
+  const MOC_XET = Date.UTC(2026, 5, 15, 5, 0, 0);
+
   it('âm khi đã quá hạn', () => {
-    const task = { deadlineAt: new Date(2026, 5, 10, 23, 59, 59, 999) } as TaskDocument;
-    expect(service().daysLeft(task, new Date(2026, 5, 15, 12, 0, 0))).toBeLessThan(0);
+    const task = { deadline: parseVnDateMs('10/06/2026') } as TaskDocument;
+    expect(service().daysLeft(task, MOC_XET)).toBeLessThan(0);
   });
 
   it('dương khi còn hạn', () => {
-    const task = { deadlineAt: new Date(2026, 5, 20, 23, 59, 59, 999) } as TaskDocument;
-    expect(service().daysLeft(task, new Date(2026, 5, 15, 12, 0, 0))).toBe(6);
+    const task = { deadline: parseVnDateMs('20/06/2026') } as TaskDocument;
+    expect(service().daysLeft(task, MOC_XET)).toBe(6);
   });
 
-  it('trả 0 khi nhiệm vụ không đặt hạn', () => {
-    expect(service().daysLeft({} as TaskDocument, new Date())).toBe(0);
+  it('hạn là chính hôm nay thì còn 1 ngày — vẫn hết ngày mới quá hạn', () => {
+    const task = { deadline: parseVnDateMs('15/06/2026') } as TaskDocument;
+    expect(service().daysLeft(task, MOC_XET)).toBe(1);
   });
 });
 

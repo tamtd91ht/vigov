@@ -1,4 +1,6 @@
 import {
+  vnDaysBetween,
+  vnYearOf,
   type DisbursementEntry,
   type DisbursementState,
   type QuarterPlan,
@@ -46,11 +48,12 @@ export interface ProgressInput {
   plannedDong: number;
   actualDong: number;
   quarterPlans: QuarterPlan[];
-  /** dd/MM/yyyy, rỗng nghĩa là chưa đặt mốc */
-  startDate: string;
-  endDate: string;
+  /** Mốc bắt đầu / kết thúc kế hoạch — milli-giây UTC, bỏ trống khi chưa ấn định */
+  startDate?: number;
+  endDate?: number;
   year: number;
-  asOf: Date;
+  /** Mốc tính tiến độ — milli-giây UTC */
+  asOf: number;
   thresholds: ProgressThresholds;
 }
 
@@ -70,24 +73,24 @@ export interface ProgressResult {
   scheduleState: ScheduleState;
 }
 
-/** `dd/MM/yyyy` → Date lúc 00:00 giờ địa phương; không đúng dạng thì trả null */
-export function parseVnDate(value: string): Date | null {
-  const matched = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec((value ?? '').trim());
-  if (!matched) return null;
-  const day = Number(matched[1]);
-  const month = Number(matched[2]);
-  const year = Number(matched[3]);
-  if (day < 1 || day > 31 || month < 1 || month > 12) return null;
-  const date = new Date(year, month - 1, day);
-  // Chặn ngày không tồn tại kiểu 31/02 — Date tự nhảy sang tháng sau
-  if (date.getMonth() !== month - 1 || date.getDate() !== day) return null;
-  return date;
+/*
+ * `parseVnDate` và `daysBetween` cục bộ đã bỏ — đây là bản thứ ba của cùng một
+ * phép quy đổi trong dự án, và cả hai neo vào giờ MÁY CHỦ nên trên container
+ * UTC biên ngày lệch 7 giờ. Dùng `vnDaysBetween` của `@vigov/shared`; mốc kế
+ * hoạch giờ là số nên không còn bước phân tích chuỗi.
+ */
+
+/** Lệch giờ Việt Nam so với UTC — chỉ dùng để dựng biên quý ngân sách */
+const VN_OFFSET_MS = 7 * 60 * 60_000;
+
+/** Mốc 00:00 giờ Việt Nam của một ngày theo lịch (tháng 0-based) */
+function vnDayMs(year: number, month: number, day: number): number {
+  return Date.UTC(year, month, day) - VN_OFFSET_MS;
 }
 
-/** Số ngày trọn vẹn giữa hai mốc (b − a), tính theo ngày lịch */
-function daysBetween(a: Date, b: Date): number {
-  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  return Math.round((startOfDay(b) - startOfDay(a)) / 86_400_000);
+/** Tháng 0-based theo lịch Việt Nam của một mốc */
+function vnMonthOf(ms: number): number {
+  return new Date(ms + VN_OFFSET_MS).getUTCMonth();
 }
 
 /** Luỹ kế đã giải ngân = tổng giao dịch chi − tổng giao dịch hoàn trả */
@@ -114,16 +117,17 @@ function quarterAmount(quarterPlans: QuarterPlan[], quarter: number): number {
 export function planCumulative(
   quarterPlans: QuarterPlan[],
   year: number,
-  asOf: Date,
+  asOf: number,
 ): { cumulative: number; expected: number } {
   const totalAll = [1, 2, 3, 4].reduce((s, q) => s + quarterAmount(quarterPlans, q), 0);
 
+  const namHienTai = vnYearOf(asOf);
   // Năm ngân sách đã qua: toàn bộ kế hoạch đều đã tới hạn
-  if (asOf.getFullYear() > year) return { cumulative: totalAll, expected: totalAll };
+  if (namHienTai > year) return { cumulative: totalAll, expected: totalAll };
   // Năm ngân sách chưa tới: chưa có phần nào tới hạn
-  if (asOf.getFullYear() < year) return { cumulative: 0, expected: 0 };
+  if (namHienTai < year) return { cumulative: 0, expected: 0 };
 
-  const month = asOf.getMonth();
+  const month = vnMonthOf(asOf);
   const currentQuarter = Math.floor(month / 3) + 1;
 
   let cumulative = 0;
@@ -131,10 +135,12 @@ export function planCumulative(
 
   // Phần quý hiện tại tính theo tỷ lệ ngày đã trôi qua trong quý
   const [firstMonth, lastMonth] = QUARTER_MONTHS[currentQuarter - 1];
-  const quarterStart = new Date(year, firstMonth, 1);
-  const quarterEnd = new Date(year, lastMonth + 1, 0);
-  const totalDays = daysBetween(quarterStart, quarterEnd) + 1;
-  const elapsedDays = Math.min(Math.max(daysBetween(quarterStart, asOf) + 1, 0), totalDays);
+  /* Biên quý neo vào giờ Việt Nam: `Date.UTC(...) - VN_OFFSET` là 00:00 giờ VN.
+     Ngày 0 của tháng kế tiếp là ngày cuối của tháng này. */
+  const quarterStart = vnDayMs(year, firstMonth, 1);
+  const quarterEnd = vnDayMs(year, lastMonth + 1, 0);
+  const totalDays = vnDaysBetween(quarterEnd, quarterStart) + 1;
+  const elapsedDays = Math.min(Math.max(vnDaysBetween(asOf, quarterStart) + 1, 0), totalDays);
   const currentPlan = quarterAmount(quarterPlans, currentQuarter);
 
   return {
@@ -163,9 +169,9 @@ export function computeProgress(input: ProgressInput): ProgressResult {
   const percent = percentOf(actualDong, plannedDong);
   const { cumulative, expected } = planCumulative(quarterPlans, year, asOf);
 
-  const start = parseVnDate(input.startDate);
-  const end = parseVnDate(input.endDate);
-  const daysLeft = end ? daysBetween(asOf, end) : null;
+  const start = input.startDate;
+  const end = input.endDate;
+  const daysLeft = end ? vnDaysBetween(end, asOf) : null;
 
   const disbursementState = disbursementStateOf(plannedDong, actualDong);
 
@@ -173,7 +179,7 @@ export function computeProgress(input: ProgressInput): ProgressResult {
     if (disbursementState === 'du') return 'hoan-thanh';
     // Chưa có dự toán, hoặc chưa tới ngày bắt đầu kế hoạch
     if (plannedDong <= 0) return 'chua-den-han';
-    if (start && daysBetween(asOf, start) > 0) return 'chua-den-han';
+    if (start && vnDaysBetween(start, asOf) > 0) return 'chua-den-han';
     // Quá hạn kết thúc mà chưa giải ngân đủ
     if (daysLeft !== null && daysLeft < 0) return 'cham';
     // Đã hết quý mà chưa đạt kế hoạch luỹ kế của các quý đó

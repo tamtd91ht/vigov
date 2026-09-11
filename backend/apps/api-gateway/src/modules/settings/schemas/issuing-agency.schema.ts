@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { applyEpochTimestamps } from '@vigov/shared';
 
 export type IssuingAgencyDocument = HydratedDocument<IssuingAgency>;
 
@@ -31,7 +32,7 @@ export const AGENCY_LEVEL_LABELS: Record<string, string> = {
  * văn bản cũ đang tham chiếu. Cơ quan sáp nhập, đổi tên là chuyện thường xuyên
  * trong hành chính — xoá hẳn là làm mồ côi dữ liệu sổ văn bản đã vào.
  */
-@Schema({ collection: 'issuing_agencies', timestamps: true })
+@Schema({ collection: 'issuing_agencies' })
 export class IssuingAgency {
   /** Tên đầy đủ, đúng như ghi trên văn bản. Đây là giá trị lưu vào `sender` */
   @Prop({ required: true, unique: true, index: true, trim: true })
@@ -54,3 +55,4 @@ export class IssuingAgency {
 }
 
 export const IssuingAgencySchema = SchemaFactory.createForClass(IssuingAgency);
+applyEpochTimestamps(IssuingAgencySchema);

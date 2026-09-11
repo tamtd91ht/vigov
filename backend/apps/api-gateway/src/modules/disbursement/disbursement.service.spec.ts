@@ -4,6 +4,7 @@ import type { Model } from 'mongoose';
 import type { BudgetItemDocument, JwtPayload } from '@vigov/shared';
 import { fakeDoc, queryChain } from '../../../../../test/support/mongoose-mock';
 import { DisbursementService } from './disbursement.service';
+import { parseVnDateMs } from '@vigov/shared';
 
 /**
  * Luật nghiệp vụ của phân hệ Giải ngân.
@@ -38,10 +39,10 @@ function makeService(over: Record<string, unknown> = {}) {
     initialPlannedDong: 3 * TY,
     plannedDong: 3 * TY,
     actualDong: 1 * TY,
-    startDate: '01/01/2026',
-    endDate: '31/12/2026',
+    startDate: parseVnDateMs('01/01/2026') as number,
+    endDate: parseVnDateMs('31/12/2026') as number,
     entries: [
-      { type: 'chi', amountDong: 1 * TY, date: '10/03/2026', content: 'Đợt 1' },
+      { type: 'chi', amountDong: 1 * TY, date: parseVnDateMs('10/03/2026') as number, content: 'Đợt 1' },
     ] as Record<string, unknown>[],
     adjustments: [] as Record<string, unknown>[],
     documents: [] as Record<string, unknown>[],
@@ -107,7 +108,7 @@ describe('Workflow trạng thái hồ sơ', () => {
     const { service } = makeService({ approvalStatus: 'quyet-toan' });
 
     await expect(
-      service.addEntry('HM-01', { date: '01/12/2026', amountDong: 1000, content: 'x' }, KE_TOAN),
+      service.addEntry('HM-01', { date: parseVnDateMs('01/12/2026') as number, amountDong: 1000, content: 'x' }, KE_TOAN),
     ).rejects.toThrow(/Đã quyết toán/);
   });
 
@@ -128,7 +129,7 @@ describe('Chốt chặn: chỉ hạng mục ĐÃ PHÊ DUYỆT mới phát sinh t
     await expect(
       service.addEntry(
         'HM-01',
-        { date: '01/04/2026', amountDong: 100_000_000, content: 'Tạm ứng' },
+        { date: parseVnDateMs('01/04/2026') as number, amountDong: 100_000_000, content: 'Tạm ứng' },
         KE_TOAN,
       ),
     ).rejects.toThrow(/Phải được phê duyệt trước khi/);
@@ -151,7 +152,7 @@ describe('Điều chỉnh dự toán', () => {
       'HM-01',
       {
         decisionNo: '45/QĐ-UBND',
-        decidedAt: '15/06/2026',
+        decidedAt: parseVnDateMs('15/06/2026') as number,
         deltaDong: 500_000_000,
         reason: 'Bổ sung vốn theo nghị quyết HĐND xã',
       },
@@ -177,7 +178,7 @@ describe('Điều chỉnh dự toán', () => {
         'HM-01',
         {
           decisionNo: '46/QĐ-UBND',
-          decidedAt: '20/06/2026',
+          decidedAt: parseVnDateMs('20/06/2026') as number,
           deltaDong: -2_200_000_000,
           reason: 'Cắt giảm vốn',
         },
@@ -192,7 +193,7 @@ describe('Điều chỉnh dự toán', () => {
     await expect(
       service.addAdjustment(
         'HM-01',
-        { decisionNo: 'X', decidedAt: '01/01/2026', deltaDong: 0, reason: 'y' },
+        { decisionNo: 'X', decidedAt: parseVnDateMs('01/01/2026') as number, deltaDong: 0, reason: 'y' },
         LANH_DAO,
       ),
     ).rejects.toThrow(BadRequestException);
@@ -205,7 +206,7 @@ describe('Giao dịch chi trả và hoàn trả', () => {
 
     await service.addEntry(
       'HM-01',
-      { date: '01/07/2026', amountDong: 500_000_000, content: 'Đợt 2', voucherNo: 'UNC 12' },
+      { date: parseVnDateMs('01/07/2026') as number, amountDong: 500_000_000, content: 'Đợt 2', voucherNo: 'UNC 12' },
       KE_TOAN,
     );
 
@@ -218,7 +219,7 @@ describe('Giao dịch chi trả và hoàn trả', () => {
     await service.addEntry(
       'HM-01',
       {
-        date: '05/07/2026',
+        date: parseVnDateMs('05/07/2026') as number,
         type: 'hoan-tra',
         amountDong: 200_000_000,
         content: 'Nhà thầu trả lại phần chưa thi công',
@@ -238,7 +239,7 @@ describe('Giao dịch chi trả và hoàn trả', () => {
     await expect(
       service.addEntry(
         'HM-01',
-        { date: '05/07/2026', type: 'hoan-tra', amountDong: 2 * TY, content: 'x' },
+        { date: parseVnDateMs('05/07/2026') as number, type: 'hoan-tra', amountDong: 2 * TY, content: 'x' },
         KE_TOAN,
       ),
     ).rejects.toThrow(/lớn hơn số đã giải ngân/);
@@ -250,7 +251,7 @@ describe('Giao dịch chi trả và hoàn trả', () => {
     await expect(
       service.addEntry(
         'HM-01',
-        { date: '01/08/2026', amountDong: 2_500_000_000, content: 'Đợt lớn' },
+        { date: parseVnDateMs('01/08/2026') as number, amountDong: 2_500_000_000, content: 'Đợt lớn' },
         KE_TOAN,
       ),
     ).rejects.toThrow(/điều chỉnh dự toán/);
@@ -263,7 +264,7 @@ describe('Giao dịch chi trả và hoàn trả', () => {
     await expect(
       service.addEntry(
         'HM-01',
-        { date: '01/08/2026', amountDong: 1_000_000.5, content: 'x' },
+        { date: parseVnDateMs('01/08/2026') as number, amountDong: 1_000_000.5, content: 'x' },
         KE_TOAN,
       ),
     ).rejects.toThrow(/số nguyên không âm, đơn vị đồng/);
@@ -309,7 +310,7 @@ describe('Kế hoạch quý', () => {
     const { service } = makeService();
 
     await expect(
-      service.update('HM-01', { startDate: '01/12/2026', endDate: '01/03/2026' }, KE_TOAN),
+      service.update('HM-01', { startDate: parseVnDateMs('01/12/2026') as number, endDate: parseVnDateMs('01/03/2026') as number }, KE_TOAN),
     ).rejects.toThrow(/không được sau ngày kết thúc/);
   });
 });
@@ -321,7 +322,7 @@ describe('Hồ sơ đính kèm', () => {
       adjustments: [
         {
           decisionNo: '45/QĐ-UBND',
-          decidedAt: '15/06/2026',
+          decidedAt: parseVnDateMs('15/06/2026') as number,
           deltaDong: 500_000_000,
           reason: 'Bổ sung vốn',
           fileIds: ['f1'],

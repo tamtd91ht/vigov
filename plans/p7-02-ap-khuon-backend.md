@@ -126,3 +126,82 @@ Cả hai cần task riêng — xem mục 9.
 | 2 | Sửa 27 test e2e đỏ (`POST /files/upload` trả 415) | Đỏ có sẵn. Đáng chú ý: e2e đỏ nghĩa là **không có lưới an toàn** cho chính đợt nâng cấp v2 |
 | 3 | Chuẩn hoá `actor` của `audit_logs` | Đang lưu tên đăng nhập, là ngoại lệ có chủ ý của luật "luôn lưu id" — phải ghi vào tài liệu |
 | 4 | `withdrawDecidedBy` của phản ánh vẫn lưu tên | Trường tham chiếu thứ 14, phát hiện thêm khi làm chặng 2a → xử lý ở chặng 2c |
+
+---
+
+## 10. Chặng 2b — mốc thời gian dạng số (xong 11/09/2026)
+
+### Phạm vi thật, đo lại khi làm
+
+| Hạng mục | Số lượng |
+|---|---|
+| Schema bỏ `timestamps: true`, gắn `applyEpochTimestamps` | **26** (13 ở `libs/shared`, 13 cục bộ trong module) |
+| Trường `Date` đổi sang số | 18 |
+| Trường **chuỗi ngày** đổi sang số | 14 (`deadline`, `date`, `sentAt`, `decidedAt`, `issuedDate`, `startDate`, `endDate`, `requestedAt`, `disbursedAt`…) |
+| Trường bị **xoá** vì trùng nghĩa | 2 (`task.deadlineAt`, `document.deadlineAt`) |
+
+`SoftDeletable` giờ kế thừa `Timestamped`: mọi bản ghi nghiệp vụ có xoá mềm đều cần hai
+mốc, mà TypeScript chỉ cho kế thừa một lớp.
+
+### NGOẠI LỆ DUY NHẤT của quyết định "mọi mốc thời gian lưu dạng số"
+
+`otp_codes.expiresAt` **giữ `Date`**. Chỉ mục TTL của MongoDB chỉ hoạt động trên trường
+BSON `Date`; đổi sang số thì TTL **im lặng ngừng dọn** — không lỗi, không ai biết, và
+bảng mã OTP phình vô hạn với dữ liệu xác thực lẽ ra phải hết hạn. Đã ghi rõ lý do ngay
+trong `otp.schema.ts`.
+
+### Bốn tiện ích thời gian mới trong `@vigov/shared`
+
+| Hàm | Việc |
+|---|---|
+| `endOfVnDayMs(ms)` | Chuẩn hoá mốc bất kỳ về **hết ngày** giờ Việt Nam. Luật "hạn tính hết ngày" nằm ở máy chủ nên client gửi 00:00 cũng không cắt ngắn được một ngày làm việc |
+| `vnDaysBetween(a, b)` | Số **ngày lịch** giữa hai mốc. Cần cả hàm này và `daysLeftMs` vì hai phân hệ hiểu "còn mấy ngày" khác nhau: văn bản hiện "còn 0 ngày" là hết hôm nay, nhiệm vụ hiện "còn 1 ngày" cho cùng tình huống |
+| `vnMonthRangeMs(ms)` | Biên tháng theo giờ Việt Nam, cho thống kê "trong tháng" |
+| `vnYearOf(ms)` | Năm theo lịch Việt Nam, cho mã hồ sơ và số liệu theo năm |
+
+### Bộ kiểm tra dữ liệu vào: `IsEpochMs`
+
+Chặn cái bẫy hay gặp nhất khi API nhận epoch: **client gửi giây thay vì milli-giây**.
+`1789036200` vẫn là số nguyên dương hợp lệ nên `@IsInt()` cho qua, và bản ghi được lưu
+với mốc 20/01/1970 — không lỗi nào, chỉ là hạn xử lý của một hồ sơ hành chính thành quá
+hạn 56 năm. `IsEpochMs` chặn khoảng 2000–2100 kèm thông báo tiếng Việt nói rõ đơn vị.
+
+### Năm lỗi múi giờ có sẵn, sửa luôn trong chặng này
+
+Đều là cùng một nguyên nhân: tự suy ngày/tháng theo **giờ máy chủ**, mà container chạy UTC.
+
+| Chỗ | Sai gì |
+|---|---|
+| `tasks.service.parseVnDate` | Hạn bị nới thêm 7 giờ (23:59:59 UTC = 06:59 hôm sau giờ VN) |
+| `documents.service.daysLeftFrom` | Lệch một ngày ở số ngày còn lại |
+| `feedback.service.stats` | Biên tháng lệch 7 giờ: phiếu gửi 02:00 ngày 01 bị đếm vào **tháng trước** |
+| `dashboard.service` | Tháng của biểu đồ và biên quý luỹ kế lệch tương tự |
+| `notification.service.formatDate` | Tin nhắn gửi **cho người dân** có thể nêu sai ngày một đơn vị |
+
+Ba hàm phân tích `dd/MM/yyyy` trùng nhau (`tasks.service`, `documents.service`,
+`disbursement/progress.ts`) đã gom về `parseVnDateMs`; hai hàm định dạng cục bộ
+(`timeLabel`, `nowLabel`/`todayLabel`) gom về `formatVnDateTimeMs`.
+
+### Dữ liệu seed vẫn đọc được bằng mắt
+
+Seed giữ ngày dạng chuỗi `'19/08/2026'` ở phần khai báo — tệp seed là tệp người sửa tay,
+`1786...` thì không ai soát được. Quy đổi sang số ở đúng một bước dựng dữ liệu qua
+`endOfVnDay` / `vnDay` / `parseVnDateTime` của `seed.util.ts`.
+
+### Hai thay đổi hành vi phải ghi lại
+
+| # | Thay đổi | Hệ quả |
+|---|---|---|
+| 1 | Service **không còn** từ chối "ngày 31/02" | Mốc số không diễn tả được ngày không tồn tại. Hai lớp chặn thay thế: `IsEpochMs` ở DTO và `parseVnDateMs` (nơi duy nhất còn phân tích chuỗi). Test cũ đã được viết lại để khoá bảo đảm mới: **chuẩn hoá về hết ngày** |
+| 2 | Văn bản chưa ấn định hạn trả `deadline` **bỏ trống**, không phải `''` | Không dùng `0` làm giá trị rỗng: `0` là 01/01/1970 nên cron nhắc hạn sẽ dội cảnh báo cho toàn bộ số văn bản chưa có hạn |
+
+### Kiểm chứng
+
+| Phép kiểm | Trước (`545f914`) | Sau chặng 2b |
+|---|---|---|
+| Biên dịch | 8 lỗi (có sẵn ở `map`/`settings`) | **8 lỗi** — đúng 8 lỗi đó, 0 lỗi mới |
+| Test đơn vị | 588 xanh | **576 xanh** (12 ca ngày tháng gộp về `epoch.spec.ts`) |
+| Test e2e | 27 đỏ / 73 xanh | **27 đỏ / 73 xanh** — đối chiếu từng tên ca, **không hồi quy** |
+
+Riêng `libs/shared/src/time/epoch.spec.ts` có **34 ca**, phủ múi giờ, biên ngày, biên
+tháng, ngày không tồn tại và năm nhuận.

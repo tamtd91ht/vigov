@@ -3,6 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, type FilterQuery } from 'mongoose';
 import {
+  endOfVnDayMs,
+  nowMs,
+  vnYearOf,
   BUDGET_APPROVAL_LABELS,
   BudgetItem,
   DISBURSEMENT_ENTRY_TYPE_LABELS,
@@ -104,10 +107,13 @@ const CLOSED_STATUSES: BudgetApprovalStatus[] = ['huy', 'quyet-toan'];
 const STATUS_NEEDS_REASON: BudgetApprovalStatus[] = ['tu-choi', 'tam-dung', 'huy'];
 
 /** Bản ghi hạng mục đọc từ Mongo (lean hoặc toObject) */
+/** Lệch giờ Việt Nam so với UTC — chỉ dùng để suy quý của một giao dịch */
+const VN_OFFSET_MS = 7 * 60 * 60_000;
+
 type LeanBudgetItem = BudgetItem & {
   _id?: unknown;
-  createdAt?: Date;
-  updatedAt?: Date;
+  createdAt?: number;
+  updatedAt?: number;
 };
 
 /**
@@ -160,18 +166,18 @@ export class DisbursementService {
     plannedDong?: number;
     actualDong?: number;
     quarterPlans?: { quarter: number; amountDong: number }[];
-    startDate?: string;
-    endDate?: string;
+    startDate?: number;
+    endDate?: number;
     year: number;
   }): ProgressResult {
     return computeProgress({
       plannedDong: Math.trunc(item.plannedDong ?? 0),
       actualDong: Math.trunc(item.actualDong ?? 0),
       quarterPlans: item.quarterPlans ?? [],
-      startDate: item.startDate ?? '',
-      endDate: item.endDate ?? '',
+      startDate: item.startDate,
+      endDate: item.endDate,
       year: item.year,
-      asOf: new Date(),
+      asOf: nowMs(),
       thresholds: this.thresholds,
     });
   }
@@ -208,7 +214,7 @@ export class DisbursementService {
    * lọc sau khi lấy là đủ nhanh, và không bao giờ lọc theo một cờ đã cũ.
    */
   async list(query: ListBudgetQueryDto) {
-    const year = query.year ?? new Date().getFullYear();
+    const year = query.year ?? vnYearOf();
     const filter: FilterQuery<BudgetItemDocument> = {
       year,
       ...(query.deleted ? IS_DELETED : NOT_DELETED),
@@ -307,7 +313,7 @@ export class DisbursementService {
    * và danh sách cảnh báo cần xử trước.
    */
   async dashboard(year?: number) {
-    const budgetYear = year ?? new Date().getFullYear();
+    const budgetYear = year ?? vnYearOf();
     const raw = await this.budgetModel.find({ year: budgetYear, ...NOT_DELETED }).lean().exec();
     const items = raw.map((item) => this.withProgress(item as LeanBudgetItem));
 
@@ -326,7 +332,7 @@ export class DisbursementService {
       ),
       actualDong: sumVnd(
         items.flatMap((it) =>
-          ((it.entries ?? []) as { date: string; type: string; amountDong: number }[])
+          ((it.entries ?? []) as { date: number; type: string; amountDong: number }[])
             .filter((e) => this.quarterOfVnDate(e.date) === quarter)
             .map((e) => (e.type === 'hoan-tra' ? -e.amountDong : e.amountDong)),
         ),
@@ -374,12 +380,10 @@ export class DisbursementService {
   }
 
   /** Quý của một ngày dd/MM/yyyy; 0 nếu không đọc được ngày */
-  private quarterOfVnDate(value: string): number {
-    const matched = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec((value ?? '').trim());
-    if (!matched) return 0;
-    const month = Number(matched[2]);
-    if (month < 1 || month > 12) return 0;
-    return Math.floor((month - 1) / 3) + 1;
+  private quarterOfVnDate(value?: number): number {
+    if (value === undefined || value === null) return 0;
+    // Tháng theo lịch VIỆT NAM: giao dịch ngày 01/04 lúc 00:30 giờ VN là quý II
+    return Math.floor(new Date(value + VN_OFFSET_MS).getUTCMonth() / 3) + 1;
   }
 
   /* ───────────────────────────── Ghi dữ liệu ───────────────────────────── */
@@ -511,12 +515,12 @@ export class DisbursementService {
 
     item.adjustments.push({
       decisionNo: dto.decisionNo.trim(),
-      decidedAt: dto.decidedAt.trim(),
+      decidedAt: dto.decidedAt,
       deltaDong: Math.trunc(dto.deltaDong),
       reason: dto.reason.trim(),
       fileIds: dto.fileIds ?? [],
       by: user?.displayName ?? SYSTEM_AUTHOR,
-      recordedAt: new Date(),
+      recordedAt: nowMs(),
     });
 
     this.recompute(item);
@@ -646,7 +650,7 @@ export class DisbursementService {
       fileIds: dto.fileIds ?? [],
       by: user?.displayName ?? SYSTEM_AUTHOR,
       requestCode: '',
-      recordedAt: new Date(),
+      recordedAt: nowMs(),
     });
 
     this.recompute(item);
@@ -672,12 +676,12 @@ export class DisbursementService {
     item.documents.push({
       refNo: dto.refNo ?? '',
       docType: dto.docType ?? '',
-      issuedDate: dto.issuedDate ?? '',
+      issuedDate: dto.issuedDate,
       issuer: dto.issuer ?? '',
       summary: dto.summary ?? '',
       fileId: dto.fileId,
       addedBy: user?.displayName ?? SYSTEM_AUTHOR,
-      addedAt: new Date(),
+      addedAt: nowMs(),
     });
     await item.save();
     return this.withProgress(item.toObject() as LeanBudgetItem);
@@ -728,7 +732,7 @@ export class DisbursementService {
     item.obstacles.push({
       content: dto.content,
       owner: dto.owner ?? '',
-      deadline: dto.deadline ?? '',
+      deadline: dto.deadline,
     });
     await item.save();
     return { code: item.code, obstacles: item.obstacles };
@@ -780,12 +784,10 @@ export class DisbursementService {
       vendorTaxCode: dto.vendorTaxCode ?? '',
       status: 'pending',
       requestedBy: user?.displayName ?? SYSTEM_AUTHOR,
-      requestedAt: this.nowLabel(),
+      requestedAt: nowMs(),
       decidedBy: '',
-      decidedAt: '',
       rejectReason: '',
       voucherNo: '',
-      disbursedAt: '',
       fileIds: dto.fileIds ?? [],
     };
     item.requests.push(request);
@@ -816,7 +818,7 @@ export class DisbursementService {
    * nhất. Tách collection riêng chỉ cần khi số đề nghị lớn tới mức phải phân trang.
    */
   async listRequests(query: ListRequestQueryDto) {
-    const year = query.year ?? new Date().getFullYear();
+    const year = query.year ?? vnYearOf();
     const items = await this.budgetModel
       .find({ year, ...NOT_DELETED })
       .sort({ code: 1 })
@@ -836,7 +838,7 @@ export class DisbursementService {
     );
 
     /* Mới gửi lên đầu: người duyệt quan tâm đề nghị vừa tới, không phải cái cũ nhất */
-    rows.sort((a, b) => b.requestedAt.localeCompare(a.requestedAt));
+    rows.sort((a, b) => (b.requestedAt ?? 0) - (a.requestedAt ?? 0));
 
     const all = items.flatMap((it) => (it.requests ?? []) as DisbursementRequest[]);
     const countBy = (status: DisbursementRequestStatus) =>
@@ -866,7 +868,7 @@ export class DisbursementService {
 
     request.status = 'approved';
     request.decidedBy = user?.displayName ?? SYSTEM_AUTHOR;
-    request.decidedAt = this.nowLabel();
+    request.decidedAt = nowMs();
 
     item.comments.push(
       this.buildComment(
@@ -892,7 +894,7 @@ export class DisbursementService {
     request.status = 'rejected';
     request.rejectReason = dto.reason;
     request.decidedBy = user?.displayName ?? SYSTEM_AUTHOR;
-    request.decidedAt = this.nowLabel();
+    request.decidedAt = nowMs();
 
     item.comments.push(
       this.buildComment(`Đã từ chối đề nghị giải ngân ${request.code}. Lý do: ${dto.reason}`, user),
@@ -918,7 +920,8 @@ export class DisbursementService {
     const request = this.findRequestOrFail(item, requestCode);
     this.assertRequestStatus(request, 'approved', 'ghi nhận đã chi');
 
-    const date = dto.date?.trim() || this.todayLabel();
+    // Không nêu ngày chi thì lấy hôm nay, chuẩn hoá về hết ngày giờ Việt Nam
+    const date = dto.date ?? endOfVnDayMs(nowMs());
     request.status = 'disbursed';
     request.voucherNo = dto.voucherNo;
     request.disbursedAt = date;
@@ -934,7 +937,7 @@ export class DisbursementService {
       fileIds: dto.fileIds ?? [],
       by: user?.displayName ?? SYSTEM_AUTHOR,
       requestCode: request.code,
-      recordedAt: new Date(),
+      recordedAt: nowMs(),
     });
 
     this.recompute(item);
@@ -1043,14 +1046,9 @@ export class DisbursementService {
   }
 
   /** Ngày bắt đầu không được sau ngày kết thúc */
-  private assertPlanPeriod(startDate?: string, endDate?: string): void {
-    if (!startDate?.trim() || !endDate?.trim()) return;
-    const start = this.toDate(startDate);
-    const end = this.toDate(endDate);
-    if (!start || !end) {
-      throw new BadRequestException('Mốc kế hoạch phải theo định dạng dd/MM/yyyy');
-    }
-    if (start.getTime() > end.getTime()) {
+  private assertPlanPeriod(startDate?: number, endDate?: number): void {
+    if (!startDate || !endDate) return;
+    if (startDate > endDate) {
       throw new BadRequestException('Ngày bắt đầu kế hoạch không được sau ngày kết thúc');
     }
   }
@@ -1162,7 +1160,7 @@ export class DisbursementService {
     },
   ) {
     return {
-      at: new Date(),
+      at: nowMs(),
       by: user?.displayName ?? SYSTEM_AUTHOR,
       action,
       fromStatus: fields.fromStatus ?? '',
@@ -1183,18 +1181,11 @@ export class DisbursementService {
     return `${first}${last}`.toUpperCase();
   }
 
-  /** dd/MM/yyyy HH:mm — định dạng hiển thị dùng chung với các phân hệ khác */
-  private nowLabel(): string {
-    const now = new Date();
-    const p = (n: number) => String(n).padStart(2, '0');
-    return `${p(now.getDate())}/${p(now.getMonth() + 1)}/${now.getFullYear()} ${p(now.getHours())}:${p(now.getMinutes())}`;
-  }
-
-  private todayLabel(): string {
-    const now = new Date();
-    const p = (n: number) => String(n).padStart(2, '0');
-    return `${p(now.getDate())}/${p(now.getMonth() + 1)}/${now.getFullYear()}`;
-  }
+  /*
+   * `nowLabel` và `todayLabel` đã bỏ: mốc thời gian v2 lưu dạng số, không còn
+   * chuỗi đã định dạng. Cả hai bản cũ định dạng theo giờ máy chủ nên trên
+   * container UTC hiển thị lệch ngày.
+   */
 
   private toDate(value: string): Date | null {
     const matched = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec((value ?? '').trim());

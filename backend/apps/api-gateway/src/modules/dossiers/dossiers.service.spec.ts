@@ -17,9 +17,10 @@ import { DossiersService, maskPhone, normalizeCode, toLookupView } from './dossi
  */
 
 /** Mốc thời gian cố định để không phụ thuộc giờ chạy test */
-const SUBMITTED = new Date('2026-08-24T02:15:00.000Z');
-const APPRAISED = new Date('2026-08-25T02:15:00.000Z');
-const DUE = new Date('2026-08-27T16:59:59.999Z');
+/* Mốc thời gian v2 là SỐ milli-giây UTC; giữ dạng ISO ở đây cho dễ đọc rồi đổi */
+const SUBMITTED = Date.parse('2026-08-24T02:15:00.000Z');
+const APPRAISED = Date.parse('2026-08-25T02:15:00.000Z');
+const DUE = Date.parse('2026-08-27T16:59:59.999Z');
 
 const DOSSIER = {
   code: 'HS-2026-04182',
@@ -145,8 +146,8 @@ describe('toLookupView — tracker 4 bước', () => {
   it('bước chưa tới thì at = null, bước đã đi qua có mốc ISO', () => {
     const view = toLookupView(DOSSIER);
 
-    expect(view.steps[0].at).toBe(SUBMITTED.toISOString());
-    expect(view.steps[1].at).toBe(APPRAISED.toISOString());
+    expect(view.steps[0].at).toBe(SUBMITTED);
+    expect(view.steps[1].at).toBe(APPRAISED);
     expect(view.steps[2].at).toBeNull();
     expect(view.steps[3].at).toBeNull();
   });
@@ -180,7 +181,7 @@ describe('toLookupView — tracker 4 bước', () => {
   it('mốc thời gian trả về dạng ISO để client tự định dạng theo múi giờ', () => {
     const view = toLookupView(DOSSIER);
 
-    expect(view.submittedAt).toBe(SUBMITTED.toISOString());
-    expect(view.dueAt).toBe(DUE.toISOString());
+    expect(view.submittedAt).toBe(SUBMITTED);
+    expect(view.dueAt).toBe(DUE);
   });
 });

@@ -5,7 +5,7 @@
  * đang vận hành (budgetYearConfig.current).
  */
 import type { BudgetItem, DisbursementEntry, DisbursementRequest } from '@vigov/shared';
-import { seedComment } from './seed.util';
+import { endOfVnDay, parseVnDateTime, seedComment, vnDay } from './seed.util';
 
 /**
  * Bản ghi seed — các mảng lồng nhau chỉ khai những trường có ý nghĩa cho dữ
@@ -35,7 +35,7 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
     approvalStatus: 'da-duyet',
     entries: [
       {
-        date: '12/03/2026',
+        date: vnDay('12/03/2026'),
         content: 'Tạm ứng hợp đồng thi công đợt 1',
         type: 'chi',
         amountDong: 1_100_000_000,
@@ -44,7 +44,7 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
         voucherNo: 'UNC 041/2026',
       },
       {
-        date: '28/05/2026',
+        date: vnDay('28/05/2026'),
         content: 'Thanh toán khối lượng hoàn thành đợt 1',
         type: 'chi',
         amountDong: 1_250_000_000,
@@ -53,7 +53,7 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
         voucherNo: 'UNC 118/2026',
       },
       {
-        date: '30/07/2026',
+        date: vnDay('30/07/2026'),
         content: 'Thanh toán khối lượng hoàn thành đợt 2',
         type: 'chi',
         amountDong: 850_000_000,
@@ -68,8 +68,8 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
       seedComment('Đồng ý. Giao Địa chính – Xây dựng đôn đốc nhà thầu hoàn thiện trước 15/8/2026.', '06/08/2026 08:05'),
     ],
     obstacles: [
-      { content: 'Nhà thầu chậm nộp hồ sơ nghiệm thu khối lượng đợt 2', owner: 'Lê Minh Tuấn', deadline: '15/08/2026' },
-      { content: 'Còn 2 hộ chưa bàn giao mặt bằng đoạn cuối tuyến', owner: 'Hoàng Văn Sơn', deadline: '30/08/2026' },
+      { content: 'Nhà thầu chậm nộp hồ sơ nghiệm thu khối lượng đợt 2', owner: 'Lê Minh Tuấn', deadline: endOfVnDay('15/08/2026') },
+      { content: 'Còn 2 hộ chưa bàn giao mặt bằng đoạn cuối tuyến', owner: 'Hoàng Văn Sơn', deadline: endOfVnDay('30/08/2026') },
     ],
     requests: [
       {
@@ -79,12 +79,10 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
         vendor: 'Công ty TNHH Xây dựng Phú Thành',
         status: 'pending',
         requestedBy: 'Vũ Đức Anh',
-        requestedAt: '09:15 24/08/2026',
+        requestedAt: parseVnDateTime('24/08/2026 09:15'),
         decidedBy: '',
-        decidedAt: '',
         rejectReason: '',
         voucherNo: '',
-        disbursedAt: '',
       },
     ],
   },
@@ -101,7 +99,7 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
     approvalStatus: 'da-duyet',
     entries: [
       {
-        date: '20/04/2026',
+        date: vnDay('20/04/2026'),
         content: 'Chi phí khảo sát, lập báo cáo kinh tế – kỹ thuật',
         type: 'chi',
         amountDong: 180_000_000,
@@ -110,7 +108,7 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
         voucherNo: 'UNC 072/2026',
       },
       {
-        date: '15/06/2026',
+        date: vnDay('15/06/2026'),
         content: 'Tạm ứng hợp đồng thi công phần móng',
         type: 'chi',
         amountDong: 920_000_000,
@@ -125,8 +123,8 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
       seedComment('Giao Tài chính – Kế toán làm việc trực tiếp với Phòng Kinh tế – Hạ tầng huyện trong tuần này, báo cáo Chủ tịch UBND xã trước ngày 12/8/2026.', '04/08/2026 08:50'),
     ],
     obstacles: [
-      { content: 'Chờ thẩm định hồ sơ điều chỉnh thiết kế phần mái', owner: 'Đỗ Thanh Hà', deadline: '12/08/2026' },
-      { content: 'Chưa bố trí đủ vốn đối ứng của ngân sách xã', owner: 'Trần Thị Hạnh', deadline: '25/08/2026' },
+      { content: 'Chờ thẩm định hồ sơ điều chỉnh thiết kế phần mái', owner: 'Đỗ Thanh Hà', deadline: endOfVnDay('12/08/2026') },
+      { content: 'Chưa bố trí đủ vốn đối ứng của ngân sách xã', owner: 'Trần Thị Hạnh', deadline: endOfVnDay('25/08/2026') },
     ],
     requests: [
       {
@@ -136,12 +134,11 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
         vendor: 'Công ty CP Xây lắp Hồng Hà',
         status: 'approved',
         requestedBy: 'Đỗ Thanh Hà',
-        requestedAt: '10:40 18/08/2026',
+        requestedAt: parseVnDateTime('18/08/2026 10:40'),
         decidedBy: 'Nguyễn Văn Bình',
-        decidedAt: '15:20 20/08/2026',
+        decidedAt: parseVnDateTime('20/08/2026 15:20'),
         rejectReason: '',
         voucherNo: '',
-        disbursedAt: '',
       },
       {
         code: 'DN-02',
@@ -150,13 +147,12 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
         vendor: 'Công ty CP Tư vấn Đại Việt',
         status: 'rejected',
         requestedBy: 'Đỗ Thanh Hà',
-        requestedAt: '08:05 12/08/2026',
+        requestedAt: parseVnDateTime('12/08/2026 08:05'),
         decidedBy: 'Nguyễn Văn Bình',
-        decidedAt: '16:45 13/08/2026',
+        decidedAt: parseVnDateTime('13/08/2026 16:45'),
         rejectReason:
           'Hồ sơ điều chỉnh thiết kế chưa được thẩm định. Bổ sung kết quả thẩm định rồi trình lại.',
         voucherNo: '',
-        disbursedAt: '',
       },
     ],
   },
@@ -173,7 +169,7 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
     approvalStatus: 'da-duyet',
     entries: [
       {
-        date: '10/02/2026',
+        date: vnDay('10/02/2026'),
         content: 'Tạm ứng thi công cải tạo khối nhà chính',
         type: 'chi',
         amountDong: 700_000_000,
@@ -182,7 +178,7 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
         voucherNo: 'UNC 022/2026',
       },
       {
-        date: '18/05/2026',
+        date: vnDay('18/05/2026'),
         content: 'Thanh toán khối lượng hoàn thành',
         type: 'chi',
         amountDong: 950_000_000,
@@ -191,7 +187,7 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
         voucherNo: 'UNC 104/2026',
       },
       {
-        date: '05/07/2026',
+        date: vnDay('05/07/2026'),
         content: 'Mua sắm trang thiết bị y tế',
         type: 'chi',
         amountDong: 450_000_000,
@@ -206,8 +202,8 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
       seedComment('Đề nghị nhà cung cấp cam kết mốc bàn giao cụ thể, hoàn thành trước 20/8/2026.', '30/07/2026 08:15'),
     ],
     obstacles: [
-      { content: 'Thiết bị y tế chuyên dụng về chậm so với hợp đồng', owner: 'Vũ Đức Anh', deadline: '20/08/2026' },
-      { content: 'Chưa hoàn thiện hồ sơ quyết toán giai đoạn 1', owner: 'Đỗ Thanh Hà', deadline: '31/08/2026' },
+      { content: 'Thiết bị y tế chuyên dụng về chậm so với hợp đồng', owner: 'Vũ Đức Anh', deadline: endOfVnDay('20/08/2026') },
+      { content: 'Chưa hoàn thiện hồ sơ quyết toán giai đoạn 1', owner: 'Đỗ Thanh Hà', deadline: endOfVnDay('31/08/2026') },
     ],
     requests: [
       {
@@ -217,12 +213,10 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
         vendor: 'Công ty TNHH Thiết bị Y tế Hà Nội',
         status: 'pending',
         requestedBy: 'Vũ Đức Anh',
-        requestedAt: '16:30 22/08/2026',
+        requestedAt: parseVnDateTime('22/08/2026 16:30'),
         decidedBy: '',
-        decidedAt: '',
         rejectReason: '',
         voucherNo: '',
-        disbursedAt: '',
       },
     ],
   },
@@ -239,7 +233,7 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
     approvalStatus: 'da-duyet',
     entries: [
       {
-        date: '14/03/2026',
+        date: vnDay('14/03/2026'),
         content: 'Mua sắm 240 bộ đèn LED chiếu sáng',
         type: 'chi',
         amountDong: 620_000_000,
@@ -248,7 +242,7 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
         voucherNo: 'UNC 048/2026',
       },
       {
-        date: '22/06/2026',
+        date: vnDay('22/06/2026'),
         content: 'Chi phí lắp đặt, đấu nối',
         type: 'chi',
         amountDong: 480_000_000,
@@ -263,8 +257,8 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
       seedComment('Chấp thuận lắp đặt sau khi bàn giao mặt bằng, không kéo dài quá 30/9/2026.', '26/07/2026 15:00'),
     ],
     obstacles: [
-      { content: '12 bộ đèn chờ mặt bằng tuyến Đông – Trung', owner: 'Lê Minh Tuấn', deadline: '30/09/2026' },
-      { content: 'Chưa ký biên bản bàn giao quản lý cho các thôn', owner: 'Vũ Đức Anh', deadline: '10/09/2026' },
+      { content: '12 bộ đèn chờ mặt bằng tuyến Đông – Trung', owner: 'Lê Minh Tuấn', deadline: endOfVnDay('30/09/2026') },
+      { content: 'Chưa ký biên bản bàn giao quản lý cho các thôn', owner: 'Vũ Đức Anh', deadline: endOfVnDay('10/09/2026') },
     ],
     requests: [
       {
@@ -274,12 +268,11 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
         vendor: 'Công ty TNHH Vật liệu Xây dựng Sông Đà',
         status: 'approved',
         requestedBy: 'Hoàng Văn Sơn',
-        requestedAt: '11:20 21/08/2026',
+        requestedAt: parseVnDateTime('21/08/2026 11:20'),
         decidedBy: 'Nguyễn Văn Bình',
-        decidedAt: '09:10 22/08/2026',
+        decidedAt: parseVnDateTime('22/08/2026 09:10'),
         rejectReason: '',
         voucherNo: '',
-        disbursedAt: '',
       },
     ],
   },
@@ -296,7 +289,7 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
     approvalStatus: 'da-duyet',
     entries: [
       {
-        date: '08/05/2026',
+        date: vnDay('08/05/2026'),
         content: 'Chi phí khảo sát, thiết kế bản vẽ thi công',
         type: 'chi',
         amountDong: 120_000_000,
@@ -305,7 +298,7 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
         voucherNo: 'UNC 096/2026',
       },
       {
-        date: '19/07/2026',
+        date: vnDay('19/07/2026'),
         content: 'Tạm ứng thi công đoạn K0+000 – K0+350',
         type: 'chi',
         amountDong: 80_000_000,
@@ -320,8 +313,8 @@ export const BUDGET_ITEM_SEED: BudgetItemSeed[] = [
       seedComment('Giao Tài chính – Kế toán xây dựng lại tiến độ chi tiết, bảo đảm giải ngân tối thiểu 80% trong năm 2026.', '11/08/2026 16:20'),
     ],
     obstacles: [
-      { content: 'Chờ thu hoạch vụ lúa mùa mới thi công được', owner: 'Vũ Đức Anh', deadline: '20/09/2026' },
-      { content: 'Điều chỉnh tiến độ giải ngân trình UBND huyện', owner: 'Đỗ Thanh Hà', deadline: '05/09/2026' },
+      { content: 'Chờ thu hoạch vụ lúa mùa mới thi công được', owner: 'Vũ Đức Anh', deadline: endOfVnDay('20/09/2026') },
+      { content: 'Điều chỉnh tiến độ giải ngân trình UBND huyện', owner: 'Đỗ Thanh Hà', deadline: endOfVnDay('05/09/2026') },
     ],
     requests: [],
   },

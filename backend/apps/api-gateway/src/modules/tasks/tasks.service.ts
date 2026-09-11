@@ -8,6 +8,9 @@ import {
   activity,
   buildEpochRangeFilter,
   comment,
+  daysLeftMs,
+  endOfVnDayMs,
+  nowMs,
   markDeleted,
   markRestored,
   type ChecklistItem,
@@ -79,32 +82,12 @@ const SYSTEM_ACTOR = 'Hệ thống';
 
 /* ───────────────────────── Tiện ích ngày tháng ───────────────────────── */
 
-/** Chuyển chuỗi dd/MM/yyyy sang Date (mốc cuối ngày để tính hạn xử lý) */
-export function parseVnDate(value?: string | null): Date | undefined {
-  if (!value) return undefined;
-  const matched = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value.trim());
-  if (!matched) return undefined;
-  const day = Number(matched[1]);
-  const month = Number(matched[2]);
-  const year = Number(matched[3]);
-  // Hạn tính đến hết ngày 23:59:59
-  const date = new Date(year, month - 1, day, 23, 59, 59, 999);
-  if (
-    date.getFullYear() !== year ||
-    date.getMonth() !== month - 1 ||
-    date.getDate() !== day
-  ) {
-    return undefined; // ngày không tồn tại (31/02/2026...)
-  }
-  return date;
-}
-
-/** Định dạng Date thành chuỗi dd/MM/yyyy cho FE */
-export function formatVnDate(date: Date): string {
-  const dd = String(date.getDate()).padStart(2, '0');
-  const mm = String(date.getMonth() + 1).padStart(2, '0');
-  return `${dd}/${mm}/${date.getFullYear()}`;
-}
+/*
+ * `parseVnDate` và `formatVnDate` đã bỏ. Chúng là bản thứ hai của cùng một phép
+ * quy đổi (bản thứ ba nằm ở `disbursement/progress.ts`), và bản ở đây neo vào
+ * giờ MÁY CHỦ nên trên container UTC hạn bị nới thêm 7 giờ. Dùng
+ * `parseVnDateMs` / `formatVnDateMs` / `endOfVnDayMs` của `@vigov/shared`.
+ */
 
 /*
  * `formatVnDateTime` đã bỏ: nhật ký và bình luận v2 lưu thời điểm dạng SỐ
@@ -149,8 +132,8 @@ export interface CreateTaskFromSourceInput {
   title: string;
   assignee: string;
   department: string;
-  /** dd/MM/yyyy */
-  deadline: string;
+  /** Hạn xử lý — milli-giây UTC; máy chủ tự chuẩn hoá về hết ngày giờ Việt Nam */
+  deadline: number;
   assigner: string;
   sourceType: string;
   sourceLabel: string;
@@ -351,8 +334,9 @@ export class TasksService {
 
   /** Tạo nhiệm vụ mới từ Web Quản trị */
   async create(dto: CreateTaskDto, user?: JwtPayload): Promise<TaskDocument> {
-    const deadlineAt = parseVnDate(dto.deadline);
-    if (!deadlineAt) throw new BadRequestException('Hạn xử lý không hợp lệ (dd/MM/yyyy)');
+    /* Chuẩn hoá về hết ngày giờ Việt Nam: hạn hành chính là một NGÀY, và luật
+       đó phải nằm ở máy chủ để client không gửi 00:00 làm ngắn mất một ngày */
+    const deadline = endOfVnDayMs(dto.deadline);
 
     const actor = user?.displayName ?? SYSTEM_ACTOR;
     const checklist: ChecklistItem[] = (dto.checklist ?? []).map((item) => ({
@@ -364,8 +348,7 @@ export class TasksService {
       title: dto.title,
       assignee: dto.assignee,
       department: dto.department,
-      deadline: dto.deadline,
-      deadlineAt,
+      deadline,
       priority: dto.priority ?? 'tb',
       description: dto.description ?? '',
       status: TASK_STATUS_NEW,
@@ -387,15 +370,13 @@ export class TasksService {
    * Dùng bởi WorkflowModule — P3-30.
    */
   async createFromSource(input: CreateTaskFromSourceInput): Promise<TaskDocument> {
-    const deadlineAt = parseVnDate(input.deadline);
-    if (!deadlineAt) throw new BadRequestException('Hạn xử lý không hợp lệ (dd/MM/yyyy)');
+    const deadline = endOfVnDayMs(input.deadline);
 
     return this.insertWithGeneratedCode({
       title: input.title,
       assignee: input.assignee,
       department: input.department,
-      deadline: input.deadline,
-      deadlineAt,
+      deadline,
       priority: input.priority ?? 'tb',
       description: input.description ?? '',
       status: TASK_STATUS_NEW,
@@ -430,12 +411,7 @@ export class TasksService {
     if (dto.description !== undefined) task.description = dto.description;
     if (dto.collaborators !== undefined) task.collaborators = dto.collaborators;
 
-    if (dto.deadline !== undefined) {
-      const deadlineAt = parseVnDate(dto.deadline);
-      if (!deadlineAt) throw new BadRequestException('Hạn xử lý không hợp lệ (dd/MM/yyyy)');
-      task.deadline = dto.deadline;
-      task.deadlineAt = deadlineAt;
-    }
+    if (dto.deadline !== undefined) task.deadline = endOfVnDayMs(dto.deadline);
 
     if (dto.checklist !== undefined) {
       task.checklist = dto.checklist.map((item) => ({ title: item.title, done: item.done ?? false }));
@@ -561,24 +537,24 @@ export class TasksService {
    * Dùng cho CronJob nhắc hạn và endpoint GET /workflow/deadline-warnings (P3-30).
    */
   async findDeadlineWarnings(withinDays: number): Promise<{
-    now: Date;
+    now: number;
     overdue: TaskDocument[];
     upcoming: TaskDocument[];
   }> {
-    const now = new Date();
-    const threshold = new Date(now.getTime() + withinDays * 24 * 60 * 60 * 1000);
+    const now = nowMs();
+    const threshold = now + withinDays * 24 * 60 * 60 * 1000;
 
     const items = await this.taskModel
       .find({
         ...NOT_DELETED,
         status: { $ne: TASK_STATUS_DONE },
-        deadlineAt: { $ne: null, $lte: threshold },
+        deadline: { $ne: null, $lte: threshold },
       })
-      .sort({ deadlineAt: 1 })
+      .sort({ deadline: 1 })
       .exec();
 
-    const overdue = items.filter((t) => t.deadlineAt !== undefined && t.deadlineAt < now);
-    const upcoming = items.filter((t) => t.deadlineAt !== undefined && t.deadlineAt >= now);
+    const overdue = items.filter((t) => t.deadline < now);
+    const upcoming = items.filter((t) => t.deadline >= now);
     return { now, overdue, upcoming };
   }
 
@@ -588,7 +564,7 @@ export class TasksService {
     task.status = TASK_STATUS_OVERDUE;
     task.timeline.push(
       // Cron chạy: không có phiên đăng nhập nên actorId rỗng = hệ thống
-      activity(ACT.overdue, { detail: task.deadline, state: 'cur' }),
+      activity(ACT.overdue, { detail: String(task.deadline), state: 'cur' }),
     );
     await task.save();
     this.emitTaskChanged('status', task);
@@ -596,9 +572,8 @@ export class TasksService {
   }
 
   /** Số ngày còn lại tới hạn (âm = đã quá hạn) */
-  daysLeft(task: TaskDocument, from: Date = new Date()): number {
-    if (!task.deadlineAt) return 0;
-    return Math.ceil((task.deadlineAt.getTime() - from.getTime()) / (24 * 60 * 60 * 1000));
+  daysLeft(task: TaskDocument, from: number = nowMs()): number {
+    return daysLeftMs(task.deadline, from);
   }
 
   /* ─────────────────────────── Nội bộ ─────────────────────────── */

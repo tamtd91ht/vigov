@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { applyEpochTimestamps } from '@vigov/shared';
 
 export type FeedbackCategoryDocument = HydratedDocument<FeedbackCategory>;
 
@@ -12,7 +13,7 @@ export type FeedbackCategoryDocument = HydratedDocument<FeedbackCategory>;
  *
  * Chỉ phân hệ Settings quản lý nên khai báo cục bộ, không đưa vào libs/shared.
  */
-@Schema({ collection: 'feedback_categories', timestamps: true })
+@Schema({ collection: 'feedback_categories' })
 export class FeedbackCategory {
   /** Khoá nghiệp vụ dạng slug, ví dụ "ve-sinh-moi-truong" */
   @Prop({ required: true, unique: true, index: true })
@@ -32,3 +33,4 @@ export class FeedbackCategory {
 }
 
 export const FeedbackCategorySchema = SchemaFactory.createForClass(FeedbackCategory);
+applyEpochTimestamps(FeedbackCategorySchema);

@@ -164,3 +164,65 @@ export function buildEpochRangeFilter(
 export function daysLeftMs(deadline: EpochMs, from: EpochMs = nowMs()): number {
   return Math.ceil((deadline - from) / DAY_MS);
 }
+
+/**
+ * Chuẩn hoá một mốc bất kỳ về **hết ngày** của chính ngày đó theo giờ Việt Nam.
+ *
+ * Hạn xử lý trong hành chính là một NGÀY, không phải một thời điểm: "hạn 11/09"
+ * nghĩa là hết ngày 11/09. Client gửi lên mốc nào trong ngày cũng được — máy chủ
+ * chuẩn hoá, nên luật "hạn tính hết ngày" nằm ở đúng một chỗ và không client nào
+ * lách được bằng cách gửi 00:00.
+ */
+export function endOfVnDayMs(ms: EpochMs): EpochMs {
+  const vn = new Date(ms + VN_OFFSET_MS);
+  return (
+    Date.UTC(vn.getUTCFullYear(), vn.getUTCMonth(), vn.getUTCDate(), 23, 59, 59, 999) -
+    VN_OFFSET_MS
+  );
+}
+
+/**
+ * Số **ngày lịch** giữa hai mốc, tính theo ngày giờ Việt Nam (âm = đã qua).
+ *
+ * Khác `daysLeftMs`: hàm này so hai NGÀY, không so hai thời điểm. Hạn hôm nay
+ * trả về `0`, hạn mai trả `1`, hạn hôm qua trả `-1` — bất kể trong ngày đang là
+ * mấy giờ.
+ *
+ * Cần cả hai cách đếm vì hai phân hệ hiểu "còn mấy ngày" khác nhau: phiếu văn
+ * bản hiện "còn 0 ngày" nghĩa là hết hôm nay, còn nhiệm vụ hiện "còn 1 ngày"
+ * cho cùng tình huống. Gom về một hàm là đổi con số đang hiển thị cho cán bộ ở
+ * một trong hai phân hệ, nên giữ đúng hai nghĩa và gọi tên rõ ràng.
+ */
+export function vnDaysBetween(target: EpochMs, from: EpochMs = nowMs()): number {
+  const ngay = (ms: EpochMs) => {
+    const vn = new Date(ms + VN_OFFSET_MS);
+    return Date.UTC(vn.getUTCFullYear(), vn.getUTCMonth(), vn.getUTCDate());
+  };
+  return Math.round((ngay(target) - ngay(from)) / DAY_MS);
+}
+
+/**
+ * Khoảng của **tháng** chứa mốc đã cho, tính theo giờ Việt Nam.
+ *
+ * Trả `[from, to)` — mốc đầu tháng và mốc đầu tháng kế tiếp, dùng trực tiếp làm
+ * `{ $gte: from, $lt: to }`.
+ *
+ * Bản v1 dựng biên tháng bằng `new Date(now.getFullYear(), now.getMonth(), 1)`,
+ * tức theo giờ MÁY CHỦ. Trên container UTC, biên tháng lệch 7 giờ nên phiếu gửi
+ * lúc 2 giờ sáng ngày 1 bị đếm vào tháng trước — thống kê "tiếp nhận trong
+ * tháng" thiếu bản ghi mà không ai truy được vì sao.
+ */
+export function vnMonthRangeMs(ms: EpochMs = nowMs()): { from: EpochMs; to: EpochMs } {
+  const vn = new Date(ms + VN_OFFSET_MS);
+  const nam = vn.getUTCFullYear();
+  const thang = vn.getUTCMonth();
+  return {
+    from: Date.UTC(nam, thang, 1) - VN_OFFSET_MS,
+    to: Date.UTC(nam, thang + 1, 1) - VN_OFFSET_MS,
+  };
+}
+
+/** Năm theo lịch Việt Nam của một mốc — dùng cho mã hồ sơ và số liệu theo năm */
+export function vnYearOf(ms: EpochMs = nowMs()): number {
+  return new Date(ms + VN_OFFSET_MS).getUTCFullYear();
+}

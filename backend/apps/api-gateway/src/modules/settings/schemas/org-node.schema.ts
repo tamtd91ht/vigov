@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { applyEpochTimestamps } from '@vigov/shared';
 
 export type OrgNodeDocument = HydratedDocument<OrgNode>;
 
@@ -8,7 +9,7 @@ export type OrgNodeDocument = HydratedDocument<OrgNode>;
  * Chỉ phân hệ Settings dùng nên khai báo cục bộ, KHÔNG đưa vào libs/shared.
  * Cây được dựng từ `parentId`: nút gốc có parentId rỗng/undefined.
  */
-@Schema({ collection: 'org_nodes', timestamps: true })
+@Schema({ collection: 'org_nodes' })
 export class OrgNode {
   @Prop({ required: true })
   name: string;
@@ -31,3 +32,4 @@ export class OrgNode {
 }
 
 export const OrgNodeSchema = SchemaFactory.createForClass(OrgNode);
+applyEpochTimestamps(OrgNodeSchema);

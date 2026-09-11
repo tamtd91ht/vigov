@@ -1,11 +1,15 @@
 import {
   buildEpochRangeFilter,
+  endOfVnDayMs,
   daysLeftMs,
   formatVnDateMs,
   formatVnDateTimeMs,
   parseVnDateMs,
   toEpochMs,
+  vnDaysBetween,
+  vnMonthRangeMs,
   vnStartOfDayMs,
+  vnYearOf,
 } from './epoch';
 
 const VN_OFFSET_MS = 7 * 60 * 60_000;
@@ -163,5 +167,72 @@ describe('daysLeftMs', () => {
 
   it('làm tròn LÊN: còn 2 giờ vẫn là còn 1 ngày', () => {
     expect(daysLeftMs(hanTrua, hanTrua - 2 * 60 * 60_000)).toBe(1);
+  });
+});
+
+describe('endOfVnDayMs', () => {
+  it('chuẩn hoá mốc giữa ngày về hết ngày đó theo giờ Việt Nam', () => {
+    const giuaNgay = Date.UTC(2026, 8, 11, 3, 0, 0); // 10:00 giờ VN 11/09
+    expect(endOfVnDayMs(giuaNgay)).toBe(parseVnDateMs('11/09/2026'));
+  });
+
+  it('mốc 00:00 giờ Việt Nam vẫn thuộc chính ngày đó, không lùi một ngày', () => {
+    const dauNgay = vnStartOfDayMs('2026-09-11');
+    expect(endOfVnDayMs(dauNgay)).toBe(parseVnDateMs('11/09/2026'));
+  });
+
+  it('mốc 18:00 UTC là ngày HÔM SAU theo giờ Việt Nam', () => {
+    // 11/09 18:00 UTC = 12/09 01:00 giờ VN
+    const ms = Date.UTC(2026, 8, 11, 18, 0, 0);
+    expect(endOfVnDayMs(ms)).toBe(parseVnDateMs('12/09/2026'));
+  });
+
+  it('không đổi nữa khi đã là mốc hết ngày (chạy lại vẫn ra cùng kết quả)', () => {
+    const het = parseVnDateMs('11/09/2026') as number;
+    expect(endOfVnDayMs(het)).toBe(het);
+  });
+});
+
+describe('vnDaysBetween', () => {
+  const homNayTrua = Date.UTC(2026, 8, 11, 5, 0, 0); // 12:00 giờ VN 11/09
+
+  it('hạn trong CÙNG ngày trả 0, bất kể mấy giờ', () => {
+    expect(vnDaysBetween(parseVnDateMs('11/09/2026') as number, homNayTrua)).toBe(0);
+    expect(vnDaysBetween(vnStartOfDayMs('2026-09-11'), homNayTrua)).toBe(0);
+  });
+
+  it('hạn ngày mai trả 1, hạn hôm qua trả -1', () => {
+    expect(vnDaysBetween(parseVnDateMs('12/09/2026') as number, homNayTrua)).toBe(1);
+    expect(vnDaysBetween(parseVnDateMs('10/09/2026') as number, homNayTrua)).toBe(-1);
+  });
+
+  it('không bị lệch một ngày khi mốc rơi vào 23 giờ giờ Việt Nam', () => {
+    // 11/09 16:30 UTC = 11/09 23:30 giờ VN — vẫn là hôm nay
+    const toiMuon = Date.UTC(2026, 8, 11, 16, 30, 0);
+    expect(vnDaysBetween(parseVnDateMs('11/09/2026') as number, toiMuon)).toBe(0);
+  });
+});
+
+describe('vnMonthRangeMs', () => {
+  it('biên tháng neo vào giờ Việt Nam, không phải giờ máy chủ', () => {
+    const giuaThang = Date.UTC(2026, 8, 15, 10, 0, 0);
+    const { from, to } = vnMonthRangeMs(giuaThang);
+    // 01/09/2026 00:00 giờ VN = 31/08/2026 17:00 UTC
+    expect(new Date(from).toISOString()).toBe('2026-08-31T17:00:00.000Z');
+    expect(new Date(to).toISOString()).toBe('2026-09-30T17:00:00.000Z');
+  });
+
+  it('phiếu gửi 02:00 ngày 01 giờ Việt Nam nằm TRONG tháng đó', () => {
+    // Đây chính là bản ghi bị bản v1 đếm sang tháng trước
+    const somNgayMot = Date.UTC(2026, 7, 31, 19, 0, 0); // 01/09 02:00 giờ VN
+    const { from, to } = vnMonthRangeMs(somNgayMot);
+    expect(somNgayMot).toBeGreaterThanOrEqual(from);
+    expect(somNgayMot).toBeLessThan(to);
+  });
+});
+
+describe('vnYearOf', () => {
+  it('mốc 31/12 lúc 18:00 UTC đã là năm sau theo giờ Việt Nam', () => {
+    expect(vnYearOf(Date.UTC(2026, 11, 31, 18, 0, 0))).toBe(2027);
   });
 });

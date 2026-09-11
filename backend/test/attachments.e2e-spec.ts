@@ -28,7 +28,7 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import { Model } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
 import request from 'supertest';
-import { StaffUser, type StaffUserDocument } from '@vigov/shared';
+import { parseVnDateMs, StaffUser, type StaffUserDocument} from '@vigov/shared';
 
 const PASSWORD = 'ViGov@2026';
 const ADMIN = { username: 'binh.nv', password: PASSWORD };
@@ -188,7 +188,7 @@ describe('ViGov API — luồng đính kèm tệp', () => {
       const res = await asAdmin(api().post(`${API}/documents`))
         .send({
           refNo: '777/UBND-VP',
-          date: '10/08/2026',
+          date: parseVnDateMs('10/08/2026'),
           sender: 'UBND huyện Phú Xuyên',
           summary: 'V/v rà soát hồ sơ đất đai',
           kind: 'incoming',
@@ -197,7 +197,10 @@ describe('ViGov API — luồng đính kèm tệp', () => {
 
       arrivalNo = res.body.arrivalNo;
       expect(arrivalNo).toBeTruthy();
-      expect(res.body.deadline).toBe('');
+      /* Khuôn v2: chưa ấn định hạn thì trường BỎ TRỐNG, không phải 0 — `0` là
+         01/01/1970 nên mọi chỗ so hạn sẽ coi văn bản là quá hạn 56 năm */
+      expect(res.body.deadline).toBeUndefined();
+      expect(res.body.daysLeft).toBe(0);
       expect(res.body.attachmentFiles).toEqual([]);
     });
 
@@ -285,7 +288,7 @@ describe('ViGov API — luồng đính kèm tệp', () => {
           title: 'Kiểm tra hiện trường tổ 4',
           assignee: 'Lê Minh Tuấn',
           department: 'Văn phòng UBND',
-          deadline: '25/09/2026',
+          deadline: parseVnDateMs('25/09/2026'),
         })
         .expect(201);
       taskCode = task.body.code;

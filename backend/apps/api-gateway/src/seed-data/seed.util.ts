@@ -7,23 +7,43 @@
 /** Số mili-giây của một ngày */
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-/** Chuỗi dd/MM/yyyy → Date cuối ngày (23:59:59.999) — dùng cho mốc hạn xử lý */
-export function endOfVnDay(value: string): Date {
+/**
+ * Vì sao seed vẫn viết ngày dạng chuỗi `'19/08/2026'`.
+ *
+ * Cơ sở dữ liệu v2 lưu mốc thời gian dạng SỐ, nhưng tệp seed là tệp **người
+ * đọc và sửa tay**: `1786...` thì không ai soát được, còn `'19/08/2026'` thì
+ * nhìn là biết. Nên seed giữ chuỗi ở phần khai báo, rồi quy đổi sang số ở đúng
+ * một bước dựng dữ liệu, bằng ba hàm dưới đây.
+ *
+ * Cả ba đều neo vào **giờ Việt Nam**, không phụ thuộc giờ máy chủ.
+ */
+
+/** Lệch giờ Việt Nam so với UTC */
+const VN_OFFSET_MS = 7 * 60 * 60_000;
+
+/** `dd/MM/yyyy` → mốc HẾT ngày giờ Việt Nam (23:59:59.999) — dùng cho hạn xử lý */
+export function endOfVnDay(value: string): number {
   const [day, month, year] = value.split('/').map(Number);
-  return new Date(year, month - 1, day, 23, 59, 59, 999);
+  return Date.UTC(year, month - 1, day, 23, 59, 59, 999) - VN_OFFSET_MS;
 }
 
-/** Chuỗi "dd/MM/yyyy HH:mm" (hoặc "dd/MM/yyyy") → Date */
-export function parseVnDateTime(value: string): Date {
+/** `dd/MM/yyyy` → mốc 00:00 giờ Việt Nam — dùng cho ngày ghi trên văn bản */
+export function vnDay(value: string): number {
+  const [day, month, year] = value.split('/').map(Number);
+  return Date.UTC(year, month - 1, day) - VN_OFFSET_MS;
+}
+
+/** `dd/MM/yyyy HH:mm` (hoặc `dd/MM/yyyy`) → mốc theo giờ Việt Nam */
+export function parseVnDateTime(value: string): number {
   const [datePart, timePart = '00:00'] = value.trim().split(/\s+/);
   const [day, month, year] = datePart.split('/').map(Number);
   const [hour, minute] = timePart.split(':').map(Number);
-  return new Date(year, month - 1, day, hour || 0, minute || 0, 0, 0);
+  return Date.UTC(year, month - 1, day, hour || 0, minute || 0) - VN_OFFSET_MS;
 }
 
 /** Cộng thêm số ngày vào một mốc thời gian */
-export function addDays(date: Date, days: number): Date {
-  return new Date(date.getTime() + days * DAY_MS);
+export function addDays(at: number, days: number): number {
+  return at + days * DAY_MS;
 }
 
 /**
@@ -91,6 +111,16 @@ export function seedActivity(
   return { at: seedMoment(when), actorId: '', action, detail, state };
 }
 
+/** Như `seedActivity` nhưng nhận sẵn mốc dạng số, không phải chuỗi mô tả */
+export function seedActivityAt(
+  action: string,
+  detail: string,
+  at: number,
+  state: 'ok' | 'cur' = 'ok',
+): { at: number; actorId: string; action: string; detail: string; state: 'ok' | 'cur' } {
+  return { at, actorId: '', action, detail, state };
+}
+
 /** Bình luận cho dữ liệu seed theo khuôn `Comment` của v2 */
 export function seedComment(
   content: string,
@@ -100,7 +130,7 @@ export function seedComment(
 }
 
 /** Mốc dự phòng khi chuỗi thời gian của mock không đọc được — tất định */
-const SEED_FALLBACK_AT = new Date(2026, 7, 1, 8, 0, 0).getTime();
+const SEED_FALLBACK_AT = Date.UTC(2026, 7, 1, 8, 0, 0) - VN_OFFSET_MS;
 
 /**
  * Bóc mốc `dd/MM/yyyy HH:mm` ra khỏi một chuỗi mô tả của mock.
@@ -111,5 +141,5 @@ function seedMoment(when?: string): number {
   if (!when) return SEED_FALLBACK_AT;
   const matched = /(\d{2}\/\d{2}\/\d{4})(?:\s+(\d{2}:\d{2}))?/.exec(when);
   if (!matched) return SEED_FALLBACK_AT;
-  return parseVnDateTime(`${matched[1]} ${matched[2] ?? '00:00'}`).getTime();
+  return parseVnDateTime(`${matched[1]} ${matched[2] ?? '00:00'}`);
 }

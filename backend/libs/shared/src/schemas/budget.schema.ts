@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { Comment, CommentSchema } from './comment';
+import { applyEpochTimestamps } from './timestamped';
 import { SoftDeletable } from './soft-delete';
 
 export type BudgetItemDocument = HydratedDocument<BudgetItem>;
@@ -154,7 +155,8 @@ export const QuarterPlanSchema = SchemaFactory.createForClass(QuarterPlan);
 @Schema({ _id: false })
 export class DisbursementEntry {
   /** dd/MM/yyyy — ngày trên chứng từ */
-  @Prop({ required: true }) date: string;
+  /** Ngày chi — milli-giây UTC */
+  @Prop({ required: true }) date: number;
 
   @Prop({ required: true, enum: DISBURSEMENT_ENTRY_TYPES, default: 'chi' })
   type: DisbursementEntryType;
@@ -182,7 +184,7 @@ export class DisbursementEntry {
   /** Mã đề nghị sinh ra giao dịch này, rỗng nếu nhập trực tiếp */
   @Prop({ default: '' }) requestCode: string;
 
-  @Prop({ default: () => new Date() }) recordedAt: Date;
+  @Prop({ default: () => Date.now() }) recordedAt: number;
 }
 export const DisbursementEntrySchema = SchemaFactory.createForClass(DisbursementEntry);
 
@@ -200,7 +202,8 @@ export class BudgetAdjustment {
   @Prop({ required: true }) decisionNo: string;
 
   /** dd/MM/yyyy — ngày quyết định */
-  @Prop({ required: true }) decidedAt: string;
+  /** Ngày ra quyết định — milli-giây UTC */
+  @Prop({ required: true }) decidedAt: number;
 
   /**
    * Mức điều chỉnh — đồng, số nguyên. ÂM là giảm dự toán.
@@ -213,7 +216,7 @@ export class BudgetAdjustment {
   @Prop({ type: [String], default: [] }) fileIds: string[];
 
   @Prop({ default: '' }) by: string;
-  @Prop({ default: () => new Date() }) recordedAt: Date;
+  @Prop({ default: () => Date.now() }) recordedAt: number;
 }
 export const BudgetAdjustmentSchema = SchemaFactory.createForClass(BudgetAdjustment);
 
@@ -227,7 +230,8 @@ export class BudgetDocument {
   @Prop({ default: '' }) docType: string;
 
   /** dd/MM/yyyy */
-  @Prop({ default: '' }) issuedDate: string;
+  /** Ngày ban hành văn bản — milli-giây UTC, bỏ trống khi chưa rõ */
+  @Prop() issuedDate?: number;
 
   /** Cơ quan ban hành — dùng chung danh mục với phân hệ Văn bản */
   @Prop({ default: '' }) issuer: string;
@@ -238,7 +242,7 @@ export class BudgetDocument {
   @Prop({ required: true }) fileId: string;
 
   @Prop({ default: '' }) addedBy: string;
-  @Prop({ default: () => new Date() }) addedAt: Date;
+  @Prop({ default: () => Date.now() }) addedAt: number;
 }
 export const BudgetDocumentSchema = SchemaFactory.createForClass(BudgetDocument);
 
@@ -251,7 +255,7 @@ export const BudgetDocumentSchema = SchemaFactory.createForClass(BudgetDocument)
  */
 @Schema({ _id: false })
 export class BudgetProgressLog {
-  @Prop({ default: () => new Date() }) at: Date;
+  @Prop({ default: () => Date.now() }) at: number;
   @Prop({ default: '' }) by: string;
 
   /** Hành động: đổi trạng thái, ghi nhận chi, điều chỉnh dự toán… */
@@ -276,7 +280,8 @@ export const BudgetProgressLogSchema = SchemaFactory.createForClass(BudgetProgre
 export class Obstacle {
   @Prop({ required: true }) content: string;
   @Prop({ default: '' }) owner: string;
-  @Prop({ default: '' }) deadline: string;
+  /** Hạn — milli-giây UTC, bỏ trống khi chưa ấn định */
+  @Prop() deadline?: number;
 }
 export const ObstacleSchema = SchemaFactory.createForClass(Obstacle);
 
@@ -297,18 +302,21 @@ export class DisbursementRequest {
   status: DisbursementRequestStatus;
 
   @Prop({ default: '' }) requestedBy: string;
-  @Prop({ default: '' }) requestedAt: string;
+  /** Lúc lập đề nghị — milli-giây UTC */
+  @Prop() requestedAt?: number;
 
   /** Người duyệt hoặc từ chối; rỗng khi còn chờ duyệt */
   @Prop({ default: '' }) decidedBy: string;
-  @Prop({ default: '' }) decidedAt: string;
+  /** Lúc duyệt hoặc từ chối — milli-giây UTC */
+  @Prop() decidedAt?: number;
 
   /** Lý do từ chối — bắt buộc khi status = rejected */
   @Prop({ default: '' }) rejectReason: string;
 
   /** Số chứng từ lúc ghi nhận đã chi thật */
   @Prop({ default: '' }) voucherNo: string;
-  @Prop({ default: '' }) disbursedAt: string;
+  /** Lúc chi thực tế — milli-giây UTC */
+  @Prop() disbursedAt?: number;
 
   /** Hồ sơ kèm đề nghị */
   @Prop({ type: [String], default: [] }) fileIds: string[];
@@ -348,7 +356,7 @@ export const BudgetLineSchema = SchemaFactory.createForClass(BudgetLine);
  * Ở đây chỉ lưu TÊN đối tượng và mã số thuế (dành cho tổ chức).
  * → Câu hỏi mở: khách có yêu cầu lưu thêm thì phải chốt mục đích và ai được xem.
  */
-@Schema({ collection: 'budget_items', timestamps: true })
+@Schema({ collection: 'budget_items' })
 export class BudgetItem extends SoftDeletable {
   @Prop({ required: true, unique: true, index: true }) code: string;
   @Prop({ required: true }) name: string;
@@ -385,8 +393,10 @@ export class BudgetItem extends SoftDeletable {
   @Prop({ default: 0 }) carryOverFromYear: number;
 
   /** dd/MM/yyyy — mốc kế hoạch */
-  @Prop({ default: '' }) startDate: string;
-  @Prop({ default: '' }) endDate: string;
+  /** Ngày bắt đầu kế hoạch — milli-giây UTC, bỏ trống khi chưa ấn định */
+  @Prop() startDate?: number;
+  /** Ngày kết thúc kế hoạch — milli-giây UTC, bỏ trống khi chưa ấn định */
+  @Prop() endDate?: number;
 
   /**
    * Dự toán giao ĐẦU NĂM — đồng, số nguyên. Không đổi sau khi giao.
@@ -426,3 +436,4 @@ export class BudgetItem extends SoftDeletable {
   @Prop({ type: [DisbursementRequestSchema], default: [] }) requests: DisbursementRequest[];
 }
 export const BudgetItemSchema = SchemaFactory.createForClass(BudgetItem);
+applyEpochTimestamps(BudgetItemSchema);

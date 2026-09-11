@@ -301,7 +301,7 @@ export const FEEDBACK_SEED: FeedbackSeed[] = FEEDBACK_BASE.map((row) => {
     location: row.location,
     lat: coords?.lat,
     lng: coords?.lng,
-    sentAt: row.sentAt,
+    sentAt: sentDate,
     status: STATUS_BY_LABEL[row.statusLabel] ?? 'received',
     slaDueAt: addDays(sentDate, RESOLVE_DAYS_BY_CATEGORY[categoryKey] ?? 7),
     imageFileIds: [],

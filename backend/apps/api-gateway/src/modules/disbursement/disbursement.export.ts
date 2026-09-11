@@ -1,10 +1,9 @@
-import {
+import { formatVnDateMs,
   BUDGET_APPROVAL_LABELS,
   BENEFICIARY_TYPE_LABELS,
   DISBURSEMENT_STATE_LABELS,
   SCHEDULE_STATE_LABELS,
-  type BudgetApprovalStatus,
-} from '@vigov/shared';
+  type BudgetApprovalStatus,} from '@vigov/shared';
 import type { ListColumn } from '../reports/exporters/list-workbook';
 
 /**
@@ -30,8 +29,8 @@ interface BudgetRow {
   beneficiary?: string;
   beneficiaryType?: string;
   year?: number;
-  startDate?: string;
-  endDate?: string;
+  startDate?: number;
+  endDate?: number;
   initialPlannedDong?: number;
   plannedDong?: number;
   actualDong?: number;
@@ -62,8 +61,8 @@ export const BUDGET_EXPORT_COLUMNS: ListColumn<BudgetRow>[] = [
     width: 18,
   },
   { header: 'Năm ngân sách', value: (r) => r.year ?? '', width: 12, numeric: true },
-  { header: 'Từ ngày', value: (r) => r.startDate ?? '', width: 12 },
-  { header: 'Đến ngày', value: (r) => r.endDate ?? '', width: 12 },
+  { header: 'Từ ngày', value: (r) => (r.startDate ? formatVnDateMs(r.startDate) : ''), width: 12 },
+  { header: 'Đến ngày', value: (r) => (r.endDate ? formatVnDateMs(r.endDate) : ''), width: 12 },
   {
     header: 'Dự toán đầu năm (đồng)',
     value: (r) => r.initialPlannedDong ?? 0,

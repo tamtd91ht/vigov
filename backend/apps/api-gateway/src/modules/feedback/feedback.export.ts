@@ -1,4 +1,5 @@
 import type { ListColumn } from '../reports/exporters/list-workbook';
+import { formatVnDateMs } from '@vigov/shared';
 
 /**
  * Khai báo cột cho tệp Excel danh sách phản ánh.
@@ -51,20 +52,15 @@ interface FeedbackRow {
   citizenPhone?: string;
   assignee?: string;
   department?: string;
-  sentAt?: string;
+  sentAt?: number;
   rating?: number;
   withdrawStatus?: string;
   linkedTaskCode?: string;
-  createdAt?: Date | string;
+  createdAt?: number;
 }
 
-function vnDate(value?: Date | string): string {
-  if (!value) return '';
-  const d = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(d.getTime())) return '';
-  const vn = new Date(d.getTime() + 7 * 60 * 60_000);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${p(vn.getUTCDate())}/${p(vn.getUTCMonth() + 1)}/${vn.getUTCFullYear()}`;
+function vnDate(ms?: number): string {
+  return ms === undefined || ms === null ? '' : formatVnDateMs(ms);
 }
 
 /**
@@ -99,7 +95,7 @@ export function feedbackExportColumns(
       value: (r) => CHANNEL_LABELS[r.channel ?? ''] ?? r.channel ?? '',
       width: 18,
     },
-    { header: 'Ngày tiếp nhận', value: (r) => r.sentAt || vnDate(r.createdAt), width: 16 },
+    { header: 'Ngày tiếp nhận', value: (r) => vnDate(r.sentAt ?? r.createdAt), width: 16 },
     // Chưa đánh giá là 0 sao — hiện rỗng thay vì "0" để không nhầm là đánh giá kém
     {
       header: 'Đánh giá (sao)',

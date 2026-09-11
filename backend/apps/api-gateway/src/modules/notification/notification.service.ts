@@ -2,6 +2,7 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, isValidObjectId } from 'mongoose';
 import {
+  formatVnDateMs,
   CitizenUser,
   NOT_DELETED,
   StaffUser,
@@ -40,7 +41,7 @@ export interface FeedbackReceivedNotice {
   citizenPhone: string;
   title: string;
   /** Hạn xử lý theo SLA (nếu đã tính được) */
-  slaDueAt?: Date;
+  slaDueAt?: number;
   department?: string;
 }
 
@@ -102,7 +103,7 @@ export class NotificationService {
 
   /** Thông báo cho công dân: đã tiếp nhận phản ánh (gọi từ module Feedback) */
   async notifyFeedbackReceived(notice: FeedbackReceivedNotice): Promise<ChannelResults> {
-    const due = notice.slaDueAt ? ` Hạn xử lý dự kiến: ${formatDate(notice.slaDueAt)}.` : '';
+    const due = notice.slaDueAt ? ` Hạn xử lý dự kiến: ${formatVnDateMs(notice.slaDueAt)}.` : '';
     return this.send({
       channels: CITIZEN_CHANNELS,
       recipient: notice.citizenPhone,
@@ -112,7 +113,7 @@ export class NotificationService {
       data: {
         feedbackCode: notice.code,
         department: notice.department ?? '',
-        slaDueAt: notice.slaDueAt ? notice.slaDueAt.toISOString() : '',
+        slaDueAt: notice.slaDueAt ? String(notice.slaDueAt) : '',
       },
     });
   }
@@ -328,9 +329,8 @@ function broadcastStatus(total: number, delivered: number): BroadcastStatus {
   return 'partial';
 }
 
-/** dd/MM/yyyy — định dạng hiển thị thống nhất với FE */
-function formatDate(value: Date): string {
-  const dd = String(value.getDate()).padStart(2, '0');
-  const mm = String(value.getMonth() + 1).padStart(2, '0');
-  return `${dd}/${mm}/${value.getFullYear()}`;
-}
+/*
+ * `formatDate` cục bộ đã bỏ — dùng `formatVnDateMs` của `@vigov/shared`. Bản cũ
+ * định dạng theo giờ máy chủ nên tin nhắn gửi cho người dân có thể nêu sai ngày
+ * một đơn vị khi container chạy UTC.
+ */

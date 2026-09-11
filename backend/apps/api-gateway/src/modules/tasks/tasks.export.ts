@@ -1,3 +1,4 @@
+import { formatVnDateMs } from '@vigov/shared';
 import type { ListColumn } from '../reports/exporters/list-workbook';
 
 /**
@@ -40,21 +41,22 @@ interface TaskRow {
   status?: string;
   priority?: string;
   progress?: number;
-  deadline?: string;
+  deadline?: number;
   sourceType?: string;
   sourceLabel?: string;
   collaborators?: string[];
-  createdAt?: Date | string;
+  createdAt?: number;
 }
 
-/** `dd/MM/yyyy` theo giờ Việt Nam từ một mốc thời gian của Mongo */
-function vnDate(value?: Date | string): string {
-  if (!value) return '';
-  const d = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(d.getTime())) return '';
-  const vn = new Date(d.getTime() + 7 * 60 * 60_000);
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${p(vn.getUTCDate())}/${p(vn.getUTCMonth() + 1)}/${vn.getUTCFullYear()}`;
+/*
+ * `vnDate` cục bộ đã bỏ — dùng `formatVnDateMs` của `@vigov/shared`. Bản cũ tự
+ * cộng 7 giờ ngay trong tệp xuất; mọi phép quy đổi giờ Việt Nam giờ nằm ở một
+ * chỗ duy nhất (`time/epoch.ts`).
+ */
+
+/** Mốc thời gian dạng số → `dd/MM/yyyy`; rỗng khi chưa có mốc */
+function vnDate(ms?: number): string {
+  return ms === undefined || ms === null ? '' : formatVnDateMs(ms);
 }
 
 export const TASK_EXPORT_COLUMNS: ListColumn<TaskRow>[] = [
@@ -79,7 +81,7 @@ export const TASK_EXPORT_COLUMNS: ListColumn<TaskRow>[] = [
   },
   // Tiến độ 0 phải hiện "0%", không được để trống — xem skills/bao-cao-va-xuat-file
   { header: 'Tiến độ', value: (r) => `${r.progress ?? 0}%`, width: 10, numeric: true },
-  { header: 'Hạn xử lý', value: (r) => r.deadline ?? '', width: 13 },
+  { header: 'Hạn xử lý', value: (r) => vnDate(r.deadline), width: 13 },
   { header: 'Ngày giao', value: (r) => vnDate(r.createdAt), width: 13 },
   {
     header: 'Nguồn nhiệm vụ',

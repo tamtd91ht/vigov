@@ -1,6 +1,7 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { ActivityEntry, ActivityEntrySchema } from './activity-log';
+import { applyEpochTimestamps } from './timestamped';
 import { SoftDeletable } from './soft-delete';
 
 export type IncomingDocumentDocument = HydratedDocument<IncomingDocument>;
@@ -35,7 +36,7 @@ export const OcrFieldSchema = SchemaFactory.createForClass(OcrField);
  * mà nhiệm vụ sinh từ văn bản đã dẫn chiếu ngược lại qua `sourceRefId`. Xoá cứng
  * là để lại lỗ trong sổ và liên kết chết.
  */
-@Schema({ collection: 'documents', timestamps: true })
+@Schema({ collection: 'documents' })
 export class IncomingDocument extends SoftDeletable {
   /** Số đến trong sổ văn bản */
   @Prop({ required: true, index: true })
@@ -45,8 +46,9 @@ export class IncomingDocument extends SoftDeletable {
   @Prop({ required: true })
   refNo: string;
 
+  /** Ngày ký trên văn bản của cơ quan gửi — milli-giây UTC */
   @Prop({ required: true })
-  date: string;
+  date: number;
 
   @Prop({ required: true })
   sender: string;
@@ -55,17 +57,19 @@ export class IncomingDocument extends SoftDeletable {
   summary: string;
 
   /**
-   * Hạn xử lý dd/MM/yyyy, RỖNG khi văn bản không có hạn.
+   * Hạn xử lý — milli-giây UTC, chuẩn hoá về hết ngày giờ Việt Nam.
+   * **BỎ TRỐNG** khi văn bản chưa ấn định hạn: form "Tiếp nhận văn bản" cho
+   * phép vào sổ trước, ấn định hạn sau.
    *
-   * Không đặt `required` được: form "Tiếp nhận văn bản" cho phép bỏ trống ô hạn
-   * (vào sổ trước, ấn định hạn sau), mà với Mongoose chuỗi rỗng KHÔNG vượt qua
-   * `required` — cả lời gọi đổ thành 500 ngay ở bước vào sổ.
+   * Để `undefined` chứ KHÔNG dùng `0` làm giá trị rỗng: `0` là 01/01/1970 nên
+   * mọi chỗ so hạn sẽ coi văn bản chưa có hạn là quá hạn 56 năm, và cron nhắc
+   * hạn sẽ dội cảnh báo cho toàn bộ số văn bản chưa ấn định hạn.
+   *
+   * v1 lưu hai trường cho cùng một cái hạn (`deadline` chuỗi + `deadlineAt`
+   * Date); v2 giữ một trường — xem chú thích ở `task.schema.ts`.
    */
-  @Prop({ default: '' })
-  deadline: string;
-
   @Prop({ index: true })
-  deadlineAt?: Date;
+  deadline?: number;
 
   @Prop({ default: 0 })
   daysLeft: number;
@@ -121,4 +125,5 @@ export class IncomingDocument extends SoftDeletable {
 }
 
 export const IncomingDocumentSchema = SchemaFactory.createForClass(IncomingDocument);
+applyEpochTimestamps(IncomingDocumentSchema);
 IncomingDocumentSchema.index({ summary: 'text', refNo: 'text', sender: 'text' });

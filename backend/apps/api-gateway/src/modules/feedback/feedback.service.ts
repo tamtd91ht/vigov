@@ -12,6 +12,11 @@ import { FilterQuery, Model } from 'mongoose';
 import {
   activity,
   buildEpochRangeFilter,
+  formatVnDateMs,
+  formatVnDateTimeMs,
+  nowMs,
+  vnMonthRangeMs,
+  vnYearOf,
   EVENTS,
   Feedback,
   IS_DELETED,
@@ -168,7 +173,7 @@ export class FeedbackService {
    */
   private citizenView<
     T extends {
-      slaDueAt?: Date | null;
+      slaDueAt?: number | null;
       imageFileIds?: string[];
       resultImageFileIds?: string[];
       status?: string;
@@ -278,12 +283,11 @@ export class FeedbackService {
 
   /**
    * 4 thẻ thống kê đầu trang Phản ánh (WBS #6).
-   * Mốc thời gian dùng createdAt (Date do timestamps sinh) thay vì sentAt (chuỗi hiển thị).
+   * Mốc thời gian dùng createdAt (do applyEpochTimestamps sinh) — cùng kiểu số với sentAt.
    */
   async stats() {
-    const now = new Date();
-    const from = new Date(now.getFullYear(), now.getMonth(), 1);
-    const to = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    // Biên tháng theo giờ Việt Nam — xem chú thích ở `vnMonthRangeMs`
+    const { from, to } = vnMonthRangeMs();
     const inMonth: FilterQuery<FeedbackDocument> = {
       ...NOT_DELETED,
       createdAt: { $gte: from, $lt: to },
@@ -326,7 +330,7 @@ export class FeedbackService {
     const onTimeCount = onTime[0]?.onTime ?? 0;
 
     return {
-      month: `${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}`,
+      month: formatVnDateMs(from).slice(3), // 'MM/yyyy' của tháng đang thống kê
       /** Thẻ 1: tổng phản ánh tiếp nhận trong tháng */
       receivedThisMonth: received,
       /** Thẻ 2: số phản ánh đã xử lý xong trong tháng */
@@ -404,7 +408,7 @@ export class FeedbackService {
     await this.assertImagesPrivate(dto.resultImageFileIds, 'Ảnh nghiệm thu');
 
     const fb = await this.findOrFail(code);
-    const resolvedAt = new Date();
+    const resolvedAt = nowMs();
     fb.status = 'resolved';
     if (dto.resultImageFileIds?.length) fb.resultImageFileIds = dto.resultImageFileIds;
     pushTimeline(fb, ACT.resolve, dto.note, actor.id);
@@ -415,7 +419,8 @@ export class FeedbackService {
       code: fb.code,
       citizenPhone: fb.citizenPhone,
       title: fb.title,
-      resolvedAt: resolvedAt.toISOString(),
+      // Hợp đồng sự kiện nhận chuỗi; giữ ISO để hệ nhận ngoài đọc được
+      resolvedAt: new Date(resolvedAt).toISOString(),
     };
     this.logger.log(`${EVENTS.FEEDBACK_RESOLVED}: ${event.code}`);
 
@@ -426,7 +431,7 @@ export class FeedbackService {
       code: fb.code,
       citizenPhone: fb.citizenPhone,
       title: fb.title,
-      resolvedAt: timeLabel(resolvedAt),
+      resolvedAt: formatVnDateTimeMs(resolvedAt),
       note: dto.note,
     });
 
@@ -500,7 +505,7 @@ export class FeedbackService {
       },
     });
 
-    const created = await this.createWithUniqueCode(payload, sentAt.getFullYear());
+    const created = await this.createWithUniqueCode(payload, vnYearOf(sentAt));
 
     const event: FeedbackCreatedEvent = {
       feedbackId: String(created._id),
@@ -555,7 +560,7 @@ export class FeedbackService {
       lng: dto.lng,
     };
 
-    const created = await this.createWithUniqueCode(payload, sentAt.getFullYear());
+    const created = await this.createWithUniqueCode(payload, vnYearOf(sentAt));
 
     const event: FeedbackCreatedEvent = {
       feedbackId: String(created._id),
@@ -689,7 +694,7 @@ export class FeedbackService {
     }
 
     const reason = dto.reason?.trim() ?? '';
-    const now = new Date();
+    const now = nowMs();
     fb.withdrawReason = reason;
     fb.withdrawRequestedAt = now;
     const reasonSuffix = reason ? ` · Lý do: ${reason}` : '';
@@ -724,7 +729,7 @@ export class FeedbackService {
   async approveWithdraw(code: string, dto: DecideWithdrawDto, actor: ActorInfo) {
     const fb = await this.findPendingWithdraw(code);
     const note = dto.note?.trim() ?? '';
-    const now = new Date();
+    const now = nowMs();
 
     fb.withdrawStatus = 'approved';
     fb.withdrawDecidedAt = now;
@@ -747,7 +752,7 @@ export class FeedbackService {
   async rejectWithdraw(code: string, dto: DecideWithdrawDto, actor: ActorInfo) {
     const fb = await this.findPendingWithdraw(code);
     const note = (dto.note ?? '').trim();
-    const now = new Date();
+    const now = nowMs();
 
     fb.withdrawStatus = 'rejected';
     fb.withdrawDecidedAt = now;
@@ -838,10 +843,12 @@ export class FeedbackService {
    * khác nhau: nhân bản mấy dòng này là mở đường cho hai con số hạn xử lý của
    * cùng một lĩnh vực, và sai lệch đó chỉ lộ ra khi đối chiếu báo cáo đúng hạn.
    */
-  private async resolveSla(categoryKey: string): Promise<{ resolveDays: number; sentAt: Date; slaDueAt: Date }> {
+  private async resolveSla(
+    categoryKey: string,
+  ): Promise<{ resolveDays: number; sentAt: number; slaDueAt: number }> {
     const sla = await this.slaRuleModel.findOne({ categoryKey }).lean().exec();
     const resolveDays = sla?.resolveDays ?? DEFAULT_RESOLVE_DAYS;
-    const sentAt = new Date();
+    const sentAt = nowMs();
     return { resolveDays, sentAt, slaDueAt: addResolveDays(sentAt, resolveDays) };
   }
 
@@ -930,8 +937,8 @@ interface NewFeedbackInput {
   title: string;
   description: string;
   location: string;
-  sentAt: Date;
-  slaDueAt: Date;
+  sentAt: number;
+  slaDueAt: number;
   imageFileIds?: string[];
   citizenPhone: string;
   citizenName: string;
@@ -959,7 +966,7 @@ function buildNewFeedbackPayload(input: NewFeedbackInput): Record<string, unknow
     title: input.title,
     description: input.description,
     location: input.location,
-    sentAt: timeLabel(input.sentAt),
+    sentAt: input.sentAt,
     status: 'received',
     slaDueAt: input.slaDueAt,
     imageFileIds: input.imageFileIds ?? [],
@@ -976,7 +983,7 @@ function buildNewFeedbackPayload(input: NewFeedbackInput): Record<string, unknow
       activity(input.openingStep.action, { detail: input.openingStep.detail }),
       /* `detail` là mốc hạn SLA dạng SỐ — client tự định dạng để hiển thị */
       activity(ACT.awaitingAssign, {
-        detail: String(input.slaDueAt.getTime()),
+        detail: String(input.slaDueAt),
         state: 'cur',
       }),
     ],
@@ -988,18 +995,20 @@ function buildNewFeedbackPayload(input: NewFeedbackInput): Record<string, unknow
  * TẠM cộng ngày lịch cho đơn giản. Ngày làm việc thật phải trừ thứ Bảy, Chủ nhật
  * và ngày nghỉ lễ theo lịch nhà nước — bổ sung khi module Cấu hình có bảng ngày nghỉ.
  */
-function addResolveDays(from: Date, days: number): Date {
-  return new Date(from.getTime() + days * MS_PER_DAY);
+function addResolveDays(from: number, days: number): number {
+  return from + days * MS_PER_DAY;
 }
 
 /** Số giờ còn lại tới hạn SLA; giá trị ÂM nghĩa là đã quá hạn */
-function hoursLeft(slaDueAt?: Date | null): number | null {
+function hoursLeft(slaDueAt?: number | null): number | null {
   if (!slaDueAt) return null;
-  return Math.round(((new Date(slaDueAt).getTime() - Date.now()) / MS_PER_HOUR) * 10) / 10;
+  return Math.round(((slaDueAt - nowMs()) / MS_PER_HOUR) * 10) / 10;
 }
 
 /** Bổ sung slaHoursLeft cho bản ghi trả về FE */
-function withSlaHoursLeft<T extends { slaDueAt?: Date | null }>(doc: T): T & { slaHoursLeft: number | null } {
+function withSlaHoursLeft<T extends { slaDueAt?: number | null }>(
+  doc: T,
+): T & { slaHoursLeft: number | null } {
   return { ...doc, slaHoursLeft: hoursLeft(doc.slaDueAt) };
 }
 
@@ -1014,7 +1023,7 @@ function maskPhone(phone?: string): string {
  * Bản ghi phản ánh trả về cho CÁN BỘ: đủ trường điều hành nhưng số điện thoại
  * công dân luôn ở dạng che (xem chú thích PHONE_MASK_HEAD phía trên).
  */
-function toStaffView<T extends { slaDueAt?: Date | null; citizenPhone?: string }>(doc: T) {
+function toStaffView<T extends { slaDueAt?: number | null; citizenPhone?: string }>(doc: T) {
   return { ...withSlaHoursLeft(doc), citizenPhone: maskPhone(doc.citizenPhone) };
 }
 
@@ -1036,14 +1045,10 @@ function pushTimeline(
   fb.timeline.push(activity(action, { actorId, detail, state: 'cur' }));
 }
 
-/** dd/MM/yyyy HH:mm — giữ nguyên định dạng hiển thị của FE */
-function timeLabel(value: Date): string {
-  const dd = String(value.getDate()).padStart(2, '0');
-  const mm = String(value.getMonth() + 1).padStart(2, '0');
-  const hh = String(value.getHours()).padStart(2, '0');
-  const mi = String(value.getMinutes()).padStart(2, '0');
-  return `${dd}/${mm}/${value.getFullYear()} ${hh}:${mi}`;
-}
+/*
+ * `timeLabel` cục bộ đã bỏ — dùng `formatVnDateTimeMs` của `@vigov/shared`.
+ * Bản cũ định dạng theo giờ máy chủ; bản dùng chung neo vào giờ Việt Nam.
+ */
 
 /** Thoát ký tự đặc biệt trước khi ghép vào RegExp tìm kiếm */
 function escapeRegex(input: string): string {

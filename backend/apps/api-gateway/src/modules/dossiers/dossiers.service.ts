@@ -24,7 +24,8 @@ export interface DossierStepView {
   key: DossierStepKey;
   label: string;
   /** ISO 8601, null khi hồ sơ chưa đi tới bước này */
-  at: string | null;
+  /** Mốc bước hồ sơ — milli-giây UTC; null nghĩa là chưa tới bước này */
+  at: number | null;
   done: boolean;
 }
 
@@ -38,8 +39,8 @@ export interface DossierLookupView {
   department: string;
   assignee: string;
   status: string;
-  submittedAt: string | null;
-  dueAt: string | null;
+  submittedAt: number | null;
+  dueAt: number | null;
   note: string;
   steps: DossierStepView[];
 }
@@ -85,9 +86,9 @@ type DossierLean = Pick<
   Dossier,
   'code' | 'procedure' | 'applicantName' | 'applicantPhone' | 'department' | 'assignee' | 'status' | 'note'
 > & {
-  submittedAt?: Date | null;
-  dueAt?: Date | null;
-  stepTimes?: { key: string; at: Date }[];
+  submittedAt?: number | null;
+  dueAt?: number | null;
+  stepTimes?: { key: string; at: number }[];
 };
 
 /**
@@ -106,7 +107,7 @@ export function toLookupView(doc: DossierLean): DossierLookupView {
   const steps: DossierStepView[] = DOSSIER_STEP_KEYS.map((key, index) => ({
     key,
     label: DOSSIER_STEP_LABELS[key],
-    at: index <= statusIndex ? toIso(atByKey.get(key)) : null,
+    at: index <= statusIndex ? (atByKey.get(key) ?? null) : null,
     done: index < statusIndex || (index === statusIndex && isFinal),
   }));
 
@@ -118,14 +119,15 @@ export function toLookupView(doc: DossierLean): DossierLookupView {
     department: doc.department ?? '',
     assignee: doc.assignee ?? '',
     status: doc.status,
-    submittedAt: toIso(doc.submittedAt),
-    dueAt: toIso(doc.dueAt),
+    submittedAt: doc.submittedAt ?? null,
+    dueAt: doc.dueAt ?? null,
     note: doc.note ?? '',
     steps,
   };
 }
 
-/** Date → ISO 8601; thiếu mốc thì trả null để client biết là "chưa tới bước này" */
-function toIso(value: Date | null | undefined): string | null {
-  return value ? new Date(value).toISOString() : null;
-}
+/*
+ * `toIso` đã bỏ. Hợp đồng API v2 trả mốc thời gian dạng SỐ (milli-giây UTC) —
+ * client tự định dạng. Trả chuỗi ISO là thêm một dạng biểu diễn thứ hai cho
+ * cùng một giá trị, đúng thứ mà nâng cấp v2 đang gom lại.
+ */

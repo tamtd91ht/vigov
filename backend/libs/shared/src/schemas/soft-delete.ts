@@ -1,6 +1,7 @@
 import { Prop, Schema } from '@nestjs/mongoose';
 import type { FilterQuery } from 'mongoose';
 import { nowMs, type EpochMs } from '../time/epoch';
+import { Timestamped } from './timestamped';
 
 /**
  * Xoá MỀM dùng chung cho mọi phân hệ (Nhiệm vụ, Văn bản, Công dân, Ngân sách…).
@@ -19,9 +20,16 @@ import { nowMs, type EpochMs } from '../time/epoch';
  * Hai trường này phải LUÔN đi cùng nhau — dùng `markDeleted` / `markRestored`
  * thay vì gán tay, để không bao giờ có bản ghi `isDeleted: true` mà thiếu mốc
  * thời gian (hoặc ngược lại).
+ *
+ * ## Vì sao kế thừa `Timestamped`
+ *
+ * Mọi bản ghi nghiệp vụ có xoá mềm đều cần `createdAt` / `updatedAt`, mà
+ * TypeScript chỉ cho kế thừa MỘT lớp. Gộp ở đây để schema nghiệp vụ chỉ cần
+ * `extends SoftDeletable` là có đủ cả hai bộ trường, thay vì khai lại hai mốc
+ * thời gian ở mười ba chỗ.
  */
 @Schema()
-export class SoftDeletable {
+export class SoftDeletable extends Timestamped {
   /**
    * Cờ xoá mềm — trường DUY NHẤT được dùng trong điều kiện truy vấn.
    *

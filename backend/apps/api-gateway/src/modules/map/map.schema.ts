@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { applyEpochTimestamps } from '@vigov/shared';
 
 /**
  * Schema cục bộ của phân hệ Bản đồ kinh tế số (WBS #7).
@@ -14,7 +15,7 @@ export type MapLayerDocument = HydratedDocument<MapLayer>;
 export type MapPinDocument = HydratedDocument<MapPin>;
 
 /** Một lớp dữ liệu bật/tắt trên bản đồ (doanh nghiệp, hộ kinh doanh, chợ…) */
-@Schema({ collection: 'map_layers', timestamps: true })
+@Schema({ collection: 'map_layers' })
 export class MapLayer {
   /** Khoá tự nhiên, ví dụ 'dn', 'hkd' — dùng nối ghim với lớp */
   @Prop({ required: true, unique: true, index: true })
@@ -36,9 +37,10 @@ export class MapLayer {
   order: number;
 }
 export const MapLayerSchema = SchemaFactory.createForClass(MapLayer);
+applyEpochTimestamps(MapLayerSchema);
 
 /** Một ghim cơ sở kinh tế / hạ tầng trên bản đồ */
-@Schema({ collection: 'map_pins', timestamps: true })
+@Schema({ collection: 'map_pins' })
 export class MapPin {
   /** Khoá lớp dữ liệu (MapLayer.key) */
   @Prop({ required: true, index: true })
@@ -82,4 +84,5 @@ export class MapPin {
   lng?: number;
 }
 export const MapPinSchema = SchemaFactory.createForClass(MapPin);
+applyEpochTimestamps(MapPinSchema);
 MapPinSchema.index({ name: 'text', industry: 'text', address: 'text' });

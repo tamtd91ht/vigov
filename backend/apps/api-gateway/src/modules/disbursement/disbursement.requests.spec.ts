@@ -4,6 +4,7 @@ import type { BudgetItemDocument, JwtPayload } from '@vigov/shared';
 import type { ConfigService } from '@nestjs/config';
 import { fakeDoc, queryChain } from '../../../../../test/support/mongoose-mock';
 import { DisbursementService } from './disbursement.service';
+import { parseVnDateMs } from '@vigov/shared';
 
 const TY = 1_000_000_000;
 
@@ -61,7 +62,7 @@ describe('DisbursementService — vòng đời đề nghị giải ngân', () =>
       /* Một giao dịch đúng bằng luỹ kế: `recompute` tính lại actualDong từ
          entries ở mọi đường ghi, nên dữ liệu giả phải tự khớp */
       entries: [
-        { type: 'chi', amountDong: actualDong, date: '10/03/2026', content: 'Đợt 1' },
+        { type: 'chi', amountDong: actualDong, date: parseVnDateMs('10/03/2026') as number, content: 'Đợt 1' },
       ] as Record<string, unknown>[],
       adjustments: [] as Record<string, unknown>[],
       documents: [] as Record<string, unknown>[],
@@ -107,7 +108,7 @@ describe('DisbursementService — vòng đời đề nghị giải ngân', () =>
     const res = await service.disburseRequest(
       'HM-01',
       'DN-01',
-      { voucherNo: 'UNC 118/2026', date: '25/08/2026' },
+      { voucherNo: 'UNC 118/2026', date: parseVnDateMs('25/08/2026') as number },
       LEADER,
     );
 
@@ -115,7 +116,7 @@ describe('DisbursementService — vòng đời đề nghị giải ngân', () =>
     expect(item.actualDong).toBe(1_500_000_000); // 1 tỷ + 500 triệu
     expect(item.entries).toHaveLength(2);
     expect(item.entries[1]).toMatchObject({
-      date: '25/08/2026',
+      date: parseVnDateMs('25/08/2026') as number,
       type: 'chi',
       amountDong: 500_000_000,
       voucherNo: 'UNC 118/2026',

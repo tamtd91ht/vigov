@@ -2,6 +2,7 @@ import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
 import { SoftDeletable } from './soft-delete';
 import { ActivityEntry, ActivityEntrySchema } from './activity-log';
+import { applyEpochTimestamps } from './timestamped';
 
 export type FeedbackDocument = HydratedDocument<Feedback>;
 
@@ -25,7 +26,7 @@ export type WithdrawStatus = (typeof WITHDRAW_STATUSES)[number];
  * hoặc Zalo Mini App; tên field khớp CitizenFeedback (admin-web)
  * và FeedbackTicket (mobile / zalo-miniapp).
  */
-@Schema({ collection: 'feedbacks', timestamps: true })
+@Schema({ collection: 'feedbacks' })
 export class Feedback extends SoftDeletable {
   /** Mã phiếu hiển thị: #PA-2026-0141 */
   @Prop({ required: true, unique: true, index: true })
@@ -49,15 +50,16 @@ export class Feedback extends SoftDeletable {
   @Prop()
   lng?: number;
 
-  @Prop({ required: true })
-  sentAt: string;
+  /** Thời điểm người dân gửi phiếu — milli-giây UTC */
+  @Prop({ required: true, index: true })
+  sentAt: number;
 
   @Prop({ enum: ['received', 'processing', 'resolved'], default: 'received', index: true })
   status: string;
 
-  /** Mốc hết hạn SLA phục vụ CronJob cảnh báo (P3-30) */
+  /** Mốc hết hạn SLA phục vụ CronJob cảnh báo (P3-30) — milli-giây UTC */
   @Prop({ index: true })
-  slaDueAt?: Date;
+  slaDueAt?: number;
 
   /** Id ảnh hiện trường trong file storage (P3-24) */
   @Prop({ type: [String], default: [] })
@@ -137,17 +139,17 @@ export class Feedback extends SoftDeletable {
   @Prop({ enum: WITHDRAW_STATUSES, default: 'none', index: true })
   withdrawStatus: WithdrawStatus;
 
-  /** Lúc người dân bấm xin thu hồi */
+  /** Lúc người dân bấm xin thu hồi — milli-giây UTC */
   @Prop()
-  withdrawRequestedAt?: Date;
+  withdrawRequestedAt?: number;
 
   /** Lý do người dân nêu khi xin thu hồi (không bắt buộc) */
   @Prop({ default: '' })
   withdrawReason: string;
 
-  /** Lúc cán bộ duyệt hoặc từ chối */
+  /** Lúc cán bộ duyệt hoặc từ chối — milli-giây UTC */
   @Prop()
-  withdrawDecidedAt?: Date;
+  withdrawDecidedAt?: number;
 
   /**
    * TÊN ĐĂNG NHẬP (`JwtPayload.username`) của cán bộ đã quyết định — KHÔNG phải
@@ -168,4 +170,5 @@ export class Feedback extends SoftDeletable {
 }
 
 export const FeedbackSchema = SchemaFactory.createForClass(Feedback);
+applyEpochTimestamps(FeedbackSchema);
 FeedbackSchema.index({ title: 'text', description: 'text' });

@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
-import type { NotificationChannel } from '@vigov/shared';
+import { applyEpochTimestamps, type NotificationChannel } from '@vigov/shared';
 
 export type BroadcastLogDocument = HydratedDocument<BroadcastLog>;
 
@@ -15,7 +15,7 @@ export type BroadcastStatus = (typeof BROADCAST_STATUSES)[number];
  * Không lưu danh sách người nhận: chỉ cần con số tổng hợp cho màn hình lịch sử,
  * lưu SĐT ở đây là nhân bản dữ liệu cá nhân không cần thiết.
  */
-@Schema({ collection: 'broadcast_logs', timestamps: true })
+@Schema({ collection: 'broadcast_logs' })
 export class BroadcastLog {
   /** Các kênh đã chọn khi gửi: zns / push / inapp */
   @Prop({ type: [String], required: true })
@@ -49,11 +49,12 @@ export class BroadcastLog {
   @Prop({ required: true, enum: BROADCAST_STATUSES })
   status: string;
 
-  /** Do `timestamps: true` tự gán — khai báo tường minh để truy vấn/sắp xếp có kiểu */
+  /** Do `applyEpochTimestamps` tự gán — khai tường minh để truy vấn/sắp xếp có kiểu */
   @Prop({ index: true })
-  createdAt: Date;
+  createdAt: number;
 }
 
 export const BroadcastLogSchema = SchemaFactory.createForClass(BroadcastLog);
+applyEpochTimestamps(BroadcastLogSchema);
 /** Màn hình lịch sử luôn lọc theo nhóm đối tượng + mới nhất trước */
 BroadcastLogSchema.index({ audience: 1, createdAt: -1 });

@@ -15,13 +15,12 @@ import {
   type TaskDocument,
   activity,
   formatVnDateTimeMs,
+  nowMs,
 } from '@vigov/shared';
 import { MessagingService } from '../messaging/messaging.service';
 import {
   TASK_STATUS_DONE,
   TasksService,
-  formatVnDate,
-  parseVnDate,
 } from '../tasks/tasks.service';
 
 /* ─────────────── Hằng số cấu hình luồng xuyên phân hệ (P3-30) ─────────────── */
@@ -101,7 +100,7 @@ export class WorkflowService {
 
     const department = payload.department || doc.department;
     const summary = payload.summary || doc.summary;
-    const deadline = this.pickDeadline(payload.deadline, doc.deadline, doc.deadlineAt);
+    const deadline = this.pickDeadline(payload.deadline, doc.deadline);
     const assigner = payload.assignedBy || SYSTEM_ACTOR;
 
     const task = await this.tasks.createFromSource({
@@ -152,7 +151,7 @@ export class WorkflowService {
    */
   async createTaskFromFeedback(
     payload: FeedbackAssignedEvent,
-    deadlineOverride?: string,
+    deadlineOverride?: number,
   ): Promise<{ code: string }> {
     const feedback = await this.loadFeedback(payload.feedbackId);
     if (feedback.linkedTaskCode) return { code: feedback.linkedTaskCode };
@@ -162,7 +161,6 @@ export class WorkflowService {
     const title = payload.title || feedback.title;
     const deadline = this.pickDeadline(
       deadlineOverride,
-      undefined,
       feedback.slaDueAt,
       FEEDBACK_TASK_DEFAULT_DAYS,
     );
@@ -274,8 +272,8 @@ export class WorkflowService {
   /** 07:00 hằng ngày: cảnh báo phiếu phản ánh sắp/đã hết hạn SLA */
   @Cron(CronExpression.EVERY_DAY_AT_7AM)
   async warnFeedbackSla(): Promise<{ overdue: number; upcoming: number }> {
-    const now = new Date();
-    const threshold = new Date(now.getTime() + FEEDBACK_SLA_WARNING_HOURS * 60 * 60 * 1000);
+    const now = nowMs();
+    const threshold = now + FEEDBACK_SLA_WARNING_HOURS * 60 * 60 * 1000;
 
     const items = await this.feedbackModel
       .find({
@@ -288,13 +286,13 @@ export class WorkflowService {
 
     let overdue = 0;
     for (const item of items) {
-      const due = item.slaDueAt as Date;
+      const due = item.slaDueAt as number;
       const isOverdue = due < now;
       if (isOverdue) overdue++;
       const label = isOverdue ? 'QUÁ HẠN SLA' : 'SẮP HẾT HẠN SLA';
       this.logger.warn(
         `${label} — ${item.code} "${item.title}" | ${item.assignee || item.department || 'chưa phân công'} ` +
-          `| hạn ${formatVnDateTimeMs(due.getTime())}`,
+          `| hạn ${formatVnDateTimeMs(due)}`,
       );
       // TODO: gửi cảnh báo cho cán bộ phụ trách qua NotificationModule (module khác đảm nhiệm)
     }
@@ -337,7 +335,7 @@ export class WorkflowService {
    * báo cần mã tra cứu được trên giao diện, và hợp đồng sự kiện ở libs/shared
    * (không sửa trong task này) chỉ có đúng một trường định danh.
    */
-  private async publishDeadlineWarning(task: TaskDocument, now: Date): Promise<void> {
+  private async publishDeadlineWarning(task: TaskDocument, now: number): Promise<void> {
     await this.messaging.publish(EVENTS.TASK_DEADLINE_WARNING, {
       taskId: task.code,
       title: task.title,
@@ -372,15 +370,14 @@ export class WorkflowService {
    * → mặc định [fallbackDays] ngày kể từ hôm nay.
    */
   private pickDeadline(
-    preferred?: string,
-    sourceDeadline?: string,
-    sourceDeadlineAt?: Date,
+    preferred?: number,
+    sourceDeadline?: number,
     fallbackDays = DEADLINE_WARNING_DAYS,
-  ): string {
-    if (preferred && parseVnDate(preferred)) return preferred;
-    if (sourceDeadline && parseVnDate(sourceDeadline)) return sourceDeadline;
-    if (sourceDeadlineAt) return formatVnDate(new Date(sourceDeadlineAt));
-    return formatVnDate(new Date(Date.now() + fallbackDays * MS_PER_DAY));
+  ): number {
+    // Mốc thời gian v2 là số nên không còn bước phân tích chuỗi: có giá trị là dùng
+    if (preferred) return preferred;
+    if (sourceDeadline) return sourceDeadline;
+    return nowMs() + fallbackDays * MS_PER_DAY;
   }
 }
 

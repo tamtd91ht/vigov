@@ -4,6 +4,8 @@ import { Model, type FilterQuery } from 'mongoose';
 import {
   activity,
   buildEpochRangeFilter,
+  endOfVnDayMs,
+  vnDaysBetween,
   IncomingDocument,
   IS_DELETED,
   markDeleted,
@@ -272,8 +274,8 @@ export class DocumentsService {
     await this.assertScanPrivate(dto.scanFileId);
     const kind = dto.kind ?? 'incoming';
     const arrivalNo = await this.nextArrivalNo(kind);
-    const deadline = dto.deadline ?? '';
-    const deadlineAt = parseVnDate(deadline);
+    // Vào sổ trước, ấn định hạn sau: bỏ trống thì để undefined, không phải 0
+    const deadline = dto.deadline === undefined ? undefined : endOfVnDayMs(dto.deadline);
 
     const created = await this.docModel.create({
       arrivalNo,
@@ -282,8 +284,7 @@ export class DocumentsService {
       sender: dto.sender,
       summary: dto.summary,
       deadline,
-      deadlineAt,
-      daysLeft: daysLeftFrom(deadlineAt),
+      daysLeft: daysLeftFrom(deadline),
       department: dto.department ?? DEFAULT_DEPARTMENT,
       status: 'moi',
       docType: dto.docType ?? DEFAULT_DOC_TYPE_BY_KIND[kind] ?? DEFAULT_DOC_TYPE_BY_KIND.incoming,
@@ -331,11 +332,11 @@ export class DocumentsService {
       doc.scanFileId = dto.scanFileId;
     }
     if (dto.linkedTaskCode !== undefined) doc.linkedTaskCode = dto.linkedTaskCode;
+    // Hạn rỗng nghĩa là bỏ hạn: gán undefined chứ không phải 0 (0 là 01/01/1970)
     if (dto.deadline !== undefined) {
-      doc.deadline = dto.deadline;
-      doc.deadlineAt = parseVnDate(dto.deadline);
+      doc.deadline = dto.deadline === null ? undefined : endOfVnDayMs(dto.deadline);
     }
-    doc.daysLeft = daysLeftFrom(doc.deadlineAt);
+    doc.daysLeft = daysLeftFrom(doc.deadline);
 
     if (steps.length) {
       // Mốc trước đó chuyển thành đã qua, mốc mới nhất là mốc hiện tại
@@ -506,27 +507,26 @@ export class DocumentsService {
   }
 
   /** Luôn tính lại số ngày còn lại từ deadlineAt, không tin giá trị đã lưu */
-  private withFreshDaysLeft<T extends { deadlineAt?: Date | null }>(doc: T) {
-    return { ...doc, daysLeft: daysLeftFrom(doc.deadlineAt ?? undefined) };
+  private withFreshDaysLeft<T extends { deadline?: number | null }>(doc: T) {
+    return { ...doc, daysLeft: daysLeftFrom(doc.deadline ?? undefined) };
   }
 }
 
-/** Chuyển chuỗi dd/MM/yyyy thành Date (UTC 00:00); chuỗi rỗng / sai định dạng → undefined */
-function parseVnDate(value?: string): Date | undefined {
-  if (!value) return undefined;
-  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(value.trim());
-  if (!match) return undefined;
-  const [, dd, mm, yyyy] = match;
-  const date = new Date(Date.UTC(Number(yyyy), Number(mm) - 1, Number(dd)));
-  return Number.isNaN(date.getTime()) ? undefined : date;
-}
+/*
+ * `parseVnDate` cục bộ đã bỏ — đây là bản thứ tư của cùng một phép quy đổi
+ * trong dự án. Hạn xử lý nhận vào dạng số và được chuẩn hoá bằng `endOfVnDayMs`.
+ */
 
-/** Số ngày còn lại tới hạn xử lý; âm là đã quá hạn, 0 khi không có hạn */
-function daysLeftFrom(deadlineAt?: Date): number {
-  if (!deadlineAt) return 0;
-  const now = new Date();
-  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  return Math.round((new Date(deadlineAt).getTime() - today) / MS_PER_DAY);
+/**
+ * Số ngày còn lại tới hạn xử lý; âm là đã quá hạn, `0` khi hạn là hôm nay
+ * **hoặc** khi văn bản chưa ấn định hạn.
+ *
+ * Đếm theo NGÀY LỊCH giờ Việt Nam (`vnDaysBetween`), giữ đúng nghĩa của bản v1:
+ * phiếu văn bản hiện "còn 0 ngày" là hết hôm nay. Bản v1 tự tính mốc nửa đêm
+ * UTC ngay trong tệp này nên trên container UTC+7 nó lệch một ngày.
+ */
+function daysLeftFrom(deadline?: number): number {
+  return deadline === undefined || deadline === null ? 0 : vnDaysBetween(deadline);
 }
 
 /*

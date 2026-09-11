@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { applyEpochTimestamps } from '@vigov/shared';
 
 export type OtpCodeDocument = HydratedDocument<OtpCode>;
 
@@ -20,7 +21,7 @@ export type OtpCodeDocument = HydratedDocument<OtpCode>;
  * xã. MongoDB đã có sẵn, và TTL index dưới đây tự dọn bản ghi hết hạn nên cũng
  * không phát sinh việc quét dọn định kỳ.
  */
-@Schema({ collection: 'otp_codes', timestamps: true })
+@Schema({ collection: 'otp_codes' })
 export class OtpCode {
   /** Số điện thoại xin mã — mỗi số chỉ có tối đa một mã còn hiệu lực */
   @Prop({ required: true, unique: true, index: true })
@@ -41,8 +42,15 @@ export class OtpCode {
    * ghi sau thời điểm này (chậm nhất khoảng 60 giây — chu kỳ quét của Mongo).
    * Mã hết hạn vẫn bị từ chối bằng cách so mốc thời gian, không phụ thuộc việc
    * Mongo đã dọn hay chưa.
+   *
+   * ## NGOẠI LỆ DUY NHẤT của quy ước "mọi mốc thời gian lưu dạng số" (v2)
+   *
+   * Chỉ mục TTL của MongoDB **chỉ hoạt động trên trường BSON `Date`**. Đổi
+   * trường này sang số thì TTL im lặng ngừng dọn — không báo lỗi, không ai
+   * biết, và bảng `otp_codes` phình vô hạn với dữ liệu xác thực lẽ ra phải hết
+   * hạn. Nên trường này giữ `Date`, và đây là chỗ duy nhất được phép.
    */
-  @Prop({ required: true })
+  @Prop({ type: Date, required: true })
   expiresAt: Date;
 
   /** Số lần đã nhập sai cho chính mã này */
@@ -51,6 +59,7 @@ export class OtpCode {
 }
 
 export const OtpCodeSchema = SchemaFactory.createForClass(OtpCode);
+applyEpochTimestamps(OtpCodeSchema);
 
 /** MongoDB tự xoá bản ghi khi quá `expiresAt` — không cần cron dọn rác */
 OtpCodeSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });

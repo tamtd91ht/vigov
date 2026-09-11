@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import {
+  formatVnDateMs,
   EVENTS,
   type DocumentAssignedEvent,
   type FeedbackAssignedEvent,
@@ -85,7 +86,8 @@ export class NotificationConsumer implements OnModuleInit {
     const data = {
       documentId: payload.documentId,
       taskCode: payload.taskCode ?? '',
-      deadline: payload.deadline,
+      // `data` của thông báo chỉ nhận chuỗi; mốc thời gian đổi sang chuỗi số
+      deadline: String(payload.deadline),
     };
 
     // Có cán bộ đích danh thì báo riêng; chưa có thì báo toàn bộ phận chủ trì
@@ -121,12 +123,12 @@ export class NotificationConsumer implements OnModuleInit {
       ? `Nhiệm vụ ${payload.taskId} ĐÃ QUÁ HẠN`
       : `Nhiệm vụ ${payload.taskId} sắp đến hạn`;
     const body = overdue
-      ? `"${payload.title}" quá hạn ${Math.abs(payload.daysLeft)} ngày (hạn ${payload.deadline})`
-      : `"${payload.title}" còn ${payload.daysLeft} ngày (hạn ${payload.deadline})`;
+      ? `"${payload.title}" quá hạn ${Math.abs(payload.daysLeft)} ngày (hạn ${formatVnDateMs(payload.deadline)})`
+      : `"${payload.title}" còn ${payload.daysLeft} ngày (hạn ${formatVnDateMs(payload.deadline)})`;
 
     await this.notifications.notifyStaff(payload.assignee, title, body, {
       taskCode: payload.taskId,
-      deadline: payload.deadline,
+      deadline: String(payload.deadline),
     });
   }
 }

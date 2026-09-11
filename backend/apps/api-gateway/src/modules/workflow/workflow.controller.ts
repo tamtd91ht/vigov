@@ -22,7 +22,7 @@ export class WorkflowController {
         arrivalNo: '',
         summary: '',
         department: dto.department ?? '',
-        deadline: dto.deadline ?? '',
+        deadline: dto.deadline ?? 0,
         assignedBy: req.user?.displayName ?? '',
       },
       dto.assignee,

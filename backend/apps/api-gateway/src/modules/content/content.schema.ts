@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { HydratedDocument } from 'mongoose';
+import { applyEpochTimestamps } from '@vigov/shared';
 
 /**
  * Schema cục bộ của phân hệ CMS (WBS #10).
@@ -11,7 +12,7 @@ export type VideoDocument = HydratedDocument<Video>;
 export type RadioBulletinDocument = HydratedDocument<RadioBulletin>;
 
 /** Video tuyên truyền đẩy sang Zalo Mini App */
-@Schema({ collection: 'videos', timestamps: true })
+@Schema({ collection: 'videos' })
 export class Video {
   @Prop({ required: true })
   title: string;
@@ -49,10 +50,11 @@ export class Video {
   status: string;
 }
 export const VideoSchema = SchemaFactory.createForClass(Video);
+applyEpochTimestamps(VideoSchema);
 VideoSchema.index({ title: 'text', topic: 'text' });
 
 /** Bản tin truyền thanh xã (audio) */
-@Schema({ collection: 'radio_bulletins', timestamps: true })
+@Schema({ collection: 'radio_bulletins' })
 export class RadioBulletin {
   @Prop({ required: true })
   title: string;
@@ -78,4 +80,5 @@ export class RadioBulletin {
   status: string;
 }
 export const RadioBulletinSchema = SchemaFactory.createForClass(RadioBulletin);
+applyEpochTimestamps(RadioBulletinSchema);
 RadioBulletinSchema.index({ title: 'text', category: 'text' });

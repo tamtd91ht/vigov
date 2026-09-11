@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SoftDeletable } from './soft-delete';
+import { applyEpochTimestamps } from './timestamped';
 import { ActivityEntry, ActivityEntrySchema } from './activity-log';
 import { Comment, CommentSchema } from './comment';
 import { HydratedDocument } from 'mongoose';
@@ -36,7 +37,7 @@ export const ChecklistItemSchema = SchemaFactory.createForClass(ChecklistItem);
  * bằng chứng phục vụ thanh tra, mà mã NV-xxxx đã được văn bản / phản ánh dẫn
  * chiếu qua `sourceRefId` nên xoá cứng là để lại liên kết chết.
  */
-@Schema({ collection: 'tasks', timestamps: true })
+@Schema({ collection: 'tasks' })
 export class Task extends SoftDeletable {
   /** Mã hiển thị: NV-2601 */
   @Prop({ required: true, unique: true, index: true })
@@ -61,13 +62,17 @@ export class Task extends SoftDeletable {
   @Prop({ required: true, index: true })
   department: string;
 
-  /** dd/MM/yyyy — giữ nguyên định dạng hiển thị của FE */
-  @Prop({ required: true })
-  deadline: string;
-
-  /** Mốc hạn dạng Date phục vụ CronJob nhắc hạn (P3-30) */
-  @Prop({ index: true })
-  deadlineAt?: Date;
+  /**
+   * Hạn xử lý — milli-giây UTC, đã chuẩn hoá về **hết ngày** giờ Việt Nam
+   * (`endOfVnDayMs`). Hạn hành chính là một NGÀY, không phải một thời điểm.
+   *
+   * v1 lưu hai trường cho cùng một cái hạn: `deadline` dạng chuỗi `dd/MM/yyyy`
+   * để hiển thị và `deadlineAt` dạng `Date` để cron so sánh. Sửa một trường mà
+   * quên trường kia là bảng hiện một ngày còn cron tính một ngày khác — mà lệch
+   * kiểu đó không báo lỗi gì. v2 giữ MỘT trường; định dạng là việc của client.
+   */
+  @Prop({ required: true, index: true })
+  deadline: number;
 
   @Prop({ default: 0, min: 0, max: 100 })
   progress: number;
@@ -119,4 +124,5 @@ export class Task extends SoftDeletable {
 }
 
 export const TaskSchema = SchemaFactory.createForClass(Task);
+applyEpochTimestamps(TaskSchema);
 TaskSchema.index({ title: 'text', description: 'text' });
