@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Feedback, FeedbackSchema, SlaRule, SlaRuleSchema } from '@vigov/shared';
+import { AuditModule } from '../audit/audit.module';
 import { FilesModule } from '../files/files.module';
+import { SettingsModule } from '../settings/settings.module';
 import { NotificationModule } from '../notification/notification.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { FeedbackController } from './feedback.controller';
@@ -24,6 +26,10 @@ import { FeedbackService } from './feedback.service';
     RealtimeModule,
     // TB-09: ảnh hiện trường và ảnh nghiệm thu phải là tệp riêng tư — kiểm bằng FilesService
     FilesModule,
+    // Xuất Excel là GET nên AuditInterceptor không bắt — phải tự ghi vết
+    AuditModule,
+    // Nhãn lĩnh vực trên tệp xuất lấy từ danh mục ở phân hệ Cấu hình
+    SettingsModule,
   ],
   controllers: [FeedbackController],
   providers: [FeedbackService],

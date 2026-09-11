@@ -1,6 +1,6 @@
 import type { Comment, Task, TimelineItem } from "@/types";
 import { appConfig } from "@/config/app.config";
-import { ApiError, apiClient, buildQuery, type Paged } from "@/services/api";
+import { ApiError, apiClient, buildQuery, downloadFile, type Paged } from "@/services/api";
 import { mockTaskComments, mockTaskLog, taskAttachments, tasks as mockTasks } from "@/mocks/tasks";
 
 /**
@@ -38,10 +38,16 @@ export interface TaskDetail extends Task {
 
 /** Bộ lọc + phân trang cho GET /tasks (gửi lên máy chủ, không lọc ở trình duyệt) */
 export interface TaskQuery {
-  status?: string;
+  /** Chọn NHIỀU trạng thái; mảng rỗng = không lọc */
+  status?: string[];
   department?: string;
-  assignee?: string;
-  priority?: string;
+  /** Chọn NHIỀU người thực hiện */
+  assignee?: string[];
+  /** Chọn NHIỀU mức ưu tiên */
+  priority?: string[];
+  /** Lọc theo ngày giao việc, dạng yyyy-MM-dd */
+  from?: string;
+  to?: string;
   /** Từ khoá tìm theo mã / tiêu đề / mô tả */
   q?: string;
   /** `true` thì CHỈ lấy nhiệm vụ đã xoá mềm (thùng "Đã xoá") */
@@ -157,10 +163,10 @@ export async function listTasks(query: TaskQuery = {}): Promise<Paged<TaskDetail
       (t) =>
         // Thùng "Đã xoá" và danh sách đang dùng loại trừ nhau, giống bộ lọc backend
         (query.deleted ? !!t.isDeleted : !t.isDeleted) &&
-        (!query.status || t.status === query.status) &&
+        (!query.status?.length || query.status.includes(t.status)) &&
         (!query.department || t.department === query.department) &&
-        (!query.assignee || t.assignee === query.assignee) &&
-        (!query.priority || t.priority === query.priority) &&
+        (!query.assignee?.length || query.assignee.includes(t.assignee)) &&
+        (!query.priority?.length || query.priority.includes(t.priority)) &&
         (!keyword ||
           t.id.toLowerCase().includes(keyword) ||
           t.title.toLowerCase().includes(keyword) ||
@@ -180,6 +186,8 @@ export async function listTasks(query: TaskQuery = {}): Promise<Paged<TaskDetail
       department: query.department,
       assignee: query.assignee,
       priority: query.priority,
+      from: query.from,
+      to: query.to,
       q: query.q,
       deleted: query.deleted ? "true" : undefined,
       page,
@@ -364,4 +372,29 @@ export async function restoreTask(code: string): Promise<TaskDetail> {
     return { ...task };
   }
   return toTaskDetail(await apiClient.patch<RawTask>(`/tasks/${encodeURIComponent(code)}/restore`, {}));
+}
+
+/**
+ * Tải tệp Excel danh sách nhiệm vụ theo ĐÚNG bộ lọc đang áp dụng.
+ *
+ * Bộ lọc gửi lên giống `listTasks` nhưng KHÔNG có `page`/`limit`: tệp xuất là
+ * toàn bộ bản ghi khớp bộ lọc, không phải trang đang xem. Máy chủ chặn ở ngưỡng
+ * số dòng và trả thông báo tiếng Việt nếu bộ lọc quá rộng.
+ *
+ * @returns tên tệp đã lưu, để giao diện báo lại cho cán bộ
+ */
+export async function exportTasksExcel(query: TaskQuery = {}): Promise<string> {
+  return downloadFile(
+    `/tasks/export/excel${buildQuery({
+      status: query.status,
+      department: query.department,
+      assignee: query.assignee,
+      priority: query.priority,
+      from: query.from,
+      to: query.to,
+      q: query.q,
+      deleted: query.deleted ? "true" : undefined,
+    })}`,
+    "danh-sach-nhiem-vu.xlsx",
+  );
 }

@@ -9,8 +9,24 @@ import {
   Post,
   Query,
   Req,
+  Res,
 } from '@nestjs/common';
-import { RequirePermission, type AuthedRequest, type JwtPayload } from '@vigov/shared';
+import { ConfigService } from '@nestjs/config';
+import type { Response } from 'express';
+import { RequirePermission, dateRangeLabel, type AuthedRequest, type JwtPayload } from '@vigov/shared';
+import { AuditService } from '../audit/audit.service';
+import { SettingsService } from '../settings/settings.service';
+import {
+  buildListWorkbook,
+  describeFilters,
+  listExportFileName,
+} from '../reports/exporters/list-workbook';
+import { streamExcelExport } from '../reports/exporters/stream-export';
+import {
+  FEEDBACK_STATUS_LABELS,
+  WITHDRAW_STATUS_LABELS,
+  feedbackExportColumns,
+} from './feedback.export';
 import {
   AssignFeedbackDto,
   CreateCitizenFeedbackDto,
@@ -50,7 +66,12 @@ function actorOf(req: AuthedRequest): string {
 /** Phản ánh người dân (WBS #6 — Web Quản trị, WBS #13 — app công dân) */
 @Controller('feedback')
 export class FeedbackController {
-  constructor(private readonly feedback: FeedbackService) {}
+  constructor(
+    private readonly feedback: FeedbackService,
+    private readonly settings: SettingsService,
+    private readonly config: ConfigService,
+    private readonly audit: AuditService,
+  ) {}
 
   // --- Cán bộ: tra cứu ------------------------------------------------------
 
@@ -59,6 +80,66 @@ export class FeedbackController {
   @Get()
   list(@Query() query: ListFeedbackQueryDto) {
     return this.feedback.list(query);
+  }
+
+  /**
+   * Xuất Excel danh sách phản ánh theo ĐÚNG bộ lọc đang áp dụng.
+   *
+   * Tệp KHÔNG chứa nội dung phản ánh và số điện thoại đầy đủ — xem khối chú
+   * thích đầu `feedback.export.ts`.
+   */
+  @RequirePermission('feedback', 'view')
+  @Get('export/excel')
+  async exportExcel(
+    @Query() query: ListFeedbackQueryDto,
+    @Req() req: AuthedRequest,
+    @Res({ passthrough: false }) res: Response,
+  ) {
+    const [rows, categories] = await Promise.all([
+      this.feedback.listForExport(query),
+      this.settings.getCategories(),
+    ]);
+    const labelOf = (key: string) =>
+      categories.items.find((c) => c.key === key)?.label ?? key;
+
+    const workbook = buildListWorkbook(rows, feedbackExportColumns(labelOf), {
+      title: query.deleted ? 'Danh sách phản ánh đã gỡ' : 'Danh sách phản ánh của người dân',
+      orgName: this.config.get<string>('org.name') ?? 'UBND xã',
+      orgParent: this.config.get<string>('org.parent') ?? '',
+      periodLabel: dateRangeLabel(query.from, query.to),
+      filterLabel: describeFilters({
+        'Lĩnh vực': query.categoryKey ? labelOf(query.categoryKey) : undefined,
+        'Trạng thái': query.status ? FEEDBACK_STATUS_LABELS[query.status] : undefined,
+        'Bộ phận': query.department,
+        'Người xử lý': query.assignee,
+        'Thu hồi': query.withdrawStatus ? WITHDRAW_STATUS_LABELS[query.withdrawStatus] : undefined,
+        'Từ khoá': query.q,
+      }),
+      exportedBy: req.user?.username ?? 'không rõ',
+      sheetName: 'Phản ánh',
+    });
+
+    await streamExcelExport({
+      res,
+      workbook,
+      fileName: listExportFileName('danh-sach-phan-anh'),
+      audit: this.audit,
+      actor: req.user,
+      resource: 'feedback/export',
+      rowCount: rows.length,
+      filters: {
+        categoryKey: query.categoryKey,
+        status: query.status,
+        department: query.department,
+        assignee: query.assignee,
+        withdrawStatus: query.withdrawStatus,
+        from: query.from,
+        to: query.to,
+        q: query.q,
+        deleted: query.deleted,
+      },
+      ip: req.ip,
+    });
   }
 
   /** 4 thẻ thống kê đầu trang Phản ánh */

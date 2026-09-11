@@ -48,6 +48,12 @@ export class CatalogsController {
     return this.catalogs.publicDirectory();
   }
 
+  /** Cơ quan ban hành văn bản — cho ô chọn ở form Tiếp nhận văn bản */
+  @Get('issuing-agencies')
+  issuingAgencies() {
+    return this.catalogs.issuingAgencies();
+  }
+
   @Get('document-types')
   documentTypes() {
     return this.catalogs.documentTypes();

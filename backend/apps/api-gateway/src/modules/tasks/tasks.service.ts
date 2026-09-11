@@ -5,6 +5,7 @@ import {
   IS_DELETED,
   NOT_DELETED,
   Task,
+  buildDateRangeFilter,
   markDeleted,
   markRestored,
   type ChecklistItem,
@@ -28,6 +29,15 @@ export const DEFAULT_PAGE = 1;
 export const DEFAULT_PAGE_SIZE = 20;
 /** Chặn trên để tránh truy vấn nặng */
 export const MAX_PAGE_SIZE = 100;
+
+/**
+ * Số dòng tối đa của một tệp Excel xuất ra.
+ *
+ * Hằng số KỸ THUẬT, không phụ thuộc khách hàng: quá ngưỡng này thì máy chủ phải
+ * giữ cả bảng trong bộ nhớ để dựng workbook, và tệp mở ra cũng nặng. Vượt ngưỡng
+ * thì báo cán bộ thu hẹp bộ lọc thay vì cắt bớt dòng.
+ */
+export const MAX_EXPORT_ROWS = 5000;
 
 /** Tiền tố mã nhiệm vụ: NV-<năm 2 số><số thứ tự> → NV-2601 */
 export const TASK_CODE_PREFIX = 'NV-';
@@ -161,25 +171,61 @@ export class TasksService {
     private readonly files: FilesService,
   ) {}
 
-  /** Danh sách nhiệm vụ có lọc + phân trang */
-  async list(query: QueryTasksDto) {
-    const page = Math.max(query.page ?? DEFAULT_PAGE, DEFAULT_PAGE);
-    const limit = Math.min(query.limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
-
+  /**
+   * Điều kiện lọc danh sách nhiệm vụ.
+   *
+   * Tách riêng để `list()` (phân trang) và `listForExport()` (xuất Excel) dùng
+   * CHUNG một bộ điều kiện. Nếu mỗi bên tự dựng thì tệp xuất và bảng trên màn
+   * hình sẽ lệch nhau — người dùng thấy 12 dòng mà tệp có 15 dòng, không ai
+   * hiểu vì sao và không tin số liệu nữa.
+   */
+  private buildListFilter(query: QueryTasksDto): FilterQuery<TaskDocument> {
     // Mặc định ẩn nhiệm vụ đã xoá mềm; `deleted=true` là bộ lọc xem riêng thùng đã xoá
     const filter: FilterQuery<TaskDocument> = {
       ...(query.deleted ? IS_DELETED : NOT_DELETED),
     };
-    if (query.status) filter.status = query.status;
+    /* Lọc chọn nhiều dùng `$in`. Mảng rỗng đã bị `toStringArray` quy về
+       undefined ở DTO, nên không có nguy cơ `$in: []` khớp không bản ghi nào */
+    if (query.status?.length) filter.status = { $in: query.status };
     if (query.department) filter.department = query.department;
-    if (query.assignee) filter.assignee = query.assignee;
-    if (query.priority) filter.priority = query.priority;
+    if (query.assignee?.length) filter.assignee = { $in: query.assignee };
+    if (query.priority?.length) filter.priority = { $in: query.priority };
+
+    // Khoảng thời gian tính theo ngày giờ Việt Nam — xem buildDateRangeFilter
+    const range = buildDateRangeFilter('createdAt', query.from, query.to);
+    if (range) Object.assign(filter, range);
 
     const keyword = query.q?.trim();
     if (keyword) {
       const rx = new RegExp(escapeRegex(keyword), 'i');
       filter.$or = [{ code: rx }, { title: rx }, { description: rx }, { assignee: rx }];
     }
+    return filter;
+  }
+
+  /**
+   * Toàn bộ nhiệm vụ khớp bộ lọc, để xuất Excel.
+   *
+   * CHẶN Ở NGƯỠNG thay vì cắt bớt im lặng: một tệp thiếu dòng mà không báo gì
+   * là tệp sai đi vào hồ sơ. Vượt ngưỡng thì báo cán bộ thu hẹp bộ lọc.
+   */
+  async listForExport(query: QueryTasksDto) {
+    const filter = this.buildListFilter(query);
+    const total = await this.taskModel.countDocuments(filter).exec();
+    if (total > MAX_EXPORT_ROWS) {
+      throw new BadRequestException(
+        `Bộ lọc hiện khớp ${total} nhiệm vụ, vượt giới hạn ${MAX_EXPORT_ROWS} dòng mỗi tệp. ` +
+          'Vui lòng thu hẹp khoảng thời gian hoặc thêm bộ lọc rồi xuất lại.',
+      );
+    }
+    return this.taskModel.find(filter).sort({ createdAt: -1 }).lean().exec();
+  }
+
+  /** Danh sách nhiệm vụ có lọc + phân trang */
+  async list(query: QueryTasksDto) {
+    const page = Math.max(query.page ?? DEFAULT_PAGE, DEFAULT_PAGE);
+    const limit = Math.min(query.limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
+    const filter = this.buildListFilter(query);
 
     const [items, total] = await Promise.all([
       this.taskModel

@@ -5,6 +5,7 @@ import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsISO8601,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -74,6 +75,15 @@ export class ListFeedbackQueryDto {
   @Transform(({ value }) => value === true || value === 'true')
   @IsBoolean()
   deleted?: boolean;
+
+  /** Lọc theo khoảng thời gian tiếp nhận (`createdAt`), dạng yyyy-MM-dd */
+  @IsOptional()
+  @IsISO8601({ strict: false }, { message: 'Mốc "từ ngày" phải theo định dạng yyyy-MM-dd' })
+  from?: string;
+
+  @IsOptional()
+  @IsISO8601({ strict: false }, { message: 'Mốc "đến ngày" phải theo định dạng yyyy-MM-dd' })
+  to?: string;
 
   /** Từ khoá tìm trong mã phiếu / tiêu đề / nội dung */
   @IsOptional()

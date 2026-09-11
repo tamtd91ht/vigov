@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Task, TaskSchema } from '@vigov/shared';
+import { AuditModule } from '../audit/audit.module';
 import { FilesModule } from '../files/files.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { TasksController } from './tasks.controller';
@@ -19,6 +20,8 @@ import { TasksService } from './tasks.service';
     RealtimeModule,
     // WBS #3: tệp minh chứng nhiệm vụ tra siêu dữ liệu qua FilesService
     FilesModule,
+    // Xuất Excel là GET nên AuditInterceptor không bắt — phải tự ghi vết
+    AuditModule,
   ],
   controllers: [TasksController],
   providers: [TasksService],

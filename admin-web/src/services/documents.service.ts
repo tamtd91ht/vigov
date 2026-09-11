@@ -1,6 +1,6 @@
 import type { IncomingDocument, TimelineItem } from "@/types";
 import { appConfig } from "@/config/app.config";
-import { ApiError, apiClient, buildQuery, type Paged } from "@/services/api";
+import { ApiError, apiClient, buildQuery, downloadFile, type Paged } from "@/services/api";
 import { buildOcrFields, citizenPetitions, incomingDocuments } from "@/mocks/documents";
 
 /**
@@ -54,6 +54,9 @@ export interface DocumentQuery {
   status?: string;
   department?: string;
   docType?: string;
+  /** Lọc theo ngày tiếp nhận (ngày đến), dạng yyyy-MM-dd */
+  from?: string;
+  to?: string;
   /** Từ khoá tìm toàn văn theo trích yếu / số ký hiệu / nơi gửi */
   q?: string;
   /** `true` thì CHỈ lấy văn bản đã xoá mềm (thùng "Đã xoá") */
@@ -258,6 +261,8 @@ export async function listDocuments(query: DocumentQuery = {}): Promise<Paged<Do
       status: query.status,
       department: query.department,
       docType: query.docType,
+      from: query.from,
+      to: query.to,
       q: query.q,
       deleted: query.deleted ? "true" : undefined,
       page,
@@ -527,3 +532,24 @@ export async function restoreDocument(arrivalNo: string): Promise<DocumentDetail
     await apiClient.patch<RawDocument>(`/documents/${encodeURIComponent(arrivalNo)}/restore`, {}),
   );
 }
+
+/**
+ * Tải tệp Excel sổ văn bản theo ĐÚNG bộ lọc đang áp dụng.
+ * Toàn bộ bản ghi khớp bộ lọc, không chỉ trang đang xem.
+ */
+export async function exportDocumentsExcel(query: DocumentQuery = {}): Promise<string> {
+  return downloadFile(
+    `/documents/export/excel${buildQuery({
+      kind: query.kind,
+      status: query.status,
+      department: query.department,
+      docType: query.docType,
+      from: query.from,
+      to: query.to,
+      q: query.q,
+      deleted: query.deleted ? "true" : undefined,
+    })}`,
+    "so-van-ban.xlsx",
+  );
+}
+

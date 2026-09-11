@@ -4,7 +4,12 @@ import { useState } from "react";
 import { Icon } from "@/lib/icons";
 import { Drawer } from "@/components/ui/Drawer";
 import { FileUpload } from "@/components/ui/FileUpload";
-import { fetchDepartments, fetchDocumentTypes } from "@/services/catalogs.service";
+import {
+  fetchDepartments,
+  fetchDocumentTypes,
+  fetchIssuingAgencies,
+} from "@/services/catalogs.service";
+import { MultiSelect } from "@/components/ui/MultiSelect";
 import { useCatalog } from "@/hooks/useCatalog";
 import { urgencyLevels, confidentialityLevels } from "@/config/status.config";
 
@@ -99,6 +104,8 @@ export function ReceiveDocForm({
   const departments = useCatalog(fetchDepartments);
   // Loại văn bản lấy từ API (GET /catalogs/document-types)
   const docTypes = useCatalog(fetchDocumentTypes);
+  // Cơ quan ban hành lấy từ API (GET /catalogs/issuing-agencies)
+  const agencies = useCatalog(fetchIssuingAgencies);
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
@@ -389,12 +396,40 @@ export function ReceiveDocForm({
 
         <div className="fgroup">
           <label>Cơ quan ban hành{req} {ocrTag("sender")}</label>
-          <input
-            className={errors.sender ? "finp err" : "finp"}
-            value={form.sender}
-            onChange={(e) => set("sender", e.target.value)}
-            placeholder="VD: UBND huyện Phú Xuyên"
+          {/*
+            Chọn từ danh mục thay vì nhập tay: cùng một cơ quan bị nhập ra nhiều
+            biến thể ("UBND huyện Đông Phú" / "UBND H. Đông Phú") sẽ làm bộ lọc
+            theo cơ quan không ra hết văn bản và thống kê theo cơ quan sai số.
+            Danh mục sửa ở Cấu hình → Cơ quan ban hành.
+          */}
+          <MultiSelect
+            single
+            options={agencies.map((name) => ({ value: name, label: name }))}
+            value={form.sender ? [form.sender] : []}
+            onChange={(next) => set("sender", next[0] ?? "")}
+            allLabel="Chọn cơ quan ban hành…"
+            searchPlaceholder="Nhập tên cơ quan để tìm…"
           />
+          {/*
+            OCR có thể đọc ra một cơ quan chưa có trong danh mục, và cán bộ vẫn
+            phải vào sổ được văn bản đó ngay. Ô nhập tay bên dưới là đường thoát:
+            nó chỉ hiện khi giá trị hiện tại không nằm trong danh mục.
+          */}
+          {form.sender && !agencies.includes(form.sender) && (
+            <>
+              <input
+                className={errors.sender ? "finp err" : "finp"}
+                style={{ marginTop: 8 }}
+                value={form.sender}
+                onChange={(e) => set("sender", e.target.value)}
+                placeholder="VD: UBND huyện Đông Phú"
+              />
+              <div className="fhint">
+                Cơ quan này chưa có trong danh mục. Văn bản vẫn vào sổ được; nên bổ sung vào
+                Cấu hình → Cơ quan ban hành để lần sau chọn nhanh và thống kê không bị lệch.
+              </div>
+            </>
+          )}
           {errors.sender && <div className="ferr">{errors.sender}</div>}
         </div>
 

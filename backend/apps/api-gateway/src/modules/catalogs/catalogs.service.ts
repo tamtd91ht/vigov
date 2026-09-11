@@ -17,6 +17,7 @@ import {
 } from '@vigov/shared';
 import { OrgNode, type OrgNodeDocument } from '../settings/schemas/org-node.schema';
 import { GovContact, type GovContactDocument } from './schemas/gov-contact.schema';
+import { IssuingAgenciesService } from '../settings/issuing-agencies.service';
 import {
   RadioBulletin,
   type RadioBulletinDocument,
@@ -100,6 +101,7 @@ export class CatalogsService {
     @InjectModel(IncomingDocument.name)
     private readonly documentModel: Model<IncomingDocumentDocument>,
     @InjectModel(GovContact.name) private readonly contactModel: Model<GovContactDocument>,
+    private readonly agencies: IssuingAgenciesService,
   ) {}
 
   /**
@@ -186,6 +188,23 @@ export class CatalogsService {
   async documentTypes(): Promise<{ items: string[] }> {
     const rows = await this.documentModel.distinct('docType').exec();
     return { items: this.uniqueStrings([...DEFAULT_DOCUMENT_TYPES, ...rows]) };
+  }
+
+  /**
+   * Cơ quan ban hành văn bản — nguồn cho ô chọn ở form Tiếp nhận văn bản.
+   *
+   * Ưu tiên danh mục cán bộ tự quản lý ở trang Cấu hình. Danh mục còn rỗng thì
+   * lùi về các tên cơ quan ĐÃ nhập trong sổ văn bản: giai đoạn chuyển tiếp vẫn
+   * chọn được đúng những cơ quan đang dùng, không bắt cán bộ nhập lại từ đầu.
+   *
+   * `source` cho giao diện biết đang lấy từ đâu để nhắc "hãy chuẩn hoá danh mục".
+   */
+  async issuingAgencies(): Promise<{ items: string[]; source: string }> {
+    const fromCatalog = await this.agencies.activeNames();
+    if (fromCatalog.length > 0) return { items: fromCatalog, source: 'issuing_agencies' };
+
+    const fromDocuments = await this.documentModel.distinct('sender').exec();
+    return { items: this.uniqueStrings(fromDocuments), source: 'documents' };
   }
 
   /** Chủ đề video tuyên truyền */

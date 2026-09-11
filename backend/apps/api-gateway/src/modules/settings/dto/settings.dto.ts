@@ -1,7 +1,10 @@
 import { Type } from 'class-transformer';
+import { AGENCY_LEVELS } from '../schemas/issuing-agency.schema';
 import {
   ArrayNotEmpty,
   IsArray,
+  IsBoolean,
+  IsIn,
   IsInt,
   Matches,
   MaxLength,
@@ -138,6 +141,65 @@ export class CreateFeedbackCategoryDto {
   @IsInt({ message: 'Thứ tự hiển thị phải là số nguyên' })
   @Min(0, { message: 'Thứ tự hiển thị không được âm' })
   order?: number;
+}
+
+/** Độ dài tối đa tên cơ quan ban hành */
+export const MAX_AGENCY_NAME = 300;
+
+/** Thêm cơ quan ban hành (POST /settings/agencies) */
+export class CreateIssuingAgencyDto {
+  @IsString()
+  @IsNotEmpty({ message: 'Vui lòng nhập tên cơ quan ban hành' })
+  @MaxLength(MAX_AGENCY_NAME, { message: `Tên cơ quan tối đa ${MAX_AGENCY_NAME} ký tự` })
+  name: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(MAX_AGENCY_NAME, { message: `Tên viết tắt tối đa ${MAX_AGENCY_NAME} ký tự` })
+  shortName?: string;
+
+  @IsOptional()
+  @IsIn(AGENCY_LEVELS, { message: 'Cấp cơ quan không hợp lệ' })
+  level?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'Thứ tự hiển thị phải là số nguyên' })
+  @Min(0, { message: 'Thứ tự hiển thị không được âm' })
+  order?: number;
+}
+
+/**
+ * Sửa cơ quan ban hành (PATCH /settings/agencies/:id).
+ *
+ * `active = false` là cách ẩn một cơ quan đã sáp nhập / đổi tên: nó không còn
+ * trong ô chọn nhưng các văn bản cũ vẫn giữ đúng tên cơ quan lúc ban hành.
+ */
+export class UpdateIssuingAgencyDto {
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty({ message: 'Tên cơ quan không được để trống' })
+  @MaxLength(MAX_AGENCY_NAME, { message: `Tên cơ quan tối đa ${MAX_AGENCY_NAME} ký tự` })
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(MAX_AGENCY_NAME)
+  shortName?: string;
+
+  @IsOptional()
+  @IsIn(AGENCY_LEVELS, { message: 'Cấp cơ quan không hợp lệ' })
+  level?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt({ message: 'Thứ tự hiển thị phải là số nguyên' })
+  @Min(0, { message: 'Thứ tự hiển thị không được âm' })
+  order?: number;
+
+  @IsOptional()
+  @IsBoolean({ message: 'Trạng thái sử dụng phải là true/false' })
+  active?: boolean;
 }
 
 /** Giới hạn độ dài khoá API và điểm cuối của nhà cung cấp */

@@ -2,7 +2,7 @@ import { appConfig } from "@/config/app.config";
 import { findCategory } from "@/config/sla.config";
 import { feedbackList, UNASSIGNED } from "@/mocks/feedback";
 import type { CitizenFeedback, TimelineItem } from "@/types";
-import { apiClient, buildQuery, type Paged } from "./api";
+import { apiClient, buildQuery, type Paged, downloadFile } from "./api";
 
 /**
  * Phân hệ Phản ánh người dân (WBS #6).
@@ -85,6 +85,9 @@ export interface FeedbackListFilter {
    * đang xin thu hồi và chờ cán bộ quyết.
    */
   withdrawStatus?: string;
+  /** Lọc theo ngày tiếp nhận phiếu, dạng yyyy-MM-dd */
+  from?: string;
+  to?: string;
   page?: number;
   limit?: number;
 }
@@ -225,6 +228,26 @@ function mockDetail(code: string): CitizenFeedback {
 }
 
 export const feedbackService = {
+  /**
+   * Tải tệp Excel danh sách phản ánh theo ĐÚNG bộ lọc đang áp dụng.
+   *
+   * Tệp KHÔNG chứa nội dung phản ánh và số điện thoại đầy đủ — backend quyết
+   * định điều đó, giao diện không có cách nào xin thêm.
+   */
+  async exportExcel(filter: FeedbackListFilter = {}): Promise<string> {
+    const qs = buildQuery({
+      categoryKey: filter.categoryKey === "all" ? undefined : filter.categoryKey,
+      status: toApiStatus(filter.status),
+      department: filter.department,
+      assignee: filter.assignee,
+      q: filter.q,
+      withdrawStatus: filter.withdrawStatus,
+      from: filter.from,
+      to: filter.to,
+    });
+    return downloadFile(`/feedback/export/excel${qs}`, "danh-sach-phan-anh.xlsx");
+  },
+
   /** Danh sách phản ánh có lọc + phân trang; bộ lọc gửi thẳng lên server */
   async list(filter: FeedbackListFilter = {}): Promise<FeedbackListResult> {
     if (appConfig.api.useMocks) return mockDelay(mockList(filter));
@@ -236,6 +259,8 @@ export const feedbackService = {
       assignee: filter.assignee,
       q: filter.q,
       withdrawStatus: filter.withdrawStatus,
+      from: filter.from,
+      to: filter.to,
       page: filter.page,
       limit: filter.limit,
     });

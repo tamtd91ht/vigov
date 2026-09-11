@@ -1,14 +1,22 @@
-import { HttpException, HttpStatus, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectModel } from '@nestjs/mongoose';
 import { FilterQuery, Model } from 'mongoose';
 import {
+  buildDateRangeFilter,
   EVENTS,
   Feedback,
   IS_DELETED,
+  markDeleted,
   NOT_DELETED,
   SlaRule,
-  markDeleted,
   type FeedbackAssignedEvent,
   type FeedbackCreatedEvent,
   type FeedbackDocument,
@@ -35,6 +43,12 @@ import {
 const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 20;
 const MAX_PAGE_SIZE = 100;
+
+/**
+ * Số dòng tối đa của một tệp Excel xuất ra. Hằng số kỹ thuật: quá ngưỡng thì
+ * máy chủ phải giữ cả bảng trong bộ nhớ, và tệp mở ra cũng nặng.
+ */
+export const MAX_EXPORT_ROWS = 5000;
 
 /** Tiền tố mã phiếu hiển thị: #PA-2026-0141 */
 const FEEDBACK_CODE_PREFIX = '#PA-';
@@ -169,10 +183,12 @@ export class FeedbackService {
   // ---------------------------------------------------------------------------
 
   /** Danh sách phản ánh có lọc + phân trang, kèm số giờ còn lại theo SLA */
-  async list(query: ListFeedbackQueryDto) {
-    const page = Math.max(1, query.page ?? DEFAULT_PAGE);
-    const limit = Math.min(Math.max(1, query.limit ?? DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
-
+  /**
+   * Điều kiện lọc danh sách phản ánh — dùng CHUNG cho `list()` (phân trang) và
+   * `listForExport()` (xuất Excel). Hai bên tự dựng thì tệp xuất lệch bảng trên
+   * màn hình, và không ai tin số liệu nữa.
+   */
+  private buildListFilter(query: ListFeedbackQueryDto): FilterQuery<FeedbackDocument> {
     /*
      * Mặc định CHỈ hiện phiếu chưa gỡ. `deleted=true` mở bộ lọc "đã gỡ" để cán bộ
      * tra lại phiếu công dân đã thu hồi — phiếu vẫn là tài liệu hành chính, chỉ
@@ -184,10 +200,40 @@ export class FeedbackService {
     if (query.department) filter.department = query.department;
     if (query.assignee) filter.assignee = query.assignee;
     if (query.withdrawStatus) filter.withdrawStatus = query.withdrawStatus;
+    // Khoảng thời gian tiếp nhận phiếu, tính theo ngày giờ Việt Nam
+    const range = buildDateRangeFilter('createdAt', query.from, query.to);
+    if (range) Object.assign(filter, range);
     if (query.q?.trim()) {
       const keyword = new RegExp(escapeRegex(query.q.trim()), 'i');
       filter.$or = [{ code: keyword }, { title: keyword }, { description: keyword }, { location: keyword }];
     }
+    return filter;
+  }
+
+  /**
+   * Toàn bộ phiếu khớp bộ lọc, để xuất Excel.
+   *
+   * Đi qua `toStaffView` như đường đọc thường: tệp xuất phải áp dụng ĐÚNG chính
+   * sách che dữ liệu cá nhân của API — số điện thoại công dân che, không có
+   * ngoại lệ cho tệp xuất.
+   */
+  async listForExport(query: ListFeedbackQueryDto) {
+    const filter = this.buildListFilter(query);
+    const total = await this.feedbackModel.countDocuments(filter).exec();
+    if (total > MAX_EXPORT_ROWS) {
+      throw new BadRequestException(
+        `Bộ lọc hiện khớp ${total} phiếu, vượt giới hạn ${MAX_EXPORT_ROWS} dòng mỗi tệp. ` +
+          'Vui lòng thu hẹp khoảng thời gian hoặc thêm bộ lọc rồi xuất lại.',
+      );
+    }
+    const items = await this.feedbackModel.find(filter).sort({ createdAt: -1 }).lean().exec();
+    return items.map((item) => toStaffView(item));
+  }
+
+  async list(query: ListFeedbackQueryDto) {
+    const page = Math.max(1, query.page ?? DEFAULT_PAGE);
+    const limit = Math.min(Math.max(1, query.limit ?? DEFAULT_PAGE_SIZE), MAX_PAGE_SIZE);
+    const filter = this.buildListFilter(query);
 
     const [items, total] = await Promise.all([
       this.feedbackModel

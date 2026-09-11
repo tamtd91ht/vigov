@@ -12,6 +12,8 @@ import { useToast } from "@/components/ui/Toast";
 import { documentStatuses } from "@/config/status.config";
 import { fetchDepartments } from "@/services/catalogs.service";
 import { useApiResource } from "@/hooks/useApiResource";
+import { DateRangeFilter } from "@/components/ui/DateRangeFilter";
+import type { DateRange } from "@/config/date-range.config";
 import { useCatalog } from "@/hooks/useCatalog";
 import {
   addDocumentAttachments,
@@ -21,6 +23,7 @@ import {
   createDocument,
   createTaskFromDocument,
   deleteDocument,
+  exportDocumentsExcel,
   getDocument,
   listDocuments,
   removeDocumentAttachment,
@@ -73,6 +76,8 @@ export function DocumentsPage() {
   const [dept, setDept] = useState("all");
   const [status, setStatus] = useState("all");
   const [docType, setDocType] = useState("all");
+  const [range, setRange] = useState<DateRange>({ from: "", to: "" });
+  const [exporting, setExporting] = useState(false);
   const [page, setPage] = useState(1);
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
@@ -102,11 +107,13 @@ export function DocumentsPage() {
         status: status === "all" ? undefined : status,
         department: dept === "all" ? undefined : dept,
         docType: docType === "all" ? undefined : docType,
+        from: range.from || undefined,
+        to: range.to || undefined,
         deleted: deletedView || undefined,
         page,
         limit: PAGE_SIZE,
       }),
-    [kind, status, dept, docType, deletedView, page],
+    [kind, status, dept, docType, range.from, range.to, deletedView, page],
   );
 
   // Số lượng hai sổ để hiển thị trên tab — chỉ lấy tổng, không tải cả danh sách
@@ -137,6 +144,31 @@ export function DocumentsPage() {
   const changeFilter = (apply: () => void) => {
     apply();
     setPage(1);
+  };
+
+  /**
+   * Xuất Excel sổ văn bản theo ĐÚNG bộ lọc đang áp dụng — toàn bộ bản ghi khớp
+   * bộ lọc, không chỉ trang đang xem. Máy chủ chặn khi bộ lọc quá rộng và trả
+   * thông báo tiếng Việt; hiện nguyên thông báo đó cho cán bộ.
+   */
+  const exportExcel = async () => {
+    setExporting(true);
+    try {
+      const fileName = await exportDocumentsExcel({
+        kind,
+        status: status === "all" ? undefined : status,
+        department: dept === "all" ? undefined : dept,
+        docType: docType === "all" ? undefined : docType,
+        from: range.from || undefined,
+        to: range.to || undefined,
+        deleted: deletedView || undefined,
+      });
+      showToast(`Đã tải tệp ${fileName}`);
+    } catch (err) {
+      showToast(apiErrorMessage(err));
+    } finally {
+      setExporting(false);
+    }
   };
 
   const switchTab = (key: string) => {
@@ -401,6 +433,22 @@ export function DocumentsPage() {
             </option>
           ))}
         </select>
+        <DateRangeFilter
+          value={range}
+          onChange={(next) => changeFilter(() => setRange(next))}
+          allLabel="Toàn bộ thời gian"
+        />
+        <button
+          className="btn sm"
+          type="button"
+          style={{ marginLeft: "auto" }}
+          onClick={() => void exportExcel()}
+          disabled={exporting}
+          title="Xuất toàn bộ văn bản khớp bộ lọc ra tệp Excel"
+        >
+          <Icon name="file" size={15} />
+          {exporting ? "Đang xuất…" : "Xuất Excel"}
+        </button>
       </div>
 
       {advancedOpen && (

@@ -11,6 +11,8 @@ import { DataState } from "@/components/ui/DataState";
 import { FilterChips } from "@/components/ui/FilterChips";
 import { PageHead } from "@/components/ui/PageHead";
 import { SegmentControl } from "@/components/ui/SegmentControl";
+import { DateRangeFilter } from "@/components/ui/DateRangeFilter";
+import type { DateRange } from "@/config/date-range.config";
 import { useToast } from "@/components/ui/Toast";
 import { useApiResource } from "@/hooks/useApiResource";
 import { useCatalog } from "@/hooks/useCatalog";
@@ -20,12 +22,30 @@ import { feedbackService } from "@/services/feedback.service";
 import { REALTIME_EVENTS } from "@/services/realtime.service";
 import { FeedbackDrawer } from "./FeedbackDrawer";
 import { FeedbackGrid } from "./FeedbackGrid";
+import { FeedbackTable } from "./FeedbackTable";
+import { FeedbackKanban } from "./FeedbackKanban";
 import { StatCards } from "./StatCards";
 
 const STATUS_OPTIONS = [{ key: "all", label: "Tất cả" }, ...feedbackStatuses.map((s) => ({ key: s.key, label: s.label }))];
 
-/** Số phiếu tải về mỗi lần — trang Phản ánh hiển thị dạng lưới thẻ */
+/**
+ * Ba chế độ xem. Kanban và Bảng làm giống phân hệ Nhiệm vụ; dạng Thẻ giữ lại vì
+ * nó là chế độ duy nhất hiện được ảnh hiện trường, hữu ích khi duyệt phiếu mới.
+ */
+const VIEW_OPTIONS = [
+  { key: "kanban", label: "Kanban" },
+  { key: "list", label: "Bảng" },
+  { key: "card", label: "Thẻ" },
+];
+
+/**
+ * Số phiếu tải về mỗi lần.
+ *
+ * Kanban và Thẻ cần đủ phiếu để xếp hết các cột nên lấy trang lớn; dạng Bảng
+ * đọc theo dòng nên trang nhỏ hơn cho nhanh.
+ */
 const PAGE_SIZE = 60;
+const LIST_PAGE_SIZE = 30;
 
 /** Thông báo lỗi hiển thị cho người dùng, ưu tiên thông điệp backend trả về */
 function errorMessage(err: unknown, fallback: string): string {
@@ -43,6 +63,9 @@ export function FeedbackPage() {
   // Danh bạ cán bộ lấy từ API (GET /catalogs/staff) — tra bộ phận khi phân công
   const staffDirectory = useCatalog(fetchStaffDirectory);
 
+  const [view, setView] = useState("kanban");
+  const [range, setRange] = useState<DateRange>({ from: "", to: "" });
+  const [exporting, setExporting] = useState(false);
   const [category, setCategory] = useState("all");
   const [status, setStatus] = useState("all");
   const [openCode, setOpenCode] = useState<string | null>(null);
@@ -57,9 +80,11 @@ export function FeedbackPage() {
         categoryKey: category,
         status,
         withdrawStatus: onlyWithdraw ? "pending" : undefined,
-        limit: PAGE_SIZE,
+        from: range.from || undefined,
+        to: range.to || undefined,
+        limit: view === "list" ? LIST_PAGE_SIZE : PAGE_SIZE,
       }),
-    [category, status, onlyWithdraw],
+    [category, status, onlyWithdraw, range.from, range.to, view],
   );
   const stats = useApiResource(() => feedbackService.stats(), []);
   const detail = useApiResource(
@@ -81,6 +106,28 @@ export function FeedbackPage() {
    * Điều chỉnh state ngay trong render (khuôn mẫu đang dùng ở các drawer) để
    * không thêm lượt render trung gian, và để đóng phiếu rồi thì không mở lại.
    */
+  /**
+   * Xuất Excel theo ĐÚNG bộ lọc đang áp dụng — toàn bộ phiếu khớp bộ lọc, không
+   * chỉ số phiếu đang tải về màn hình.
+   */
+  const exportExcel = async () => {
+    setExporting(true);
+    try {
+      const fileName = await feedbackService.exportExcel({
+        categoryKey: category,
+        status,
+        withdrawStatus: onlyWithdraw ? "pending" : undefined,
+        from: range.from || undefined,
+        to: range.to || undefined,
+      });
+      showToast(`Đã tải tệp ${fileName}`);
+    } catch (err) {
+      showToast(errorMessage(err, "Không xuất được tệp Excel. Vui lòng thử lại."));
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const [appliedCode, setAppliedCode] = useState<string | null>(null);
   if (codeParam && codeParam !== appliedCode) {
     setAppliedCode(codeParam);
@@ -260,9 +307,21 @@ export function FeedbackPage() {
           <Icon name="alert" size={14} />
           Chờ duyệt thu hồi
         </button>
+        <DateRangeFilter value={range} onChange={setRange} allLabel="Toàn bộ thời gian" />
         <span className="tiny muted" style={{ marginLeft: "auto" }}>
           Hiển thị {items.length}/{total} phiếu phản ánh
         </span>
+        <button
+          className="btn sm"
+          type="button"
+          onClick={() => void exportExcel()}
+          disabled={exporting || items.length === 0}
+          title="Xuất toàn bộ phiếu khớp bộ lọc ra tệp Excel"
+        >
+          <Icon name="file" size={15} />
+          {exporting ? "Đang xuất…" : "Xuất Excel"}
+        </button>
+        <SegmentControl options={VIEW_OPTIONS} value={view} onChange={setView} />
       </div>
 
       <DataState
@@ -272,7 +331,13 @@ export function FeedbackPage() {
         empty={items.length === 0}
         emptyMessage="Không có phiếu phản ánh nào khớp bộ lọc đã chọn."
       >
-        <FeedbackGrid items={items} onOpen={setOpenCode} />
+        {view === "kanban" ? (
+          <FeedbackKanban items={items} onOpen={setOpenCode} />
+        ) : view === "list" ? (
+          <FeedbackTable items={items} onOpen={setOpenCode} />
+        ) : (
+          <FeedbackGrid items={items} onOpen={setOpenCode} />
+        )}
       </DataState>
 
       <FeedbackDrawer

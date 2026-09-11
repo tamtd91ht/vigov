@@ -2,11 +2,12 @@ import { Injectable, Logger, NotFoundException, BadRequestException } from '@nes
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, type FilterQuery } from 'mongoose';
 import {
-  IS_DELETED,
+  buildDateRangeFilter,
   IncomingDocument,
-  NOT_DELETED,
+  IS_DELETED,
   markDeleted,
   markRestored,
+  NOT_DELETED,
   type IncomingDocumentDocument,
   type JwtPayload,
 } from '@vigov/shared';
@@ -23,6 +24,9 @@ import type {
 export const DEFAULT_PAGE = 1;
 export const DEFAULT_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 200;
+
+/** Số dòng tối đa của một tệp Excel xuất ra — hằng số kỹ thuật */
+export const MAX_EXPORT_ROWS = 5000;
 
 /** Tiền tố mã số đến cho đơn thư công dân; văn bản đến dùng số thứ tự trần */
 export const PETITION_PREFIX = 'ĐT-';
@@ -168,11 +172,11 @@ export class DocumentsService {
     return files;
   }
 
-  /** Danh sách văn bản đến / đơn thư có lọc + phân trang */
-  async list(query: QueryDocumentsDto) {
-    const page = Math.max(query.page ?? DEFAULT_PAGE, DEFAULT_PAGE);
-    const limit = Math.min(query.limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
-
+  /**
+   * Điều kiện lọc danh sách văn bản — dùng CHUNG cho `list()` (phân trang) và
+   * `listForExport()` (xuất Excel), để tệp xuất không lệch bảng trên màn hình.
+   */
+  private buildListFilter(query: QueryDocumentsDto): FilterQuery<IncomingDocumentDocument> {
     // Mặc định ẩn văn bản đã xoá mềm; `deleted=true` là bộ lọc xem riêng thùng đã xoá
     const filter: FilterQuery<IncomingDocumentDocument> = {
       ...(query.deleted ? IS_DELETED : NOT_DELETED),
@@ -181,8 +185,33 @@ export class DocumentsService {
     if (query.status) filter.status = query.status;
     if (query.department) filter.department = query.department;
     if (query.docType) filter.docType = query.docType;
+    // Khoảng thời gian tiếp nhận, tính theo ngày giờ Việt Nam
+    const range = buildDateRangeFilter('createdAt', query.from, query.to);
+    if (range) Object.assign(filter, range);
     // Tìm toàn văn dựa trên text index (summary / refNo / sender) khai báo trong schema
     if (query.q?.trim()) filter.$text = { $search: query.q.trim() };
+    return filter;
+  }
+
+  /** Toàn bộ văn bản khớp bộ lọc, để xuất Excel. Vượt ngưỡng thì báo thu hẹp bộ lọc */
+  async listForExport(query: QueryDocumentsDto) {
+    const filter = this.buildListFilter(query);
+    const total = await this.docModel.countDocuments(filter).exec();
+    if (total > MAX_EXPORT_ROWS) {
+      throw new BadRequestException(
+        `Bộ lọc hiện khớp ${total} văn bản, vượt giới hạn ${MAX_EXPORT_ROWS} dòng mỗi tệp. ` +
+          'Vui lòng thu hẹp khoảng thời gian hoặc thêm bộ lọc rồi xuất lại.',
+      );
+    }
+    const items = await this.docModel.find(filter).sort({ createdAt: -1 }).lean().exec();
+    return items.map((item) => this.withFreshDaysLeft(item));
+  }
+
+  /** Danh sách văn bản đến / đơn thư có lọc + phân trang */
+  async list(query: QueryDocumentsDto) {
+    const page = Math.max(query.page ?? DEFAULT_PAGE, DEFAULT_PAGE);
+    const limit = Math.min(query.limit ?? DEFAULT_PAGE_SIZE, MAX_PAGE_SIZE);
+    const filter = this.buildListFilter(query);
 
     const [items, total] = await Promise.all([
       this.docModel

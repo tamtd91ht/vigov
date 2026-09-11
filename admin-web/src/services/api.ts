@@ -30,15 +30,80 @@ async function readErrorMessage(res: Response): Promise<string> {
   return `Máy chủ trả về lỗi ${res.status}`;
 }
 
-/** Ghép tham số truy vấn, bỏ giá trị rỗng/undefined */
-export function buildQuery(params: Record<string, string | number | boolean | undefined | null>): string {
+/** Giá trị một tham số truy vấn nhận được */
+export type QueryValue = string | number | boolean | undefined | null | string[];
+
+/**
+ * Ghép tham số truy vấn, bỏ giá trị rỗng/undefined.
+ *
+ * Mảng được gửi thành tham số LẶP LẠI (`?status=moi&status=dang`), không ghép
+ * bằng dấu phẩy: tên cán bộ có thể chứa dấu phẩy, ghép rồi tách ở máy chủ sẽ
+ * cắt sai tên. Mảng rỗng coi như chưa lọc gì.
+ */
+export function buildQuery(params: Record<string, QueryValue>): string {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     if (value === undefined || value === null || value === "") continue;
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (item !== undefined && item !== null && item !== "") search.append(key, String(item));
+      }
+      continue;
+    }
     search.set(key, String(value));
   }
   const qs = search.toString();
   return qs ? `?${qs}` : "";
+}
+
+/** Tên tệp trong header Content-Disposition; rỗng thì dùng tên mặc định */
+export function fileNameFrom(disposition: string | null, fallback: string): string {
+  const match = disposition?.match(/filename="?([^"]+)"?/i);
+  return match?.[1] ?? fallback;
+}
+
+/**
+ * Tải một tệp nhị phân (Excel) từ backend và lưu về máy.
+ *
+ * Không dùng `apiClient` được vì client đó chỉ đọc JSON. Ở đây gọi `fetch`
+ * trực tiếp, tự gắn Authorization, và đọc thông báo lỗi dạng JSON của backend
+ * khi thất bại — nếu không cán bộ chỉ thấy "mã lỗi 400" mà không biết vì sao
+ * (thường là bộ lọc quá rộng, vượt giới hạn số dòng mỗi tệp).
+ */
+export async function downloadFile(path: string, fallbackName: string): Promise<string> {
+  const token = authService.getAccessToken();
+
+  let res: Response;
+  try {
+    res = await fetch(`${appConfig.api.baseUrl}${path}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  } catch {
+    throw new ApiError("Không kết nối được máy chủ. Kiểm tra đường truyền rồi thử lại.", 0);
+  }
+
+  if (!res.ok) {
+    let message = `Không tải được tệp (mã lỗi ${res.status})`;
+    try {
+      const body = (await res.json()) as { message?: string | string[] };
+      const raw = Array.isArray(body.message) ? body.message[0] : body.message;
+      if (raw) message = raw;
+    } catch {
+      // Phản hồi lỗi không phải JSON — giữ thông báo mặc định
+    }
+    throw new ApiError(message, res.status);
+  }
+
+  const fileName = fileNameFrom(res.headers.get("Content-Disposition"), fallbackName);
+  /* Thẻ <a> tạm KHÔNG gắn vào DOM: mọi trình duyệt hiện hành đều kích hoạt
+     được click trên thẻ rời, nên không phải thêm rồi dọn khỏi cây DOM. */
+  const url = URL.createObjectURL(await res.blob());
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = fileName;
+  link.click();
+  URL.revokeObjectURL(url);
+  return fileName;
 }
 
 /** HTTP client cho backend NestJS — tự gắn JWT, tự đăng xuất khi token hết hạn */

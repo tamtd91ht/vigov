@@ -203,6 +203,59 @@ export async function deleteCategory(key: string): Promise<{ key: string; delete
   );
 }
 
+// ─── Cơ quan ban hành văn bản ──────────────────────────────────────────────
+
+/** Cấp hành chính của cơ quan — khớp AGENCY_LEVELS của backend */
+export const agencyLevels: { value: string; label: string }[] = [
+  { value: "trung-uong", label: "Trung ương" },
+  { value: "tinh", label: "Cấp tỉnh" },
+  { value: "huyen", label: "Cấp huyện" },
+  { value: "xa", label: "Cấp xã" },
+  { value: "khac", label: "Khác" },
+];
+
+export interface AgencyRecord {
+  id: string;
+  name: string;
+  shortName: string;
+  level: string;
+  levelLabel: string;
+  order: number;
+  /** `false` = đã ẩn khỏi ô chọn nhưng vẫn giữ bản ghi cho văn bản cũ */
+  active: boolean;
+}
+
+export interface AgencyInput {
+  name?: string;
+  shortName?: string;
+  level?: string;
+  order?: number;
+  active?: boolean;
+}
+
+/** GET /settings/agencies — cả cơ quan đã ẩn, để bật lại được */
+export async function fetchAgencies(): Promise<AgencyRecord[]> {
+  const res = await apiClient.get<{ items: AgencyRecord[] }>("/settings/agencies");
+  return res.items ?? [];
+}
+
+export async function createAgency(input: AgencyInput): Promise<AgencyRecord> {
+  return apiClient.post<AgencyRecord>("/settings/agencies", input);
+}
+
+export async function updateAgency(id: string, input: AgencyInput): Promise<AgencyRecord> {
+  return apiClient.patch<AgencyRecord>(`/settings/agencies/${encodeURIComponent(id)}`, input);
+}
+
+/**
+ * DELETE /settings/agencies/:id — máy chủ ẨN cơ quan, KHÔNG xoá bản ghi.
+ * Văn bản đã vào sổ giữ tên cơ quan tại thời điểm ban hành; cơ quan sáp nhập
+ * rồi tách lại là chuyện có thật nên phải bật lại được.
+ */
+export async function deactivateAgency(id: string): Promise<AgencyRecord> {
+  return apiClient.delete<AgencyRecord>(`/settings/agencies/${encodeURIComponent(id)}`);
+}
+
 // ─── Nhà cung cấp bên thứ 3 ────────────────────────────────────────────────
 
 /**

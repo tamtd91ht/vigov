@@ -6,12 +6,13 @@ import {
   IsArray,
   IsIn,
   IsInt,
+  IsISO8601,
   IsNotEmpty,
   IsOptional,
   IsString,
   Matches,
-  MaxLength,
   Max,
+  MaxLength,
   Min,
 } from 'class-validator';
 
@@ -170,6 +171,15 @@ export class QueryDocumentsDto extends SoftDeleteQueryDto {
   @IsOptional()
   @IsString()
   docType?: string;
+
+  /** Lọc theo khoảng thời gian tiếp nhận (`createdAt`), dạng yyyy-MM-dd */
+  @IsOptional()
+  @IsISO8601({ strict: false }, { message: 'Mốc "từ ngày" phải theo định dạng yyyy-MM-dd' })
+  from?: string;
+
+  @IsOptional()
+  @IsISO8601({ strict: false }, { message: 'Mốc "đến ngày" phải theo định dạng yyyy-MM-dd' })
+  to?: string;
 
   /** Từ khoá tìm kiếm toàn văn (trích yếu / số ký hiệu / nơi gửi) */
   @IsOptional()

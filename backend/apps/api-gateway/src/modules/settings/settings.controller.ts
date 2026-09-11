@@ -2,10 +2,13 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Req } from '@ne
 import { RequirePermission, type AuthedRequest } from '@vigov/shared';
 import { SettingsService } from './settings.service';
 import { IntegrationSettingsService } from './integration-settings.service';
+import { IssuingAgenciesService } from './issuing-agencies.service';
 import {
   CreateFeedbackCategoryDto,
+  CreateIssuingAgencyDto,
   CreateOrgNodeDto,
   UpdateFeedbackCategoryDto,
+  UpdateIssuingAgencyDto,
   UpdateOcrIntegrationDto,
   UpdateOrgNodeDto,
   UpdateSlaDto,
@@ -17,7 +20,41 @@ export class SettingsController {
   constructor(
     private readonly settings: SettingsService,
     private readonly integrations: IntegrationSettingsService,
+    private readonly agencies: IssuingAgenciesService,
   ) {}
+
+  // ─── Cơ quan ban hành văn bản ────────────────────────────────────────────
+
+  /** Danh mục cơ quan ban hành, kể cả cơ quan đã ẩn */
+  @Get('agencies')
+  @RequirePermission('settings', 'view')
+  listAgencies() {
+    return this.agencies.list();
+  }
+
+  /** Thêm một cơ quan ban hành vào danh mục */
+  @Post('agencies')
+  @RequirePermission('settings', 'edit')
+  createAgency(@Body() dto: CreateIssuingAgencyDto) {
+    return this.agencies.create(dto);
+  }
+
+  /** Sửa tên / cấp / thứ tự, hoặc bật lại một cơ quan đã ẩn */
+  @Patch('agencies/:id')
+  @RequirePermission('settings', 'edit')
+  updateAgency(@Param('id') id: string, @Body() dto: UpdateIssuingAgencyDto) {
+    return this.agencies.update(id, dto);
+  }
+
+  /**
+   * Ẩn một cơ quan khỏi ô chọn — KHÔNG xoá bản ghi.
+   * Xem chú thích `deactivate` ở `issuing-agencies.service.ts`.
+   */
+  @Delete('agencies/:id')
+  @RequirePermission('settings', 'edit')
+  deactivateAgency(@Param('id') id: string) {
+    return this.agencies.deactivate(id);
+  }
 
   // ─── Nhà cung cấp bên thứ 3 ──────────────────────────────────────────────
 

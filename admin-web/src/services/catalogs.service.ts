@@ -30,6 +30,17 @@ function mockDelay<T>(value: T): Promise<T> {
 }
 
 /** Gọi một danh mục chuỗi đơn giản, có nhánh mock */
+/**
+ * Cơ quan ban hành dùng ở chế độ mock — dữ liệu GIẢ rõ ràng, không phải tên
+ * cơ quan thật của khách hàng nào.
+ */
+const mockIssuingAgencies = [
+  "UBND huyện Đông Phú",
+  "UBND tỉnh Đông Phú",
+  "Sở Tài nguyên và Môi trường tỉnh Đông Phú",
+  "Phòng Nội vụ huyện Đông Phú",
+];
+
 async function fetchStringCatalog(path: string, fallback: string[]): Promise<string[]> {
   if (appConfig.api.useMocks) return mockDelay([...fallback]);
   const res = await apiClient.get<ListResponse<string>>(path);
@@ -55,6 +66,17 @@ export async function fetchStaffDirectory(): Promise<StaffOption[]> {
  */
 export function fetchDocumentTypes(): Promise<string[]> {
   return fetchStringCatalog("/catalogs/document-types", incomingDocTypes);
+}
+
+/**
+ * GET /catalogs/issuing-agencies — cơ quan ban hành văn bản.
+ *
+ * Nguồn là danh mục cán bộ tự quản lý ở Cấu hình → Cơ quan ban hành. Danh mục
+ * còn rỗng thì backend lùi về các tên đã nhập trong sổ văn bản, nên ô chọn
+ * không bao giờ trắng ở giai đoạn chuyển tiếp.
+ */
+export function fetchIssuingAgencies(): Promise<string[]> {
+  return fetchStringCatalog("/catalogs/issuing-agencies", mockIssuingAgencies);
 }
 
 /** GET /catalogs/areas — thôn / tổ dân phố */

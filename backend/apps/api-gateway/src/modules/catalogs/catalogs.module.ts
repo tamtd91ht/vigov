@@ -16,6 +16,7 @@ import { GovContact, GovContactSchema } from './schemas/gov-contact.schema';
 import { CatalogsController } from './catalogs.controller';
 import { CatalogsService } from './catalogs.service';
 import { OrgNode, OrgNodeSchema } from '../settings/schemas/org-node.schema';
+import { SettingsModule } from '../settings/settings.module';
 import { RadioBulletin, RadioBulletinSchema, Video, VideoSchema } from '../content/content.schema';
 
 /**
@@ -35,6 +36,8 @@ import { RadioBulletin, RadioBulletinSchema, Video, VideoSchema } from '../conte
       { name: RadioBulletin.name, schema: RadioBulletinSchema },
       { name: BudgetItem.name, schema: BudgetItemSchema },
     ]),
+    // Danh mục cơ quan ban hành do phân hệ Cấu hình sở hữu
+    SettingsModule,
   ],
   controllers: [CatalogsController],
   providers: [CatalogsService],

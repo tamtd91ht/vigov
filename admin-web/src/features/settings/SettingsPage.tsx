@@ -12,14 +12,16 @@ import { OrgTree } from "./OrgTree";
 import { UserTable } from "./UserTable";
 import { CategoryManager } from "./CategoryManager";
 import { IntegrationManager } from "./IntegrationManager";
+import { AgencyManager } from "./AgencyManager";
 
-/** Phân hệ Cấu hình (WBS #9) — 5 tab: SLA, tổ chức, tài khoản, danh mục, tích hợp */
+/** Phân hệ Cấu hình (WBS #9) — 6 tab: SLA · tổ chức · tài khoản · danh mục · cơ quan · tích hợp */
 
 const TAB_ITEMS: TabItem[] = [
   { key: "sla", label: "SLA phản ánh" },
   { key: "org", label: "Sơ đồ tổ chức" },
   { key: "usr", label: "Tài khoản & phân quyền" },
   { key: "cat", label: "Danh mục phản ánh" },
+  { key: "agc", label: "Cơ quan ban hành" },
   { key: "int", label: "Tích hợp" },
 ];
 
@@ -36,7 +38,7 @@ export function SettingsPage() {
     <div className="pg">
       <PageHead
         title="Cấu hình hệ thống"
-        sub="Thiết lập thời hạn xử lý, sơ đồ tổ chức, tài khoản người dùng, danh mục phản ánh và nhà cung cấp dịch vụ tích hợp"
+        sub="Thiết lập thời hạn xử lý, sơ đồ tổ chức, tài khoản người dùng, danh mục phản ánh, cơ quan ban hành và nhà cung cấp dịch vụ tích hợp"
       />
       <Tabs items={TAB_ITEMS} active={tab} onChange={setTab} />
       {tab === "sla" && (
@@ -57,6 +59,7 @@ export function SettingsPage() {
           <CategoryManager rules={rules} />
         </DataState>
       )}
+      {tab === "agc" && <AgencyManager />}
       {tab === "int" && <IntegrationManager />}
     </div>
   );

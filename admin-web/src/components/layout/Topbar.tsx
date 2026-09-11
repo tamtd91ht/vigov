@@ -78,10 +78,15 @@ export function Topbar() {
         </button>
         <div style={{ position: "relative" }} ref={menuRef}>
           <div className="user" onClick={() => setMenuOpen((v) => !v)}>
-            {session && <Avatar name={session.displayName} large />}
-            <div>
+            {/* Giữ chỗ khi chưa khôi phục xong phiên: thiếu ô này thì lúc phiên
+                về, avatar hiện ra và đẩy cột chữ sang phải một nhịp */}
+            {session ? <Avatar name={session.displayName} large /> : <span className="av lg av-ph" />}
+            <div className="user-id">
               <b>{session?.displayName ?? "…"}</b>
-              <span>{session?.title ?? ""}</span>
+              {/* CHỈ render khi có chức danh. Thẻ span rỗng vẫn là block chiếm
+                  một dòng, làm cột chữ cao 2 dòng trong khi hiện 1 dòng — avatar
+                  căn giữa theo khối 2 dòng nên tên trông lệch lên trên */}
+              {session?.title ? <span>{session.title}</span> : null}
             </div>
           </div>
           {menuOpen && (

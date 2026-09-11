@@ -2,7 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
-import { taskPriorities } from "@/config/status.config";
+import { taskPriorities, taskStatuses } from "@/config/status.config";
 import { fetchDepartments, fetchStaffDirectory } from "@/services/catalogs.service";
 import {
   addTaskAttachments,
@@ -10,6 +10,7 @@ import {
   apiErrorMessage,
   createTask,
   deleteTask,
+  exportTasksExcel,
   getTask,
   listTasks,
   removeTaskAttachment,
@@ -29,6 +30,9 @@ import { DataState } from "@/components/ui/DataState";
 import { PageHead } from "@/components/ui/PageHead";
 import { SegmentControl } from "@/components/ui/SegmentControl";
 import { FilterChips } from "@/components/ui/FilterChips";
+import { MultiSelect } from "@/components/ui/MultiSelect";
+import { DateRangeFilter } from "@/components/ui/DateRangeFilter";
+import type { DateRange } from "@/config/date-range.config";
 import { useToast } from "@/components/ui/Toast";
 import { authService, getServerSession } from "@/services/auth";
 import { findRole } from "@/config/roles.config";
@@ -72,8 +76,12 @@ export function TasksPage() {
 
   const [view, setView] = useState("kanban");
   const [deptFilter, setDeptFilter] = useState("all");
-  const [assigneeFilter, setAssigneeFilter] = useState("");
-  const [priorityFilter, setPriorityFilter] = useState("");
+  /* Ba bộ lọc dưới đây chọn được NHIỀU giá trị — mảng rỗng nghĩa là không lọc */
+  const [assigneeFilter, setAssigneeFilter] = useState<string[]>([]);
+  const [priorityFilter, setPriorityFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  const [range, setRange] = useState<DateRange>({ from: "", to: "" });
+  const [exporting, setExporting] = useState(false);
   const [page, setPage] = useState(1);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -99,13 +107,26 @@ export function TasksPage() {
     () =>
       listTasks({
         department: deptFilter === "all" ? undefined : deptFilter,
-        assignee: assigneeFilter || undefined,
-        priority: priorityFilter || undefined,
+        assignee: assigneeFilter,
+        priority: priorityFilter,
+        status: statusFilter,
+        from: range.from || undefined,
+        to: range.to || undefined,
         deleted: deletedView || undefined,
         page,
         limit,
       }),
-    [deptFilter, assigneeFilter, priorityFilter, deletedView, page, limit],
+    [
+      deptFilter,
+      assigneeFilter,
+      priorityFilter,
+      statusFilter,
+      range.from,
+      range.to,
+      deletedView,
+      page,
+      limit,
+    ],
   );
 
   // Chi tiết nhiệm vụ (kèm bình luận, nhật ký) tải riêng khi mở drawer
@@ -127,6 +148,31 @@ export function TasksPage() {
   const openTask = (id: string) => {
     setOpenTaskId(id);
     setDrawerOpen(true);
+  };
+
+  /**
+   * Xuất Excel theo ĐÚNG bộ lọc đang áp dụng (không chỉ trang đang xem).
+   * Máy chủ chặn khi bộ lọc khớp quá nhiều dòng và trả thông báo tiếng Việt —
+   * hiện nguyên thông báo đó để cán bộ biết phải thu hẹp bộ lọc.
+   */
+  const exportExcel = async () => {
+    setExporting(true);
+    try {
+      const fileName = await exportTasksExcel({
+        department: deptFilter === "all" ? undefined : deptFilter,
+        assignee: assigneeFilter,
+        priority: priorityFilter,
+        status: statusFilter,
+        from: range.from || undefined,
+        to: range.to || undefined,
+        deleted: deletedView || undefined,
+      });
+      showToast(`Đã tải tệp ${fileName}`);
+    } catch (err) {
+      showToast(apiErrorMessage(err));
+    } finally {
+      setExporting(false);
+    }
   };
 
   /*
@@ -323,39 +369,52 @@ export function TasksPage() {
           marginBottom: 18,
         }}
       >
-        <select
-          className="sel"
+        <MultiSelect
+          options={staffDirectory.map((st) => ({
+            value: st.name,
+            label: st.name,
+            hint: st.department,
+          }))}
           value={assigneeFilter}
-          onChange={(e) => changeFilter(() => setAssigneeFilter(e.target.value))}
-        >
-          <option value="">Tất cả người thực hiện</option>
-          {staffDirectory.map((s) => (
-            <option key={s.name} value={s.name}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-        <select
-          className="sel"
+          onChange={(next) => changeFilter(() => setAssigneeFilter(next))}
+          allLabel="Tất cả người thực hiện"
+          searchPlaceholder="Nhập tên cán bộ để tìm…"
+        />
+        <MultiSelect
+          options={taskPriorities.map((p) => ({ value: p.key, label: p.label }))}
           value={priorityFilter}
-          onChange={(e) => changeFilter(() => setPriorityFilter(e.target.value))}
-        >
-          <option value="">Tất cả mức ưu tiên</option>
-          {taskPriorities.map((p) => (
-            <option key={p.key} value={p.key}>
-              {p.label}
-            </option>
-          ))}
-        </select>
-        {(deptFilter !== "all" || assigneeFilter || priorityFilter) && (
+          onChange={(next) => changeFilter(() => setPriorityFilter(next))}
+          allLabel="Tất cả mức ưu tiên"
+          searchPlaceholder="Tìm mức ưu tiên…"
+        />
+        <MultiSelect
+          options={taskStatuses.map((st) => ({ value: st.key, label: st.label }))}
+          value={statusFilter}
+          onChange={(next) => changeFilter(() => setStatusFilter(next))}
+          allLabel="Tất cả trạng thái"
+          searchPlaceholder="Tìm trạng thái…"
+        />
+        <DateRangeFilter
+          value={range}
+          onChange={(next) => changeFilter(() => setRange(next))}
+          allLabel="Toàn bộ thời gian"
+        />
+        {(deptFilter !== "all" ||
+          assigneeFilter.length > 0 ||
+          priorityFilter.length > 0 ||
+          statusFilter.length > 0 ||
+          range.from ||
+          range.to) && (
           <button
             className="btn sm"
             type="button"
             onClick={() =>
               changeFilter(() => {
                 setDeptFilter("all");
-                setAssigneeFilter("");
-                setPriorityFilter("");
+                setAssigneeFilter([]);
+                setPriorityFilter([]);
+                setStatusFilter([]);
+                setRange({ from: "", to: "" });
               })
             }
           >
@@ -373,6 +432,16 @@ export function TasksPage() {
           <span className="tiny muted">
             Hiển thị {items.length}/{total} nhiệm vụ
           </span>
+          <button
+            className="btn sm"
+            type="button"
+            onClick={() => void exportExcel()}
+            disabled={exporting || items.length === 0}
+            title="Xuất toàn bộ nhiệm vụ khớp bộ lọc ra tệp Excel"
+          >
+            <Icon name="file" size={15} />
+            {exporting ? "Đang xuất…" : "Xuất Excel"}
+          </button>
           <SegmentControl
             options={SCOPE_OPTIONS}
             value={deletedView ? "deleted" : "active"}

@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { SoftDeleteBodyDto, SoftDeleteQueryDto } from '@vigov/shared';
+import { SoftDeleteBodyDto, SoftDeleteQueryDto, TransformStringArray } from '@vigov/shared';
 import {
   ArrayMaxSize,
   ArrayNotEmpty,
@@ -7,6 +7,7 @@ import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsISO8601,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -174,23 +175,42 @@ export class AttachTaskFilesDto {
 /** Xoá mềm nhiệm vụ (PATCH /tasks/:code/delete) — lý do không bắt buộc */
 export class DeleteTaskDto extends SoftDeleteBodyDto {}
 
-/** Bộ lọc danh sách nhiệm vụ (GET /tasks) */
+/**
+ * Bộ lọc danh sách nhiệm vụ (GET /tasks).
+ *
+ * Ba bộ lọc trạng thái / người thực hiện / mức ưu tiên nhận NHIỀU giá trị: cán
+ * bộ thường cần "việc của tôi và của anh B", hoặc "cao và rất cao". Tham số một
+ * giá trị (`?status=moi`) vẫn dùng được — `toStringArray` quy về mảng một phần
+ * tử, nên giao diện cũ và các đường gọi API sẵn có không hỏng.
+ */
 export class QueryTasksDto extends SoftDeleteQueryDto {
   @IsOptional()
-  @IsIn(TASK_STATUSES, { message: 'Trạng thái lọc không hợp lệ' })
-  status?: string;
+  @TransformStringArray()
+  @IsIn(TASK_STATUSES, { each: true, message: 'Trạng thái lọc không hợp lệ' })
+  status?: string[];
 
   @IsOptional()
   @IsString()
   department?: string;
 
   @IsOptional()
-  @IsString()
-  assignee?: string;
+  @TransformStringArray()
+  @IsString({ each: true })
+  assignee?: string[];
 
   @IsOptional()
-  @IsIn(TASK_PRIORITIES, { message: 'Mức ưu tiên lọc không hợp lệ' })
-  priority?: string;
+  @TransformStringArray()
+  @IsIn(TASK_PRIORITIES, { each: true, message: 'Mức ưu tiên lọc không hợp lệ' })
+  priority?: string[];
+
+  /** Lọc theo ngày giao việc (`createdAt`), dạng yyyy-MM-dd */
+  @IsOptional()
+  @IsISO8601({ strict: false }, { message: 'Mốc "từ ngày" phải theo định dạng yyyy-MM-dd' })
+  from?: string;
+
+  @IsOptional()
+  @IsISO8601({ strict: false }, { message: 'Mốc "đến ngày" phải theo định dạng yyyy-MM-dd' })
+  to?: string;
 
   /** Từ khoá tìm theo mã / tiêu đề / mô tả */
   @IsOptional()

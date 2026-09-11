@@ -9,9 +9,24 @@ import {
   Post,
   Query,
   Req,
+  Res,
 } from '@nestjs/common';
-import { RequirePermission, type AuthedRequest } from '@vigov/shared';
+import { ConfigService } from '@nestjs/config';
+import type { Response } from 'express';
+import { RequirePermission, dateRangeLabel, type AuthedRequest } from '@vigov/shared';
+import { AuditService } from '../audit/audit.service';
+import {
+  buildListWorkbook,
+  describeFilters,
+  listExportFileName,
+} from '../reports/exporters/list-workbook';
+import { streamExcelExport } from '../reports/exporters/stream-export';
 import { TasksService } from './tasks.service';
+import {
+  TASK_EXPORT_COLUMNS,
+  TASK_PRIORITY_LABELS,
+  TASK_STATUS_LABELS,
+} from './tasks.export';
 import {
   AttachTaskFilesDto,
   CreateCommentDto,
@@ -28,13 +43,69 @@ import {
  */
 @Controller('tasks')
 export class TasksController {
-  constructor(private readonly tasks: TasksService) {}
+  constructor(
+    private readonly tasks: TasksService,
+    private readonly config: ConfigService,
+    private readonly audit: AuditService,
+  ) {}
 
   /** Danh sách nhiệm vụ có lọc + phân trang */
   @RequirePermission('tasks', 'view')
   @Get()
   list(@Query() query: QueryTasksDto) {
     return this.tasks.list(query);
+  }
+
+  /**
+   * Xuất Excel danh sách nhiệm vụ theo ĐÚNG bộ lọc đang áp dụng.
+   *
+   * Đặt TRƯỚC `@Get(':code')`: Nest so khớp route theo thứ tự khai báo, để sau
+   * thì 'export' bị hiểu là một mã nhiệm vụ và rơi vào hàm detail().
+   */
+  @RequirePermission('tasks', 'view')
+  @Get('export/excel')
+  async exportExcel(
+    @Query() query: QueryTasksDto,
+    @Req() req: AuthedRequest,
+    @Res({ passthrough: false }) res: Response,
+  ) {
+    const rows = await this.tasks.listForExport(query);
+    const workbook = buildListWorkbook(rows, TASK_EXPORT_COLUMNS, {
+      title: query.deleted ? 'Danh sách nhiệm vụ đã xoá' : 'Danh sách nhiệm vụ',
+      orgName: this.config.get<string>('org.name') ?? 'UBND xã',
+      orgParent: this.config.get<string>('org.parent') ?? '',
+      periodLabel: dateRangeLabel(query.from, query.to),
+      filterLabel: describeFilters({
+        'Bộ phận': query.department,
+        'Người thực hiện': query.assignee,
+        'Mức ưu tiên': query.priority?.map((p) => TASK_PRIORITY_LABELS[p] ?? p),
+        'Trạng thái': query.status?.map((s) => TASK_STATUS_LABELS[s] ?? s),
+        'Từ khoá': query.q,
+      }),
+      exportedBy: req.user?.username ?? 'không rõ',
+      sheetName: 'Nhiệm vụ',
+    });
+
+    await streamExcelExport({
+      res,
+      workbook,
+      fileName: listExportFileName('danh-sach-nhiem-vu'),
+      audit: this.audit,
+      actor: req.user,
+      resource: 'tasks/export',
+      rowCount: rows.length,
+      filters: {
+        department: query.department,
+        assignee: query.assignee,
+        priority: query.priority,
+        status: query.status,
+        from: query.from,
+        to: query.to,
+        q: query.q,
+        deleted: query.deleted,
+      },
+      ip: req.ip,
+    });
   }
 
   /** Chi tiết nhiệm vụ theo mã NV-xxxx, kèm siêu dữ liệu tệp minh chứng */
