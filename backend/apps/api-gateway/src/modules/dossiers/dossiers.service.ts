@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
+import { DirectoryService, type DirectoryLookup } from '../directory/directory.service';
 import {
+  type RefOut,
   DOSSIER_STEP_KEYS,
   DOSSIER_STEP_LABELS,
   Dossier,
@@ -36,8 +38,10 @@ export interface DossierLookupView {
   applicantName: string;
   /** Đã che, không bao giờ là số thật */
   applicantPhone: string;
-  department: string;
-  assignee: string;
+  /** Bộ phận chủ trì — id kèm tên hiển thị (khuôn tham chiếu v2) */
+  department: RefOut | null;
+  /** Cán bộ phụ trách — id kèm tên hiển thị */
+  assignee: RefOut | null;
   status: string;
   submittedAt: number | null;
   dueAt: number | null;
@@ -47,7 +51,10 @@ export interface DossierLookupView {
 
 @Injectable()
 export class DossiersService {
-  constructor(@InjectModel(Dossier.name) private readonly dossierModel: Model<DossierDocument>) {}
+  constructor(
+    @InjectModel(Dossier.name) private readonly dossierModel: Model<DossierDocument>,
+    private readonly directory: DirectoryService,
+  ) {}
 
   /**
    * Tra cứu hồ sơ theo mã in trên giấy tiếp nhận.
@@ -65,7 +72,7 @@ export class DossiersService {
         `Không tìm thấy hồ sơ có mã "${rawCode.trim()}". Vui lòng kiểm tra lại mã in trên giấy tiếp nhận hồ sơ.`,
       );
     }
-    return toLookupView(doc);
+    return toLookupView(doc, await this.directory.lookup());
   }
 }
 
@@ -84,11 +91,20 @@ export function maskPhone(phone: string | undefined): string {
 /** Bản ghi hồ sơ đọc bằng `.lean()` — chỉ các trường phản hồi cần tới */
 type DossierLean = Pick<
   Dossier,
-  'code' | 'procedure' | 'applicantName' | 'applicantPhone' | 'department' | 'assignee' | 'status' | 'note'
+  | 'code'
+  | 'procedure'
+  | 'applicantName'
+  | 'applicantPhone'
+  | 'departmentId'
+  | 'assigneeId'
+  | 'status'
+  | 'note'
 > & {
   submittedAt?: number | null;
   dueAt?: number | null;
   stepTimes?: { key: string; at: number }[];
+  /** Tên cũ của tham chiếu không tra được id khi di trú — xem `SoftDeletable.legacyRefs` */
+  legacyRefs?: Record<string, string>;
 };
 
 /**
@@ -99,7 +115,8 @@ type DossierLean = Pick<
  * ('returned' — đã trả kết quả), vì lúc đó không còn gì đang chạy. Lưu thêm cờ
  * `done` cho từng bước là mở đường cho dữ liệu tự mâu thuẫn với `status`.
  */
-export function toLookupView(doc: DossierLean): DossierLookupView {
+export function toLookupView(doc: DossierLean, lookup: DirectoryLookup): DossierLookupView {
+  const legacy = (doc.legacyRefs ?? {}) as Record<string, string>;
   const statusIndex = DOSSIER_STEP_KEYS.indexOf(doc.status as DossierStepKey);
   const isFinal = statusIndex === DOSSIER_STEP_KEYS.length - 1;
   const atByKey = new Map((doc.stepTimes ?? []).map((step) => [step.key, step.at]));
@@ -116,8 +133,8 @@ export function toLookupView(doc: DossierLean): DossierLookupView {
     procedure: doc.procedure,
     applicantName: doc.applicantName,
     applicantPhone: maskPhone(doc.applicantPhone),
-    department: doc.department ?? '',
-    assignee: doc.assignee ?? '',
+    department: lookup.departmentRef(doc.departmentId, legacy.department),
+    assignee: lookup.staffRef(doc.assigneeId, legacy.assignee),
     status: doc.status,
     submittedAt: doc.submittedAt ?? null,
     dueAt: doc.dueAt ?? null,

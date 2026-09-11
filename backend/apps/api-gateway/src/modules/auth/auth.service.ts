@@ -203,7 +203,7 @@ export class AuthService {
       username: user.username,
       displayName: user.displayName,
       roleKey: user.roleKey,
-      department: user.department,
+      departmentId: user.departmentId,
       sid: sessionId,
       // Còn mật khẩu tạm thì token chỉ dùng được để đổi mật khẩu (JwtAuthGuard chặn phần còn lại)
       mustChangePassword: user.mustChangePassword || undefined,
@@ -223,7 +223,7 @@ export class AuthService {
         displayName: user.displayName,
         initials: user.initials,
         color: user.color,
-        department: user.department,
+        departmentId: user.departmentId,
         roleKey: user.roleKey,
         /* Giao diện đọc cờ này để mở ngay ô đổi mật khẩu; việc CHẶN thì do
            JwtAuthGuard làm, không phụ thuộc giao diện có tử tế hay không. */
@@ -635,7 +635,7 @@ export class AuthService {
         username: staff.username,
         displayName: staff.displayName,
         roleKey: staff.roleKey,
-        department: staff.department,
+        departmentId: staff.departmentId,
         sid,
         mustChangePassword: staff.mustChangePassword || undefined,
       };

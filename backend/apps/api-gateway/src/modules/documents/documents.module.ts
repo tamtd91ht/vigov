@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { IncomingDocument, IncomingDocumentSchema } from '@vigov/shared';
 import { AuditModule } from '../audit/audit.module';
+import { DirectoryModule } from '../directory/directory.module';
 import { FilesModule } from '../files/files.module';
 import { IntegrationsModule } from '../integrations/integrations.module';
 import { DocumentsController } from './documents.controller';
@@ -15,6 +16,7 @@ import { DocumentsService } from './documents.service';
     MongooseModule.forFeature([{ name: IncomingDocument.name, schema: IncomingDocumentSchema }]),
     IntegrationsModule,
     // TB-09: bản scan văn bản phải là tệp riêng tư — kiểm qua FilesService
+    DirectoryModule,
     FilesModule,
   ],
   controllers: [DocumentsController],

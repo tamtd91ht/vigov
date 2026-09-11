@@ -33,18 +33,28 @@ const SOURCE_LABELS: Record<string, string> = {
 };
 
 /** Một dòng nhiệm vụ đọc từ Mongo (bản lean) */
+/**
+ * Một dòng nhiệm vụ đọc từ Mongo, ĐÃ resolve tham chiếu.
+ *
+ * `assignee` / `department` / `collaborators` là tham chiếu `{ id, displayName }`
+ * do `TasksService.withRefs` gắn — tệp xuất in TÊN, không in id.
+ */
+interface Ref {
+  displayName?: string;
+}
+
 interface TaskRow {
   code?: string;
   title?: string;
-  assignee?: string;
-  department?: string;
+  assignee?: Ref | null;
+  department?: Ref | null;
   status?: string;
   priority?: string;
   progress?: number;
   deadline?: number;
   sourceType?: string;
   sourceLabel?: string;
-  collaborators?: string[];
+  collaborators?: Ref[];
   createdAt?: number;
 }
 
@@ -62,11 +72,11 @@ function vnDate(ms?: number): string {
 export const TASK_EXPORT_COLUMNS: ListColumn<TaskRow>[] = [
   { header: 'Mã nhiệm vụ', value: (r) => r.code ?? '', width: 14 },
   { header: 'Tên nhiệm vụ', value: (r) => r.title ?? '', width: 46 },
-  { header: 'Bộ phận chủ trì', value: (r) => r.department ?? '', width: 22 },
-  { header: 'Người thực hiện', value: (r) => r.assignee ?? '', width: 20 },
+  { header: 'Bộ phận chủ trì', value: (r) => r.department?.displayName ?? '', width: 22 },
+  { header: 'Người thực hiện', value: (r) => r.assignee?.displayName ?? '', width: 20 },
   {
     header: 'Phối hợp',
-    value: (r) => (r.collaborators ?? []).join(', '),
+    value: (r) => (r.collaborators ?? []).map((c) => c.displayName ?? '').join(', '),
     width: 24,
   },
   {

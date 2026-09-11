@@ -21,11 +21,11 @@ export class WorkflowController {
         // Các trường còn lại để trống — service tự lấy theo bản ghi văn bản gốc
         arrivalNo: '',
         summary: '',
-        department: dto.department ?? '',
+        departmentId: dto.departmentId ?? '',
         deadline: dto.deadline ?? 0,
         assignedBy: req.user?.displayName ?? '',
       },
-      dto.assignee,
+      dto.assigneeId,
     );
   }
 
@@ -40,8 +40,8 @@ export class WorkflowController {
         code: '',
         title: '',
         categoryKey: '',
-        department: dto.department ?? '',
-        assignee: dto.assignee ?? '',
+        departmentId: dto.departmentId ?? '',
+        assigneeId: dto.assigneeId ?? '',
       },
       dto.deadline,
     );

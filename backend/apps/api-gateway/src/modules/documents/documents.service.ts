@@ -14,6 +14,7 @@ import {
   type IncomingDocumentDocument,
   type JwtPayload,
 } from '@vigov/shared';
+import { DirectoryService, type DirectoryLookup } from '../directory/directory.service';
 import { FilesService } from '../files/files.service';
 import { OcrService } from '../integrations/ocr/ocr.service';
 import type {
@@ -44,7 +45,12 @@ const DEFAULT_DOC_TYPE_BY_KIND: Record<string, string> = {
 };
 
 /** Bộ phận mặc định khi mới vào sổ, chưa phân công chủ trì */
-const DEFAULT_DEPARTMENT = 'Văn phòng';
+/*
+ * `DEFAULT_DEPARTMENT` đã bỏ. Bộ phận chủ trì giờ là `org_nodes._id`, mà một id
+ * mặc định viết cứng trong mã là dữ liệu của MỘT xã cụ thể — đúng thứ
+ * `rules/critical/khong-hardcode.md` cấm. Vào sổ mà chưa chọn bộ phận thì để
+ * trống, và trang Cấu hình là nơi ấn định bộ phận mặc định nếu khách cần.
+ */
 
 /**
  * Khoá hành động ghi vào nhật ký xử lý — khuôn `ActivityEntry` của v2.
@@ -75,6 +81,7 @@ export class DocumentsService {
     private readonly docModel: Model<IncomingDocumentDocument>,
     private readonly ocr: OcrService,
     private readonly files: FilesService,
+    private readonly directory: DirectoryService,
   ) {}
 
   /**
@@ -155,7 +162,7 @@ export class DocumentsService {
    */
   private async withAttachmentFiles(doc: IncomingDocumentDocument): Promise<Record<string, unknown>> {
     return {
-      ...this.withFreshDaysLeft(doc.toObject()),
+      ...this.withRefs(this.withFreshDaysLeft(doc.toObject()), await this.directory.lookup()),
       attachmentFiles: await this.attachmentFilesOf(doc.attachmentFileIds ?? []),
     };
   }
@@ -190,7 +197,7 @@ export class DocumentsService {
     };
     if (query.kind) filter.kind = query.kind;
     if (query.status) filter.status = query.status;
-    if (query.department) filter.department = query.department;
+    if (query.departmentId) filter.departmentId = query.departmentId;
     if (query.docType) filter.docType = query.docType;
     // Khoảng thời gian tiếp nhận, tính theo ngày giờ Việt Nam
     const range = buildEpochRangeFilter('createdAt', query.from, query.to);
@@ -210,8 +217,11 @@ export class DocumentsService {
           'Vui lòng thu hẹp khoảng thời gian hoặc thêm bộ lọc rồi xuất lại.',
       );
     }
-    const items = await this.docModel.find(filter).sort({ createdAt: -1 }).lean().exec();
-    return items.map((item) => this.withFreshDaysLeft(item));
+    const [items, lookup] = await Promise.all([
+      this.docModel.find(filter).sort({ createdAt: -1 }).lean().exec(),
+      this.directory.lookup(),
+    ]);
+    return items.map((item) => this.withRefs(this.withFreshDaysLeft(item), lookup));
   }
 
   /** Danh sách văn bản đến / đơn thư có lọc + phân trang */
@@ -265,7 +275,7 @@ export class DocumentsService {
     // kiểm tra trước khi khôi phục (mọi đường GHI thì đi qua `findWritable`).
     const doc = await this.docModel.findOne({ arrivalNo }).lean().exec();
     if (!doc) throw new NotFoundException(`Không tìm thấy văn bản có số đến ${arrivalNo}`);
-    const fresh = this.withFreshDaysLeft(doc);
+    const fresh = this.withRefs(this.withFreshDaysLeft(doc), await this.directory.lookup());
     return { ...fresh, attachmentFiles: await this.attachmentFilesOf(doc.attachmentFileIds ?? []) };
   }
 
@@ -285,7 +295,7 @@ export class DocumentsService {
       summary: dto.summary,
       deadline,
       daysLeft: daysLeftFrom(deadline),
-      department: dto.department ?? DEFAULT_DEPARTMENT,
+      departmentId: dto.departmentId ?? '',
       status: 'moi',
       docType: dto.docType ?? DEFAULT_DOC_TYPE_BY_KIND[kind] ?? DEFAULT_DOC_TYPE_BY_KIND.incoming,
       kind,
@@ -309,8 +319,8 @@ export class DocumentsService {
 
     /* Ghi KHOÁ trạng thái / tên bộ phận vào `detail`, không ghi nhãn tiếng Việt */
     const steps: { action: string; detail: string }[] = [];
-    if (dto.department && dto.department !== doc.department) {
-      steps.push({ action: ACT.transfer, detail: `${doc.department} → ${dto.department}` });
+    if (dto.departmentId && dto.departmentId !== doc.departmentId) {
+      steps.push({ action: ACT.transfer, detail: `${doc.departmentId} → ${dto.departmentId}` });
     }
     if (dto.status && dto.status !== doc.status) {
       steps.push({ action: ACT.status, detail: `${doc.status} → ${dto.status}` });
@@ -321,7 +331,7 @@ export class DocumentsService {
     if (dto.sender !== undefined) doc.sender = dto.sender;
     if (dto.summary !== undefined) doc.summary = dto.summary;
     if (dto.docType !== undefined) doc.docType = dto.docType;
-    if (dto.department !== undefined) doc.department = dto.department;
+    if (dto.departmentId !== undefined) doc.departmentId = dto.departmentId;
     if (dto.status !== undefined) doc.status = dto.status;
     if (dto.confidentiality !== undefined) doc.confidentiality = dto.confidentiality;
     if (dto.urgency !== undefined) doc.urgency = dto.urgency;
@@ -509,6 +519,22 @@ export class DocumentsService {
   /** Luôn tính lại số ngày còn lại từ deadlineAt, không tin giá trị đã lưu */
   private withFreshDaysLeft<T extends { deadline?: number | null }>(doc: T) {
     return { ...doc, daysLeft: daysLeftFrom(doc.deadline ?? undefined) };
+  }
+
+  /**
+   * Gắn tên hiển thị cho tham chiếu bộ phận chủ trì.
+   *
+   * Bản ghi lưu `departmentId`; phản hồi mang cả id và tên để client vừa hiển
+   * thị được vừa gửi lại được khi luân chuyển (`ResolvedRef` trong `refs.ts`).
+   * Nhận `lookup` từ bên ngoài để một danh sách tốn MỘT lượt đọc danh bạ.
+   */
+  private withRefs<T extends object>(doc: T, lookup: DirectoryLookup) {
+    const row = doc as Record<string, unknown>;
+    const legacy = (row.legacyRefs ?? {}) as Record<string, string>;
+    return {
+      ...row,
+      department: lookup.departmentRef(row.departmentId as string, legacy.department),
+    };
   }
 }
 

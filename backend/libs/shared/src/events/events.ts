@@ -25,7 +25,8 @@ export interface DocumentAssignedEvent {
   documentId: string;
   arrivalNo: string;
   summary: string;
-  department: string;
+  /** `org_nodes._id` — khuôn tham chiếu v2 */
+  departmentId: string;
   /** Hạn xử lý — milli-giây UTC (khuôn thời gian v2) */
   deadline: number;
   assignedBy: string;
@@ -36,8 +37,10 @@ export interface FeedbackAssignedEvent {
   code: string;
   title: string;
   categoryKey: string;
-  department: string;
-  assignee: string;
+  /** `org_nodes._id` — khuôn tham chiếu v2 */
+  departmentId: string;
+  /** `staff_users._id` */
+  assigneeId: string;
 }
 
 export interface FeedbackResolvedEvent {
@@ -59,7 +62,8 @@ export interface FeedbackCreatedEvent {
 export interface TaskDeadlineWarningEvent {
   taskId: string;
   title: string;
-  assignee: string;
+  /** `staff_users._id` */
+  assigneeId: string;
   /** Hạn xử lý — milli-giây UTC (khuôn thời gian v2) */
   deadline: number;
   daysLeft: number;

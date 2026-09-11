@@ -18,6 +18,7 @@ import {
   type TaskDocument,
   type ActivityEntry,
 } from '@vigov/shared';
+import { DirectoryService, type DirectoryLookup } from '../directory/directory.service';
 import { FilesService } from '../files/files.service';
 import { REALTIME_EVENTS, RealtimeService } from '../realtime/realtime.service';
 import type {
@@ -130,11 +131,14 @@ export interface TaskAttachmentFile {
 /** Tham số tạo nhiệm vụ từ nguồn khác (văn bản / phản ánh) — dùng bởi WorkflowService */
 export interface CreateTaskFromSourceInput {
   title: string;
-  assignee: string;
-  department: string;
+  /** `staff_users._id` */
+  assigneeId: string;
+  /** `org_nodes._id` */
+  departmentId: string;
   /** Hạn xử lý — milli-giây UTC; máy chủ tự chuẩn hoá về hết ngày giờ Việt Nam */
   deadline: number;
-  assigner: string;
+  /** `staff_users._id` của người giao; rỗng nghĩa là hệ thống sinh */
+  assignerId: string;
   sourceType: string;
   sourceLabel: string;
   sourceRefId: string;
@@ -152,7 +156,29 @@ export class TasksService {
     @InjectModel(Task.name) private readonly taskModel: Model<TaskDocument>,
     private readonly realtime: RealtimeService,
     private readonly files: FilesService,
+    private readonly directory: DirectoryService,
   ) {}
+
+  /**
+   * Gắn tên hiển thị cho các tham chiếu của MỘT nhiệm vụ.
+   *
+   * Bản ghi lưu id; phản hồi mang cả id và tên để client vừa hiển thị được vừa
+   * gửi lại được khi sửa (`ResolvedRef` trong `refs.ts`).
+   *
+   * Nhận `lookup` từ bên ngoài thay vì tự tra: một danh sách 20 nhiệm vụ phải
+   * tốn MỘT lượt đọc danh bạ, không phải hai mươi.
+   */
+  private withRefs(task: object, lookup: DirectoryLookup) {
+    const row = task as Record<string, unknown>;
+    const legacy = (row.legacyRefs ?? {}) as Record<string, string>;
+    return {
+      ...row,
+      assignee: lookup.staffRef(row.assigneeId as string, legacy.assignee),
+      assigner: lookup.staffRef(row.assignerId as string, legacy.assigner),
+      department: lookup.departmentRef(row.departmentId as string, legacy.department),
+      collaborators: lookup.staffRefs(row.collaboratorIds as string[]),
+    };
+  }
 
   /**
    * Điều kiện lọc danh sách nhiệm vụ.
@@ -170,8 +196,8 @@ export class TasksService {
     /* Lọc chọn nhiều dùng `$in`. Mảng rỗng đã bị `toStringArray` quy về
        undefined ở DTO, nên không có nguy cơ `$in: []` khớp không bản ghi nào */
     if (query.status?.length) filter.status = { $in: query.status };
-    if (query.department) filter.department = query.department;
-    if (query.assignee?.length) filter.assignee = { $in: query.assignee };
+    if (query.departmentId) filter.departmentId = query.departmentId;
+    if (query.assigneeId?.length) filter.assigneeId = { $in: query.assigneeId };
     if (query.priority?.length) filter.priority = { $in: query.priority };
 
     // Khoảng thời gian tính theo ngày giờ Việt Nam — xem buildEpochRangeFilter
@@ -201,7 +227,11 @@ export class TasksService {
           'Vui lòng thu hẹp khoảng thời gian hoặc thêm bộ lọc rồi xuất lại.',
       );
     }
-    return this.taskModel.find(filter).sort({ createdAt: -1 }).lean().exec();
+    const [rows, lookup] = await Promise.all([
+      this.taskModel.find(filter).sort({ createdAt: -1 }).lean().exec(),
+      this.directory.lookup(),
+    ]);
+    return rows.map((row) => this.withRefs(row, lookup));
   }
 
   /** Danh sách nhiệm vụ có lọc + phân trang */
@@ -221,7 +251,9 @@ export class TasksService {
       this.taskModel.countDocuments(filter).exec(),
     ]);
 
-    return { items, total, page, limit };
+    // MỘT lượt đọc danh bạ cho cả trang, không phải một lượt mỗi dòng
+    const lookup = await this.directory.lookup();
+    return { items: items.map((item) => this.withRefs(item, lookup)), total, page, limit };
   }
 
   /**
@@ -329,7 +361,8 @@ export class TasksService {
         this.logger.warn(`Nhiệm vụ ${task.code} tham chiếu tệp ${fileId} không còn trong kho`);
       }
     }
-    return { ...task.toObject(), attachmentFiles };
+    const lookup = await this.directory.lookup();
+    return { ...this.withRefs(task.toObject(), lookup), attachmentFiles };
   }
 
   /** Tạo nhiệm vụ mới từ Web Quản trị */
@@ -338,7 +371,6 @@ export class TasksService {
        đó phải nằm ở máy chủ để client không gửi 00:00 làm ngắn mất một ngày */
     const deadline = endOfVnDayMs(dto.deadline);
 
-    const actor = user?.displayName ?? SYSTEM_ACTOR;
     const checklist: ChecklistItem[] = (dto.checklist ?? []).map((item) => ({
       title: item.title,
       done: item.done ?? false,
@@ -346,15 +378,15 @@ export class TasksService {
 
     return this.insertWithGeneratedCode({
       title: dto.title,
-      assignee: dto.assignee,
-      department: dto.department,
+      assigneeId: dto.assigneeId,
+      departmentId: dto.departmentId,
       deadline,
       priority: dto.priority ?? 'tb',
       description: dto.description ?? '',
       status: TASK_STATUS_NEW,
       progress: calcProgress(checklist),
-      assigner: actor,
-      collaborators: dto.collaborators ?? [],
+      assignerId: user?.sub ?? '',
+      collaboratorIds: dto.collaboratorIds ?? [],
       sourceType: dto.sourceType ?? 'hop',
       sourceLabel: dto.sourceLabel ?? '',
       checklist,
@@ -374,15 +406,15 @@ export class TasksService {
 
     return this.insertWithGeneratedCode({
       title: input.title,
-      assignee: input.assignee,
-      department: input.department,
+      assigneeId: input.assigneeId,
+      departmentId: input.departmentId,
       deadline,
       priority: input.priority ?? 'tb',
       description: input.description ?? '',
       status: TASK_STATUS_NEW,
       progress: 0,
-      assigner: input.assigner || SYSTEM_ACTOR,
-      collaborators: [],
+      assignerId: input.assignerId,
+      collaboratorIds: [],
       sourceType: input.sourceType,
       sourceLabel: input.sourceLabel,
       sourceRefId: input.sourceRefId,
@@ -405,11 +437,11 @@ export class TasksService {
   async update(code: string, dto: UpdateTaskDto, user?: JwtPayload): Promise<Record<string, unknown>> {
     const task = await this.findByCode(code);
     if (dto.title !== undefined) task.title = dto.title;
-    if (dto.assignee !== undefined) task.assignee = dto.assignee;
-    if (dto.department !== undefined) task.department = dto.department;
+    if (dto.assigneeId !== undefined) task.assigneeId = dto.assigneeId;
+    if (dto.departmentId !== undefined) task.departmentId = dto.departmentId;
     if (dto.priority !== undefined) task.priority = dto.priority;
     if (dto.description !== undefined) task.description = dto.description;
-    if (dto.collaborators !== undefined) task.collaborators = dto.collaborators;
+    if (dto.collaboratorIds !== undefined) task.collaboratorIds = dto.collaboratorIds;
 
     if (dto.deadline !== undefined) task.deadline = endOfVnDayMs(dto.deadline);
 
@@ -589,7 +621,7 @@ export class TasksService {
     this.realtime.emitChange(
       REALTIME_EVENTS.TASK_CHANGED,
       { type, code: task.code, status: task.status, at: new Date().toISOString() },
-      { department: task.department, user: task.assignee },
+      { department: task.departmentId, user: task.assigneeId },
     );
   }
 

@@ -2,6 +2,9 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import {
+  OrgNode,
+  OrgNodeSchema,
+  type OrgNodeDocument,
   Article,
   type ArticleDocument,
   BudgetItem,
@@ -15,7 +18,6 @@ import {
   StaffUser,
   type StaffUserDocument,
 } from '@vigov/shared';
-import { OrgNode, type OrgNodeDocument } from '../settings/schemas/org-node.schema';
 import { GovContact, type GovContactDocument } from './schemas/gov-contact.schema';
 import { IssuingAgenciesService } from '../settings/issuing-agencies.service';
 import {
@@ -27,9 +29,12 @@ import {
 
 /** Một cán bộ trong danh bạ phân công — KHÔNG chứa username/passwordHash */
 export interface StaffOption {
+  /** `staff_users._id` — giá trị client gửi lại khi phân công (khuôn v2) */
+  id: string;
   name: string;
   title: string;
-  department: string;
+  /** `org_nodes._id` của bộ phận đang công tác */
+  departmentId: string;
   initials: string;
   color: string;
 }
@@ -154,11 +159,12 @@ export class CatalogsService {
       .exec();
 
     const items = rows.map((row) => ({
+      id: String(row._id),
       name: row.displayName,
       // Chưa có trường chức danh riêng trên tài khoản — dùng nhãn vai trò RBAC
       // (câu hỏi mở #12: khách chưa chốt danh mục chức danh chuẩn của xã).
       title: findRole(row.roleKey)?.label ?? row.roleKey,
-      department: row.department,
+      departmentId: row.departmentId,
       initials: row.initials,
       color: row.color,
     }));

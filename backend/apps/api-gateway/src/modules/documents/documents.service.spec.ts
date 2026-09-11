@@ -1,7 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import type { Model } from 'mongoose';
 import type { IncomingDocumentDocument } from '@vigov/shared';
-import { fakeDoc, queryChain } from '../../../../../test/support/mongoose-mock';
+import { directoryMock, fakeDoc, queryChain} from '../../../../../test/support/mongoose-mock';
 import type { FilesService } from '../files/files.service';
 import type { OcrService } from '../integrations/ocr/ocr.service';
 import { DocumentsService } from './documents.service';
@@ -61,6 +61,7 @@ function softDeleteHarness(deleted = false) {
     { findOne } as unknown as Model<IncomingDocumentDocument>,
     ocrMock(),
     filesMock(),
+    directoryMock() as never,
   );
 
   return { service, doc, filters };
@@ -164,7 +165,8 @@ describe('DocumentsService.list — bộ lọc xoá mềm', () => {
     const service = new DocumentsService(
       { find, countDocuments } as unknown as Model<IncomingDocumentDocument>,
       ocrMock(),
-      filesMock(),
+      filesMock()
+,      directoryMock() as never,
     );
     return { service, filters };
   }
@@ -220,7 +222,8 @@ describe('DocumentsService.previewOcr', () => {
     const service = new DocumentsService(
       { findOne } as unknown as Model<IncomingDocumentDocument>,
       { extract } as unknown as OcrService,
-      { findPrivateById } as unknown as FilesService,
+      { findPrivateById } as unknown as FilesService
+,      directoryMock() as never,
     );
 
     return { service, findPrivateById, extract, findOne };

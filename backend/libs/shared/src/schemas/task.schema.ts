@@ -56,11 +56,22 @@ export class Task extends SoftDeletable {
   @Prop({ index: true })
   sourceRefId?: string;
 
+  /**
+   * `staff_users._id` — khuôn tham chiếu v2 ("lưu id, hiển thị tên").
+   * Tên hiển thị do `DirectoryService` tra khi trả dữ liệu.
+   */
   @Prop({ required: true, index: true })
-  assignee: string;
+  assigneeId: string;
 
+  /**
+   * `org_nodes._id` — bộ phận chủ trì, trỏ vào danh mục bộ phận chuẩn.
+   *
+   * v1 lưu TÊN bộ phận dạng chuỗi tự do, nên sửa tên bộ phận trên trang Cấu
+   * hình không đổi gì trong hồ sơ đã lưu và danh mục sinh ra hai lựa chọn cho
+   * cùng một bộ phận — xem chú thích ở `org-node.schema.ts`.
+   */
   @Prop({ required: true, index: true })
-  department: string;
+  departmentId: string;
 
   /**
    * Hạn xử lý — milli-giây UTC, đã chuẩn hoá về **hết ngày** giờ Việt Nam
@@ -83,11 +94,13 @@ export class Task extends SoftDeletable {
   @Prop({ enum: ['cao', 'tb', 'thap'], default: 'tb' })
   priority: string;
 
-  @Prop({ required: true })
-  assigner: string;
+  /** `staff_users._id` của người giao việc; rỗng nghĩa là hệ thống sinh */
+  @Prop({ default: '' })
+  assignerId: string;
 
+  /** `staff_users._id` của cán bộ phối hợp */
   @Prop({ type: [String], default: [] })
-  collaborators: string[];
+  collaboratorIds: string[];
 
   @Prop({ default: '' })
   description: string;

@@ -32,7 +32,7 @@ interface DocumentRow {
   summary?: string;
   docType?: string;
   kind?: string;
-  department?: string;
+  department?: { displayName?: string } | null;
   status?: string;
   deadline?: number;
   daysLeft?: number;
@@ -64,7 +64,7 @@ export const DOCUMENT_EXPORT_COLUMNS: ListColumn<DocumentRow>[] = [
   { header: 'Độ khẩn', value: (r) => r.urgency ?? '', width: 12 },
   { header: 'Người ký', value: (r) => r.signer ?? '', width: 20 },
   { header: 'Số trang', value: (r) => r.pageCount ?? '', width: 10, numeric: true },
-  { header: 'Bộ phận xử lý', value: (r) => r.department ?? '', width: 22 },
+  { header: 'Bộ phận xử lý', value: (r) => r.department?.displayName ?? '', width: 22 },
   { header: 'Hạn xử lý', value: (r) => vnDate(r.deadline), width: 13 },
   /* Số ngày còn lại: 0 nghĩa là ĐẾN HẠN HÔM NAY, khác hẳn với "chưa có hạn".
      Giá trị âm là đã quá hạn — ghi rõ chữ để người đọc bảng không phải suy. */

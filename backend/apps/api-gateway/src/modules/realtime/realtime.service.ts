@@ -158,15 +158,6 @@ export class RealtimeService {
  *
  * "Địa chính – Xây dựng" → "dia-chinh-xay-dung"
  */
-export function departmentSlug(department?: string | null): string {
-  if (!department) return '';
-  return department
-    .normalize('NFD')
-    // Bỏ dấu thanh và dấu mũ (khối ký tự tổ hợp U+0300–U+036F)
-    .replace(/[\u0300-\u036f]/g, '')
-    // đ/Đ không tách được bằng NFD nên xử lý riêng
-    .replace(/[đĐ]/g, 'd')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+export function departmentSlug(departmentId?: string | null): string {
+  return departmentId ?? '';
 }

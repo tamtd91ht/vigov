@@ -16,6 +16,13 @@ export interface OrgNodeSeed {
   subtitle: string;
   color: string;
   order: number;
+  /**
+   * Nút này có nhận hồ sơ nghiệp vụ hay không (`OrgNode.isDepartment`).
+   *
+   * Chỉ bộ phận chuyên môn mới nhận việc; nút gốc "UBND Xã" và các chức danh
+   * lãnh đạo thì không, nên không được hiện trong ô chọn "Bộ phận chủ trì".
+   */
+  isDepartment?: boolean;
 }
 
 export const ORG_NODE_SEED: OrgNodeSeed[] = [
@@ -47,15 +54,15 @@ export const ORG_NODE_SEED: OrgNodeSeed[] = [
   },
 
   // ── Cấp 3: bộ phận chuyên môn ───────────────────────────────────────────
-  { key: 'van-phong', parentKey: 'chu-tich', name: 'Văn phòng UBND', subtitle: 'Trần Thị Hạnh · 6 cán bộ', color: '#3B82C4', order: 1 },
-  { key: 'cong-an', parentKey: 'chu-tich', name: 'Công an xã', subtitle: 'Hoàng Văn Sơn · 9 cán bộ', color: '#E74C3C', order: 2 },
-  { key: 'quan-su', parentKey: 'chu-tich', name: 'Quân sự xã', subtitle: 'Bùi Quang Khải · 4 cán bộ', color: '#5B6C8F', order: 3 },
+  { key: 'van-phong', parentKey: 'chu-tich', name: 'Văn phòng UBND', subtitle: 'Trần Thị Hạnh · 6 cán bộ', color: '#3B82C4', order: 1, isDepartment: true },
+  { key: 'cong-an', parentKey: 'chu-tich', name: 'Công an xã', subtitle: 'Hoàng Văn Sơn · 9 cán bộ', color: '#E74C3C', order: 2, isDepartment: true },
+  { key: 'quan-su', parentKey: 'chu-tich', name: 'Quân sự xã', subtitle: 'Bùi Quang Khải · 4 cán bộ', color: '#5B6C8F', order: 3, isDepartment: true },
 
-  { key: 'dia-chinh', parentKey: 'pct-kinh-te', name: 'Địa chính – Xây dựng', subtitle: 'Lê Minh Tuấn · 5 cán bộ', color: '#3B82C4', order: 1 },
-  { key: 'tai-chinh', parentKey: 'pct-kinh-te', name: 'Tài chính – Kế toán', subtitle: 'Đỗ Thanh Hà · 3 cán bộ', color: '#E67E22', order: 2 },
+  { key: 'dia-chinh', parentKey: 'pct-kinh-te', name: 'Địa chính – Xây dựng', subtitle: 'Lê Minh Tuấn · 5 cán bộ', color: '#3B82C4', order: 1, isDepartment: true },
+  { key: 'tai-chinh', parentKey: 'pct-kinh-te', name: 'Tài chính – Kế toán', subtitle: 'Đỗ Thanh Hà · 3 cán bộ', color: '#E67E22', order: 2, isDepartment: true },
 
-  { key: 'tu-phap', parentKey: 'pct-van-xa', name: 'Tư pháp – Hộ tịch', subtitle: 'Phạm Thị Ngọc · 3 cán bộ', color: '#8E44AD', order: 1 },
-  { key: 'van-hoa', parentKey: 'pct-van-xa', name: 'Văn hoá – Xã hội', subtitle: 'Vũ Đức Anh · 4 cán bộ', color: '#27AE60', order: 2 },
+  { key: 'tu-phap', parentKey: 'pct-van-xa', name: 'Tư pháp – Hộ tịch', subtitle: 'Phạm Thị Ngọc · 3 cán bộ', color: '#8E44AD', order: 1, isDepartment: true },
+  { key: 'van-hoa', parentKey: 'pct-van-xa', name: 'Văn hoá – Xã hội', subtitle: 'Vũ Đức Anh · 4 cán bộ', color: '#27AE60', order: 2, isDepartment: true },
   {
     key: 'hanh-chinh-cong',
     parentKey: 'pct-van-xa',
@@ -63,5 +70,6 @@ export const ORG_NODE_SEED: OrgNodeSeed[] = [
     subtitle: 'Ngô Thị Lan · 5 cán bộ',
     color: '#17A2A2',
     order: 3,
+    isDepartment: true,
   },
 ];

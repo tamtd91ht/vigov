@@ -175,7 +175,7 @@ export class UsersService {
       displayName: doc.displayName,
       initials: doc.initials,
       color: doc.color,
-      department: doc.department,
+      departmentId: doc.departmentId,
       roleKey: doc.roleKey,
       roleLabel: findRole(doc.roleKey)?.label ?? doc.roleKey,
       status: doc.status,

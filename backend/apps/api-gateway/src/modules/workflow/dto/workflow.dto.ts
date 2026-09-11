@@ -14,11 +14,11 @@ export class DocumentToTaskDto {
   /** Cán bộ thực hiện; bỏ trống thì giao cho bộ phận chủ trì */
   @IsOptional()
   @IsString()
-  assignee?: string;
+  assigneeId?: string;
 
   @IsOptional()
   @IsString()
-  department?: string;
+  departmentId?: string;
 
   @IsOptional()
   @IsEpochMs('Hạn xử lý')
@@ -36,11 +36,11 @@ export class FeedbackToTaskDto {
 
   @IsOptional()
   @IsString()
-  assignee?: string;
+  assigneeId?: string;
 
   @IsOptional()
   @IsString()
-  department?: string;
+  departmentId?: string;
 
   @IsOptional()
   @IsEpochMs('Hạn xử lý')

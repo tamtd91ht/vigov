@@ -2,9 +2,9 @@ import { BadRequestException, NotFoundException } from '@nestjs/common';
 import type { Model } from 'mongoose';
 import type { FeedbackDocument, SlaRuleDocument } from '@vigov/shared';
 import { queryChain } from '../../../../../test/support/mongoose-mock';
-import type { OrgNodeDocument } from './schemas/org-node.schema';
 import type { FeedbackCategoryDocument } from './schemas/feedback-category.schema';
 import { SettingsService } from './settings.service';
+import { OrgNodeDocument } from '@vigov/shared';
 
 /**
  * Kiểm thử danh mục lĩnh vực phản ánh.

@@ -72,6 +72,24 @@ export class SoftDeletable extends Timestamped {
   /** Lý do xoá (không bắt buộc) — chỉ lưu để truy vết nội bộ */
   @Prop()
   deleteReason?: string;
+
+  /**
+   * Tên cũ của những tham chiếu KHÔNG tra được id khi di trú sang v2.
+   *
+   * v1 lưu tham chiếu bằng TÊN; v2 lưu id. Di trú (P7-04) tra tên → id, nhưng
+   * hồ sơ cũ có thể trỏ tới cán bộ đã nghỉ việc hoặc bộ phận đã giải thể — lúc
+   * đó **không được đoán**, và cũng không được để trống: cán bộ đọc hồ sơ sẽ
+   * tưởng hệ thống mất dữ liệu.
+   *
+   * Nên tên gốc được giữ lại ở đây, và tầng đọc trả nó về kèm cờ `legacy` để
+   * giao diện nói rõ "đây là tên cũ trong hồ sơ" (xem `DirectoryLookup`).
+   *
+   * Một trường chung thay vì mười trường `legacyAssignee`, `legacyDepartment`…:
+   * đây là dữ liệu của **một lần di trú**, không phải dữ liệu nghiệp vụ, nên
+   * không đáng làm phình bộ trường của mọi bản ghi.
+   */
+  @Prop({ type: Object, default: undefined })
+  legacyRefs?: Record<string, string>;
 }
 
 /**

@@ -1,7 +1,12 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
 import type { Model } from 'mongoose';
 import { parseVnDateMs, type TaskDocument } from '@vigov/shared';
-import { duplicateKeyError, fakeDoc, queryChain } from '../../../../../test/support/mongoose-mock';
+import {
+  directoryMock,
+  duplicateKeyError,
+  fakeDoc,
+  queryChain,
+} from '../../../../../test/support/mongoose-mock';
 import type { FilesService } from '../files/files.service';
 import type { RealtimeService } from '../realtime/realtime.service';
 import {
@@ -76,7 +81,7 @@ describe('TasksService — sinh mã NV-<yy><stt>', () => {
   afterEach(() => jest.useRealTimers());
 
   const createTask = async (mock: TaskModelMock) =>
-    new TasksService(mock.model, realtimeMock(), filesMock()).create({ ...VALID_TASK } as never);
+    new TasksService(mock.model, realtimeMock(), filesMock(), directoryMock() as never).create({ ...VALID_TASK } as never);
 
   it('bắt đầu từ NV-2601 khi trong năm chưa có nhiệm vụ nào', async () => {
     const mock = taskModelMock([]);
@@ -153,7 +158,7 @@ describe('TasksService.create', () => {
    */
   it('chuẩn hoá hạn xử lý về HẾT ngày giờ Việt Nam, dù client gửi mốc giữa ngày', async () => {
     const mock = taskModelMock([]);
-    const service = new TasksService(mock.model, realtimeMock(), filesMock());
+    const service = new TasksService(mock.model, realtimeMock(), filesMock(), directoryMock() as never);
 
     // 10:00 giờ VN ngày 30/09/2026
     const giuaNgay = Date.UTC(2026, 8, 30, 3, 0, 0);
@@ -165,7 +170,7 @@ describe('TasksService.create', () => {
 
   it('tiến độ ban đầu = 0 khi mọi việc con chưa tick', async () => {
     const mock = taskModelMock([]);
-    const service = new TasksService(mock.model, realtimeMock(), filesMock());
+    const service = new TasksService(mock.model, realtimeMock(), filesMock(), directoryMock() as never);
 
     await service.create({
       ...VALID_TASK,
@@ -178,7 +183,7 @@ describe('TasksService.create', () => {
 
   it('tiến độ ban đầu tính theo số việc con đã tick sẵn', async () => {
     const mock = taskModelMock([]);
-    const service = new TasksService(mock.model, realtimeMock(), filesMock());
+    const service = new TasksService(mock.model, realtimeMock(), filesMock(), directoryMock() as never);
 
     await service.create({
       ...VALID_TASK,
@@ -188,20 +193,27 @@ describe('TasksService.create', () => {
     expect(mock.created[0].progress).toBe(25);
   });
 
-  it('ghi tên người giao lấy từ phiên đăng nhập', async () => {
+  it('ghi ID người giao lấy từ phiên đăng nhập', async () => {
     const mock = taskModelMock([]);
-    const service = new TasksService(mock.model, realtimeMock(), filesMock());
+    const service = new TasksService(mock.model, realtimeMock(), filesMock(), directoryMock() as never);
 
-    await service.create({ ...VALID_TASK } as never, { username: 'binh.nv', displayName: 'Nguyễn Văn Bình' } as never);
-    expect(mock.created[0].assigner).toBe('Nguyễn Văn Bình');
+    await service.create({ ...VALID_TASK } as never, {
+      sub: '66f10000000000000000cb01',
+      username: 'binh.nv',
+      displayName: 'Nguyễn Văn Bình',
+    } as never);
+    // Khuôn v2 lưu ID, không lưu họ tên: tên hiển thị do DirectoryService tra
+    expect(mock.created[0].assignerId).toBe('66f10000000000000000cb01');
   });
 
-  it('không có phiên đăng nhập thì người giao là "Hệ thống"', async () => {
+  it('không có phiên đăng nhập thì người giao để TRỐNG (hệ thống sinh)', async () => {
     const mock = taskModelMock([]);
-    const service = new TasksService(mock.model, realtimeMock(), filesMock());
+    const service = new TasksService(mock.model, realtimeMock(), filesMock(), directoryMock() as never);
 
     await service.create({ ...VALID_TASK } as never);
-    expect(mock.created[0].assigner).toBe('Hệ thống');
+    /* Rỗng nghĩa là hệ thống, theo quy ước ở `activity-log.ts`. v1 lưu chuỗi
+       "Hệ thống" — một NHÃN tiếng Việt nằm trong cơ sở dữ liệu. */
+    expect(mock.created[0].assignerId).toBe('');
   });
 });
 
@@ -225,7 +237,7 @@ describe('TasksService.toggleChecklistItem', () => {
     const model = {
       findOne: jest.fn(() => ({ exec: jest.fn(async () => task) })),
     } as unknown as Model<TaskDocument>;
-    return { service: new TasksService(model, realtime, filesMock()), realtime };
+    return { service: new TasksService(model, realtime, filesMock(), directoryMock() as never), realtime };
   };
 
   it('tick 1/3 việc con → 33% (làm tròn)', async () => {
@@ -338,7 +350,7 @@ describe('TasksService.update', () => {
     const model = {
       findOne: jest.fn(() => ({ exec: jest.fn(async () => task) })),
     } as unknown as Model<TaskDocument>;
-    return { service: new TasksService(model, realtime, filesMock()), realtime };
+    return { service: new TasksService(model, realtime, filesMock(), directoryMock() as never), realtime };
   };
 
   it('thay danh sách việc con thì TÍNH LẠI tiến độ từ danh sách mới', async () => {
@@ -401,7 +413,7 @@ describe('TasksService.update', () => {
 /* ───────────────────────── Đếm ngày còn lại ───────────────────────── */
 
 describe('TasksService.daysLeft', () => {
-  const service = () => new TasksService(taskModelMock().model, realtimeMock(), filesMock());
+  const service = () => new TasksService(taskModelMock().model, realtimeMock(), filesMock(), directoryMock() as never);
 
   /** 12:00 giờ Việt Nam ngày 15/06/2026 */
   const MOC_XET = Date.UTC(2026, 5, 15, 5, 0, 0);
@@ -489,6 +501,7 @@ function attachmentHarness(
     { findOne: jest.fn(() => queryChain(task)) } as unknown as Model<TaskDocument>,
     realtimeMock(),
     { findById, findPrivateById } as unknown as FilesService,
+    directoryMock() as never,
   );
 
   return { service, task, findById, findPrivateById };
@@ -662,6 +675,7 @@ function softDeleteHarness(deleted = false) {
     { findOne } as unknown as Model<TaskDocument>,
     { emitChange } as unknown as RealtimeService,
     { findById: jest.fn(() => { throw new Error('Không dùng tệp trong bộ test này'); }) } as unknown as FilesService,
+    directoryMock() as never,
   );
 
   return { service, task, filters, emitChange };
@@ -772,11 +786,9 @@ describe('TasksService.list — bộ lọc xoá mềm', () => {
       return queryChain([]);
     });
     const countDocuments = jest.fn(() => queryChain(0));
-    const service = new TasksService(
-      { find, countDocuments } as unknown as Model<TaskDocument>,
+    const service = new TasksService({ find, countDocuments } as unknown as Model<TaskDocument>,
       realtimeMock(),
-      filesMock(),
-    );
+      filesMock(), directoryMock() as never);
     return { service, filters };
   }
 

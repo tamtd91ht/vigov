@@ -1,7 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
-import { Feedback, type FeedbackDocument, ROLES, SlaRule, type SlaRuleDocument,
+import {
+  OrgNode,
+  OrgNodeSchema,
+  type OrgNodeDocument, Feedback, type FeedbackDocument, ROLES, SlaRule, type SlaRuleDocument,
   NOT_DELETED,
 } from '@vigov/shared';
 import {
@@ -11,7 +14,6 @@ import {
   UpdateFeedbackCategoryDto,
   UpdateOrgNodeDto,
 } from './dto/settings.dto';
-import { OrgNode, type OrgNodeDocument } from './schemas/org-node.schema';
 import {
   FeedbackCategory,
   type FeedbackCategoryDocument,

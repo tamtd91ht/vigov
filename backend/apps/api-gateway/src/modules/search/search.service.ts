@@ -86,13 +86,13 @@ export class SearchService {
         code: t.code,
         title: t.title,
         status: t.status,
-        department: t.department,
+        departmentId: t.departmentId,
       })),
       documents: documents.map((d) => ({
         arrivalNo: d.arrivalNo,
         refNo: d.refNo,
         summary: d.summary,
-        department: d.department,
+        departmentId: d.departmentId,
       })),
       feedback: feedback.map((f) => ({
         code: f.code,

@@ -14,7 +14,10 @@ import { Logger } from '@nestjs/common';
 import { getModelToken } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import * as bcrypt from 'bcryptjs';
-import { checkPasswordPolicy } from '@vigov/shared';
+import {
+  OrgNode, type OrgNodeDocument,
+  checkPasswordPolicy
+} from '@vigov/shared';
 import {
   Article,
   type ArticleDocument,
@@ -46,7 +49,6 @@ import {
   Video,
   type VideoDocument,
 } from './modules/content/content.schema';
-import { OrgNode, type OrgNodeDocument } from './modules/settings/schemas/org-node.schema';
 import {
   MapLayer,
   type MapLayerDocument,
@@ -163,6 +165,7 @@ async function seedOrgTree(model: SeedModel): Promise<GroupResult> {
             color: node.color,
             parentId,
             order: node.order,
+            isDepartment: node.isDepartment ?? false,
           },
         },
         { upsert: true },
@@ -176,6 +179,71 @@ async function seedOrgTree(model: SeedModel): Promise<GroupResult> {
 
   const total = await model.countDocuments().exec();
   return { label: 'Cây tổ chức', inserted, total };
+}
+
+/**
+ * Quy đổi tham chiếu của dữ liệu seed từ TÊN sang ID — nâng cấp v2.
+ *
+ * Tệp seed viết tên cán bộ và tên bộ phận cho người đọc; cơ sở dữ liệu lưu id.
+ * Bước quy đổi nằm ở đây chứ không trong từng tệp seed, vì id chỉ có sau khi cây
+ * tổ chức và danh bạ đã được chèn.
+ *
+ * Tên không tra được thì **không đoán**: id để rỗng và tên gốc được giữ ở
+ * `legacyRefs`, đúng quy ước của `SoftDeletable.legacyRefs`. Seed chạy trên máy
+ * phát triển nên chuyện này chỉ xảy ra khi ai đó sửa tên trong một tệp mà quên
+ * tệp kia — và lúc đó phải nhìn ra được, không được im lặng bỏ qua.
+ */
+function mapRefs<T extends Record<string, unknown>>(
+  rows: T[],
+  staffIdByName: Map<string, string>,
+  deptIdByName: Map<string, string>,
+  fields: { staff?: string[]; staffList?: string[]; dept?: string[] },
+  logger: Logger,
+): Record<string, unknown>[] {
+  const missing = new Set<string>();
+
+  const tra = (bang: Map<string, string>, ten: unknown): string | undefined => {
+    if (typeof ten !== 'string' || !ten.trim()) return undefined;
+    const id = bang.get(ten.trim());
+    if (!id) missing.add(ten.trim());
+    return id;
+  };
+
+  const mapped = rows.map((row) => {
+    const out: Record<string, unknown> = { ...row };
+    const legacy: Record<string, string> = {};
+
+    for (const field of fields.staff ?? []) {
+      const id = tra(staffIdByName, row[field]);
+      delete out[field];
+      out[`${field}Id`] = id ?? '';
+      if (!id && row[field]) legacy[field] = String(row[field]);
+    }
+    for (const field of fields.dept ?? []) {
+      const id = tra(deptIdByName, row[field]);
+      delete out[field];
+      out[`${field}Id`] = id ?? '';
+      if (!id && row[field]) legacy[field] = String(row[field]);
+    }
+    for (const field of fields.staffList ?? []) {
+      const names = (row[field] ?? []) as string[];
+      delete out[field];
+      out[`${field.replace(/s$/, '')}Ids`] = names
+        .map((ten) => tra(staffIdByName, ten))
+        .filter((id): id is string => !!id);
+    }
+
+    if (Object.keys(legacy).length > 0) out.legacyRefs = legacy;
+    return out;
+  });
+
+  if (missing.size > 0) {
+    logger.warn(
+      `Không tra được id cho ${missing.size} tên trong dữ liệu seed, đã giữ tên gốc ở legacyRefs: ` +
+        [...missing].join(', '),
+    );
+  }
+  return mapped;
 }
 
 async function seed() {
@@ -199,15 +267,37 @@ async function seed() {
   const mapLayerModel = app.get<Model<MapLayerDocument>>(getModelToken(MapLayer.name));
   const mapPinModel = app.get<Model<MapPinDocument>>(getModelToken(MapPin.name));
 
+  /* ── Cây tổ chức ──────────────────────────────────────────────────────── */
+
+  /*
+   * Chèn TRƯỚC mọi thứ khác. Từ v2, cả tài khoản cán bộ lẫn hồ sơ nghiệp vụ đều
+   * trỏ tới bộ phận bằng `org_nodes._id`, nên danh mục bộ phận phải có trước.
+   *
+   * `--fresh` xoá `org_nodes` ở bước dưới rồi chèn lại, nên bước này gọi hai
+   * lần là bình thường: `seedOrgTree` dùng upsert theo tên, chạy lại không nhân
+   * bản nút nào.
+   */
+  const orgResult = await seedOrgTree(orgModel);
+
   /* ── Tài khoản cán bộ ─────────────────────────────────────────────────── */
 
   const defaultHash = await bcrypt.hash(DEFAULT_PASSWORD, BCRYPT_ROUNDS);
   const adminHash = await bcrypt.hash(ADMIN_PASSWORD, BCRYPT_ROUNDS);
 
+  /* Bảng tra id bộ phận cho tài khoản cán bộ */
+  const deptIdForStaff = new Map(
+    (await orgModel.find({}, 'name').lean().exec()).map((row) => [row.name, String(row._id)]),
+  );
+
   for (const staff of STAFF_SEED) {
+    const { department, ...rest } = staff;
+    const departmentId = deptIdForStaff.get(department) ?? '';
+    if (!departmentId) {
+      logger.warn(`Tài khoản ${staff.username}: không tra được bộ phận "${department}"`);
+    }
     const passwordHash = staff.username === ADMIN_USERNAME ? adminHash : defaultHash;
     await staffModel
-      .updateOne({ username: staff.username }, { $setOnInsert: { ...staff, passwordHash, status: 'active' } }, { upsert: true })
+      .updateOne({ username: staff.username }, { $setOnInsert: { ...rest, departmentId, passwordHash, status: 'active' } }, { upsert: true })
       .exec();
   }
 
@@ -273,12 +363,71 @@ async function seed() {
 
   const groups: GroupResult[] = [];
 
-  groups.push(await upsertGroup('Nhiệm vụ', taskModel, TASK_SEED, (row) => ({ code: row.code })));
-  groups.push(
-    await upsertGroup('Văn bản & đơn thư', documentModel, DOCUMENT_SEED, (row) => ({ arrivalNo: row.arrivalNo })),
+  /* `--fresh` vừa xoá cây tổ chức ở trên nên phải dựng lại trước khi quy đổi
+     tham chiếu của dữ liệu nghiệp vụ */
+  groups.push(FRESH ? await seedOrgTree(orgModel) : orgResult);
+
+  // Hai bảng tra tên → id cho bước quy đổi tham chiếu của dữ liệu seed
+  const staffIdByName = new Map(
+    (await staffModel.find({}, 'displayName').lean().exec()).map((row) => [
+      row.displayName,
+      String(row._id),
+    ]),
   );
-  groups.push(await upsertGroup('Phản ánh người dân', feedbackModel, FEEDBACK_SEED, (row) => ({ code: row.code })));
-  groups.push(await upsertGroup('Hồ sơ một cửa', dossierModel, DOSSIER_SEED, (row) => ({ code: row.code })));
+  const deptIdByName = new Map(
+    (await orgModel.find({}, 'name').lean().exec()).map((row) => [row.name, String(row._id)]),
+  );
+
+  groups.push(
+    await upsertGroup(
+      'Nhiệm vụ',
+      taskModel,
+      mapRefs(
+        TASK_SEED,
+        staffIdByName,
+        deptIdByName,
+        { staff: ['assignee', 'assigner'], staffList: ['collaborators'], dept: ['department'] },
+        logger,
+      ),
+      (row) => ({ code: row.code }),
+    ),
+  );
+  groups.push(
+    await upsertGroup(
+      'Văn bản & đơn thư',
+      documentModel,
+      mapRefs(DOCUMENT_SEED, staffIdByName, deptIdByName, { dept: ['department'] }, logger),
+      (row) => ({ arrivalNo: row.arrivalNo }),
+    ),
+  );
+  groups.push(
+    await upsertGroup(
+      'Phản ánh người dân',
+      feedbackModel,
+      mapRefs(
+        FEEDBACK_SEED,
+        staffIdByName,
+        deptIdByName,
+        { staff: ['assignee'], dept: ['department'] },
+        logger,
+      ),
+      (row) => ({ code: row.code }),
+    ),
+  );
+  groups.push(
+    await upsertGroup(
+      'Hồ sơ một cửa',
+      dossierModel,
+      mapRefs(
+        DOSSIER_SEED,
+        staffIdByName,
+        deptIdByName,
+        { staff: ['assignee'], dept: ['department'] },
+        logger,
+      ),
+      (row) => ({ code: row.code }),
+    ),
+  );
   groups.push(await upsertGroup('Hạng mục ngân sách', budgetModel, BUDGET_ITEM_SEED, (row) => ({ code: row.code })));
   groups.push(await upsertGroup('Bài viết CMS', articleModel, ARTICLE_SEED, (row) => ({ title: row.title })));
   groups.push(await upsertGroup('Video tuyên truyền', videoModel, VIDEO_SEED, (row) => ({ title: row.title })));
@@ -295,7 +444,6 @@ async function seed() {
   groups.push(
     await upsertGroup('Danh sách chặn', blacklistModel, BLACKLIST_SEED, (row) => ({ subject: row.subject })),
   );
-  groups.push(await seedOrgTree(orgModel));
   groups.push(await upsertGroup('Lớp bản đồ', mapLayerModel, MAP_LAYER_SEED, (row) => ({ key: row.key })));
   groups.push(await upsertGroup('Ghim bản đồ', mapPinModel, MAP_PIN_SEED, (row) => ({ name: row.name })));
 

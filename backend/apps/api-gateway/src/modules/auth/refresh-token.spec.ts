@@ -212,7 +212,7 @@ describe('AuthService.refresh — xoay vòng', () => {
 
   it('đọc LẠI vai trò từ cơ sở dữ liệu, không nhân bản payload cũ', async () => {
     const { service, signAsync, staffFindOne } = makeService({
-      staff: { ...STAFF, roleKey: 'officer', department: 'Tư pháp – Hộ tịch' },
+      staff: { ...STAFF, roleKey: 'officer', departmentId: '66f20000000000000000bp01' },
     });
 
     await service.refresh(VALID_TOKEN, '', '');
@@ -221,7 +221,7 @@ describe('AuthService.refresh — xoay vòng', () => {
     expect(signAsync.mock.calls[0][0]).toMatchObject({
       username: STAFF.username,
       roleKey: 'officer',
-      department: 'Tư pháp – Hộ tịch',
+      departmentId: '66f20000000000000000bp01',
       sid: SESSION_ID,
     });
   });

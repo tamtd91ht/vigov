@@ -74,8 +74,15 @@ export class IncomingDocument extends SoftDeletable {
   @Prop({ default: 0 })
   daysLeft: number;
 
+  /**
+   * `org_nodes._id` — bộ phận chủ trì, trỏ vào danh mục bộ phận chuẩn.
+   *
+   * v1 lưu TÊN bộ phận dạng chuỗi tự do, nên sửa tên bộ phận trên trang Cấu
+   * hình không đổi gì trong hồ sơ đã lưu và danh mục sinh ra hai lựa chọn cho
+   * cùng một bộ phận — xem chú thích ở `org-node.schema.ts`.
+   */
   @Prop({ required: true, index: true })
-  department: string;
+  departmentId: string;
 
   @Prop({ enum: ['moi', 'dangxl', 'choduyet', 'xong'], default: 'moi', index: true })
   status: string;
@@ -93,6 +100,13 @@ export class IncomingDocument extends SoftDeletable {
   @Prop({ default: 'Thường' })
   urgency: string;
 
+  /**
+   * Người ký văn bản — GIỮ dạng chuỗi, là ngoại lệ có chủ ý của quy ước "lưu id".
+   *
+   * Đây là người ký của **cơ quan gửi** (ví dụ "Phó Chủ tịch Nguyễn Đức Trung"
+   * của UBND huyện), không phải cán bộ của xã nên không có tài khoản trong
+   * `staff_users` để trỏ tới. Tên này chỉ là thông tin ghi trên văn bản giấy.
+   */
   @Prop({ default: '' })
   signer: string;
 

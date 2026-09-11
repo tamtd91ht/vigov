@@ -205,3 +205,44 @@ Seed giữ ngày dạng chuỗi `'19/08/2026'` ở phần khai báo — tệp se
 
 Riêng `libs/shared/src/time/epoch.spec.ts` có **34 ca**, phủ múi giờ, biên ngày, biên
 tháng, ngày không tồn tại và năm nhuận.
+
+---
+
+## 11. Chặng 2c — tham chiếu bằng id (LÀM DỞ, 11/09/2026)
+
+Người dùng chốt: **nâng `org_nodes` thành danh mục bộ phận chuẩn**.
+
+### Đã xong
+
+| Việc | Chi tiết |
+|---|---|
+| `org_nodes` vào `libs/shared` | Thêm cờ `isDepartment` khai tường minh. v1 suy "nút lá" nên thêm một nút con vào bộ phận là bộ phận ấy **biến mất khỏi mọi ô chọn** mà không có gì báo |
+| `DirectoryService` + `DirectoryLookup` | Tra tên hiển thị **theo lô**, bộ đệm 30 giây. Một danh sách 20 dòng tốn một lượt đọc danh bạ, không phải hai mươi |
+| 11 trường đổi sang id | `assigneeId` `assignerId` `collaboratorIds` `departmentId` (×4 phân hệ) `withdrawDecidedById`, `StaffUser.departmentId`, `JwtPayload.departmentId` |
+| `legacyRefs` trên `SoftDeletable` | Một trường chung giữ tên gốc của tham chiếu không tra được id khi di trú — thay vì mười trường `legacyAssignee`, `legacyDepartment`… |
+| Phòng socket theo id | Bỏ `departmentSlug` chuẩn hoá tiếng Việt: phòng giờ là id, không đổi khi đổi tên bộ phận |
+| `seed.ts` quy đổi tên → id | Seed vẫn viết tên cho người đọc; quy đổi ở đúng một bước sau khi chèn cây tổ chức và danh bạ. Tên không tra được thì **không đoán**: cảnh báo và giữ tên gốc ở `legacyRefs` |
+
+### Hai trường KHÔNG đổi, có lý do
+
+| Trường | Vì sao |
+|---|---|
+| `document.signer` | Người ký của **cơ quan gửi** (ví dụ Phó Chủ tịch UBND huyện), không phải cán bộ xã nên không có tài khoản để trỏ tới |
+| `budget.owner` | **Mơ hồ**: seed dùng tên cán bộ (`'Lê Minh Tuấn'`), e2e dùng tên bộ phận (`'Tài chính – Kế toán'`). Hai nghĩa khác nhau — phải hỏi khách trước khi đổi |
+
+### CÒN LẠI — chuyển sang P7-09
+
+| Việc | Tình trạng |
+|---|---|
+| 20 test e2e gửi **tên** trong payload | Phải tra id đã seed rồi mới gửi. e2e hiện **47 đỏ** so với mốc 27 |
+| `budget` 5 trường người thực hiện (`by`, `addedBy`, `requestedBy`, `decidedBy`, `owner`) | Chờ chốt nghĩa của `owner` |
+| `audit_logs.actor` | Đang lưu tên đăng nhập — ngoại lệ có chủ ý, cần ghi vào tài liệu |
+| `admin-web` + `zalo-miniapp` | Thuộc P7-05, chưa chạm |
+
+### Kiểm chứng tại thời điểm đóng gói
+
+| Phép kiểm | Kết quả |
+|---|---|
+| Biên dịch | **8 lỗi** — đúng 8 lỗi có sẵn ở `map`/`settings`, 0 lỗi mới |
+| Test đơn vị | **576/576 xanh** |
+| Test e2e | **47 đỏ / 53 xanh** — mốc là 27 đỏ, nên còn **20 ca hồi quy** phải sửa ở P7-09 |

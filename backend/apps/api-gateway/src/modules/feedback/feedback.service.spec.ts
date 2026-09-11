@@ -332,8 +332,8 @@ describe('FeedbackService.createByCitizen — nội dung phiếu', () => {
 
     expect(h.created[0]).toMatchObject({
       status: 'received',
-      assignee: '',
-      department: '',
+      assigneeId: '',
+      departmentId: '',
       rating: 0,
       citizenPhone: CITIZEN_PHONE,
       // Khuôn v2: mốc gửi là SỐ, không phải chuỗi đã định dạng

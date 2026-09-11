@@ -61,3 +61,39 @@ export function fakeDoc<T extends Record<string, unknown>>(
   } as T & { save: jest.Mock; markModified: jest.Mock; toObject: jest.Mock };
   return doc;
 }
+
+/**
+ * `DirectoryService` giả — trả danh bạ rỗng.
+ *
+ * Mọi service nghiệp vụ của v2 nhận service này qua constructor để quy đổi id
+ * thành tên hiển thị. Phần lớn test không kiểm tên hiển thị, nên bản giả trả
+ * danh bạ rỗng: `DirectoryLookup` khi đó tự trả tham chiếu "tên cũ" thay vì ném
+ * lỗi, đúng như khi gặp cán bộ đã nghỉ việc trên hệ thống thật.
+ *
+ * Test nào CẦN kiểm tên hiển thị thì truyền sẵn hai bảng tra vào đây.
+ */
+export function directoryMock(
+  staff: Record<string, { id: string; displayName: string }> = {},
+  departments: Record<string, { id: string; displayName: string }> = {},
+) {
+  const lookup = {
+    staffRef: (id?: string, legacyName?: string) =>
+      id ? (staff[id] ?? { id: '', displayName: legacyName ?? 'Không xác định', legacy: true }) : null,
+    departmentRef: (id?: string, legacyName?: string) =>
+      id
+        ? (departments[id] ?? { id: '', displayName: legacyName ?? 'Không xác định', legacy: true })
+        : null,
+    staffRefs: (ids?: string[]) =>
+      (ids ?? []).map((id) => staff[id] ?? { id: '', displayName: 'Không xác định', legacy: true }),
+  };
+  return {
+    /** Bộ tra cứu đồng bộ, cho test gọi thẳng các hàm nhận `DirectoryLookup` */
+    lookupSync: lookup,
+    lookup: jest.fn(async () => lookup),
+    staffById: jest.fn(async () => new Map(Object.entries(staff))),
+    departmentById: jest.fn(async () => new Map(Object.entries(departments))),
+    staffOptions: jest.fn(async () => Object.values(staff)),
+    departmentOptions: jest.fn(async () => Object.values(departments)),
+    invalidate: jest.fn(),
+  };
+}

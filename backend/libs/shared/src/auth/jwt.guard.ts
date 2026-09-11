@@ -11,7 +11,8 @@ export interface JwtPayload {
   username: string;
   displayName: string;
   roleKey: string;
-  department?: string;
+  /** `org_nodes._id` cua bo phan can bo dang cong tac - khuon tham chieu v2 */
+  departmentId?: string;
   /** Mã phiên đăng nhập — dùng để thu hồi token trước hạn (P5-08) */
   sid?: string;
   /**

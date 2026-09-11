@@ -42,7 +42,8 @@ export interface FeedbackReceivedNotice {
   title: string;
   /** Hạn xử lý theo SLA (nếu đã tính được) */
   slaDueAt?: number;
-  department?: string;
+  /** `org_nodes._id` của bộ phận thụ lý — khuôn tham chiếu v2 */
+  departmentId?: string;
 }
 
 /** Tham số thông báo kết quả xử lý phản ánh */
@@ -112,7 +113,7 @@ export class NotificationService {
       body: `UBND xã đã tiếp nhận phản ánh "${notice.title}".${due} Vui lòng theo dõi tiến độ trong ứng dụng.`,
       data: {
         feedbackCode: notice.code,
-        department: notice.department ?? '',
+        departmentId: notice.departmentId ?? '',
         slaDueAt: notice.slaDueAt ? String(notice.slaDueAt) : '',
       },
     });
@@ -155,15 +156,15 @@ export class NotificationService {
    * (ví dụ văn bản đến mới phân công bộ phận chủ trì — P5-04).
    */
   async notifyDepartment(
-    department: string,
+    departmentId: string,
     title: string,
     body: string,
     data: Record<string, string> = {},
   ): Promise<{ recipients: number }> {
-    if (!department) return { recipients: 0 };
+    if (!departmentId) return { recipients: 0 };
 
     const staff = await this.staffModel
-      .find({ department, status: 'active' })
+      .find({ departmentId, status: 'active' })
       .select('username')
       .limit(BROADCAST_MAX_RECIPIENTS)
       .lean()
@@ -173,7 +174,7 @@ export class NotificationService {
       await this.notifyStaff(member.username, title, body, data);
     }
 
-    this.logger.log(`Đã thông báo "${title}" tới ${staff.length} cán bộ bộ phận ${department}`);
+    this.logger.log(`Đã thông báo "${title}" tới ${staff.length} cán bộ bộ phận ${departmentId}`);
     return { recipients: staff.length };
   }
 

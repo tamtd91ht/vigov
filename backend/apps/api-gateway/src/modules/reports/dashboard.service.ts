@@ -58,7 +58,7 @@ export interface DashboardOverview {
   /** Giải ngân luỹ kế theo tháng (tỷ đồng) */
   disbursementCumulative: { months: string[]; planned: (number | null)[]; actual: (number | null)[] };
   /** Việc cần xử lý ngay: quá hạn trước, rồi tới sát hạn */
-  urgent: { code: string; title: string; department: string; deadline: number; daysLeft: number; priority: string }[];
+  urgent: { code: string; title: string; departmentId: string; deadline: number; daysLeft: number; priority: string }[];
 }
 
 /**
@@ -187,7 +187,7 @@ export class DashboardService {
       .map((t) => ({
         code: t.code,
         title: t.title,
-        department: t.department,
+        departmentId: t.departmentId,
         deadline: t.deadline,
         daysLeft: daysLeftMs(t.deadline, now),
         priority: t.priority,

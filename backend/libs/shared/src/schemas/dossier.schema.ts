@@ -73,13 +73,16 @@ export class Dossier {
   @Prop({ default: '' })
   applicantPhone: string;
 
-  /** Bộ phận chủ trì xử lý hồ sơ */
+  /**
+   * `org_nodes._id` — bộ phận chủ trì xử lý hồ sơ, trỏ vào danh mục bộ phận
+   * chuẩn (xem `org-node.schema.ts`).
+   */
   @Prop({ default: '', index: true })
-  department: string;
+  departmentId: string;
 
-  /** Cán bộ phụ trách hồ sơ */
+  /** `staff_users._id` của cán bộ phụ trách hồ sơ */
   @Prop({ default: '' })
-  assignee: string;
+  assigneeId: string;
 
   @Prop({ enum: DOSSIER_STEP_KEYS, default: 'received', index: true })
   status: string;

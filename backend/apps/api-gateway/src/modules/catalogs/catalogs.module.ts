@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import {
+  OrgNode,
+  OrgNodeSchema,
+  type OrgNodeDocument,
   Article,
   ArticleSchema,
   BudgetItem,
@@ -15,7 +18,6 @@ import {
 import { GovContact, GovContactSchema } from './schemas/gov-contact.schema';
 import { CatalogsController } from './catalogs.controller';
 import { CatalogsService } from './catalogs.service';
-import { OrgNode, OrgNodeSchema } from '../settings/schemas/org-node.schema';
 import { SettingsModule } from '../settings/settings.module';
 import { RadioBulletin, RadioBulletinSchema, Video, VideoSchema } from '../content/content.schema';
 

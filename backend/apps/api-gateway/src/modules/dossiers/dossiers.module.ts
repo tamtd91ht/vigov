@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { Dossier, DossierSchema } from '@vigov/shared';
+import { DirectoryModule } from '../directory/directory.module';
 import { DossiersController } from './dossiers.controller';
 import { DossiersService } from './dossiers.service';
 
@@ -12,7 +13,8 @@ import { DossiersService } from './dossiers.service';
  * docs/01-BACKEND.md để biết nguồn dữ liệu hiện tại.
  */
 @Module({
-  imports: [MongooseModule.forFeature([{ name: Dossier.name, schema: DossierSchema }])],
+  imports: [
+    DirectoryModule,MongooseModule.forFeature([{ name: Dossier.name, schema: DossierSchema }])],
   controllers: [DossiersController],
   providers: [DossiersService],
   exports: [DossiersService],

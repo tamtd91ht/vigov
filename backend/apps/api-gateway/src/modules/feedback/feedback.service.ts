@@ -229,8 +229,8 @@ export class FeedbackService {
     const filter: FilterQuery<FeedbackDocument> = query.deleted ? IS_DELETED : { ...NOT_DELETED };
     if (query.categoryKey) filter.categoryKey = query.categoryKey;
     if (query.status) filter.status = query.status;
-    if (query.department) filter.department = query.department;
-    if (query.assignee) filter.assignee = query.assignee;
+    if (query.departmentId) filter.departmentId = query.departmentId;
+    if (query.assigneeId) filter.assigneeId = query.assigneeId;
     if (query.withdrawStatus) filter.withdrawStatus = query.withdrawStatus;
     // Khoảng thời gian tiếp nhận phiếu, tính theo ngày giờ Việt Nam
     const range = buildEpochRangeFilter('createdAt', query.from, query.to);
@@ -353,13 +353,13 @@ export class FeedbackService {
   /** Phân công cán bộ + bộ phận xử lý; phiếu chuyển sang trạng thái đang xử lý */
   async assign(code: string, dto: AssignFeedbackDto, actor: ActorInfo) {
     const fb = await this.findOrFail(code);
-    fb.assignee = dto.assignee;
-    fb.department = dto.department;
+    fb.assigneeId = dto.assigneeId;
+    fb.departmentId = dto.departmentId;
     if (fb.status === 'received') fb.status = 'processing';
     pushTimeline(
       fb,
       ACT.assign,
-      [`${dto.assignee} · ${dto.department}`, dto.note].filter(Boolean).join(' · '),
+      [`${dto.assigneeId} · ${dto.departmentId}`, dto.note].filter(Boolean).join(' · '),
       actor.id,
     );
     await fb.save();
@@ -369,11 +369,11 @@ export class FeedbackService {
       code: fb.code,
       title: fb.title,
       categoryKey: fb.categoryKey,
-      department: fb.department,
-      assignee: fb.assignee,
+      departmentId: fb.departmentId,
+      assigneeId: fb.assigneeId,
     };
     // P3-30 sẽ đẩy sự kiện này qua RabbitMQ để module Workflow tạo nhiệm vụ xử lý.
-    this.logger.log(`${EVENTS.FEEDBACK_ASSIGNED}: ${event.code} → ${event.assignee}`);
+    this.logger.log(`${EVENTS.FEEDBACK_ASSIGNED}: ${event.code} → ${event.assigneeId}`);
 
     // Báo công dân biết phản ánh đã được tiếp nhận và có cán bộ thụ lý
     await this.notifications.notifyFeedbackReceived({
@@ -381,11 +381,11 @@ export class FeedbackService {
       citizenPhone: fb.citizenPhone,
       title: fb.title,
       slaDueAt: fb.slaDueAt,
-      department: fb.department,
+      departmentId: fb.departmentId,
     });
     // Báo cán bộ được phân công qua chuông in-app
     await this.notifications.notifyStaff(
-      dto.assignee,
+      dto.assigneeId,
       `Bạn được phân công xử lý phản ánh ${fb.code}`,
       fb.title,
       { feedbackCode: fb.code },
@@ -444,17 +444,17 @@ export class FeedbackService {
   /** Chuyển phản ánh sang bộ phận khác (sai địa chỉ / vượt thẩm quyền) */
   async transfer(code: string, dto: TransferFeedbackDto, actor: ActorInfo) {
     const fb = await this.findOrFail(code);
-    const previous = fb.department || 'chưa phân công';
-    fb.department = dto.department;
+    const previousId = fb.departmentId;
+    fb.departmentId = dto.departmentId;
     // Chuyển bộ phận thì cán bộ cũ hết trách nhiệm, trừ khi bàn giao đích danh
-    fb.assignee = dto.assignee ?? '';
-    if (fb.status === 'received' && dto.assignee) fb.status = 'processing';
-    pushTimeline(fb, ACT.transfer, `${previous} → ${dto.department} · ${dto.reason}`, actor.id);
+    fb.assigneeId = dto.assigneeId ?? '';
+    if (fb.status === 'received' && dto.assigneeId) fb.status = 'processing';
+    pushTimeline(fb, ACT.transfer, `${previousId} → ${dto.departmentId} · ${dto.reason}`, actor.id);
     await fb.save();
 
-    if (dto.assignee) {
+    if (dto.assigneeId) {
       await this.notifications.notifyStaff(
-        dto.assignee,
+        dto.assigneeId,
         `Phản ánh ${fb.code} được chuyển tới bạn`,
         fb.title,
         { feedbackCode: fb.code },
@@ -733,7 +733,7 @@ export class FeedbackService {
 
     fb.withdrawStatus = 'approved';
     fb.withdrawDecidedAt = now;
-    fb.withdrawDecidedBy = actor.name;
+    fb.withdrawDecidedById = actor.id;
     fb.withdrawDecisionNote = note;
     pushTimeline(fb, ACT.withdrawApprove, note ?? '', actor.id);
     markDeleted(fb, actor.id, fb.withdrawReason || 'Công dân xin thu hồi, cán bộ đồng ý');
@@ -756,7 +756,7 @@ export class FeedbackService {
 
     fb.withdrawStatus = 'rejected';
     fb.withdrawDecidedAt = now;
-    fb.withdrawDecidedBy = actor.name;
+    fb.withdrawDecidedById = actor.id;
     fb.withdrawDecisionNote = note;
     pushTimeline(fb, ACT.withdrawReject, note ?? '', actor.id);
     await fb.save();
@@ -778,7 +778,7 @@ export class FeedbackService {
    * thái sẽ cho người dân gỡ mất phiếu đã nằm trên bàn một cán bộ.
    */
   private isAccepted(fb: FeedbackDocument): boolean {
-    return fb.status !== 'received' || Boolean(fb.assignee?.trim()) || Boolean(fb.department?.trim());
+    return fb.status !== 'received' || Boolean(fb.assigneeId?.trim()) || Boolean(fb.departmentId?.trim());
   }
 
   /** Chặn thao tác chỉ dành cho phiếu chưa ai tiếp nhận, kèm lời giải thích cho dân */
@@ -832,7 +832,7 @@ export class FeedbackService {
     this.realtime.emitChange(
       REALTIME_EVENTS.FEEDBACK_CHANGED,
       { type, code: fb.code, status: fb.status, at: new Date().toISOString() },
-      { department: fb.department, user: fb.assignee },
+      { department: fb.departmentId, user: fb.assigneeId },
     );
   }
 
@@ -976,8 +976,8 @@ function buildNewFeedbackPayload(input: NewFeedbackInput): Record<string, unknow
     area: input.area ?? '',
     channel: input.channel,
     source: input.source,
-    assignee: '',
-    department: '',
+    assigneeId: '',
+    departmentId: '',
     rating: 0,
     timeline: [
       activity(input.openingStep.action, { detail: input.openingStep.detail }),

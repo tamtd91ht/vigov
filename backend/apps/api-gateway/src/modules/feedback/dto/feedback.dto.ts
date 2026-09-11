@@ -52,11 +52,11 @@ export class ListFeedbackQueryDto {
 
   @IsOptional()
   @IsString()
-  department?: string;
+  departmentId?: string;
 
   @IsOptional()
   @IsString()
-  assignee?: string;
+  assigneeId?: string;
 
   /** Lọc theo trạng thái yêu cầu thu hồi — Web Quản trị dùng để lọc "chờ duyệt" */
   @IsOptional()
@@ -212,11 +212,11 @@ export class CreateStaffFeedbackDto {
 export class AssignFeedbackDto {
   @IsString()
   @IsNotEmpty({ message: 'Vui lòng chọn cán bộ xử lý' })
-  assignee: string;
+  assigneeId: string;
 
   @IsString()
   @IsNotEmpty({ message: 'Vui lòng chọn bộ phận chủ trì' })
-  department: string;
+  departmentId: string;
 
   @IsOptional()
   @IsString()
@@ -243,12 +243,12 @@ export class ResolveFeedbackDto {
 export class TransferFeedbackDto {
   @IsString()
   @IsNotEmpty({ message: 'Vui lòng chọn bộ phận tiếp nhận' })
-  department: string;
+  departmentId: string;
 
   /** Bàn giao luôn cho cán bộ mới; bỏ trống thì bộ phận tự phân công lại */
   @IsOptional()
   @IsString()
-  assignee?: string;
+  assigneeId?: string;
 
   @IsString()
   @IsNotEmpty({ message: 'Vui lòng nhập lý do chuyển bộ phận' })

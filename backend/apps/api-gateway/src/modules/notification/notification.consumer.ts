@@ -26,7 +26,8 @@ interface AssignedExtras {
   /** Mã nhiệm vụ vừa sinh ra từ văn bản / phản ánh */
   taskCode?: string;
   /** Cán bộ thực nhận; rỗng nghĩa là giao cho cả bộ phận */
-  assignee?: string;
+  /** `staff_users._id` của cán bộ được giao — khuôn tham chiếu v2 */
+  assigneeId?: string;
 }
 
 /**
@@ -91,11 +92,11 @@ export class NotificationConsumer implements OnModuleInit {
     };
 
     // Có cán bộ đích danh thì báo riêng; chưa có thì báo toàn bộ phận chủ trì
-    if (payload.assignee && payload.assignee !== payload.department) {
-      await this.notifications.notifyStaff(payload.assignee, title, body, data);
+    if (payload.assigneeId && payload.assigneeId !== payload.departmentId) {
+      await this.notifications.notifyStaff(payload.assigneeId, title, body, data);
       return;
     }
-    await this.notifications.notifyDepartment(payload.department, title, body, data);
+    await this.notifications.notifyDepartment(payload.departmentId, title, body, data);
   }
 
   /** Phản ánh đã phân công → nhắc cán bộ xử lý về nhiệm vụ vừa sinh */
@@ -104,13 +105,13 @@ export class NotificationConsumer implements OnModuleInit {
     const body = payload.title;
     const data = { feedbackCode: payload.code, taskCode: payload.taskCode ?? '' };
 
-    const recipient = payload.assignee || payload.department;
+    const recipient = payload.assigneeId || payload.departmentId;
     if (!recipient) {
       this.logger.warn(`Sự kiện ${EVENTS.FEEDBACK_ASSIGNED} cho ${payload.code} không có người nhận — bỏ qua`);
       return;
     }
-    if (recipient === payload.department) {
-      await this.notifications.notifyDepartment(payload.department, title, body, data);
+    if (recipient === payload.departmentId) {
+      await this.notifications.notifyDepartment(payload.departmentId, title, body, data);
       return;
     }
     await this.notifications.notifyStaff(recipient, title, body, data);
@@ -126,7 +127,7 @@ export class NotificationConsumer implements OnModuleInit {
       ? `"${payload.title}" quá hạn ${Math.abs(payload.daysLeft)} ngày (hạn ${formatVnDateMs(payload.deadline)})`
       : `"${payload.title}" còn ${payload.daysLeft} ngày (hạn ${formatVnDateMs(payload.deadline)})`;
 
-    await this.notifications.notifyStaff(payload.assignee, title, body, {
+    await this.notifications.notifyStaff(payload.assigneeId, title, body, {
       taskCode: payload.taskId,
       deadline: String(payload.deadline),
     });

@@ -93,23 +93,26 @@ export class WorkflowService {
    */
   async createTaskFromDocument(
     payload: DocumentAssignedEvent,
-    assignee?: string,
+    /** `staff_users._id` của cán bộ được chỉ định; bỏ trống thì để bộ phận tự phân công */
+    assigneeId?: string,
   ): Promise<{ code: string }> {
     const doc = await this.loadDocument(payload.documentId);
     if (doc.linkedTaskCode) return { code: doc.linkedTaskCode };
 
-    const department = payload.department || doc.department;
+    const departmentId = payload.departmentId || doc.departmentId;
     const summary = payload.summary || doc.summary;
     const deadline = this.pickDeadline(payload.deadline, doc.deadline);
-    const assigner = payload.assignedBy || SYSTEM_ACTOR;
 
     const task = await this.tasks.createFromSource({
       title: `Xử lý văn bản: ${summary}`,
-      // Chưa chỉ định cán bộ cụ thể thì giao cho bộ phận chủ trì
-      assignee: assignee || department,
-      department,
+      /* Chưa chỉ định cán bộ cụ thể thì để trống người thực hiện: giao cho
+         "bộ phận" như bản v1 chỉ làm được khi hai trường cùng là chuỗi tên.
+         Bộ phận chủ trì đã nằm ở `departmentId`, và ô chọn người thực hiện để
+         trống là đúng nghiệp vụ — trưởng bộ phận phân công sau. */
+      assigneeId: assigneeId ?? '',
+      departmentId,
       deadline,
-      assigner,
+      assignerId: '',
       sourceType: SOURCE_TYPE_DOCUMENT,
       sourceLabel: `Từ ${doc.refNo}`,
       sourceRefId: String(doc._id),
@@ -121,7 +124,7 @@ export class WorkflowService {
     doc.timeline.push(activity(ACT.documentToTask, { detail: task.code, state: 'cur' }));
     await doc.save();
 
-    this.logger.log(`Văn bản ${doc.refNo} → nhiệm vụ ${task.code} (bộ phận ${department})`);
+    this.logger.log(`Văn bản ${doc.refNo} → nhiệm vụ ${task.code} (bộ phận ${departmentId})`);
 
     /*
      * Kênh phụ (P5-04): báo cho NotificationModule qua hàng đợi.
@@ -132,13 +135,13 @@ export class WorkflowService {
       documentId: String(doc._id),
       arrivalNo: doc.arrivalNo || payload.arrivalNo || doc.refNo,
       summary,
-      department,
+      departmentId,
       deadline,
-      assignedBy: assigner,
+      assignedBy: payload.assignedBy || SYSTEM_ACTOR,
       // Trường mở rộng cho consumer — xem AssignedExtras ở notification.consumer.ts
       taskCode: task.code,
-      assignee: task.assignee,
-    } satisfies DocumentAssignedEvent & { taskCode: string; assignee: string });
+      assigneeId: task.assigneeId,
+    } satisfies DocumentAssignedEvent & { taskCode: string; assigneeId: string });
 
     return { code: task.code };
   }
@@ -156,8 +159,8 @@ export class WorkflowService {
     const feedback = await this.loadFeedback(payload.feedbackId);
     if (feedback.linkedTaskCode) return { code: feedback.linkedTaskCode };
 
-    const department = payload.department || feedback.department;
-    const assignee = payload.assignee || feedback.assignee || department;
+    const departmentId = payload.departmentId || feedback.departmentId;
+    const assigneeId = payload.assigneeId || feedback.assigneeId || departmentId;
     const title = payload.title || feedback.title;
     const deadline = this.pickDeadline(
       deadlineOverride,
@@ -167,10 +170,11 @@ export class WorkflowService {
 
     const task = await this.tasks.createFromSource({
       title: `Xử lý phản ánh: ${title}`,
-      assignee,
-      department,
+      assigneeId,
+      departmentId,
       deadline,
-      assigner: SYSTEM_ACTOR,
+      // Sinh từ phản ánh: hệ thống giao, không có cán bộ nào bấm nút
+      assignerId: '',
       sourceType: SOURCE_TYPE_FEEDBACK,
       sourceLabel: `Từ ${feedback.code}`,
       sourceRefId: String(feedback._id),
@@ -181,7 +185,7 @@ export class WorkflowService {
     feedback.timeline.push(activity(ACT.feedbackToTask, { detail: task.code, state: 'cur' }));
     await feedback.save();
 
-    this.logger.log(`Phản ánh ${feedback.code} → nhiệm vụ ${task.code} (cán bộ ${assignee})`);
+    this.logger.log(`Phản ánh ${feedback.code} → nhiệm vụ ${task.code} (cán bộ ${assigneeId})`);
 
     // Kênh phụ (P5-04) — xem chú thích ở createTaskFromDocument
     void this.messaging.publish(EVENTS.FEEDBACK_ASSIGNED, {
@@ -189,8 +193,8 @@ export class WorkflowService {
       code: feedback.code,
       title,
       categoryKey: payload.categoryKey || feedback.categoryKey,
-      department,
-      assignee,
+      departmentId,
+      assigneeId,
       taskCode: task.code,
     } satisfies FeedbackAssignedEvent & { taskCode: string });
 
@@ -248,7 +252,7 @@ export class WorkflowService {
     for (const task of overdue) {
       await this.tasks.markOverdue(task);
       this.logger.warn(
-        `QUÁ HẠN — ${task.code} "${task.title}" | ${task.assignee} | hạn ${task.deadline} ` +
+        `QUÁ HẠN — ${task.code} "${task.title}" | ${task.assigneeId} | hạn ${task.deadline} ` +
           `(trễ ${Math.abs(this.tasks.daysLeft(task, now))} ngày)`,
       );
       // CronJob chạy nền, không có ai đang chờ phản hồi → await được để log theo đúng thứ tự
@@ -257,7 +261,7 @@ export class WorkflowService {
 
     for (const task of upcoming) {
       this.logger.log(
-        `SẮP ĐẾN HẠN — ${task.code} "${task.title}" | ${task.assignee} | hạn ${task.deadline} ` +
+        `SẮP ĐẾN HẠN — ${task.code} "${task.title}" | ${task.assigneeId} | hạn ${task.deadline} ` +
           `(còn ${this.tasks.daysLeft(task, now)} ngày)`,
       );
       await this.publishDeadlineWarning(task, now);
@@ -291,7 +295,7 @@ export class WorkflowService {
       if (isOverdue) overdue++;
       const label = isOverdue ? 'QUÁ HẠN SLA' : 'SẮP HẾT HẠN SLA';
       this.logger.warn(
-        `${label} — ${item.code} "${item.title}" | ${item.assignee || item.department || 'chưa phân công'} ` +
+        `${label} — ${item.code} "${item.title}" | ${item.assigneeId || item.departmentId || 'chưa phân công'} ` +
           `| hạn ${formatVnDateTimeMs(due)}`,
       );
       // TODO: gửi cảnh báo cho cán bộ phụ trách qua NotificationModule (module khác đảm nhiệm)
@@ -309,8 +313,8 @@ export class WorkflowService {
     const toItem = (task: TaskDocument) => ({
       code: task.code,
       title: task.title,
-      assignee: task.assignee,
-      department: task.department,
+      assigneeId: task.assigneeId,
+      departmentId: task.departmentId,
       deadline: task.deadline,
       status: task.status,
       priority: task.priority,
@@ -339,7 +343,7 @@ export class WorkflowService {
     await this.messaging.publish(EVENTS.TASK_DEADLINE_WARNING, {
       taskId: task.code,
       title: task.title,
-      assignee: task.assignee,
+      assigneeId: task.assigneeId,
       deadline: task.deadline,
       daysLeft: this.tasks.daysLeft(task, now),
     } satisfies TaskDeadlineWarningEvent);

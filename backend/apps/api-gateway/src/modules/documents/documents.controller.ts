@@ -20,6 +20,7 @@ import {
   listExportFileName,
 } from '../reports/exporters/list-workbook';
 import { streamExcelExport } from '../reports/exporters/stream-export';
+import { DirectoryService } from '../directory/directory.service';
 import { DocumentsService } from './documents.service';
 import {
   DOCUMENT_EXPORT_COLUMNS,
@@ -43,6 +44,7 @@ export class DocumentsController {
     private readonly documents: DocumentsService,
     private readonly config: ConfigService,
     private readonly audit: AuditService,
+    private readonly directory: DirectoryService,
   ) {}
 
   /** Danh sách văn bản đến / đơn thư (lọc + phân trang) */
@@ -65,6 +67,10 @@ export class DocumentsController {
     @Res({ passthrough: false }) res: Response,
   ) {
     const rows = await this.documents.listForExport(query);
+    // Nhãn bộ lọc in TÊN bộ phận cho cán bộ đọc, không in id
+    const tenBoPhan = query.departmentId
+      ? (await this.directory.lookup()).departmentRef(query.departmentId)?.displayName
+      : undefined;
     const kindLabel = query.kind ? DOCUMENT_KIND_LABELS[query.kind] : '';
     const workbook = buildListWorkbook(rows, DOCUMENT_EXPORT_COLUMNS, {
       title: query.deleted ? 'Sổ văn bản đã xoá' : `Sổ ${kindLabel || 'văn bản đến và đơn thư'}`,
@@ -74,7 +80,7 @@ export class DocumentsController {
       filterLabel: describeFilters({
         'Phân loại': kindLabel,
         'Trạng thái': query.status ? DOCUMENT_STATUS_LABELS[query.status] : undefined,
-        'Bộ phận': query.department,
+        'Bộ phận': tenBoPhan,
         'Loại văn bản': query.docType,
         'Từ khoá': query.q,
       }),
@@ -93,7 +99,7 @@ export class DocumentsController {
       filters: {
         kind: query.kind,
         status: query.status,
-        department: query.department,
+        departmentId: query.departmentId,
         docType: query.docType,
         from: query.from,
         to: query.to,

@@ -27,8 +27,20 @@ export class StaffUser {
   @Prop({ required: true })
   color: string;
 
-  @Prop({ required: true, index: true })
-  department: string;
+  /**
+   * `org_nodes._id` — bộ phận chủ trì, trỏ vào danh mục bộ phận chuẩn.
+   *
+   * v1 lưu TÊN bộ phận dạng chuỗi tự do, nên sửa tên bộ phận trên trang Cấu
+   * hình không đổi gì trong hồ sơ đã lưu và danh mục sinh ra hai lựa chọn cho
+   * cùng một bộ phận — xem chú thích ở `org-node.schema.ts`.
+   */
+  /*
+   * KHÔNG đặt `required`: tài khoản có thể được tạo trước khi gán bộ phận (quản
+   * trị viên lập tài khoản rồi văn phòng phân bộ phận sau). Bắt buộc ở đây là
+   * chặn đúng bước tạo tài khoản, mà bước đó không có gì sai.
+   */
+  @Prop({ default: '', index: true })
+  departmentId: string;
 
   /** Khoá vai trò trong roles.ts */
   @Prop({ required: true, index: true })

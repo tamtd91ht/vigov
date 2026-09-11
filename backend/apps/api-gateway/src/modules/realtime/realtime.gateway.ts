@@ -159,7 +159,7 @@ function stripBearer(value: string): string {
 function buildRooms(payload: JwtPayload): string[] {
   const rooms = [`${ROOM_USER}${payload.username}`];
   if (payload.roleKey) rooms.push(`${ROOM_ROLE}${payload.roleKey}`);
-  const slug = departmentSlug(payload.department);
+  const slug = departmentSlug(payload.departmentId);
   if (slug) rooms.push(`${ROOM_DEPARTMENT}${slug}`);
   return rooms;
 }

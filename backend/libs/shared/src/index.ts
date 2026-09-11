@@ -27,6 +27,7 @@ export * from './schemas/timestamped';
 export * from './schemas/activity-log';
 export * from './schemas/comment';
 export * from './schemas/refs';
+export * from './schemas/org-node.schema';
 
 export * from './schemas/task.schema';
 export * from './schemas/document.schema';

@@ -39,6 +39,7 @@ import {
   UpdateCitizenFeedbackDto,
   WithdrawFeedbackDto,
 } from './dto/feedback.dto';
+import { DirectoryService } from '../directory/directory.service';
 import { FeedbackService, type ActorInfo } from './feedback.service';
 
 /** Vai trò của tài khoản công dân (Zalo Mini App) */
@@ -80,6 +81,7 @@ export class FeedbackController {
     private readonly settings: SettingsService,
     private readonly config: ConfigService,
     private readonly audit: AuditService,
+    private readonly directory: DirectoryService,
   ) {}
 
   // --- Cán bộ: tra cứu ------------------------------------------------------
@@ -104,10 +106,16 @@ export class FeedbackController {
     @Req() req: AuthedRequest,
     @Res({ passthrough: false }) res: Response,
   ) {
-    const [rows, categories] = await Promise.all([
+    const [rows, categories, lookup] = await Promise.all([
       this.feedback.listForExport(query),
       this.settings.getCategories(),
+      this.directory.lookup(),
     ]);
+    // Nhãn bộ lọc in TÊN cho cán bộ đọc, không in id
+    const tenBoPhan = query.departmentId
+      ? lookup.departmentRef(query.departmentId)?.displayName
+      : undefined;
+    const tenCanBo = query.assigneeId ? lookup.staffRef(query.assigneeId)?.displayName : undefined;
     const labelOf = (key: string) =>
       categories.items.find((c) => c.key === key)?.label ?? key;
 
@@ -119,8 +127,8 @@ export class FeedbackController {
       filterLabel: describeFilters({
         'Lĩnh vực': query.categoryKey ? labelOf(query.categoryKey) : undefined,
         'Trạng thái': query.status ? FEEDBACK_STATUS_LABELS[query.status] : undefined,
-        'Bộ phận': query.department,
-        'Người xử lý': query.assignee,
+        'Bộ phận': tenBoPhan,
+        'Người xử lý': tenCanBo,
         'Thu hồi': query.withdrawStatus ? WITHDRAW_STATUS_LABELS[query.withdrawStatus] : undefined,
         'Từ khoá': query.q,
       }),
@@ -139,8 +147,8 @@ export class FeedbackController {
       filters: {
         categoryKey: query.categoryKey,
         status: query.status,
-        department: query.department,
-        assignee: query.assignee,
+        departmentId: query.departmentId,
+        assigneeId: query.assigneeId,
         withdrawStatus: query.withdrawStatus,
         from: query.from,
         to: query.to,

@@ -12,6 +12,7 @@ import {
   IsBoolean,
   IsIn,
   IsInt,
+  IsMongoId,
   IsISO8601,
   IsNotEmpty,
   IsOptional,
@@ -52,13 +53,13 @@ export class CreateTaskDto {
   @MaxLength(500, { message: 'Tiêu đề tối đa 500 ký tự' })
   title: string;
 
-  @IsString()
+  @IsMongoId({ message: 'Cán bộ thực hiện không hợp lệ' })
   @IsNotEmpty({ message: 'Vui lòng chọn cán bộ thực hiện' })
-  assignee: string;
+  assigneeId: string;
 
-  @IsString()
+  @IsMongoId({ message: 'Bộ phận chủ trì không hợp lệ' })
   @IsNotEmpty({ message: 'Vui lòng chọn bộ phận chủ trì' })
-  department: string;
+  departmentId: string;
 
   @IsEpochMs('Hạn xử lý')
   deadline: number;
@@ -89,8 +90,8 @@ export class CreateTaskDto {
 
   @IsOptional()
   @IsArray({ message: 'Danh sách phối hợp không hợp lệ' })
-  @IsString({ each: true, message: 'Tên cán bộ phối hợp không hợp lệ' })
-  collaborators?: string[];
+  @IsMongoId({ each: true, message: 'Cán bộ phối hợp không hợp lệ' })
+  collaboratorIds?: string[];
 }
 
 /** Cập nhật nhiệm vụ (PATCH /tasks/:code) — mọi trường đều tuỳ chọn */
@@ -102,14 +103,12 @@ export class UpdateTaskDto {
   title?: string;
 
   @IsOptional()
-  @IsString()
-  @IsNotEmpty({ message: 'Cán bộ thực hiện không được để trống' })
-  assignee?: string;
+  @IsMongoId({ message: 'Cán bộ thực hiện không hợp lệ' })
+  assigneeId?: string;
 
   @IsOptional()
-  @IsString()
-  @IsNotEmpty({ message: 'Bộ phận chủ trì không được để trống' })
-  department?: string;
+  @IsMongoId({ message: 'Bộ phận chủ trì không hợp lệ' })
+  departmentId?: string;
 
   @IsOptional()
   @IsEpochMs('Hạn xử lý')
@@ -143,8 +142,8 @@ export class UpdateTaskDto {
 
   @IsOptional()
   @IsArray({ message: 'Danh sách phối hợp không hợp lệ' })
-  @IsString({ each: true, message: 'Tên cán bộ phối hợp không hợp lệ' })
-  collaborators?: string[];
+  @IsMongoId({ each: true, message: 'Cán bộ phối hợp không hợp lệ' })
+  collaboratorIds?: string[];
 }
 
 /** Tick / bỏ tick một việc con (PATCH /tasks/:code/checklist/:index) */
@@ -195,13 +194,14 @@ export class QueryTasksDto extends SoftDeleteQueryDto {
   status?: string[];
 
   @IsOptional()
-  @IsString()
-  department?: string;
+  @IsMongoId({ message: 'Bộ phận lọc không hợp lệ' })
+  departmentId?: string;
 
+  /** Lọc theo NHIỀU cán bộ thực hiện, nhận `staff_users._id` */
   @IsOptional()
   @TransformStringArray()
-  @IsString({ each: true })
-  assignee?: string[];
+  @IsMongoId({ each: true, message: 'Cán bộ lọc không hợp lệ' })
+  assigneeId?: string[];
 
   @IsOptional()
   @TransformStringArray()

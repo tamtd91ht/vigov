@@ -1,7 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import type { Model } from 'mongoose';
 import type { DossierDocument } from '@vigov/shared';
-import { queryChain } from '../../../../../test/support/mongoose-mock';
+import { directoryMock, queryChain} from '../../../../../test/support/mongoose-mock';
 import { DossiersService, maskPhone, normalizeCode, toLookupView } from './dossiers.service';
 
 /**
@@ -18,6 +18,15 @@ import { DossiersService, maskPhone, normalizeCode, toLookupView } from './dossi
 
 /** Mốc thời gian cố định để không phụ thuộc giờ chạy test */
 /* Mốc thời gian v2 là SỐ milli-giây UTC; giữ dạng ISO ở đây cho dễ đọc rồi đổi */
+/* Danh bạ giả: khuôn v2 lưu id, tên hiển thị do DirectoryService tra */
+const DANH_BA = {
+  '66f10000000000000000cb02': { id: '66f10000000000000000cb02', displayName: 'Trần Thị Lan' },
+};
+const BO_PHAN = {
+  '66f20000000000000000bp01': { id: '66f20000000000000000bp01', displayName: 'Tư pháp – Hộ tịch' },
+};
+const LOOKUP = directoryMock(DANH_BA, BO_PHAN).lookupSync as never;
+
 const SUBMITTED = Date.parse('2026-08-24T02:15:00.000Z');
 const APPRAISED = Date.parse('2026-08-25T02:15:00.000Z');
 const DUE = Date.parse('2026-08-27T16:59:59.999Z');
@@ -27,8 +36,8 @@ const DOSSIER = {
   procedure: 'Cấp bản sao trích lục khai sinh',
   applicantName: 'Nguyễn Văn Hùng',
   applicantPhone: '0912480311',
-  department: 'Tư pháp, Hộ tịch',
-  assignee: 'Trần Thị Lan',
+  departmentId: '66f20000000000000000bp01',
+  assigneeId: '66f10000000000000000cb02',
   status: 'appraising',
   note: 'Đang đối chiếu sổ gốc',
   submittedAt: SUBMITTED,
@@ -47,7 +56,10 @@ interface Harness {
 
 function makeService(found: Record<string, unknown> | null = DOSSIER): Harness {
   const findOne = jest.fn(() => queryChain(found));
-  const service = new DossiersService({ findOne } as unknown as Model<DossierDocument>);
+  const service = new DossiersService(
+    { findOne } as unknown as Model<DossierDocument>,
+    directoryMock(DANH_BA, BO_PHAN) as never,
+  );
   return { service, findOne };
 }
 
@@ -121,7 +133,7 @@ describe('DossiersService.lookup', () => {
 
 describe('toLookupView — tracker 4 bước', () => {
   it('luôn trả đủ 4 bước theo đúng thứ tự và nhãn của hợp đồng API', () => {
-    const view = toLookupView(DOSSIER);
+    const view = toLookupView(DOSSIER, LOOKUP);
 
     expect(view.steps.map((step) => step.key)).toEqual([
       'received',
@@ -138,13 +150,13 @@ describe('toLookupView — tracker 4 bước', () => {
   });
 
   it('bước trước bước hiện tại là xong; bước hiện tại CHƯA xong', () => {
-    const view = toLookupView(DOSSIER);
+    const view = toLookupView(DOSSIER, LOOKUP);
 
     expect(view.steps.map((step) => step.done)).toEqual([true, false, false, false]);
   });
 
   it('bước chưa tới thì at = null, bước đã đi qua có mốc ISO', () => {
-    const view = toLookupView(DOSSIER);
+    const view = toLookupView(DOSSIER, LOOKUP);
 
     expect(view.steps[0].at).toBe(SUBMITTED);
     expect(view.steps[1].at).toBe(APPRAISED);
@@ -153,33 +165,33 @@ describe('toLookupView — tracker 4 bước', () => {
   });
 
   it('hồ sơ đã trả kết quả thì CẢ 4 bước đều xong', () => {
-    const view = toLookupView({ ...DOSSIER, status: 'returned' });
+    const view = toLookupView({ ...DOSSIER, status: 'returned' }, LOOKUP);
 
     expect(view.steps.every((step) => step.done)).toBe(true);
   });
 
   it('hồ sơ mới tiếp nhận thì chưa bước nào xong', () => {
-    const view = toLookupView({ ...DOSSIER, status: 'received' });
+    const view = toLookupView({ ...DOSSIER, status: 'received' }, LOOKUP);
 
     expect(view.steps.map((step) => step.done)).toEqual([false, false, false, false]);
   });
 
   it('thiếu mốc của một bước đã đi qua thì at = null, không nổ và không trả rác', () => {
-    const view = toLookupView({ ...DOSSIER, stepTimes: [] });
+    const view = toLookupView({ ...DOSSIER, stepTimes: [] }, LOOKUP);
 
     expect(view.steps.map((step) => step.at)).toEqual([null, null, null, null]);
     expect(view.steps[0].done).toBe(true);
   });
 
   it('trạng thái lạ (dữ liệu di trú lỗi) thì không bước nào được coi là xong', () => {
-    const view = toLookupView({ ...DOSSIER, status: 'khong-ton-tai' });
+    const view = toLookupView({ ...DOSSIER, status: 'khong-ton-tai' }, LOOKUP);
 
     expect(view.steps.every((step) => !step.done)).toBe(true);
     expect(view.steps.every((step) => step.at === null)).toBe(true);
   });
 
   it('mốc thời gian trả về dạng ISO để client tự định dạng theo múi giờ', () => {
-    const view = toLookupView(DOSSIER);
+    const view = toLookupView(DOSSIER, LOOKUP);
 
     expect(view.submittedAt).toBe(SUBMITTED);
     expect(view.dueAt).toBe(DUE);

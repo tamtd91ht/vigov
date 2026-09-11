@@ -21,6 +21,7 @@ import {
   listExportFileName,
 } from '../reports/exporters/list-workbook';
 import { streamExcelExport } from '../reports/exporters/stream-export';
+import { DirectoryService } from '../directory/directory.service';
 import { TasksService } from './tasks.service';
 import {
   TASK_EXPORT_COLUMNS,
@@ -47,6 +48,7 @@ export class TasksController {
     private readonly tasks: TasksService,
     private readonly config: ConfigService,
     private readonly audit: AuditService,
+    private readonly directory: DirectoryService,
   ) {}
 
   /** Danh sách nhiệm vụ có lọc + phân trang */
@@ -70,14 +72,21 @@ export class TasksController {
     @Res({ passthrough: false }) res: Response,
   ) {
     const rows = await this.tasks.listForExport(query);
+    const lookup = await this.directory.lookup();
+    const tenBoPhan = query.departmentId
+      ? lookup.departmentRef(query.departmentId)?.displayName
+      : undefined;
+    const tenCanBo = query.assigneeId?.map((id) => lookup.staffRef(id)?.displayName ?? id);
     const workbook = buildListWorkbook(rows, TASK_EXPORT_COLUMNS, {
       title: query.deleted ? 'Danh sách nhiệm vụ đã xoá' : 'Danh sách nhiệm vụ',
       orgName: this.config.get<string>('org.name') ?? 'UBND xã',
       orgParent: this.config.get<string>('org.parent') ?? '',
       periodLabel: dateRangeLabel(query.from, query.to),
       filterLabel: describeFilters({
-        'Bộ phận': query.department,
-        'Người thực hiện': query.assignee,
+        /* Nhãn bộ lọc in TÊN cho cán bộ đọc, không in id: tệp xuất là tài liệu
+           đưa vào hồ sơ, một chuỗi 24 ký tự hex ở đó không nói lên điều gì. */
+        'Bộ phận': tenBoPhan,
+        'Người thực hiện': tenCanBo,
         'Mức ưu tiên': query.priority?.map((p) => TASK_PRIORITY_LABELS[p] ?? p),
         'Trạng thái': query.status?.map((s) => TASK_STATUS_LABELS[s] ?? s),
         'Từ khoá': query.q,
@@ -95,8 +104,8 @@ export class TasksController {
       resource: 'tasks/export',
       rowCount: rows.length,
       filters: {
-        department: query.department,
-        assignee: query.assignee,
+        departmentId: query.departmentId,
+        assigneeId: query.assigneeId,
         priority: query.priority,
         status: query.status,
         from: query.from,

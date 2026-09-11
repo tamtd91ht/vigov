@@ -111,11 +111,22 @@ export class Feedback extends SoftDeletable {
   @Prop({ enum: ['app', 'offline'], default: 'app', index: true })
   source: string;
 
+  /**
+   * `staff_users._id` — khuôn tham chiếu v2 ("lưu id, hiển thị tên").
+   * Tên hiển thị do `DirectoryService` tra khi trả dữ liệu.
+   */
   @Prop({ default: '', index: true })
-  assignee: string;
+  assigneeId: string;
 
+  /**
+   * `org_nodes._id` — bộ phận chủ trì, trỏ vào danh mục bộ phận chuẩn.
+   *
+   * v1 lưu TÊN bộ phận dạng chuỗi tự do, nên sửa tên bộ phận trên trang Cấu
+   * hình không đổi gì trong hồ sơ đã lưu và danh mục sinh ra hai lựa chọn cho
+   * cùng một bộ phận — xem chú thích ở `org-node.schema.ts`.
+   */
   @Prop({ default: '', index: true })
-  department: string;
+  departmentId: string;
 
   @Prop({ type: [ActivityEntrySchema], default: [] })
   timeline: ActivityEntry[];
@@ -152,12 +163,14 @@ export class Feedback extends SoftDeletable {
   withdrawDecidedAt?: number;
 
   /**
-   * TÊN ĐĂNG NHẬP (`JwtPayload.username`) của cán bộ đã quyết định — KHÔNG phải
-   * `displayName`, thống nhất với `SoftDeletable.deletedBy`: hai cán bộ có thể
-   * trùng họ tên, nhật ký kiểm toán tra theo tên đăng nhập.
+   * `staff_users._id` của cán bộ đã quyết định thu hồi — khuôn tham chiếu v2,
+   * thống nhất với `SoftDeletable.deletedById`.
+   *
+   * v1 lưu tên đăng nhập. Tên đăng nhập vẫn đổi được, mà hai cán bộ có thể
+   * trùng họ tên, nên id là giá trị duy nhất tra được về đúng tài khoản.
    */
   @Prop({ default: '' })
-  withdrawDecidedBy: string;
+  withdrawDecidedById: string;
 
   /**
    * Lý do cán bộ nêu khi TỪ CHỐI thu hồi.

@@ -8,6 +8,7 @@ import { NotificationModule } from '../notification/notification.module';
 import { RealtimeModule } from '../realtime/realtime.module';
 import { FeedbackController } from './feedback.controller';
 import { FeedbackService } from './feedback.service';
+import { DirectoryModule } from '../directory/directory.module';
 
 /**
  * Module Feedback (WBS #6 — xử lý phản ánh trên Web Quản trị,
@@ -17,6 +18,7 @@ import { FeedbackService } from './feedback.service';
  */
 @Module({
   imports: [
+    DirectoryModule,
     MongooseModule.forFeature([
       { name: Feedback.name, schema: FeedbackSchema },
       { name: SlaRule.name, schema: SlaRuleSchema },

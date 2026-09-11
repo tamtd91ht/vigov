@@ -1,11 +1,14 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
-import { Feedback, FeedbackSchema, SlaRule, SlaRuleSchema } from '@vigov/shared';
+import {
+  OrgNode,
+  OrgNodeSchema,
+  type OrgNodeDocument, Feedback, FeedbackSchema, SlaRule, SlaRuleSchema
+} from '@vigov/shared';
 import { SettingsController } from './settings.controller';
 import { SettingsService } from './settings.service';
 import { IntegrationSettingsService } from './integration-settings.service';
 import { IssuingAgenciesService } from './issuing-agencies.service';
-import { OrgNode, OrgNodeSchema } from './schemas/org-node.schema';
 import {
   FeedbackCategory,
   FeedbackCategorySchema,

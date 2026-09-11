@@ -16,7 +16,23 @@ import { endOfVnDay, seedActivity, seedComment } from './seed.util';
  */
 const ACT_NOTE = 'task.note';
 
-export type TaskSeed = Partial<Task> & { code: string };
+export type TaskSeed = Omit<
+  Partial<Task>,
+  'assigneeId' | 'assignerId' | 'departmentId' | 'collaboratorIds'
+> & {
+  code: string;
+  assignee: string;
+  assigner: string;
+  department: string;
+  collaborators: string[];
+};
+/*
+ * Seed tham chiếu cán bộ và bộ phận bằng TÊN, không bằng id.
+ *
+ * Id chỉ có sau khi `seed.ts` chèn xong cây tổ chức và danh bạ, mà tệp seed là
+ * tệp người đọc và sửa tay — một chuỗi 24 ký tự hex ở đây thì không ai soát
+ * được. `seed.ts` quy đổi tên → id ở đúng một bước, sau khi hai danh mục đã có.
+ */
 
 /*
  * `STAFF_BADGE` và `FALLBACK_BADGE` đã bỏ: chữ viết tắt và màu avatar là cách

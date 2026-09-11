@@ -21,7 +21,18 @@ import { endOfVnDay, parseVnDateTime, seedActivityAt } from './seed.util';
 /** Khoa hanh dong cho nhat ky cua du lieu seed - xem chu thich o tasks.seed.ts */
 const ACT_NOTE = 'dossier.note';
 
-export type DossierSeed = Partial<Dossier> & { code: string };
+export type DossierSeed = Omit<Partial<Dossier>, 'assigneeId' | 'departmentId'> & {
+  code: string;
+  assignee: string;
+  department: string;
+};
+/*
+ * Seed tham chiếu cán bộ và bộ phận bằng TÊN, không bằng id.
+ *
+ * Id chỉ có sau khi `seed.ts` chèn xong cây tổ chức và danh bạ, mà tệp seed là
+ * tệp người đọc và sửa tay — một chuỗi 24 ký tự hex ở đây thì không ai soát
+ * được. `seed.ts` quy đổi tên → id ở đúng một bước, sau khi hai danh mục đã có.
+ */
 
 /** Mô tả một hồ sơ mẫu theo đúng các trường của mock */
 interface DossierMock {

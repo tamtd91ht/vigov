@@ -50,7 +50,7 @@ export class CreateDocumentDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty({ message: 'Bộ phận chủ trì không được để trống' })
-  department?: string;
+  departmentId?: string;
 
   @IsOptional()
   @IsEpochMs('Hạn xử lý')
@@ -108,7 +108,7 @@ export class UpdateDocumentDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty({ message: 'Bộ phận chủ trì không được để trống' })
-  department?: string;
+  departmentId?: string;
 
   @IsOptional()
   @IsIn(DOCUMENT_STATUSES, {
@@ -164,7 +164,7 @@ export class QueryDocumentsDto extends SoftDeleteQueryDto {
 
   @IsOptional()
   @IsString()
-  department?: string;
+  departmentId?: string;
 
   @IsOptional()
   @IsString()
